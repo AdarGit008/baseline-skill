@@ -1,7 +1,7 @@
 ---
 name: baseline
 description: This skill should be used when the user asks to "run baseline", "check baseline", "/baseline", "score this repo", check a project's build-readiness or project-readiness, audit a repo against a standard, or scaffold/adopt the project-baseline standard. Runs a zero-dependency readiness checker (69 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, and claims discipline), interprets the scorecard, and helps fix or scaffold what's missing.
-version: 2.1.0
+version: 2.1.1
 ---
 
 # project-baseline

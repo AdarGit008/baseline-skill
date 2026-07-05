@@ -20,6 +20,26 @@ Not every rule fits every repo. A pre-code planning repo shouldn't be nagged abo
 
 A rule that doesn't apply to your `project_type` or active profile **skips** (shown as `n/a`) — it never counts against you. That's how the standard grew 3× in rules without getting 3× naggier on any single repo.
 
+## Project types & `applies_to`
+
+A profile decides *how expert* a rule is; **`applies_to`** decides *what kind of repo* it fits. Every rule declares one, checked against a closed set of project types:
+
+`node` · `python` · `service` · `library` · `docs`
+
+- `applies_to: "all"` — universal (secrets, LICENSE, broken-links, claims, doc-drift…).
+- `applies_to: ["node","python","service","library"]` — **code repos only** (build/test/lint/reproducibility rules); a `docs` repo skips them.
+- `applies_to: ["service"]` — long-running **services only** (the OPS rules).
+
+`project_type` auto-detects (`package.json` ⇒ `node`/`service`, `pyproject.toml` ⇒ `python`, else `docs`) and can be pinned in `baseline.config.json`. A rule whose `applies_to` doesn't include your type **skips** as `n/a`, exactly like an off profile.
+
+**Integrity gate — so a scope can't silently dangle.** A mistyped scope (`"nodejs"`, `"doc"`) would make a rule quietly never run. The rule set validates itself:
+
+```bash
+node check.mjs --self-check
+```
+
+It exits 1 on any rule missing `applies_to`, or naming an unknown type / profile / check-kind / severity / category / `requires` key, a duplicate id, or an orphan type/profile — and prints a **coverage matrix** (how many rules apply to each type). Wire it into CI so a malformed `rules.json` can't merge.
+
 ## Why it's shaped this way
 
 Three failure layers showed up across the original repos, and the drift **climbs** as a project matures:

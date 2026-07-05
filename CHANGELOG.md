@@ -18,6 +18,9 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   mode that validates rule-set integrity (no missing/typo'd `applies_to`, unknown
   check kind, profile, severity, category, `requires` key, or duplicate id) and prints
   a per-type coverage matrix. Guards against silently-dangling rules.
+- `config-presets/` — ready-made `baseline.config.json` starting points
+  (context-management, node-service, python-library, internal-tool, product-with-claims),
+  each annotated and copied on install.
 
 ### Changed
 - Removed an internal end-of-session reference from CTX-01's `fix` text.

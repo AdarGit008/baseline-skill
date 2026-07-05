@@ -2,11 +2,13 @@
 
 The **`/baseline`** skill for Claude Code (and compatible agents): a zero-dependency
 project-readiness checker packaged as an installable skill. It scores a repository
-against **69 rules** across build, tests, security & supply-chain, reproducibility,
+against **69 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
 operability, change governance, community, context/doc-drift, and claims discipline —
-blockers fail CI, judgment calls resolve via a dated sign-off ledger.
+[blockers](GLOSSARY.md#blocker) fail CI, judgment calls resolve via a dated [sign-off ledger](GLOSSARY.md#sign-off-ledger).
 
 > The premise: *don't trust a written promise — make something check it.*
+
+New to the jargon? The [glossary](GLOSSARY.md) defines the DevOps and supply-chain terms in plain language.
 
 ## Install
 
@@ -40,6 +42,7 @@ Needs only Node ≥ 18 and git.
 | `config.example.json` | per-repo config (copy to `baseline.config.json`) |
 | `templates/` | scaffolds: CLAIMS.json, start-here.md, signoff.json, adr.md, doc-with-freshness.md |
 | `README.md` | full reference (categories, rule table, CI wiring) |
+| `GLOSSARY.md` | plain-language definitions of the DevOps/supply-chain terms |
 
 ## See it pass
 

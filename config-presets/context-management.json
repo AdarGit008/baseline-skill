@@ -1,0 +1,30 @@
+{
+  "_preset": "context-management — a docs/knowledge repo where the point is keeping context true over time (no drift, one home per fact, fresh docs). Turns the CONTEXT rules up and skips build/test/service by declaring project_type=docs. Adjust the *_globs to your actual doc paths.",
+  "project_type": "docs",
+  "makes_external_claims": false,
+  "status_file": "docs/start-here.md",
+  "_status_file": "CTX-01: the single owner file carrying a 'last-verified: <sha> <date>' stamp.",
+  "decision_globs": ["docs/decisions/0*.md", "adr/*.md"],
+  "_decision_globs": "CTX-02/CTX-07: decision records must carry a Status; superseded ones link forward to a file that exists.",
+  "doc_globs": ["**/*.md"],
+  "_doc_globs": "CTX-05 (broken internal links) and CTX-10 (backticked paths resolve) scan these.",
+  "sources_of_truth": {
+    "status": "docs/start-here.md",
+    "facts": "docs/knowledge-ledger.md",
+    "decisions": "docs/decisions/"
+  },
+  "_sources_of_truth": "CTX-03: declares where each kind of fact canonically lives, so there's one home per fact.",
+  "grounding_docs": ["docs/start-here.md", "docs/architecture.md"],
+  "_grounding_docs": "CTX-09 (opt-in): these docs must exist and be non-empty. List your load-bearing docs.",
+  "freshness_globs": ["docs/architecture.md", "docs/onboarding.md"],
+  "_freshness_globs": "CTX-06 (opt-in): each listed doc must carry a 'last_review_date' in frontmatter, reviewed within doc_freshness_days. Add your long-lived docs.",
+  "doc_freshness_days": 180,
+  "generated_globs": ["docs/api/**", "**/*.gen.md"],
+  "_generated_globs": "CTX-08 (opt-in): generated docs must carry a 'DO NOT EDIT' provenance marker so nobody hand-edits them. Adjust to where you generate docs.",
+  "doc_lag_days": 30,
+  "_doc_lag_days": "CTX-11: warns when a doc anchored to source (frontmatter 'sources: [glob]') lags that code by more than this many days.",
+  "stamp_max_lag_commits": 3,
+  "profiles": ["advanced"],
+  "_profiles": "enables CTX-10 (code symbols/paths named in docs still resolve) — worth it for a context-focused repo.",
+  "signoff_file": ".project-baseline/signoff.json"
+}

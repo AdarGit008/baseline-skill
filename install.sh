@@ -15,7 +15,7 @@ if [ "$NODE_MAJOR" -lt 18 ]; then
 fi
 
 mkdir -p "$DEST"
-for f in SKILL.md check.mjs rules.json config.example.json README.md GLOSSARY.md; do
+for f in SKILL.md check.mjs rules.json config.example.json README.md REFERENCE.md GLOSSARY.md; do
   cp "$SRC/$f" "$DEST/"
 done
 rm -rf "$DEST/templates"; cp -r "$SRC/templates" "$DEST/templates"

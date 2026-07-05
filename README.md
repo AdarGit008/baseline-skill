@@ -41,8 +41,12 @@ Needs only Node ≥ 18 and git.
 | `rules.json` | the 69 rules (id, severity, profile, rationale, fix, source, check) |
 | `config.example.json` | per-repo config (copy to `baseline.config.json`) |
 | `templates/` | scaffolds: CLAIMS.json, start-here.md, signoff.json, adr.md, doc-with-freshness.md |
-| `README.md` | full reference (categories, rule table, CI wiring) |
+| `README.md` | this guide — install, usage, file map |
+| `REFERENCE.md` | full reference: rule table, categories, architecture diagrams, CI wiring |
 | `GLOSSARY.md` | plain-language definitions of the DevOps/supply-chain terms |
+
+See **[REFERENCE.md](REFERENCE.md)** for the full rule table, category
+descriptions, architecture/flow diagrams, and the CI wiring snippet.
 
 ## See it pass
 

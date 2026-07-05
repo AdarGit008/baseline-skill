@@ -6,6 +6,8 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+## [2.2.0] — 2026-07-05
+
 ### Added
 - `REFERENCE.md` — the full reference (rule table, category descriptions, CI wiring)
   plus **architecture & flow diagrams** drawn from `check.mjs`.

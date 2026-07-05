@@ -1,15 +1,5 @@
 {
-  "_comment": "Manual sign-offs: dated human judgments the runner can't automate. These three are n/a for a docs/skill distribution repo; each records why. Review and re-date before merge.",
-  "TEST-03": {
-    "by": "adar",
-    "date": "2026-07-05",
-    "note": "n/a — a docs/skill distribution repo has no runtime 'must-never-exist' invariants to guard with red-on-arrival tests. The runner's own behavior is exercised by fixtures upstream in the canonical baseline-v2 source."
-  },
-  "TEST-04": {
-    "by": "adar",
-    "date": "2026-07-05",
-    "note": "n/a — this repo ships no acceptance-criteria specs to reconcile against reference code; rules.json is the specification and check.mjs is its reference implementation."
-  },
+  "_comment": "Manual sign-offs: dated human judgments the runner can't automate. In distribution mode (project_type=docs) the only applicable manual rule is CTX-04; TEST-03/04 now scope to code repos and skip here. Review and re-date before merge.",
   "CTX-04": {
     "by": "adar",
     "date": "2026-07-05",

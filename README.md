@@ -1,7 +1,7 @@
 # baseline-skill
 
-The **`/baseline`** skill for Claude Code (and compatible agents): a zero-dependency
-project-readiness checker packaged as an installable skill. It scores a repository
+The **`baseline`** skill for **Hermes** and **Claude Code** (and any agent that loads
+`SKILL.md`): a zero-dependency project-readiness checker packaged as an installable skill. It scores a repository
 against **69 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
 operability, change governance, community, context/doc-drift, and claims discipline —
 [blockers](GLOSSARY.md#blocker) fail CI, judgment calls resolve via a dated [sign-off ledger](GLOSSARY.md#sign-off-ledger).
@@ -14,13 +14,20 @@ New to the jargon? The [glossary](GLOSSARY.md) defines the DevOps and supply-cha
 
 ```bash
 git clone https://github.com/AdarGit008/baseline-skill
-./baseline-skill/install.sh                 # copies into ~/.claude/skills/baseline
-# or install elsewhere: ./install.sh /path/to/skills/baseline
+cd baseline-skill
+
+./install.sh                # Claude Code -> ~/.claude/skills/baseline
+./install.sh --hermes       # Hermes      -> ~/.hermes/skills/software-development/baseline
+./install.sh /custom/path   # any custom skills dir
 ```
 
-Restart Claude Code, then in any repo say **`/baseline`** (or "run baseline",
-"score this repo"). The agent runs the checker, reads the scorecard, and helps
-fix or scaffold what's missing.
+Then in any repo say **"run baseline"** / **"score this repo"** (Claude Code: `/baseline`)
+— the agent runs the checker, reads the scorecard, and helps fix or scaffold what's
+missing. Restart Claude Code, or start a **new Hermes session** (its skill loader is
+cached per session), for the skill to appear.
+
+`SKILL.md` follows the Hermes peer conventions (frontmatter + structure) and stays
+valid for Claude Code, so the one repo is native to both.
 
 ## Run it directly (no agent)
 
@@ -41,6 +48,7 @@ Needs only Node ≥ 18 and git.
 | `rules.json` | the 69 rules (id, severity, profile, rationale, fix, source, check) |
 | `config.example.json` | per-repo config (copy to `baseline.config.json`) |
 | `templates/` | scaffolds: CLAIMS.json, start-here.md, signoff.json, adr.md, doc-with-freshness.md |
+| `config-presets/` | ready-made `baseline.config.json` starting points (context-management, node-service, library, …) |
 | `README.md` | this guide — install, usage, file map |
 | `REFERENCE.md` | full reference: rule table, categories, architecture diagrams, CI wiring |
 | `GLOSSARY.md` | plain-language definitions of the DevOps/supply-chain terms |

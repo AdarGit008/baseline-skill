@@ -18,6 +18,10 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   mode that validates rule-set integrity (no missing/typo'd `applies_to`, unknown
   check kind, profile, severity, category, `requires` key, or duplicate id) and prints
   a per-type coverage matrix. Guards against silently-dangling rules.
+- **Hermes-native:** `SKILL.md` now uses the Hermes peer conventions (frontmatter
+  superset with `author`/`license`/`platforms`/`metadata.hermes`, "Use when…"
+  description, peer structure) while staying valid for Claude Code. `install.sh --hermes`
+  installs into `~/.hermes/skills/software-development/baseline`.
 - `config-presets/` — ready-made `baseline.config.json` starting points
   (context-management, node-service, python-library, internal-tool, product-with-claims),
   each annotated and copied on install.

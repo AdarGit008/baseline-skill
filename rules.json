@@ -1,6 +1,6 @@
 {
   "name": "project-baseline",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Testable readiness standard. v1's 20 rules (build/test/context/claims) distilled from the kid-p / antigone / GTA_6_CAD reviews, plus v2 additions pressure-tested against the prior-art field (OpenSSF Scorecard, SLSA, 12-factor, Google SRE, Diataxis, repolinter, Backstage/Cortex/OpsLevel, and ~40 more). Each rule maps to a lesson or a cited source; blockers fail CI, manual rules resolve via a dated sign-off ledger. Rules with a 'profile' only run when that profile is active: core is always on; 'service' auto-activates when project_type=service; 'advanced' is opt-in via config.profiles.",
   "profiles": {
     "core": "Always on. Universal, high-confidence, machine-checkable rules.",
@@ -514,8 +514,8 @@
       "applies_to": ["node","python","service","library"],
       "rationale": "BUILD-03 checks a CI file exists; this checks it actually runs tests — a cheap static complement to BUILD-05 (which only runs when you wire the bootstrap command).",
       "fix": "Add a test step to CI: npm test / pytest / go test / make test / cargo test / gradle test / tox.",
-      "check": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml"],
-        "pattern": "npm (run )?test|pnpm (run )?test|yarn test|node --test|pytest|python -m pytest|go test|make test|\\bjest\\b|vitest|cargo test|gradle test|\\btox\\b|mvn test|rspec|phpunit|dotnet test", "mode": "present" }
+      "check": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml"], "strip_comments": true,
+        "pattern": "npm (run )?test|pnpm (run )?test|yarn test|node --test|deno test|bun test|pytest|python -m pytest|go test|make test|(?<![./\\w])(jest|vitest|mocha)\\b(?![-\\w])|cargo test|\\.?/?gradlew? test|mvn test|rspec|phpunit|dotnet test|\\btox\\b", "mode": "present" }
     },
     {
       "id": "TEST-07", "title": "A coverage floor is declared and enforced", "category": "test", "severity": "warn", "profile": "advanced",
@@ -548,7 +548,7 @@
           { "kind": "any-file", "globs": ["eslint.config.js","eslint.config.mjs","eslint.config.cjs",".eslintrc",".eslintrc.*","ruff.toml",".ruff.toml",".golangci.yml",".golangci.yaml",".rubocop.yml","biome.json",".flake8",".pylintrc"] },
           { "kind": "grep", "globs": ["pyproject.toml","setup.cfg","tox.ini"], "pattern": "\\[tool\\.(ruff|flake8|pylint)\\]|\\[flake8\\]", "mode": "present" }
         ] },
-        "then": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml",".pre-commit-config.yaml",".pre-commit-config.yml","Makefile"],
+        "then": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml",".circleci/config.yml","azure-pipelines.yml",".pre-commit-config.yaml",".pre-commit-config.yml","Makefile"], "strip_comments": true,
           "pattern": "eslint|ruff\\s+(check|\\.)|golangci-lint\\s+run|rubocop|biome\\s+(check|ci|lint)|pre-commit\\s+run|npm\\s+run\\s+lint|\\bxo\\b|flake8|pylint|standardx?\\b", "mode": "present" },
         "then_fail_detail": "linter configured but never invoked in CI/pre-commit/Makefile" }
     },
@@ -565,9 +565,8 @@
       "rationale": "SEC-01 catches secrets committed as of now; a scanner wired into CI or pre-commit fails future builds when a new secret lands.",
       "fix": "Add gitleaks/trufflehog/detect-secrets to CI or .pre-commit-config.yaml (and commit its config).",
       "check": { "kind": "any-of", "checks": [
-        { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml"], "pattern": "gitleaks|trufflehog|detect-secrets|ggshield", "mode": "present" },
-        { "kind": "grep", "globs": [".pre-commit-config.yaml",".pre-commit-config.yml"], "pattern": "gitleaks|detect-secrets|trufflehog", "mode": "present" },
-        { "kind": "any-file", "globs": [".gitleaks.toml","gitleaks.toml",".secrets.baseline",".gitleaksignore"] }
+        { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml"], "strip_comments": true, "pattern": "gitleaks|trufflehog|detect-secrets|ggshield", "mode": "present" },
+        { "kind": "grep", "globs": [".pre-commit-config.yaml",".pre-commit-config.yml"], "strip_comments": true, "pattern": "gitleaks|detect-secrets|trufflehog", "mode": "present" }
       ] }
     },
     {
@@ -575,16 +574,16 @@
       "source": "https://github.com/ossf/scorecard/blob/main/docs/checks.md", "lesson": "Scorecard Vulnerabilities (SCA is not an update-tool)",
       "rationale": "An update bot (SEC-05: dependabot/renovate) opens PRs but is not a vuln scanner; a dedicated SCA step surfaces known CVEs in the pipeline.",
       "fix": "Add an SCA step to CI: osv-scanner / govulncheck / pip-audit / npm audit / trivy / grype / snyk test / owasp dependency-check.",
-      "check": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml","Makefile","package.json"],
-        "pattern": "osv-scanner|govulncheck|pip-audit|npm audit|pnpm audit|yarn audit|trivy|grype|snyk test|dependency-check|owasp", "mode": "present" }
+      "check": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml","Makefile","package.json"], "strip_comments": true,
+        "pattern": "osv-scanner|govulncheck|pip-audit|npm audit|pnpm audit|yarn audit|trivy|grype|snyk test|dependency-check", "mode": "present" }
     },
     {
       "id": "SEC-14", "title": "Pre-commit hooks pinned to an immutable rev", "category": "security", "severity": "warn",
       "source": "https://pre-commit.com/", "lesson": "immutable rev, not a floating branch (analog of SEC-03)",
       "rationale": "A pre-commit hook pinned to main/master/HEAD pulls whatever that branch points at — the same mutable-ref supply-chain risk SEC-03 guards for CI actions. Skips if there's no pre-commit config.",
       "fix": "Pin each 'rev:' in .pre-commit-config.yaml to a tag or 40-char SHA, never a branch name.",
-      "check": { "kind": "grep", "globs": [".pre-commit-config.yaml",".pre-commit-config.yml"], "flags": "im",
-        "pattern": "rev:\\s*['\"]?(main|master|HEAD|develop|trunk)['\"]?\\s*$", "mode": "absent" }
+      "check": { "kind": "grep", "globs": [".pre-commit-config.yaml",".pre-commit-config.yml"], "flags": "im", "strip_comments": true,
+        "pattern": "rev:\\s*['\"]?(main|master|HEAD|develop|trunk|latest)\\b['\"]?\\s*$", "mode": "absent" }
     }
   ]
 }

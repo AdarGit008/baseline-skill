@@ -8,7 +8,9 @@ version: 2.1.0
 
 A **testable readiness standard**: 69 rules, each backed by a check a zero-dependency Node runner executes on a repo *at rest*. Blockers fail CI (exit 1); the judgment calls a script can't make resolve via a dated sign-off ledger. The whole point: *don't trust a written promise — make something check it.*
 
-The toolkit lives next to this file: `check.mjs` (runner), `rules.json` (the 69 rules), `config.example.json`, `templates/`, and `README.md` (full reference). Run everything from this skill's directory — call it `$SKILL_DIR` below (the absolute directory containing this SKILL.md).
+The toolkit lives next to this file: `check.mjs` (runner), `rules.json` (the 69 rules), `config.example.json`, `templates/`, and `README.md` (full reference).
+
+**Resolve the skill directory first.** `$SKILL_DIR` below means *the absolute path of the directory that contains this SKILL.md* — resolve it to a concrete path before running any command (do not pass the literal string `$SKILL_DIR` to the shell). It is typically `~/.claude/skills/baseline`. `check.mjs` loads `rules.json` from its own directory, so the two must stay co-located; always invoke the runner by its absolute path (`node "<abs>/check.mjs" …`) rather than copying it elsewhere. The runner needs only Node ≥ 18 and `git`; if `node` is missing, tell the user rather than guessing.
 
 ## When invoked
 

@@ -20,6 +20,8 @@
   "_doc_freshness_days": "CTX-06 goes red when a freshness_globs doc's last_review_date is older than this.",
   "doc_lag_days": 30,
   "_doc_lag_days": "CTX-11 goes red when a doc's anchored source code (frontmatter 'sources: [glob]') was committed more than this many days after the doc.",
+  "stamp_max_lag_commits": 3,
+  "_stamp_max_lag_commits": "CTX-01 accepts a 'last-verified' stamp naming HEAD or an ancestor within this many commits as fresh; beyond it (or off-branch) it warns to reconcile.",
   "generated_globs": [],
   "_generated_globs": "OPT-IN for CTX-08: generated files that must carry a 'DO NOT EDIT' marker. Empty = rule skips. e.g. [\"**/*.gen.ts\", \"docs/api/**\"]",
   "grounding_docs": [],

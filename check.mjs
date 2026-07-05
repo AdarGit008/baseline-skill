@@ -4,7 +4,7 @@
 // Exit code 1 if any blocker fails. See README.md.
 import fs from 'node:fs'
 import path from 'node:path'
-import { execSync } from 'node:child_process'
+import { execSync, execFileSync } from 'node:child_process'
 
 const args = process.argv.slice(2)
 const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : def }
@@ -96,6 +96,7 @@ const DEFAULTS = {
   prior_art_recheck_days: 90,
   doc_freshness_days: 180,
   doc_lag_days: 30,      // CTX-11: max days a doc may lag the code it anchors
+  stamp_max_lag_commits: 3, // CTX-01: a status stamp naming an ancestor within N commits of HEAD is still "fresh"
   freshness_globs: [],   // opt-in: docs that must carry last_review_date
   generated_globs: [],   // opt-in: generated files that must carry a DO NOT EDIT marker
   grounding_docs: [],    // opt-in: required grounding docs (exist + non-empty)
@@ -122,8 +123,28 @@ let SIGNOFF = {}; const so = read(cfg.signoff_file); if (so) try { SIGNOFF = JSO
 const DAY = 86400000
 const parseDate = s => { const d = new Date(s); return isNaN(d) ? null : d }
 const daysAgo = d => (Date.now() - d.getTime()) / DAY
-function gitAgeDays(rel) { try { const iso = execSync(`git log -1 --format=%cI -- "${rel}"`, { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); const d = parseDate(iso); return d ? daysAgo(d) : null } catch { return null } }
-function gitCommitISO(rel) { try { const iso = execSync(`git log -1 --format=%cI -- "${rel}"`, { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); return parseDate(iso) } catch { return null } }
+// filenames/sha are passed as literal argv (execFileSync, no shell) — never interpolate attacker-controlled paths into a shell string
+function gitCommitISO(rel) { try { const iso = execFileSync('git', ['log', '-1', '--format=%cI', '--', rel], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); return parseDate(iso) } catch { return null } }
+function gitAgeDays(rel) { const d = gitCommitISO(rel); return d ? daysAgo(d) : null }
+function gitObjExists(ref) { try { execFileSync('git', ['cat-file', '-e', ref], { cwd: REPO, stdio: 'ignore' }); return true } catch { return false } }
+function gitIsAncestor(sha) { try { execFileSync('git', ['merge-base', '--is-ancestor', sha, 'HEAD'], { cwd: REPO, stdio: 'ignore' }); return 0 } catch (e) { return e.status ?? 1 } }
+function gitLag(sha) { try { return parseInt(execFileSync('git', ['rev-list', '--count', `${sha}..HEAD`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(), 10) } catch { return null } }
+function gitIsShallow() { try { return execFileSync('git', ['rev-parse', '--is-shallow-repository'], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() === 'true' } catch { return false } }
+function stripLineComment(line) { // strip a #/// comment only when it's OUTSIDE quotes (so "#fff" or echo "a # b" survive)
+  let inS = false, inD = false
+  for (let i = 0; i < line.length; i++) { const ch = line[i]
+    if (ch === "'" && !inD) inS = !inS
+    else if (ch === '"' && !inS) inD = !inD
+    else if (!inS && !inD) {
+      if (ch === '#' && (i === 0 || /\s/.test(line[i - 1]))) return line.slice(0, i)
+      if (ch === '/' && line[i + 1] === '/' && (i === 0 || /\s/.test(line[i - 1]))) return line.slice(0, i)
+    } }
+  // Unterminated quote (an apostrophe in prose — Adar's, don't) must not swallow a real trailing comment: re-scan quote-blind.
+  if (inS || inD) { for (let i = 0; i < line.length; i++) { const ch = line[i]
+    if (ch === '#' && (i === 0 || /\s/.test(line[i - 1]))) return line.slice(0, i)
+    if (ch === '/' && line[i + 1] === '/' && (i === 0 || /\s/.test(line[i - 1]))) return line.slice(0, i) } }
+  return line
+}
 
 function getPath(obj, dotted) { return dotted.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj) }
 function reOf(pattern, flags) { try { return new RegExp(pattern, flags || 'im') } catch { return null } }
@@ -155,31 +176,46 @@ function evalCheck(c, rule) {
     const w = evalCheck(c.when, rule)
     if (w.ok !== true) return { ok: null, detail: 'n/a (' + (c.when_label || 'precondition') + ' not present)' }
     const th = evalCheck(c.then, rule)
-    return { ok: th.ok === false ? false : (th.ok === true ? true : false), detail: th.ok === true ? th.detail : (c.then_fail_detail || th.detail) }
+    if (th.ok === true) return { ok: true, detail: th.detail }
+    if (th.ok === false) return { ok: false, detail: c.then_fail_detail || th.detail }
+    return { ok: null, detail: th.detail } // can't evaluate the requirement (e.g. no CI files) -> skip, don't warn
   }
 
   if (k === 'workflow-permissions') {
     const files = match(globsOf(c)); if (!files.length) return { ok: null, detail: 'no workflow files' }
     const bad = []
+    const blockOf = (lines, i, indent) => { // collect the inline value or the following more-indented lines
+      const inline = stripLineComment(lines[i]).replace(/^\s*permissions:\s*/, '').trim() // a trailing comment must NOT read as the value
+      if (inline) return inline
+      let b = ''
+      for (let j = i + 1; j < lines.length; j++) { const ind = lines[j].match(/^(\s*)/)[1].length; if (lines[j].trim() && ind <= indent) break; b += stripLineComment(lines[j]) + '\n' }
+      return b
+    }
+    const hasWriteAll = s => /write-all/.test(s)
+    // quote-insensitive; ignore OIDC/provenance scopes (id-token, attestations) — they grant no repo-write power (the canonical trusted-publishing pattern)
+    const grantsWrite = s => /:\s*['"]?write\b/.test(s.replace(/(id-token|attestations)\s*:\s*['"]?write\b['"]?/g, ''))
     for (const f of files) {
       const t = readText(f); if (t == null) continue
       const lines = t.split('\n')
-      let hasTop = false, writeAll = false, topWrite = false
+      let topFound = false, jobPermFound = false
       for (let i = 0; i < lines.length; i++) {
-        const m = lines[i].match(/^permissions:\s*(.*)$/) // zero-indent => top-level
-        if (!m) continue
-        hasTop = true
-        const inline = m[1].trim()
-        if (/write-all/.test(inline)) { writeAll = true; break }
-        if (inline.startsWith('{')) { if (/:\s*write/.test(inline)) topWrite = true; break }
-        for (let j = i + 1; j < lines.length; j++) { if (/^\S/.test(lines[j])) break; if (/^\s+[\w-]+:\s*write\b/.test(lines[j])) topWrite = true }
-        break
+        const top = lines[i].match(/^permissions:/)
+        const job = lines[i].match(/^(\s+)permissions:/)
+        if (top) {
+          topFound = true
+          const block = blockOf(lines, i, 0)
+          if (hasWriteAll(block)) bad.push(`${f.split('/').pop()}: top-level permissions: write-all`)
+          else if (grantsWrite(block)) bad.push(`${f.split('/').pop()}: top-level grants a write scope (top-level should be read)`)
+        } else if (job) {
+          jobPermFound = true
+          const block = blockOf(lines, i, job[1].length)
+          if (hasWriteAll(block)) bad.push(`${f.split('/').pop()}: a job grants permissions: write-all`) // scoped job write is fine; write-all is not
+        }
       }
-      if (!hasTop) bad.push(`${f.split('/').pop()}: no top-level permissions (broad token)`)
-      else if (writeAll) bad.push(`${f.split('/').pop()}: permissions: write-all`)
-      else if (topWrite) bad.push(`${f.split('/').pop()}: top-level write scope`)
+      if (!topFound && !jobPermFound) bad.push(`${f.split('/').pop()}: no permissions block anywhere (broad default token)`)
     }
-    return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') : `${files.length} workflow(s) least-privilege` }
+    const uniq = [...new Set(bad)]
+    return { ok: uniq.length === 0, detail: uniq.length ? uniq.slice(0, 3).join('; ') : `${files.length} workflow(s) least-privilege` }
   }
 
   if (k === 'doc-code-age') {
@@ -188,17 +224,21 @@ function evalCheck(c, rule) {
     const bad = []; let checked = 0
     for (const f of files) {
       const t = read(f) || ''
-      const fm = t.match(/^---\n([\s\S]*?)\n---/); if (!fm) continue
-      const inline = fm[1].match(/sources:\s*\[([^\]]*)\]/)
-      const block = fm[1].match(/sources:\s*\n((?:\s*-\s*[^\n]+\n?)+)/)
+      const fm = t.match(/^---\r?\n([\s\S]*?)\r?\n---/); if (!fm) continue
+      const inline = fm[1].match(/(?:^|\n)\s*sources:\s*\[([^\]]*)\]/) // anchored so data_sources:/test_sources: don't collide
+      const block = fm[1].match(/(?:^|\n)\s*sources:\s*\r?\n((?:\s*-\s*[^\n]+\r?\n?)+)/)
+      const norm = s => s.replace(/\s+#.*$/, '').trim().replace(/['"]/g, '').replace(/^\.\//, '') // strip trailing comment + quotes + leading ./
       let srcGlobs = []
-      if (inline) srcGlobs = inline[1].split(',').map(s => s.trim().replace(/['"]/g, '')).filter(Boolean)
-      else if (block) srcGlobs = block[1].split('\n').map(s => s.replace(/^\s*-\s*/, '').trim().replace(/['"]/g, '')).filter(Boolean)
+      if (inline) srcGlobs = inline[1].split(',').map(norm).filter(Boolean)
+      else if (block) srcGlobs = block[1].split('\n').map(s => norm(s.replace(/^\s*-\s*/, ''))).filter(Boolean)
       if (!srcGlobs.length) continue
+      const docAge = gitCommitISO(f); if (!docAge) continue // count only docs whose own git date resolved
+      const srcFiles = match(srcGlobs)
+      if (!srcFiles.length) { bad.push(`${f.split('/').pop()}: sources anchor resolves to no files (dangling — can't verify freshness)`); checked++; continue }
       checked++
-      const docAge = gitCommitISO(f); if (!docAge) continue
-      let newest = null
-      for (const sf of match(srcGlobs)) { const d = gitCommitISO(sf); if (d && (!newest || d > newest)) newest = d }
+      let newest = null, dated = 0
+      for (const sf of srcFiles) { const d = gitCommitISO(sf); if (d) { dated++; if (!newest || d > newest) newest = d } }
+      if (!dated) { bad.push(`${f.split('/').pop()}: anchored source(s) not committed — can't verify freshness`); continue } // untracked code can't read as "fresh"
       if (newest && (newest.getTime() - docAge.getTime()) / DAY > lag) bad.push(`${f.split('/').pop()}: code newer by ${Math.round((newest.getTime() - docAge.getTime()) / DAY)}d (>${lag})`)
     }
     if (!checked) return { ok: null, detail: 'no docs declare a frontmatter sources: list (opt-in)' }
@@ -216,11 +256,13 @@ function evalCheck(c, rule) {
     if (!files.length) return { ok: null, detail: 'no files to scan' }
     const re = reOf(c.pattern, c.flags); if (!re) return { ok: null, detail: 'bad regex in rule' }
     const rd = c.raw_scan ? readRaw : readText
+    // strip_comments: drop # and // line-comments (quote-aware) before matching, so a narrative mention can't satisfy a "tool is invoked" grep
+    const prep = c.strip_comments ? (t => t.split('\n').map(stripLineComment).join('\n')) : (t => t)
     if (c.mode === 'all') {
-      const miss = files.filter(f => { const t = readText(f); return !(t && re.test(t)) })
+      const miss = files.filter(f => { const t = readText(f); return !(t && re.test(prep(t))) })
       return { ok: miss.length === 0, detail: miss.length ? `${miss.length} file(s) missing marker: ${miss.slice(0, 2).join(', ')}` : `all ${files.length} file(s) marked` }
     }
-    const hit = files.filter(f => { const t = rd(f); return t && re.test(t) })
+    const hit = files.filter(f => { const t = rd(f); return t && re.test(prep(t)) })
     const present = hit.length > 0
     if (c.mode === 'absent') return { ok: !present, detail: present ? `matched in ${hit.length} file(s): ${hit.slice(0, 2).join(', ')}` : 'pattern not found (good)' }
     return { ok: present, detail: present ? `matched in ${hit.length} file(s)` : 'pattern not found' }
@@ -267,12 +309,22 @@ function evalCheck(c, rule) {
     const f = cfg[c.file_from_config]; const t = f && read(f); if (!t) return { ok: false, detail: `status file missing: ${f}` }
     const m = t.match(new RegExp(c.stamp_key + '\\s*[:=]\\s*([^\\n]+)', 'i'))
     if (!m) return { ok: false, detail: `no '${c.stamp_key}:' stamp in ${f}` }
-    const val = m[1].trim(); const sha = (val.match(/\b[0-9a-f]{7,40}\b/) || [])[0]
-    if (c.match_head) {
-      if (!sha) return { ok: false, detail: `stamp has no commit SHA (got '${val.slice(0, 30)}') — can't verify freshness` }
-      if (HEAD && !HEAD.startsWith(sha.slice(0, 7)) && !sha.startsWith(HEAD)) return { ok: false, detail: `stale: stamp ${sha} != HEAD ${HEAD} — reconcile`, soft: true }
-    }
-    return { ok: true, detail: `stamped: ${val.slice(0, 40)}` }
+    const val = m[1].trim()
+    if (!c.match_head) return { ok: true, detail: `stamped: ${val.slice(0, 40)}` }
+    const hexes = val.match(/\b[0-9a-f]{7,40}\b/g) || []
+    if (!hexes.length) return { ok: false, detail: `stamp has no commit SHA (got '${val.slice(0, 30)}') — can't verify freshness` }
+    if (!HEAD) return { ok: true, detail: `stamped ${hexes[0].slice(0, 8)} (no git — freshness not verifiable)` }
+    // shallow clone (CI fetch-depth:1) can't resolve ancestry — accept a present stamp as unverifiable-but-fresh
+    if (gitIsShallow()) return { ok: true, detail: `stamped ${hexes[0].slice(0, 8)} (shallow clone — freshness not verifiable)` }
+    // a compact date is hex-valid too — pick the hex that names a real commit, else the first
+    const sha = hexes.find(h => gitObjExists(`${h}^{commit}`)) || hexes[0]
+    const maxLag = cfg.stamp_max_lag_commits ?? 3
+    if (HEAD.startsWith(sha.slice(0, 7)) || sha.startsWith(HEAD)) return { ok: true, detail: `stamped ${sha.slice(0, 8)} (HEAD)` }
+    // A stamp can't name the commit that contains it, so accept a RECENT ANCESTOR as fresh.
+    if (gitIsAncestor(sha) !== 0) return { ok: false, detail: `bogus: stamp ${sha.slice(0, 8)} is not an ancestor of HEAD ${HEAD} — points outside this history` } // BLOCKER
+    const lag = gitLag(sha)
+    if (lag != null && lag > maxLag) return { ok: false, soft: true, detail: `stale: stamp ${lag} commits behind HEAD (max ${maxLag}) — reconcile` } // WARN: honest but old
+    return { ok: true, detail: `stamped ${sha.slice(0, 8)} (${lag ?? '?'} behind HEAD, within ${maxLag})` }
   }
 
   if (k === 'adr-status') {

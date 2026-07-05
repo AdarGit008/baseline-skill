@@ -1,6 +1,6 @@
 # baseline-skill — status
 
-last-verified: 3ea3e5e 2026-07-05
+last-verified: 0999105 2026-07-05
 
 **What this is.** The installable `/baseline` skill — the *project-baseline* readiness
 standard packaged for Claude Code and compatible agents. The canonical toolkit is
@@ -8,8 +8,10 @@ standard packaged for Claude Code and compatible agents. The canonical toolkit i
 
 **Current state.** Stable. This repo ships the standard rather than being a buildable
 app, so it scores itself in **distribution mode** via `baseline.config.json`
-(`project_type: docs`) — build/test/service rules skip as `n/a`, and it targets
-**0 blockers** against the rules that actually fit a distribution repo.
+(`project_type: docs`) — build/test/service rules skip as `n/a`. Current score:
+**0 blockers · 92%** (the one warn, SEC-05, is an honest n/a for a zero-dependency
+repo). Every rule now carries an explicit `applies_to`; run `node check.mjs
+--self-check` to validate the rule set's integrity and see the per-type coverage.
 
 **Layout.**
 - `SKILL.md` — the agent skill (modes: score / init / fix / explain).

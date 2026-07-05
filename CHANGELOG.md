@@ -14,10 +14,16 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 - Distribution-mode self-scoring: `baseline.config.json` (`project_type: docs`) so the
   repo is scored against the rules that fit a distribution repo, plus a status doc,
   sign-off ledger, `SECURITY.md`, `CODEOWNERS`, and this changelog.
+- **`project_types` + explicit `applies_to` on every rule**, and a `--self-check`
+  mode that validates rule-set integrity (no missing/typo'd `applies_to`, unknown
+  check kind, profile, severity, category, `requires` key, or duplicate id) and prints
+  a per-type coverage matrix. Guards against silently-dangling rules.
 
 ### Changed
 - Removed an internal end-of-session reference from CTX-01's `fix` text.
 - Genericized the v1 provenance line (dropped specific private repo names).
+- Re-scoped TEST-03/TEST-04 to code repos (`node`/`python`/`service`/`library`); a
+  docs/distribution repo now skips them instead of needing "n/a" sign-offs.
 
 ## [2.1.1] — 2026-07-05
 

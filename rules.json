@@ -1,0 +1,590 @@
+{
+  "name": "project-baseline",
+  "version": "2.1.0",
+  "description": "Testable readiness standard. v1's 20 rules (build/test/context/claims) distilled from the kid-p / antigone / GTA_6_CAD reviews, plus v2 additions pressure-tested against the prior-art field (OpenSSF Scorecard, SLSA, 12-factor, Google SRE, Diataxis, repolinter, Backstage/Cortex/OpsLevel, and ~40 more). Each rule maps to a lesson or a cited source; blockers fail CI, manual rules resolve via a dated sign-off ledger. Rules with a 'profile' only run when that profile is active: core is always on; 'service' auto-activates when project_type=service; 'advanced' is opt-in via config.profiles.",
+  "profiles": {
+    "core": "Always on. Universal, high-confidence, machine-checkable rules.",
+    "service": "Auto-on when project_type=service (or listed in config.profiles). Operability/observability rules that only make sense for a running service.",
+    "advanced": "Opt-in via config.profiles. Expert/niche rules (SBOM, code-scanning, mutation testing, symbol-integrity) that would be noise on most repos."
+  },
+  "rules": [
+    {
+      "id": "BUILD-01", "title": "Dependency manifest present", "category": "build", "severity": "blocker",
+      "lesson": "SW-1 build-readiness is proven by execution", "applies_to": ["node","python","service","library"],
+      "rationale": "No manifest = nothing to install = Task 1 can't run.",
+      "fix": "Add package.json / pyproject.toml / go.mod / Cargo.toml as Task 0.",
+      "check": { "kind": "any-file", "globs": ["package.json","pyproject.toml","go.mod","Cargo.toml","build.gradle*","pom.xml"] }
+    },
+    {
+      "id": "BUILD-02", "title": "Lockfile committed", "category": "build", "severity": "warn",
+      "lesson": "SW-1", "applies_to": ["node","python","service","library"],
+      "rationale": "Reproducible installs; a clean checkout resolves the same deps.",
+      "fix": "Commit pnpm-lock.yaml / poetry.lock / uv.lock / Cargo.lock / go.sum.",
+      "check": { "kind": "any-file", "globs": ["pnpm-lock.yaml","package-lock.json","yarn.lock","poetry.lock","uv.lock","Cargo.lock","go.sum","requirements*.txt"] }
+    },
+    {
+      "id": "BUILD-03", "title": "CI workflow present", "category": "build", "severity": "blocker",
+      "lesson": "SW-1 / CTX-7 make a robot check it", "applies_to": ["node","python","service","library"],
+      "rationale": "Enforcement lives in CI, not in a human remembering to run checks.",
+      "fix": "Add .github/workflows/ci.yml (or equivalent) that lints, typechecks, tests.",
+      "check": { "kind": "any-file", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml",".circleci/config.yml","azure-pipelines.yml"] }
+    },
+    {
+      "id": "BUILD-04", "title": "Env/secret template present", "category": "build", "severity": "warn",
+      "lesson": "SW-1", "applies_to": ["node","python","service"],
+      "rationale": "A joining dev can boot without guessing env vars; keeps secrets out of code.",
+      "fix": "Add .env.example enumerating every required var (no real values).",
+      "check": { "kind": "any-file", "globs": [".env.example",".env.sample",".env.template","env.example"] }
+    },
+    {
+      "id": "BUILD-05", "title": "Task 1 passes on a clean checkout", "category": "build", "severity": "blocker",
+      "lesson": "SW-1 (the crown check)", "applies_to": ["node","python","service","library"],
+      "rationale": "'Ready to build' = a fresh clone can install and run the first test (green or intentionally red). Skipped by --no-exec.",
+      "fix": "Set config.bootstrap_command to your install+test command; make it pass on a clean tree.",
+      "check": { "kind": "command", "run_from_config": "bootstrap_command" }
+    },
+    {
+      "id": "BUILD-06", "title": "Baseline gate wired into CI", "category": "build", "severity": "warn",
+      "lesson": "CTX-7 extend enforcement to the narrative layer",
+      "rationale": "This standard only bites if CI runs it on every PR.",
+      "fix": "Add a CI step: node tools/baseline/check.mjs.",
+      "check": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml"], "pattern": "baseline[/-]check(\\.mjs)?|baseline\\.mjs|baseline/check", "mode": "present" }
+    },
+    {
+      "id": "BUILD-07", "title": "A single documented bootstrap entrypoint exists", "category": "build", "severity": "warn",
+      "source": "https://blog.thoughtbot.com/bin-setup", "lesson": "Joel #2 / thoughtbot bin/setup",
+      "applies_to": ["node","python","service","library"],
+      "rationale": "BUILD-05 proves the bootstrap works; this proves a newcomer can FIND it without tribal knowledge — one conventional command, not a wiki page.",
+      "fix": "Add bin/setup (or a Makefile/Taskfile 'setup' target) and reference it by name in the README.",
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "any-file", "globs": ["bin/setup","script/setup","scripts/setup*","Makefile","Taskfile.yml","Taskfile.yaml","justfile","Justfile"] }
+      ] }
+    },
+    {
+      "id": "BUILD-08", "title": "Standard task commands are declared machine-readably", "category": "build", "severity": "warn",
+      "source": "https://dev.to/", "lesson": "SW-1 / task-command discoverability",
+      "applies_to": ["node","python","service","library"],
+      "rationale": "A 'test' and 'lint' command declared in the manifest (not only prose) lets CI, tooling, and newcomers invoke them the same way.",
+      "fix": "Add test + lint scripts to package.json (or test:/lint: targets to Makefile/Taskfile, or [tool] entries to pyproject).",
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "json-field", "globs": ["package.json"], "path": "scripts.test", "assert": "nonempty" },
+        { "kind": "grep", "globs": ["Makefile","Taskfile.yml","Taskfile.yaml","justfile"], "pattern": "^(test|lint)\\s*:", "mode": "present" },
+        { "kind": "grep", "globs": ["pyproject.toml","tox.ini","noxfile.py","Makefile"], "pattern": "\\[tool\\.pytest|\\[tool\\.poe\\.tasks|\\[tool\\.hatch\\.envs|\\[project\\.scripts|^testenv|def test_|nox\\.session|^\\s*(test|lint)\\s*:", "mode": "present" }
+      ] }
+    },
+    {
+      "id": "BUILD-09", "title": "Bootstrap is idempotent (safe to re-run)", "category": "build", "severity": "warn", "profile": "advanced",
+      "source": "https://blog.thoughtbot.com/bin-setup", "lesson": "SW-1 re-runnable setup",
+      "applies_to": ["node","python","service","library"],
+      "rationale": "A setup script that clobbers or hard-fails on a second run breaks the 'just run setup' promise the moment anyone re-runs it.",
+      "fix": "Make the bootstrap command exit 0 when invoked twice on an already-set-up checkout (guard destructive steps).",
+      "check": { "kind": "command", "run_from_config": "bootstrap_command", "repeat": 2 }
+    },
+    {
+      "id": "TEST-01", "title": "Automated tests exist", "category": "test", "severity": "blocker",
+      "lesson": "SW-2 tests assert the spec", "applies_to": ["node","python","service","library"],
+      "rationale": "Acceptance criteria backed by nothing are prose.",
+      "fix": "Add at least one real test under test/ or *.test.*/*_test.py.",
+      "check": { "kind": "any-file", "globs": ["**/*.test.*","**/*.spec.*","**/*_test.py","**/*_test.go","**/*Test.java","**/*Tests.java","**/*Test.kt","**/*Test.cs","**/*Tests.cs","**/*_test.rb","**/*_test.exs","**/test_*.py","test/**/*","tests/**/*","src/test/**/*","**/__tests__/**/*"] }
+    },
+    {
+      "id": "TEST-02", "title": "Failure paths are tested (negative tests)", "category": "test", "severity": "warn",
+      "lesson": "SW-2 a test must try to break the promise", "applies_to": ["node","python","service","library"],
+      "rationale": "A test that never exercises the failing input passes without proving anything.",
+      "fix": "For every 'must raise / must reject / must 4xx', add a test asserting it (toThrow / rejects / pytest.raises).",
+      "check": { "kind": "grep", "globs": ["**/*.test.*","**/*.spec.*","**/*_test.py","**/*_test.go","test/**/*","tests/**/*"], "pattern": "toThrow(Error)?\\b|\\.rejects\\b|rejects\\.to|assert\\.throws|assert\\.rejects|assertRaises|pytest\\.raises|\\.raises\\(|toReject\\b|StatusCode\\(4|status.{0,6}4\\d\\d|assert\\.Error\\(|require\\.Error\\(", "mode": "present" }
+    },
+    {
+      "id": "TEST-03", "title": "Red-on-arrival guards for 'must-never-exist' invariants", "category": "test", "severity": "manual",
+      "lesson": "SW-3 enforce invariants by absence",
+      "rationale": "An invariant about something that must NOT exist is only real if a pinned test (e.g. a table/enum count) goes red when it appears.",
+      "fix": "Add a count/allow-list assertion for each 'must never appear' rule, then record it in the sign-off ledger.",
+      "check": { "kind": "signoff" }
+    },
+    {
+      "id": "TEST-04", "title": "Acceptance criteria reconciled against reference code", "category": "test", "severity": "manual",
+      "lesson": "SW-2 criteria vs their own example code",
+      "rationale": "Specs whose acceptance criteria contradict their own reference impl create wrong-either-way forks.",
+      "fix": "Before 'ready', confirm every enum/field named in a criterion exists in its type def; record sign-off.",
+      "check": { "kind": "signoff" }
+    },
+    {
+      "id": "TEST-05", "title": "Mutation testing, if used, is gated", "category": "test", "severity": "warn", "profile": "advanced",
+      "source": "https://stryker-mutator.io/docs/stryker-js/configuration/", "lesson": "SW-2 tests must be able to fail",
+      "applies_to": ["node","python","service","library"],
+      "rationale": "A mutation run that never fails the build is decoration; a break-threshold >0 turns a weak suite red.",
+      "fix": "In stryker.conf.* set thresholds.break to a value >0; or run mutmut in --CI mode with a floor.",
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "grep", "globs": ["stryker.conf.*","stryker.config.*",".stryker.conf.*"], "pattern": "\"?break\"?\\s*:\\s*[1-9]", "mode": "present" },
+        { "kind": "signoff" }
+      ] }
+    },
+    {
+      "id": "TEST-06", "title": "Flaky-test quarantine is disciplined", "category": "test", "severity": "manual", "profile": "advanced",
+      "source": "https://docs.google.com/", "lesson": "SW-2 skips need owner+deadline",
+      "rationale": "A growing pile of skipped tests silently erodes coverage unless each skip carries an owner+reason+deadline and the total stays under a cap.",
+      "fix": "Give every quarantined test an owner+deadline (marker or central register) and cap the total; record sign-off.",
+      "check": { "kind": "signoff" }
+    },
+    {
+      "id": "CTX-01", "title": "Status lives in one owner with a fresh 'last-verified' stamp", "category": "context", "severity": "blocker",
+      "lesson": "CTX-6 status is a computed exit-state",
+      "rationale": "The costliest context failure is misdirecting the next session into redoing settled work.",
+      "fix": "Add 'last-verified: <short-sha> <date>' to the status file; reconcile it in your end-session ritual.",
+      "check": { "kind": "status-stamp", "file_from_config": "status_file", "stamp_key": "last-verified", "match_head": true }
+    },
+    {
+      "id": "CTX-02", "title": "Every decision record carries a Status; superseded ones link forward", "category": "context", "severity": "blocker",
+      "lesson": "CTX-5 no LOCKED artifact without a forward supersede-link",
+      "rationale": "A frozen decision the repo has overtaken, with no in-file 'Superseded by', actively misdirects a reader.",
+      "fix": "Give each ADR a Status: field; when a decision reverses, flip the old one to Superseded and add 'Superseded by <id>' in the same commit.",
+      "check": { "kind": "adr-status", "globs_from_config": "decision_globs" }
+    },
+    {
+      "id": "CTX-03", "title": "Sources of truth are declared", "category": "context", "severity": "warn",
+      "lesson": "CTX-4 one home per fact",
+      "rationale": "Load-bearing values copied into N docs drift to M values; declaring owners is step one.",
+      "fix": "Populate config.sources_of_truth (e.g. status, facts, decisions) so each fact class has one home.",
+      "check": { "kind": "config-nonempty", "path": "sources_of_truth" }
+    },
+    {
+      "id": "CTX-04", "title": "No frozen/consolidated doc without regeneration or supersede banners", "category": "context", "severity": "manual",
+      "lesson": "CTX-5",
+      "rationale": "A 'consolidated' spec is only safe if regenerated from its sources or stamped with in-file supersede banners.",
+      "fix": "Regenerate consolidated specs from their ADRs, or add supersede-aware banners; record sign-off.",
+      "check": { "kind": "signoff" }
+    },
+    {
+      "id": "CTX-05", "title": "No broken internal doc links", "category": "context", "severity": "blocker",
+      "source": "https://github.com/lycheeverse/lychee", "lesson": "CTX doc-drift: a dead link is provable drift",
+      "rationale": "A relative link to a doc/file that no longer exists is the most common, most mechanical form of doc rot — and it is deterministically checkable.",
+      "fix": "Fix or remove the broken links the check reports; wire the check into CI so new ones can't land.",
+      "check": { "kind": "md-links", "globs_from_config": "doc_globs" }
+    },
+    {
+      "id": "CTX-06", "title": "Long-lived docs carry a freshness contract", "category": "context", "severity": "warn",
+      "source": "https://www.giantswarm.io/blog/, https://www.writethedocs.org/", "lesson": "CTX-6 freshness as a computed state",
+      "rationale": "A doc with no 'last reviewed' date can rot invisibly; a per-doc TTL turns silent staleness into a red check.",
+      "fix": "Add 'last_review_date' (or ttl_days) to the frontmatter of docs under config.freshness_globs; refresh on review. Opt-in: empty freshness_globs skips this rule.",
+      "check": { "kind": "doc-freshness", "globs_from_config": "freshness_globs", "field": "last_review_date", "within_days_from_config": "doc_freshness_days" }
+    },
+    {
+      "id": "CTX-07", "title": "Superseded ADRs link forward to a file that exists", "category": "context", "severity": "warn",
+      "source": "https://adr.github.io/", "lesson": "CTX-5 forward-supersede link must resolve",
+      "rationale": "CTX-02 checks a superseded ADR HAS a forward link; this checks the link actually resolves to a present replacement file.",
+      "fix": "When you mark an ADR 'Superseded by NNNN', ensure a decision file numbered NNNN exists.",
+      "check": { "kind": "adr-forward-link", "globs_from_config": "decision_globs" }
+    },
+    {
+      "id": "CTX-08", "title": "Generated files carry a 'DO NOT EDIT' provenance marker", "category": "context", "severity": "warn",
+      "source": "https://pkg.go.dev/cmd/go#hdr-Generate_Go_files", "lesson": "CTX generated-vs-handwritten provenance",
+      "rationale": "A generated file with no marker gets hand-edited and silently diverges from its source; the marker makes provenance machine-visible.",
+      "fix": "Prepend a 'Code generated ... DO NOT EDIT.' header to generated files; list their globs in config.generated_globs. Opt-in: empty generated_globs skips this rule.",
+      "check": { "kind": "grep", "globs_from_config": "generated_globs", "pattern": "Code generated .*DO NOT EDIT|@generated|DO NOT EDIT", "mode": "all" }
+    },
+    {
+      "id": "CTX-09", "title": "Required grounding docs exist and are non-empty", "category": "context", "severity": "warn",
+      "source": "https://diataxis.fr/", "lesson": "CTX-4 grounding docs have one home",
+      "rationale": "The architecture/tech-stack docs a new session relies on are only load-bearing if they exist and are non-empty at their declared home.",
+      "fix": "List the grounding docs you rely on in config.grounding_docs; create any that are missing/empty. Opt-in: empty grounding_docs skips this rule.",
+      "check": { "kind": "required-files", "list_from_config": "grounding_docs" }
+    },
+    {
+      "id": "CTX-10", "title": "Code symbols/paths named in docs still resolve", "category": "context", "severity": "warn", "profile": "advanced",
+      "source": "https://www.writethedocs.org/", "lesson": "CTX symbol/anchor integrity",
+      "rationale": "A doc that cites a file path in backticks which no longer exists is silent drift; path-integrity catches the mechanical half.",
+      "fix": "Fix or update the backticked file paths the check reports as missing.",
+      "check": { "kind": "path-integrity", "globs_from_config": "doc_globs" }
+    },
+    {
+      "id": "CLAIM-00", "title": "A claims register exists", "category": "claims", "severity": "blocker",
+      "lesson": "Claims-1..5", "requires": "makes_external_claims",
+      "rationale": "Competitive/novelty/security claims need one structured, checkable home — not scattered README prose.",
+      "fix": "Add the claims register (see templates/CLAIMS.json); set makes_external_claims:false to opt out.",
+      "check": { "kind": "any-file", "globs_from_config": "claims_file" }
+    },
+    {
+      "id": "CLAIM-01", "title": "Every claim tagged with a build-state", "category": "claims", "severity": "blocker",
+      "lesson": "Claims-4 future tense for unbuilt work", "requires": "makes_external_claims",
+      "rationale": "Design-only mechanisms narrated as shipped fact mislead readers (esp. security).",
+      "fix": "Give each claim build_state ∈ shipped-tested | designed-unshipped | assumed-unmeasured.",
+      "check": { "kind": "claims-field", "field": "build_state", "enum": ["shipped-tested","designed-unshipped","assumed-unmeasured"] }
+    },
+    {
+      "id": "CLAIM-02", "title": "Every claim graded by blast radius", "category": "claims", "severity": "blocker",
+      "lesson": "Claims-1 grade by blast radius not confidence", "requires": "makes_external_claims",
+      "rationale": "A false claim that IS the wedge is existential; it needs a higher bar + a de-risking milestone before code.",
+      "fix": "Add blast_radius ∈ existential | recoverable; existential claims must have a de_risk_milestone.",
+      "check": { "kind": "claims-field", "field": "blast_radius", "enum": ["existential","recoverable"], "require_if": { "when_value": "existential", "then_field": "de_risk_milestone" } }
+    },
+    {
+      "id": "CLAIM-03", "title": "Novelty/competitive claims have a dated prior-art pass", "category": "claims", "severity": "blocker",
+      "lesson": "Claims-2 prior-art grep before freezing", "requires": "makes_external_claims",
+      "rationale": "'Nobody does this' is a decaying search result; one competitor grep can falsify a whole thesis.",
+      "fix": "For each novelty/competitive/market claim add prior_art_checked:<date> and how_we_differ; re-check on cadence.",
+      "check": { "kind": "claims-field", "field": "prior_art_checked", "applies_to_types": ["novelty","competitive","market"], "is_date": true, "within_days_from_config": "prior_art_recheck_days", "also_require": ["how_we_differ"] }
+    },
+    {
+      "id": "CLAIM-04", "title": "Citations resolve and support the claim", "category": "claims", "severity": "warn",
+      "lesson": "Claims-3 cite the paper that proves your point", "requires": "makes_external_claims",
+      "rationale": "A real citation on the wrong claim launders an assumption into a 'fact'.",
+      "fix": "Each citation needs a url and a one-line supports_because; confirm the source's conclusion supports you.",
+      "check": { "kind": "claims-citations" }
+    },
+    {
+      "id": "CLAIM-05", "title": "Wedge and moat are stated and pressure-tested", "category": "claims", "severity": "manual",
+      "lesson": "Claims-5 wedge != moat", "requires": "makes_external_claims",
+      "rationale": "The hard-to-build part (interception, a pipeline) is often already commoditized; the moat must survive assuming it's free.",
+      "fix": "Declare wedge + moat explicitly; pressure-test the moat assuming the hard mechanism is free; record sign-off.",
+      "check": { "kind": "signoff" }
+    },
+    {
+      "id": "CLAIM-06", "title": "Specs of record carry explicit acceptance criteria", "category": "claims", "severity": "warn",
+      "source": "https://www.atlassian.com/agile/project-management/definition-of-ready", "lesson": "Definition-of-Ready: no work item without acceptance criteria",
+      "rationale": "A spec with no acceptance criteria section is unfalsifiable — nothing can later prove it was met.",
+      "fix": "Add a non-empty 'Acceptance Criteria' section to each spec (or an acceptance_criteria field per register item).",
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "grep", "globs": ["docs/specs/**/*.md","specs/**/*.md","docs/**/*spec*.md",".github/ISSUE_TEMPLATE/*.md",".github/ISSUE_TEMPLATE/*.yml",".github/ISSUE_TEMPLATE/*.yaml"], "pattern": "acceptance criteria", "mode": "present" }
+      ] }
+    },
+
+    {
+      "id": "SEC-01", "title": "No high-signal secrets committed", "category": "security", "severity": "blocker",
+      "source": "https://github.com/gitleaks/gitleaks", "lesson": "12-factor: a repo could go open-source at any moment",
+      "rationale": "A committed private key or cloud credential is an immediate breach and survives in git history.",
+      "fix": "Remove the secret, rotate it, and add a secret-scanner (gitleaks/trufflehog) to CI.",
+      "check": { "kind": "grep", "tracked_only": true, "globs": ["**/*"],
+        "exclude_globs": ["**/*.md","**/*.lock","*.lock","**/*.snap","**/fixtures/**","**/testdata/**","**/__snapshots__/**","**/*.min.js","**/*.map"],
+        "pattern": "-----BEGIN (RSA|EC|OPENSSH|DSA|PGP)? ?PRIVATE KEY-----|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_\\-]{35}|xox[baprs]-[0-9A-Za-z\\-]{10,}|gh[pousr]_[0-9A-Za-z]{36}",
+        "flags": "m", "raw_scan": true, "mode": "absent" }
+    },
+    {
+      "id": "SEC-02", "title": "Real .env files are git-ignored, not committed", "category": "security", "severity": "blocker",
+      "source": "https://12factor.net/config", "lesson": "12-factor III: config in the environment, not the repo",
+      "rationale": "A committed .env leaks live secrets; only the template (.env.example) belongs in the tree.",
+      "fix": "git rm --cached the .env file, add '.env' to .gitignore, rotate anything exposed.",
+      "check": { "kind": "any-file", "tracked_only": true, "mode": "absent",
+        "globs": [".env",".env.local",".env.development",".env.production",".env.prod",".env.staging","**/.env",".env.*.local"],
+        "allow": [".env.example",".env.sample",".env.template",".env.dist","**/.env.example","**/.env.sample","**/.env.template"] }
+    },
+    {
+      "id": "SEC-03", "title": "Third-party CI actions pinned to a commit SHA", "category": "security", "severity": "warn",
+      "source": "https://github.com/ossf/scorecard/blob/main/docs/checks.md", "lesson": "Scorecard Pinned-Dependencies",
+      "rationale": "A mutable action ref (@v4, @main) lets an upstream tag move under you and run arbitrary code in a token-bearing runner.",
+      "fix": "Pin every external 'uses:' to a full 40-char commit SHA (append a # v4 comment for readability).",
+      "check": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml"],
+        "pattern": "uses:\\s*['\"]?[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(?:/[^@'\"\\s]+)?@(?![0-9a-f]{40}\\b)[^\\s'\"]+", "flags": "m", "mode": "absent" }
+    },
+    {
+      "id": "SEC-04", "title": "No dangerous CI workflow patterns", "category": "security", "severity": "warn",
+      "source": "https://github.com/ossf/scorecard/blob/main/docs/checks.md", "lesson": "Scorecard Dangerous-Workflow",
+      "rationale": "Interpolating untrusted event text into a run: script, or checking out PR-head under pull_request_target, are the two canonical CI RCE paths. Heuristic — treat hits as review flags.",
+      "fix": "Move untrusted input into an env: var and reference it as \"$VAR\"; never checkout the PR head under pull_request_target with write scope.",
+      "check": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml"],
+        "pattern": "pull_request_target[\\s\\S]{0,400}?ref:\\s*\\$\\{\\{\\s*github\\.event\\.pull_request\\.head|run:[\\s\\S]{0,200}?\\$\\{\\{\\s*github\\.event\\.(issue|pull_request|comment|review)\\.[a-zA-Z_.]*(title|body|head_ref)",
+        "mode": "absent" }
+    },
+    {
+      "id": "SEC-05", "title": "Automated dependency-update tool configured", "category": "security", "severity": "warn",
+      "source": "https://github.com/ossf/scorecard/blob/main/docs/checks.md", "lesson": "Scorecard Dependency-Update-Tool",
+      "rationale": "A committed lockfile freezes deps at a point in time; without an update bot those pins silently rot into known-CVE territory.",
+      "fix": "Add .github/dependabot.yml or renovate.json; or wire an SCA step (npm audit / pip-audit / osv-scanner) into CI.",
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "any-file", "globs": [".github/dependabot.yml",".github/dependabot.yaml","renovate.json",".github/renovate.json",".renovaterc",".renovaterc.json",".renovaterc.json5",".snyk"] },
+        { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml"], "pattern": "npm audit|pip-audit|osv-scanner|trivy|snyk test|dependency-review", "mode": "present" }
+      ] }
+    },
+    {
+      "id": "SEC-06", "title": "Security policy names a reporting channel", "category": "security", "severity": "warn",
+      "source": "https://docs.github.com/code-security/getting-started/adding-a-security-policy-to-your-repository", "lesson": "repolinter / Scorecard Security-Policy",
+      "rationale": "A SECURITY.md that exists but names no way to report a vuln is presence theater; the reporting channel is the load-bearing part.",
+      "fix": "Add SECURITY.md with a reporting email or a link to your GitHub security advisories, plus supported-versions info.",
+      "check": { "kind": "file-contains", "globs": ["SECURITY.md","docs/SECURITY.md",".github/SECURITY.md"],
+        "pattern": "[\\w.+-]+@[\\w-]+\\.[\\w.-]+|github\\.com/[^\\s)]+/security/advisories|/security/advisories/new|https?://[^\\s)]*(security|report|disclos|hackerone|bugcrowd)|report.{0,40}(email|https?://|@)" }
+    },
+    {
+      "id": "SEC-07", "title": "No committed binary/executable artifacts", "category": "security", "severity": "warn",
+      "source": "https://github.com/ossf/scorecard/blob/main/docs/checks.md", "lesson": "Scorecard Binary-Artifacts (HIGH risk)",
+      "rationale": "A committed binary can't be reviewed and may hide malware or an unreproducible build; source should build the artifact, not ship it.",
+      "fix": "Remove the binary, build it from source in CI, and gitignore the output path (allow-list genuine test fixtures/vendor).",
+      "check": { "kind": "any-file", "tracked_only": true, "mode": "absent",
+        "globs": ["**/*.exe","**/*.dll","**/*.so","**/*.dylib","**/*.class","**/*.jar","**/*.a","**/*.wasm","**/*.o","**/*.pyc"],
+        "allow": ["**/testdata/**","**/fixtures/**","**/vendor/**","**/node_modules/**","**/*.test.wasm"] }
+    },
+    {
+      "id": "SEC-08", "title": "A committed SBOM exists in a recognized format", "category": "security", "severity": "warn", "profile": "advanced",
+      "source": "https://www.cisa.gov/sbom", "lesson": "NTIA minimum elements",
+      "rationale": "An SBOM lets downstream consumers answer 'am I affected by CVE-X' without cloning and building.",
+      "fix": "Generate and commit a CycloneDX (*.cdx.json) or SPDX (*.spdx.json) SBOM in CI.",
+      "check": { "kind": "any-file", "globs": ["**/*.cdx.json","**/bom.json","**/cyclonedx.json","**/*.spdx.json","**/sbom.json","**/*.spdx"] }
+    },
+    {
+      "id": "SEC-09", "title": "Static code-scanning is configured", "category": "security", "severity": "warn", "profile": "advanced",
+      "source": "https://github.com/ossf/scorecard/blob/main/docs/checks.md", "lesson": "Scorecard SAST",
+      "rationale": "CodeQL/Semgrep in CI catches injection and unsafe-API classes that unit tests miss; it should fail the build, not merely annotate.",
+      "fix": "Add a CodeQL or Semgrep workflow and configure it to fail on findings (semgrep --error, or a required check-run).",
+      "check": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml"],
+        "pattern": "codeql-action|github/codeql|semgrep|snyk code|sonarqube|sonarcloud", "mode": "present" }
+    },
+    {
+      "id": "SEC-10", "title": "Release provenance/signing is present", "category": "security", "severity": "warn", "profile": "advanced",
+      "source": "https://slsa.dev/", "lesson": "SLSA L1+ provenance",
+      "rationale": "Signed provenance lets consumers verify an artifact was built by your pipeline, not swapped in transit.",
+      "fix": "Add actions/attest-build-provenance, slsa-github-generator, or cosign signing to your release workflow.",
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml"], "pattern": "attest-build-provenance|slsa-github-generator|sigstore|cosign|gpg --sign|--sign", "mode": "present" },
+        { "kind": "any-file", "globs": ["**/*.intoto.jsonl","**/*.sigstore","**/*.sig"] }
+      ] }
+    },
+
+    {
+      "id": "GOV-01", "title": "Merge protection is declared in-repo", "category": "governance", "severity": "warn",
+      "source": "https://backstage.spotify.com/docs/soundcheck/", "lesson": "change-control gate",
+      "rationale": "Green CI means nothing if anyone can force-push to main; protection-as-code makes the merge gate reviewable. Skips if you configure protection in the GitHub UI (nothing in-repo to check).",
+      "fix": "Commit a ruleset (.github/rulesets/*.json), a probot settings.yml, or a terraform github_branch_protection that requires reviews and disables force-push.",
+      "check": { "kind": "file-contains", "globs": [".github/rulesets/*.json",".github/settings.yml",".github/settings.yaml"],
+        "pattern": "required_pull_request_reviews|required_approving_review_count|require_pull_request|pull_request:\\s*(true|required)|dismiss_stale", "null_if_absent": true }
+    },
+    {
+      "id": "GOV-02", "title": "Strict/up-to-date merges and conversation resolution enabled", "category": "governance", "severity": "warn",
+      "source": "https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository", "lesson": "stale-branch-merges-green failure mode",
+      "rationale": "Without strict status checks a stale branch can merge green; without conversation-resolution, unresolved review comments merge silently.",
+      "fix": "In the committed ruleset set strict status checks and required_conversation_resolution to true.",
+      "check": { "kind": "grep", "globs": [".github/rulesets/*.json",".github/settings.yml",".github/settings.yaml"],
+        "pattern": "strict\"?\\s*[:=]\\s*true|required[_-]?conversation[_-]?resolution\"?\\s*[:=]\\s*true|require[_-]?conversation[_-]?resolution\"?\\s*[:=]\\s*true", "mode": "present" }
+    },
+    {
+      "id": "GOV-03", "title": "CODEOWNERS exists and names an owner", "category": "governance", "severity": "warn",
+      "source": "https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners", "lesson": "every path has an accountable reviewer",
+      "rationale": "A CODEOWNERS file routes reviews to the people accountable for each path, in one canonical location.",
+      "fix": "Add CODEOWNERS (or .github/CODEOWNERS) with at least one path→owner mapping.",
+      "check": { "kind": "file-contains", "globs": ["CODEOWNERS",".github/CODEOWNERS","docs/CODEOWNERS"],
+        "flags": "im", "pattern": "^\\s*[^#\\s]\\S*\\s+(@[\\w/-]+|[\\w.+-]+@[\\w.-]+)" }
+    },
+
+    {
+      "id": "COMM-01", "title": "LICENSE file present", "category": "community", "severity": "blocker",
+      "source": "https://github.com/todogroup/repolinter", "lesson": "highest-agreement repo-health rule",
+      "rationale": "No license = legally all-rights-reserved; nobody can safely use or contribute, and it's the most trivially checkable defect.",
+      "fix": "Add a LICENSE (or COPYING) file at the repo root; pick one at choosealicense.com.",
+      "check": { "kind": "any-file", "globs": ["LICENSE","LICENSE.*","LICENCE","LICENCE.*","COPYING","COPYING.*"] }
+    },
+    {
+      "id": "COMM-02", "title": "README exists with newcomer-critical sections", "category": "community", "severity": "warn",
+      "source": "https://github.com/RichardLitt/standard-readme", "lesson": "standard-readme",
+      "rationale": "A README that lacks what-it-is / install / usage forces newcomers to read code to get started.",
+      "fix": "Add a root README with install/setup and usage/quickstart sections.",
+      "check": { "kind": "file-contains", "globs": ["README.md","README.rst","readme.md","Readme.md"], "min_len": 400,
+        "pattern": "^#{1,3}\\s.*(install|setup|getting started|quick ?start|usage|run|build|example)" }
+    },
+    {
+      "id": "COMM-03", "title": "CHANGELOG present with an Unreleased section", "category": "community", "severity": "warn",
+      "source": "https://keepachangelog.com/", "lesson": "Keep a Changelog",
+      "rationale": "A changelog with an Unreleased section gives consumers a human-readable record of what changed and a place to accrue the next release's notes.",
+      "fix": "Add CHANGELOG.md following keepachangelog.com, including an '## [Unreleased]' section.",
+      "check": { "kind": "file-contains", "globs": ["CHANGELOG.md","CHANGELOG","docs/CHANGELOG.md","CHANGELOG.rst"],
+        "pattern": "unreleased" }
+    },
+
+    {
+      "id": "QUAL-01", "title": "A linter is configured", "category": "quality", "severity": "warn",
+      "source": "https://docs.opslevel.com/docs/maturity-report", "lesson": "static-hygiene maturity axis",
+      "rationale": "Tests prove behavior; a linter catches the class of defects tests don't (unused vars, unsafe patterns) before review.",
+      "fix": "Add a linter config: eslint.config.js / .eslintrc, a [tool.ruff] section, .golangci.yml, .rubocop.yml, or biome.json.",
+      "applies_to": ["node","python","service","library"],
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "any-file", "globs": ["eslint.config.js","eslint.config.mjs","eslint.config.cjs",".eslintrc",".eslintrc.*","ruff.toml",".ruff.toml",".golangci.yml",".golangci.yaml",".rubocop.yml","biome.json","biome.jsonc",".flake8",".pylintrc"] },
+        { "kind": "grep", "globs": ["pyproject.toml","setup.cfg","tox.ini"], "pattern": "\\[tool\\.(ruff|flake8|pylint)\\]|\\[flake8\\]", "mode": "present" },
+        { "kind": "grep", "globs": ["package.json"], "pattern": "\"(eslint|biome|@biomejs|standard|xo)\"", "mode": "present" }
+      ] }
+    },
+    {
+      "id": "QUAL-02", "title": "A formatter is configured", "category": "quality", "severity": "warn",
+      "source": "https://pre-commit.com/", "lesson": "style is machine-normalized, not argued",
+      "rationale": "A configured formatter ends style debates and keeps diffs about substance.",
+      "fix": "Add a formatter config: .prettierrc / prettier key, [tool.black] or [tool.ruff.format], rustfmt.toml (Go: gofmt is implied).",
+      "applies_to": ["node","python","service","library"],
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "any-file", "globs": [".prettierrc",".prettierrc.*","prettier.config.*","rustfmt.toml",".rustfmt.toml",".clang-format","**/*.go"] },
+        { "kind": "grep", "globs": ["pyproject.toml"], "pattern": "\\[tool\\.black\\]|\\[tool\\.ruff\\.format\\]|\\[tool\\.yapf\\]", "mode": "present" },
+        { "kind": "grep", "globs": ["package.json"], "pattern": "\"prettier\"|\"@biomejs|\"dprint\"", "mode": "present" }
+      ] }
+    },
+    {
+      "id": "QUAL-03", "title": "Type-checking is strict where supported", "category": "quality", "severity": "warn",
+      "source": "https://www.typescriptlang.org/tsconfig#strict", "lesson": "strict types catch a defect class at the door",
+      "rationale": "TS without strict, or mypy without strict, lets whole categories of null/any bugs through; the strict flag is the cheap on-switch.",
+      "fix": "Set compilerOptions.strict=true in tsconfig (or strict in mypy/pyright) and invoke the typecheck in CI.",
+      "applies_to": ["node","python","service","library"],
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "json-field", "globs": ["tsconfig.json","tsconfig.base.json"], "path": "compilerOptions.strict", "assert": "true" },
+        { "kind": "grep", "globs": ["tsconfig.json","tsconfig.base.json"], "pattern": "\"extends\"\\s*:\\s*\"[^\"]*strict", "mode": "present" },
+        { "kind": "grep", "globs": ["pyproject.toml","mypy.ini","setup.cfg","pyrightconfig.json"], "pattern": "strict\\s*=\\s*[Tt]rue|\"strict\":\\s*true|typeCheckingMode.*strict", "mode": "present" }
+      ] }
+    },
+
+    {
+      "id": "REPRO-01", "title": "CI installs dependencies in frozen/locked mode", "category": "repro", "severity": "warn",
+      "source": "https://docs.npmjs.com/cli/commands/npm-ci", "lesson": "reproducible install path",
+      "rationale": "A plain 'install' can silently resolve deps that drift from the lockfile; a frozen install fails when the lockfile is out of sync.",
+      "fix": "Use npm ci / pnpm install --frozen-lockfile / yarn --immutable / uv sync / poetry install (no update) in CI.",
+      "applies_to": ["node","python","service","library"],
+      "check": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml","Makefile","Taskfile.yml","bin/setup","script/setup"],
+        "pattern": "npm ci|--frozen-lockfile|--immutable|--require-hashes|uv sync|--locked|--frozen|poetry install|pnpm i --frozen", "mode": "present" }
+    },
+    {
+      "id": "REPRO-02", "title": "Runtime version is pinned", "category": "repro", "severity": "warn",
+      "source": "https://asdf-vm.com/", "lesson": "pin the toolchain, not just the libs",
+      "rationale": "Without a pinned runtime, two machines can build with different Node/Python majors and get different results.",
+      "fix": "Add .tool-versions / .nvmrc / .python-version / mise.toml, or an engines/requires-python/go directive.",
+      "applies_to": ["node","python","service","library"],
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "any-file", "globs": [".tool-versions",".nvmrc",".node-version",".python-version","mise.toml",".mise.toml","rust-toolchain.toml","rust-toolchain"] },
+        { "kind": "json-field", "globs": ["package.json"], "path": "engines.node", "assert": "nonempty" },
+        { "kind": "grep", "globs": ["pyproject.toml","go.mod","setup.cfg"], "pattern": "requires-python|^go\\s+\\d", "mode": "present" }
+      ] }
+    },
+    {
+      "id": "REPRO-03", "title": "Pinned runtime version is consistent everywhere", "category": "repro", "severity": "warn",
+      "source": "https://www.chromatic.com/", "lesson": "version single-home, no drift (serves CONTEXT too)",
+      "rationale": "When the runtime is PINNED in more than one home (.nvmrc, .tool-versions, Dockerfile FROM) those pins drift; a mismatch means 'works on my machine' bugs. Version RANGES (engines/requires-python) and CI test-matrices are not pins and are excluded.",
+      "fix": "Make the runtime major agree across .nvmrc/.tool-versions, CI setup-node/setup-python, Dockerfile FROM, and engines.",
+      "check": { "kind": "version-consistency" }
+    },
+    {
+      "id": "REPRO-04", "title": "Dockerfile base images pinned by digest", "category": "repro", "severity": "warn",
+      "source": "https://docs.docker.com/build/building/best-practices/", "lesson": "reproducible container base",
+      "rationale": "FROM node:20 or :latest floats; the same Dockerfile builds different images over time. A digest pin makes the base reproducible.",
+      "fix": "Pin every FROM to name:tag@sha256:<digest>; skips if there's no Dockerfile.",
+      "check": { "kind": "dockerfile-digest", "globs": ["**/Dockerfile","**/Dockerfile.*","**/*.Dockerfile"] }
+    },
+
+    {
+      "id": "OPS-01", "title": "Structured logging is wired in", "category": "ops", "severity": "warn", "profile": "service", "applies_to": ["service"],
+      "source": "https://12factor.net/logs", "lesson": "12-factor XI: logs as event streams",
+      "rationale": "Ad-hoc print/console logging can't be parsed, correlated, or leveled in prod; a structured logger is the minimum operability bar.",
+      "fix": "Adopt a structured logger (pino/winston, zap/zerolog, structlog/slog) writing to stdout.",
+      "check": { "kind": "grep", "globs": ["src/**/*","app/**/*","internal/**/*","cmd/**/*","lib/**/*","**/*.ts","**/*.js","**/*.py","**/*.go"],
+        "pattern": "import\\s+[^\\n;]*(pino|winston|bunyan|zap|zerolog|structlog|logrus|slog)|require\\(['\"](pino|winston|bunyan)['\"]|from\\s+structlog|\"log/slog\"|zap\\.New|zerolog\\.New\\b|pino\\(|winston\\.createLogger|logging\\.getLogger\\(|logrus\\.New", "mode": "present" }
+    },
+    {
+      "id": "OPS-02", "title": "A health/readiness endpoint exists", "category": "ops", "severity": "warn", "profile": "service", "applies_to": ["service"],
+      "source": "https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/", "lesson": "orchestrators need a probe target",
+      "rationale": "Without a health endpoint an orchestrator can't tell if the service is alive/ready, so it can't route or restart it correctly.",
+      "fix": "Add a /health (and /ready) route and point a liveness/readiness probe at it.",
+      "check": { "kind": "grep", "globs": ["src/**/*","app/**/*","internal/**/*","cmd/**/*","**/*.ts","**/*.js","**/*.py","**/*.go"],
+        "pattern": "(app\\.(get|use)|router\\.(get|handle|HandleFunc)|mux\\.Handle(Func)?|http\\.HandleFunc|fastify\\.get|\\.route\\(|@(app\\.route|Get|GetMapping|RequestMapping)|gin\\.|echo\\.(GET|Any))[^\\n]{0,90}(/health|/healthz|/readyz|/livez|actuator/health)|@(app\\.route|router\\.get)\\([^\\n]{0,40}(health|ready)", "mode": "present" }
+    },
+    {
+      "id": "OPS-03", "title": "Graceful shutdown on SIGTERM", "category": "ops", "severity": "warn", "profile": "service", "applies_to": ["service"],
+      "source": "https://12factor.net/disposability", "lesson": "12-factor IX: fast startup + graceful shutdown",
+      "rationale": "A service that ignores SIGTERM drops in-flight requests on every deploy/scale-down.",
+      "fix": "Handle SIGTERM: stop accepting new work, drain in-flight, close listeners, then exit.",
+      "check": { "kind": "grep", "globs": ["src/**/*","app/**/*","internal/**/*","cmd/**/*","**/*.ts","**/*.js","**/*.py","**/*.go"],
+        "pattern": "process\\.on\\(['\"]SIGTERM|signal\\.Notify\\([^\\n]*SIGTERM|@PreDestroy|addShutdownHook|trap\\s+['\"]?SIGTERM|signal\\.signal\\(signal\\.SIGTERM|add_signal_handler\\([^\\n]*SIGTERM|onShutdown|gracefulShutdown", "mode": "present" }
+    },
+    {
+      "id": "OPS-04", "title": "Outbound calls are time-bounded/guarded", "category": "ops", "severity": "warn", "profile": "service", "applies_to": ["service"],
+      "source": "https://sre.google/sre-book/handling-overload/", "lesson": "bound your dependencies",
+      "rationale": "An unbounded call to a slow dependency cascades into resource exhaustion; timeouts + retry/breaker contain the blast. Heuristic.",
+      "fix": "Set explicit timeouts on HTTP/DB clients and add retry or circuit-breaker logic on critical paths.",
+      "check": { "kind": "grep", "globs": ["src/**/*","app/**/*","internal/**/*","cmd/**/*","config/**/*","**/*.ts","**/*.js","**/*.py","**/*.go"],
+        "pattern": "timeout\\s*[:=]\\s*\\w|WithTimeout|context\\.WithTimeout|AbortSignal\\.timeout|setTimeout\\([^\\n]*abort|\\.timeout\\(|Timeout\\s*=\\s*\\w|resilience4j|opossum|gobreaker|failsafe|tenacity|polly|circuit.?breaker|httpx\\.[A-Za-z]+\\([^\\n]*timeout|axios[^\\n]*timeout", "mode": "present" }
+    },
+    {
+      "id": "OPS-05", "title": "An operational runbook exists", "category": "ops", "severity": "warn", "profile": "service", "applies_to": ["service"],
+      "source": "https://sre.google/workbook/", "lesson": "SRE Workbook: on-call needs runbooks",
+      "rationale": "When it breaks at 3am, an on-call needs a rollback + escalation path, not to reverse-engineer the system live.",
+      "fix": "Add a runbook (runbooks/, docs/runbooks/, or RUNBOOK.md) covering rollback steps and an escalation/on-call contact.",
+      "check": { "kind": "file-contains", "globs": ["runbooks/**/*.md","docs/runbooks/**/*.md","RUNBOOK.md","docs/oncall.md","docs/on-call.md"],
+        "flags": "i", "pattern": "(?=[\\s\\S]*(rollback|roll back|revert|redeploy))(?=[\\s\\S]*(escalat|on-call|on call|pager|paging|contact))" }
+    },
+    {
+      "id": "OPS-06", "title": "A service descriptor declares owner + lifecycle", "category": "ops", "severity": "warn", "profile": "service", "applies_to": ["service"],
+      "source": "https://backstage.io/docs/features/software-catalog/descriptor-format/", "lesson": "catalog: every service has an owner",
+      "rationale": "A parseable descriptor (owner + lifecycle/tier) is how a platform knows who to page and how critical the service is.",
+      "fix": "Add catalog-info.yaml (Backstage), opslevel.yml, or cortex.yaml with owner and lifecycle populated.",
+      "check": { "kind": "file-contains", "globs": ["catalog-info.yaml","catalog-info.yml","opslevel.yml","opslevel.yaml","cortex.yaml",".backstage/catalog-info.yaml"],
+        "flags": "im", "pattern": "(?=[\\s\\S]*^\\s*owner\\s*:\\s*\\S)(?=[\\s\\S]*^\\s*(lifecycle|tier|level)\\s*:\\s*\\S)" }
+    },
+
+    {
+      "id": "BUILD-10", "title": "CI actually invokes the test suite", "category": "build", "severity": "warn",
+      "source": "https://docs.cortex.io/standardize/scorecards/scorecard-examples", "lesson": "a CI job that never runs tests is theater",
+      "applies_to": ["node","python","service","library"],
+      "rationale": "BUILD-03 checks a CI file exists; this checks it actually runs tests — a cheap static complement to BUILD-05 (which only runs when you wire the bootstrap command).",
+      "fix": "Add a test step to CI: npm test / pytest / go test / make test / cargo test / gradle test / tox.",
+      "check": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml"],
+        "pattern": "npm (run )?test|pnpm (run )?test|yarn test|node --test|pytest|python -m pytest|go test|make test|\\bjest\\b|vitest|cargo test|gradle test|\\btox\\b|mvn test|rspec|phpunit|dotnet test", "mode": "present" }
+    },
+    {
+      "id": "TEST-07", "title": "A coverage floor is declared and enforced", "category": "test", "severity": "warn", "profile": "advanced",
+      "source": "https://docs.codecov.com/docs/commit-status", "lesson": "a coverage regression should exit non-zero",
+      "applies_to": ["node","python","service","library"],
+      "rationale": "A coverage number nobody gates on drifts down; a fail-under threshold makes a regression fail the build.",
+      "fix": "Set a numeric floor: coverage.py fail_under, jest coverageThreshold, a codecov target, or --cov-fail-under in CI.",
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "grep", "globs": ["pyproject.toml",".coveragerc","setup.cfg","tox.ini"], "pattern": "fail_under\\s*=\\s*[1-9]", "mode": "present" },
+        { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml","Makefile","package.json"], "pattern": "--cov-fail-under[= ]*[1-9]|check-coverage|coverage-threshold", "mode": "present" },
+        { "kind": "json-field", "globs": ["package.json"], "path": "jest.coverageThreshold", "assert": "present" },
+        { "kind": "grep", "globs": ["codecov.yml",".codecov.yml"], "pattern": "target:\\s*[0-9]", "mode": "present" }
+      ] }
+    },
+    {
+      "id": "CTX-11", "title": "Docs don't lag the code they anchor", "category": "context", "severity": "warn",
+      "source": "https://dosu.dev/blog/score-documentation-freshness-in-ci", "lesson": "docs trailing code is the drift the lessons are about",
+      "rationale": "A doc that declares which source files it documents is stale if that code was committed well after the doc; git dates make this checkable. Opt-in: only docs with a frontmatter 'sources:' list are checked.",
+      "fix": "Add 'sources: [glob, ...]' to the frontmatter of docs that track specific code; refresh the doc when that code changes (tune config.doc_lag_days).",
+      "check": { "kind": "doc-code-age", "globs_from_config": "doc_globs", "lag_days_from_config": "doc_lag_days" }
+    },
+    {
+      "id": "QUAL-04", "title": "The linter is actually enforced (run in CI or pre-commit)", "category": "quality", "severity": "warn",
+      "source": "https://pre-commit.com/", "lesson": "configured != enforced",
+      "applies_to": ["node","python","service","library"],
+      "rationale": "QUAL-01 checks a linter is configured; this checks it actually runs where it gates merges. A config nobody runs proves nothing. Skips if no linter is configured.",
+      "fix": "Invoke the linter in CI (or via 'pre-commit run --all-files') so a lint failure fails the build.",
+      "check": { "kind": "implies", "when_label": "a linter config",
+        "when": { "kind": "any-of", "checks": [
+          { "kind": "any-file", "globs": ["eslint.config.js","eslint.config.mjs","eslint.config.cjs",".eslintrc",".eslintrc.*","ruff.toml",".ruff.toml",".golangci.yml",".golangci.yaml",".rubocop.yml","biome.json",".flake8",".pylintrc"] },
+          { "kind": "grep", "globs": ["pyproject.toml","setup.cfg","tox.ini"], "pattern": "\\[tool\\.(ruff|flake8|pylint)\\]|\\[flake8\\]", "mode": "present" }
+        ] },
+        "then": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml",".pre-commit-config.yaml",".pre-commit-config.yml","Makefile"],
+          "pattern": "eslint|ruff\\s+(check|\\.)|golangci-lint\\s+run|rubocop|biome\\s+(check|ci|lint)|pre-commit\\s+run|npm\\s+run\\s+lint|\\bxo\\b|flake8|pylint|standardx?\\b", "mode": "present" },
+        "then_fail_detail": "linter configured but never invoked in CI/pre-commit/Makefile" }
+    },
+    {
+      "id": "SEC-11", "title": "CI grants a least-privilege GITHUB_TOKEN", "category": "security", "severity": "warn",
+      "source": "https://github.com/ossf/scorecard/blob/main/docs/checks.md", "lesson": "Scorecard Token-Permissions",
+      "rationale": "A workflow with no top-level permissions block (or write-all) hands every step a broad token; a compromised action or dependency can push code or publish packages. Default read-only, grant write per-job.",
+      "fix": "Add 'permissions: {contents: read}' (or 'read-all') at the top of each workflow; grant write scopes only inside the jobs that need them.",
+      "check": { "kind": "workflow-permissions", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml"] }
+    },
+    {
+      "id": "SEC-12", "title": "A secret-scanning gate is wired in", "category": "security", "severity": "warn",
+      "source": "https://github.com/gitleaks/gitleaks", "lesson": "prevention gate vs point-in-time detection (complements SEC-01)",
+      "rationale": "SEC-01 catches secrets committed as of now; a scanner wired into CI or pre-commit fails future builds when a new secret lands.",
+      "fix": "Add gitleaks/trufflehog/detect-secrets to CI or .pre-commit-config.yaml (and commit its config).",
+      "check": { "kind": "any-of", "checks": [
+        { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml"], "pattern": "gitleaks|trufflehog|detect-secrets|ggshield", "mode": "present" },
+        { "kind": "grep", "globs": [".pre-commit-config.yaml",".pre-commit-config.yml"], "pattern": "gitleaks|detect-secrets|trufflehog", "mode": "present" },
+        { "kind": "any-file", "globs": [".gitleaks.toml","gitleaks.toml",".secrets.baseline",".gitleaksignore"] }
+      ] }
+    },
+    {
+      "id": "SEC-13", "title": "A dependency vulnerability scan runs in CI", "category": "security", "severity": "warn", "profile": "advanced",
+      "source": "https://github.com/ossf/scorecard/blob/main/docs/checks.md", "lesson": "Scorecard Vulnerabilities (SCA is not an update-tool)",
+      "rationale": "An update bot (SEC-05: dependabot/renovate) opens PRs but is not a vuln scanner; a dedicated SCA step surfaces known CVEs in the pipeline.",
+      "fix": "Add an SCA step to CI: osv-scanner / govulncheck / pip-audit / npm audit / trivy / grype / snyk test / owasp dependency-check.",
+      "check": { "kind": "grep", "globs": [".github/workflows/*.yml",".github/workflows/*.yaml",".gitlab-ci.yml","Makefile","package.json"],
+        "pattern": "osv-scanner|govulncheck|pip-audit|npm audit|pnpm audit|yarn audit|trivy|grype|snyk test|dependency-check|owasp", "mode": "present" }
+    },
+    {
+      "id": "SEC-14", "title": "Pre-commit hooks pinned to an immutable rev", "category": "security", "severity": "warn",
+      "source": "https://pre-commit.com/", "lesson": "immutable rev, not a floating branch (analog of SEC-03)",
+      "rationale": "A pre-commit hook pinned to main/master/HEAD pulls whatever that branch points at — the same mutable-ref supply-chain risk SEC-03 guards for CI actions. Skips if there's no pre-commit config.",
+      "fix": "Pin each 'rev:' in .pre-commit-config.yaml to a tag or 40-char SHA, never a branch name.",
+      "check": { "kind": "grep", "globs": [".pre-commit-config.yaml",".pre-commit-config.yml"], "flags": "im",
+        "pattern": "rev:\\s*['\"]?(main|master|HEAD|develop|trunk)['\"]?\\s*$", "mode": "absent" }
+    }
+  ]
+}

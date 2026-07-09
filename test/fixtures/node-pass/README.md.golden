@@ -1,0 +1,19 @@
+# fixture-node-pass
+
+## What this is
+A fixture.
+
+## Install
+
+```bash
+npm ci
+```
+
+## Usage
+Run `npm test`.
+
+## Bootstrap
+One command: `npm run bootstrap` — safe to re-run.
+
+## Contributing
+PRs welcome. See [CHANGELOG.md](CHANGELOG.md).

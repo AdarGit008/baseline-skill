@@ -1,0 +1,12 @@
+import pino from 'pino'
+const logger = pino()
+import http from 'node:http'
+const server = http.createServer((req, res) => {
+  if (req.url === '/healthz') { res.writeHead(200); return res.end('ok') }
+  res.end('hello')
+})
+process.on('SIGTERM', () => { logger.info('draining'); server.close(() => process.exit(0)) })
+const controller = new AbortController()
+setTimeout(() => controller.abort(), 5000)
+fetch('https://example.com', { signal: controller.signal }).catch(() => {})
+server.listen(3000)

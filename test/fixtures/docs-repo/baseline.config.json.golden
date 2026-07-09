@@ -1,0 +1,28 @@
+{
+  "project_type": "docs",
+  "makes_external_claims": false,
+  "status_file": "docs/start-here.md",
+  "decision_globs": [
+    "docs/decisions/*.md"
+  ],
+  "doc_globs": [
+    "**/*.md"
+  ],
+  "sources_of_truth": {
+    "status": "docs/start-here.md",
+    "decisions": "docs/decisions/"
+  },
+  "grounding_docs": [
+    "docs/architecture.md",
+    "docs/missing-doc.md"
+  ],
+  "freshness_globs": [
+    "docs/architecture.md",
+    "docs/stale.md"
+  ],
+  "doc_freshness_days": 180,
+  "generated_globs": [
+    "docs/gen/*.md"
+  ],
+  "signoff_file": ".project-baseline/signoff.json"
+}

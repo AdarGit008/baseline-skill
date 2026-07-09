@@ -1,0 +1,196 @@
+#!/usr/bin/env node
+// Golden corpus harness — structured-verdict pins over the fixture repos.
+// The safety net for the V2 engine refactors: any behavior change in the runner
+// shows up as a pin mismatch. Statuses are pinned exactly; volatile details
+// (day counts, SHAs, temp paths) are normalized before pinning.
+//
+//   node test/golden/run.mjs --capture   # (re)write test/golden/pins.json
+//   node test/golden/run.mjs --verify    # compare against pins; exit 1 on drift
+//
+// Zero-dependency, Node >= 18. Fixtures live in test/fixtures/<name>/; each may
+// carry a _fixture.json manifest: { args: [...], commits: 1|2, stamp_file: "..." }.
+// Placeholders in fixture files: {{TODAY}} -> run date, {{HEAD1}} -> short SHA of
+// the first commit (written between commit 1 and commit 2 when commits: 2).
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+
+const HERE = path.dirname(fileURLToPath(import.meta.url))
+const REPO_ROOT = path.resolve(HERE, '..', '..')
+const CHECK = path.join(REPO_ROOT, 'check.mjs')
+const FIXTURES = path.join(REPO_ROOT, 'test', 'fixtures')
+const PINS = path.join(HERE, 'pins.json')
+
+const MODE = process.argv.includes('--capture') ? 'capture' : process.argv.includes('--verify') ? 'verify' : null
+if (!MODE) { console.error('usage: node test/golden/run.mjs --capture | --verify'); process.exit(2) }
+
+const TODAY = new Date().toISOString().slice(0, 10)
+// Isolate git from the host's global/system config: a user-level core.excludesFile
+// ignoring `.env`/`*.exe` would silently untrack the planted fixture files and make
+// pins machine-dependent. Applied to every git call AND the checker subprocess
+// (whose internal git calls inherit this env).
+const GIT_ENV = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+// Override the runner under test (e.g. point at a pristine V1 monolith to prove a
+// candidate runner reproduces the same pins): BASELINE_GOLDEN_CHECK=/path/check.mjs
+const CHECK_UNDER_TEST = process.env.BASELINE_GOLDEN_CHECK || CHECK
+const git = (cwd, ...a) => execFileSync('git', a, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: GIT_ENV }).toString().trim()
+
+// Fixture files are stored with a .golden suffix (and secret placeholders) so the
+// skill repo's own baseline scan never mistakes planted fixture content — fake
+// secrets, intentionally broken links, committed .env files — for the real thing.
+// Both are undone here, at materialize time only.
+const SECRETS = {
+  '{{SECRET_AWS}}': 'wJalrXUtnFEMIK7MDENG' + 'bPxRfiCYEXAMPLEKEY',
+  '{{SECRET_GHP}}': 'ghp_' + 'abcdefghijklmnopqrstuvwxyz0123456789',
+  '{{SECRET_AKIA}}': 'AKIA' + 'IOSFODNN7REALKEY',
+}
+function copyTree(src, dst) {
+  fs.mkdirSync(dst, { recursive: true })
+  for (const e of fs.readdirSync(src, { withFileTypes: true })) {
+    const s = path.join(src, e.name)
+    const d = path.join(dst, e.name.endsWith('.golden') ? e.name.slice(0, -'.golden'.length) : e.name)
+    if (e.isDirectory()) { copyTree(s, d); continue }
+    let t = fs.readFileSync(s, 'latin1')
+    for (const [tok, val] of Object.entries(SECRETS)) t = t.split(tok).join(val)
+    fs.writeFileSync(d, t, 'latin1')
+  }
+}
+
+function substitute(dir, token, value) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, e.name)
+    if (e.isDirectory()) { substitute(full, token, value); continue }
+    const t = fs.readFileSync(full, 'latin1')
+    if (t.includes(token)) fs.writeFileSync(full, t.split(token).join(value), 'latin1')
+  }
+}
+
+// Normalize the volatile parts of a detail string so pins stay stable across
+// runs, machines, and dates — without losing the semantic content.
+function normalizeDetail(s, tmp) {
+  return String(s)
+    .split(tmp).join('<REPO>')
+    .replace(/baseline-golden-[a-z0-9-]+-[A-Za-z0-9]+/g, '<REPO>') // tmp-dir basename in the human header
+    .replace(/\b[0-9a-f]{7,40}\b/g, '<sha>')
+    .replace(/\b\d+(\.\d+)?d\b/g, '<N>d')                 // "437d old (>180)" -> "<N>d old (>180)"
+    .replace(/\(\d+ commits? behind/g, '(<N> commits behind')
+    .replace(/stamp \d+ commits behind/g, 'stamp <N> commits behind')
+}
+
+function materialize(name) {
+  const src = path.join(FIXTURES, name)
+  const manifest = JSON.parse(fs.readFileSync(path.join(src, '_fixture.json'), 'utf8'))
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `baseline-golden-${name}-`))
+  copyTree(src, tmp)
+  fs.rmSync(path.join(tmp, '_fixture.json'))
+  substitute(tmp, '{{TODAY}}', TODAY)
+  git(tmp, 'init', '-q')
+  git(tmp, 'config', 'user.email', 'golden@fixture.local')
+  git(tmp, 'config', 'user.name', 'Golden Fixture')
+  git(tmp, 'config', 'commit.gpgsign', 'false')
+  git(tmp, 'add', '-A')
+  git(tmp, 'commit', '-q', '-m', 'fixture: initial state')
+  if ((manifest.commits || 1) >= 2) {
+    const head1 = git(tmp, 'rev-parse', '--short', 'HEAD')
+    substitute(tmp, '{{HEAD1}}', head1)
+    git(tmp, 'add', '-A')
+    git(tmp, 'commit', '-q', '-m', 'fixture: stamp advance')
+  }
+  return { tmp, args: manifest.args || [] }
+}
+
+function runChecker(tmp, args) {
+  try {
+    return { stdout: execFileSync(process.execPath, [CHECK_UNDER_TEST, '--repo', tmp, ...args], { stdio: ['ignore', 'pipe', 'pipe'], env: GIT_ENV }).toString(), exitCode: 0 }
+  } catch (e) {
+    return { stdout: e.stdout ? e.stdout.toString() : '', exitCode: e.status ?? 1 }
+  }
+}
+
+function score(name) {
+  const { tmp, args } = materialize(name)
+  try {
+    const { stdout, exitCode } = runChecker(tmp, ['--json', ...args])
+    let out
+    try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: checker did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }
+    const rules = {}
+    for (const r of out.results) rules[r.id] = { tag: r.tag, detail: normalizeDetail(r.detail, tmp) }
+    return { exitCode, project_type: out.project_type, profiles: out.profiles.sort(), summary: out.summary, rules }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true }) // never leak a tree with materialized fake secrets
+  }
+}
+
+// Pin the human scorecard too (one fixture): the default CLI output and its own
+// exit-code path live in src/report.mjs and are otherwise invisible to --json pins.
+// Non-TTY subprocess -> color() is a no-op, so the text is ANSI-free and stable.
+function scoreHuman(name) {
+  const { tmp, args } = materialize(name)
+  try {
+    const { stdout, exitCode } = runChecker(tmp, args)
+    return { exitCode, text: normalizeDetail(stdout, tmp).split('\n') }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
+}
+
+function selfCheck() {
+  try {
+    execFileSync(process.execPath, [CHECK_UNDER_TEST, '--self-check'], { stdio: ['ignore', 'pipe', 'pipe'], env: GIT_ENV })
+    return { exitCode: 0 }
+  } catch (e) { return { exitCode: e.status ?? 1 } }
+}
+
+const names = fs.readdirSync(FIXTURES).filter(n => fs.statSync(path.join(FIXTURES, n)).isDirectory()).sort()
+const current = { self_check: selfCheck(), human_scorecard: scoreHuman('node-pass') }
+for (const n of names) {
+  process.stderr.write(`  scoring ${n}...\n`)
+  current[n] = score(n)
+}
+
+if (MODE === 'capture') {
+  fs.writeFileSync(PINS, JSON.stringify(current, null, 2) + '\n')
+  const total = names.reduce((a, n) => a + Object.keys(current[n].rules).length, 0)
+  console.log(`✓ captured ${names.length} fixtures, ${total} rule verdicts -> ${path.relative(REPO_ROOT, PINS)}`)
+  process.exit(0)
+}
+
+// --verify
+const pinned = JSON.parse(fs.readFileSync(PINS, 'utf8'))
+const diffs = []
+const cmp = (where, a, b) => { if (JSON.stringify(a) !== JSON.stringify(b)) diffs.push(`${where}: pinned ${JSON.stringify(a)} != current ${JSON.stringify(b)}`) }
+cmp('self_check.exitCode', pinned.self_check.exitCode, current.self_check.exitCode)
+cmp('human_scorecard.exitCode', pinned.human_scorecard.exitCode, current.human_scorecard.exitCode)
+{
+  const p = pinned.human_scorecard.text, c = current.human_scorecard.text
+  if (p.length !== c.length) diffs.push(`human_scorecard: line count ${p.length} != ${c.length}`)
+  else for (let i = 0; i < p.length; i++) if (p[i] !== c[i]) diffs.push(`human_scorecard line ${i + 1}: ${JSON.stringify(p[i])} != ${JSON.stringify(c[i])}`)
+}
+for (const n of names) {
+  const p = pinned[n], c = current[n]
+  if (!p) { diffs.push(`${n}: fixture has no pins (run --capture)`); continue }
+  cmp(`${n}.exitCode`, p.exitCode, c.exitCode)
+  cmp(`${n}.project_type`, p.project_type, c.project_type)
+  cmp(`${n}.profiles`, p.profiles, c.profiles)
+  cmp(`${n}.summary`, p.summary, c.summary)
+  const ids = new Set([...Object.keys(p.rules), ...Object.keys(c.rules)])
+  for (const id of ids) {
+    if (!p.rules[id]) { diffs.push(`${n}.${id}: new rule not in pins`); continue }
+    if (!c.rules[id]) { diffs.push(`${n}.${id}: pinned rule missing from output`); continue }
+    cmp(`${n}.${id}.tag`, p.rules[id].tag, c.rules[id].tag)
+    cmp(`${n}.${id}.detail`, p.rules[id].detail, c.rules[id].detail)
+  }
+}
+const META_KEYS = new Set(['self_check', 'human_scorecard'])
+for (const n of Object.keys(pinned)) if (!META_KEYS.has(n) && !names.includes(n)) diffs.push(`${n}: pinned fixture no longer exists`)
+
+if (diffs.length) {
+  console.error(`✗ golden corpus drift — ${diffs.length} difference(s):`)
+  for (const d of diffs.slice(0, 40)) console.error('   - ' + d)
+  if (diffs.length > 40) console.error(`   ... +${diffs.length - 40} more`)
+  process.exit(1)
+}
+console.log(`✓ golden corpus clean — ${names.length} fixtures identical to pins`)
+process.exit(0)

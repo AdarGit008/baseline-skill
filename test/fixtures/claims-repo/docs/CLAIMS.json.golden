@@ -1,0 +1,39 @@
+{
+  "claims": [
+    {
+      "id": "CLM-A",
+      "statement": "First productized cross-CAD migrator",
+      "type": "novelty",
+      "build_state": "planned",
+      "blast_radius": "company",
+      "prior_art_checked": "{{TODAY}}",
+      "citations": [
+        {
+          "url": "https://example.com/market-scan",
+          "supports_because": "scan found no productized migrator"
+        }
+      ]
+    },
+    {
+      "id": "CLM-B",
+      "statement": "Fastest importer in class",
+      "type": "competitive",
+      "build_state": "not-a-real-state",
+      "prior_art_checked": "2020-01-01",
+      "citations": [
+        {
+          "url": "https://example.com/bench"
+        }
+      ]
+    },
+    {
+      "id": "CLM-C",
+      "statement": "Internal-only fact",
+      "type": "capability",
+      "build_state": "shipped",
+      "blast_radius": "module",
+      "prior_art_checked": "{{TODAY}}",
+      "citations": []
+    }
+  ]
+}

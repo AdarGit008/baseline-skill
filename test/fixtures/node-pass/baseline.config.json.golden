@@ -1,0 +1,5 @@
+{
+  "project_type": "node",
+  "bootstrap_command": "node -e \"process.exit(0)\"",
+  "makes_external_claims": false
+}

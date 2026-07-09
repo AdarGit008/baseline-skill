@@ -1,0 +1,6 @@
+# start here
+
+last-verified: {{HEAD1}} {{TODAY}}
+status: fixture steady-state
+
+See [architecture](architecture.md).

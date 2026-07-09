@@ -1,0 +1,15 @@
+name: ci
+on: [push, pull_request]
+permissions: read-all
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      - uses: actions/setup-node@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        with: { node-version-file: .nvmrc }
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: node tools/baseline/check.mjs --repo . --no-exec
+      - uses: gitleaks/gitleaks-action@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

@@ -1,0 +1,7 @@
+---
+last_review_date: {{TODAY}}
+sources: [src/core.js]
+---
+# Architecture
+
+The core lives in `src/core.js` and the spec in `docs/decisions/0001-first.md`.

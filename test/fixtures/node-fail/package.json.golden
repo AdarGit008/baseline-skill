@@ -1,0 +1,7 @@
+{
+  "name": "fixture-node-fail",
+  "version": "0.0.1",
+  "scripts": {
+    "start": "node index.js"
+  }
+}

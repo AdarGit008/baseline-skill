@@ -35,7 +35,7 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 - Hermes: `~/.hermes/skills/software-development/baseline`
 - Claude Code: `~/.claude/skills/baseline`
 
-`check.mjs` loads `rules.json` from its own directory, so always invoke the runner **by its absolute path** (`node "<abs>/check.mjs" …`); don't copy `check.mjs` away from `rules.json`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
+`check.mjs` loads `rules.json` and its `src/` modules from its own directory, so always invoke the runner **by its absolute path** (`node "<abs>/check.mjs" …`); don't copy `check.mjs` away from `rules.json` + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
 Co-located files: `check.mjs` (runner), `rules.json` (the 69 rules), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `REFERENCE.md` (full reference: rule table, categories, architecture diagrams, CI wiring), `GLOSSARY.md` (plain-language term definitions).
 
@@ -97,7 +97,7 @@ Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / 
 
 ## Common Pitfalls
 
-1. **Copying `check.mjs` away from `rules.json`.** It loads `rules.json` from its own directory — invoke by absolute path instead.
+1. **Copying `check.mjs` away from `rules.json` + `src/`.** It loads both from its own directory — invoke by absolute path instead.
 2. **Presenting a warn as a blocker (or vice-versa).** Severity is in `rules.json` and the runner output — never upgrade/downgrade it.
 3. **Faking a sign-off.** Manual rules exist because a script can't judge them; record a real dated `signoff.json` entry, don't rubber-stamp.
 4. **Skipping BUILD-05 by habit.** Omit `--no-exec` when the repo is trusted and `bootstrap_command` is set — a green crown check is the strongest single signal.

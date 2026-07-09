@@ -1,0 +1,19 @@
+name: ci
+on: [push, pull_request]
+permissions: read-all
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          fetch-depth: 0 # the golden fixtures and self-score exercise git history
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 22
+      - name: rule-set integrity (--self-check)
+        run: node check.mjs --self-check
+      - name: golden corpus (structured-verdict pins)
+        run: node test/golden/run.mjs --verify
+      - name: self-score (the standard checks itself)
+        run: node check.mjs --repo . --no-exec

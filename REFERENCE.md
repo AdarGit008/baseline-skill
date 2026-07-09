@@ -51,7 +51,7 @@ v1 covered those three layers well. v2 adds the layers a *shipping* repo lives o
 
 ## Architecture & data flow
 
-These diagrams mirror `check.mjs` — they're the runner's actual control flow, not a sketch. The whole thing is one zero-dependency Node file: it indexes the repo, resolves config, then walks every rule through the same gate → evaluate → tag pipeline.
+These diagrams mirror the runner — they're its actual control flow, not a sketch. The whole thing is zero-dependency Node (`check.mjs` as the thin CLI over `src/`: repo index · config · evaluators · engine · report): it indexes the repo, resolves config, then walks every rule through the same gate → evaluate → tag pipeline.
 
 **The components.** Three inputs (your config, the rule set, the target repo) feed one engine; a human [sign-off ledger](GLOSSARY.md#sign-off-ledger) covers the judgments a script can't make.
 

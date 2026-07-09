@@ -56,6 +56,15 @@ Needs only Node ≥ 18 and git.
 See **[REFERENCE.md](REFERENCE.md)** for the full rule table, category
 descriptions, architecture/flow diagrams, and the CI wiring snippet.
 
+## V2 — Lens & Ledger (in progress)
+
+A full redesign around **derived state** is planned and underway — the checker computes
+status/lanes/orientation from ground truth (tree · git history · forge) instead of checking
+stored proxies. Plan of record: **[docs/v2/PLAN.md](docs/v2/PLAN.md)**; the verified concept
+register behind it: **[docs/v2/CONCEPTS.md](docs/v2/CONCEPTS.md)**. Work is tracked in the
+[V2.0 milestone](https://github.com/AdarGit008/baseline-skill/milestone/1) (modules M1–M7,
+expand/contract — removal last).
+
 ## See it pass
 
 [AdarGit008/baseline-demo](https://github.com/AdarGit008/baseline-demo) is a reference

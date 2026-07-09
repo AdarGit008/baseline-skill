@@ -1,0 +1,3 @@
+FROM node:22-slim@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+COPY . .
+CMD ["node","src/index.js"]

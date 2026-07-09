@@ -44,7 +44,9 @@ Needs only Node ≥ 18 and git.
 | file | purpose |
 |---|---|
 | `SKILL.md` | the skill definition (modes: score / init / fix / explain) |
-| `check.mjs` | the zero-dependency runner |
+| `check.mjs` | the zero-dependency runner (thin CLI) |
+| `src/` | the runner's modules: repo index · config · evaluators · engine · report · self-check |
+| `test/` | golden corpus: fixture repos + structured-verdict pins (`test/golden/run.mjs --verify`) — source repo only, not installed |
 | `rules.json` | the 69 rules (id, severity, profile, rationale, fix, source, check) |
 | `config.example.json` | per-repo config (copy to `baseline.config.json`) |
 | `templates/` | scaffolds: CLAIMS.json, start-here.md, signoff.json, adr.md, doc-with-freshness.md |

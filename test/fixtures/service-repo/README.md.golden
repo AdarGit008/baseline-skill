@@ -1,0 +1,10 @@
+# fixture-service
+
+## What this is
+A service fixture.
+
+## Install
+`npm ci`
+
+## Usage
+`npm start`

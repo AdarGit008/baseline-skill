@@ -1,0 +1,7 @@
+# Runbook
+
+## Restart
+`systemctl restart svc`
+
+## Oncall
+page @adar

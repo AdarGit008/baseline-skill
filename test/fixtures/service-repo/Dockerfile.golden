@@ -1,0 +1,3 @@
+FROM node:22-slim@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+COPY . .
+CMD ["node","services/api/server.js"]

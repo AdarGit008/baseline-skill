@@ -1,0 +1,1645 @@
+{
+  "self_check": {
+    "exitCode": 0
+  },
+  "human_scorecard": {
+    "exitCode": 1,
+    "text": [
+      "",
+      "  project-baseline v2.2.0  ·  <REPO>  ·  type=node  ·  profiles=[core,advanced]  ·  HEAD=<sha>",
+      "",
+      "  Build & execution",
+      "    PASS  BUILD-01  Dependency manifest present",
+      "            ↳ package.json",
+      "    PASS  BUILD-02  Lockfile committed",
+      "            ↳ package-lock.json",
+      "    PASS  BUILD-03  CI workflow present",
+      "            ↳ .github/workflows/ci.yml",
+      "    PASS  BUILD-04  Env/secret template present",
+      "            ↳ .env.example",
+      "    PASS  BUILD-05  Task 1 passes on a clean checkout",
+      "            ↳ exit 0: node -e \"process.exit(0)\"",
+      "    PASS  BUILD-06  Baseline gate wired into CI",
+      "            ↳ matched in 1 file(s)",
+      "    WARN  BUILD-07  A single documented bootstrap entrypoint exists",
+      "            ↳ none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml",
+      "    PASS  BUILD-08  Standard task commands are declared machine-readably",
+      "            ↳ package.json: scripts.test set",
+      "    PASS  BUILD-09  Bootstrap is idempotent (safe to re-run)",
+      "            ↳ exit 0 x2: node -e \"process.exit(0)\"",
+      "    PASS  BUILD-10  CI actually invokes the test suite",
+      "            ↳ matched in 1 file(s)",
+      "",
+      "  Code quality",
+      "    PASS  QUAL-01   A linter is configured",
+      "            ↳ eslint.config.js",
+      "    PASS  QUAL-02   A formatter is configured",
+      "            ↳ .prettierrc",
+      "    PASS  QUAL-03   Type-checking is strict where supported",
+      "            ↳ tsconfig.json: compilerOptions.strict=true",
+      "    PASS  QUAL-04   The linter is actually enforced (run in CI or pre-commit)",
+      "            ↳ matched in 1 file(s)",
+      "",
+      "  Tests & invariants",
+      "    PASS  TEST-01   Automated tests exist",
+      "            ↳ test/basic.test.js",
+      "    PASS  TEST-02   Failure paths are tested (negative tests)",
+      "            ↳ matched in 1 file(s)",
+      "    SIGN-OFF  TEST-03   Red-on-arrival guards for 'must-never-exist' invariants",
+      "            ↳ no sign-off recorded",
+      "    SIGN-OFF  TEST-04   Acceptance criteria reconciled against reference code",
+      "            ↳ no sign-off recorded",
+      "    WARN  TEST-05   Mutation testing, if used, is gated",
+      "            ↳ no sign-off recorded",
+      "    SIGN-OFF  TEST-06   Flaky-test quarantine is disciplined",
+      "            ↳ no sign-off recorded",
+      "    WARN  TEST-07   A coverage floor is declared and enforced",
+      "            ↳ pattern not found | jest.coverageThreshold not satisfied in package.json",
+      "",
+      "  Security & supply-chain",
+      "    PASS  SEC-01    No high-signal secrets committed",
+      "            ↳ pattern not found (good)",
+      "    PASS  SEC-02    Real .env files are git-ignored, not committed",
+      "            ↳ none present (good)",
+      "    PASS  SEC-03    Third-party CI actions pinned to a commit SHA",
+      "            ↳ pattern not found (good)",
+      "    PASS  SEC-04    No dangerous CI workflow patterns",
+      "            ↳ pattern not found (good)",
+      "    PASS  SEC-05    Automated dependency-update tool configured",
+      "            ↳ .github/dependabot.yml",
+      "    PASS  SEC-06    Security policy names a reporting channel",
+      "            ↳ SECURITY.md ok",
+      "    PASS  SEC-07    No committed binary/executable artifacts",
+      "            ↳ none present (good)",
+      "    WARN  SEC-08    A committed SBOM exists in a recognized format",
+      "            ↳ none of: **/*.cdx.json, **/bom.json, **/cyclonedx.json, **/*.spdx.json, **/sbom.json",
+      "    WARN  SEC-09    Static code-scanning is configured",
+      "            ↳ pattern not found",
+      "    WARN  SEC-10    Release provenance/signing is present",
+      "            ↳ pattern not found | none of: **/*.intoto.jsonl, **/*.sigstore, **/*.sig",
+      "    PASS  SEC-11    CI grants a least-privilege GITHUB_TOKEN",
+      "            ↳ 1 workflow(s) least-privilege",
+      "    PASS  SEC-12    A secret-scanning gate is wired in",
+      "            ↳ matched in 1 file(s)",
+      "    WARN  SEC-13    A dependency vulnerability scan runs in CI",
+      "            ↳ pattern not found",
+      "    PASS  SEC-14    Pre-commit hooks pinned to an immutable rev",
+      "            ↳ pattern not found (good)",
+      "",
+      "  Reproducibility",
+      "    PASS  REPRO-01  CI installs dependencies in frozen/locked mode",
+      "            ↳ matched in 1 file(s)",
+      "    PASS  REPRO-02  Runtime version is pinned",
+      "            ↳ .nvmrc",
+      "    PASS  REPRO-03  Pinned runtime version is consistent everywhere",
+      "            ↳ pins consistent across 1 language(s)",
+      "    PASS  REPRO-04  Dockerfile base images pinned by digest",
+      "            ↳ 1 Dockerfile(s) digest-pinned",
+      "",
+      "  Operability (service)",
+      "    SKIP  OPS-01    Structured logging is wired in",
+      "            ↳ n/a for node",
+      "    SKIP  OPS-02    A health/readiness endpoint exists",
+      "            ↳ n/a for node",
+      "    SKIP  OPS-03    Graceful shutdown on SIGTERM",
+      "            ↳ n/a for node",
+      "    SKIP  OPS-04    Outbound calls are time-bounded/guarded",
+      "            ↳ n/a for node",
+      "    SKIP  OPS-05    An operational runbook exists",
+      "            ↳ n/a for node",
+      "    SKIP  OPS-06    A service descriptor declares owner + lifecycle",
+      "            ↳ n/a for node",
+      "",
+      "  Change governance",
+      "    SKIP  GOV-01    Merge protection is declared in-repo",
+      "            ↳ no matching file (skipped)",
+      "    SKIP  GOV-02    Strict/up-to-date merges and conversation resolution enabled",
+      "            ↳ no files to scan",
+      "    PASS  GOV-03    CODEOWNERS exists and names an owner",
+      "            ↳ CODEOWNERS ok",
+      "",
+      "  Community & onboarding",
+      "    PASS  COMM-01   LICENSE file present",
+      "            ↳ LICENSE",
+      "    WARN  COMM-02   README exists with newcomer-critical sections",
+      "            ↳ README.md too short (<400 chars)",
+      "    PASS  COMM-03   CHANGELOG present with an Unreleased section",
+      "            ↳ CHANGELOG.md ok",
+      "",
+      "  Context management",
+      "    FAIL  CTX-01    Status lives in one owner with a fresh 'last-verified' stamp",
+      "            ↳ no 'last-verified:' stamp in README.md",
+      "    SKIP  CTX-02    Every decision record carries a Status; superseded ones link forward",
+      "            ↳ no numbered ADR files found",
+      "    WARN  CTX-03    Sources of truth are declared",
+      "            ↳ config.sources_of_truth empty",
+      "    SIGN-OFF  CTX-04    No frozen/consolidated doc without regeneration or supersede banners",
+      "            ↳ no sign-off recorded",
+      "    PASS  CTX-05    No broken internal doc links",
+      "            ↳ 3 doc(s), links resolve",
+      "    SKIP  CTX-06    Long-lived docs carry a freshness contract",
+      "            ↳ config.freshness_globs empty (opt-in)",
+      "    SKIP  CTX-07    Superseded ADRs link forward to a file that exists",
+      "            ↳ no numbered ADR files found",
+      "    SKIP  CTX-08    Generated files carry a 'DO NOT EDIT' provenance marker",
+      "            ↳ no files to scan",
+      "    SKIP  CTX-09    Required grounding docs exist and are non-empty",
+      "            ↳ config.grounding_docs empty (opt-in)",
+      "    SKIP  CTX-10    Code symbols/paths named in docs still resolve",
+      "            ↳ no path-like symbols found",
+      "    SKIP  CTX-11    Docs don't lag the code they anchor",
+      "            ↳ no docs declare a frontmatter sources: list (opt-in)",
+      "",
+      "  Claims discipline",
+      "    SKIP  CLAIM-00  A claims register exists",
+      "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
+      "    SKIP  CLAIM-01  Every claim tagged with a build-state",
+      "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
+      "    SKIP  CLAIM-02  Every claim graded by blast radius",
+      "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
+      "    SKIP  CLAIM-03  Novelty/competitive claims have a dated prior-art pass",
+      "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
+      "    SKIP  CLAIM-04  Citations resolve and support the claim",
+      "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
+      "    SKIP  CLAIM-05  Wedge and moat are stated and pressure-tested",
+      "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
+      "    SKIP  CLAIM-06  Specs of record carry explicit acceptance criteria",
+      "            ↳ n/a (no applicable target)",
+      "",
+      "  Summary  33 pass · 1 fail · 9 warn · 4 sign-off · 22 n/a",
+      "  Readiness: 70%  (33/47 applicable)",
+      "",
+      "  ✗ 1 blocker(s) — not build-ready.",
+      "",
+      ""
+    ]
+  },
+  "claims-repo": {
+    "exitCode": 1,
+    "project_type": "docs",
+    "profiles": [
+      "core"
+    ],
+    "summary": {
+      "blockers": 4,
+      "pass": 8,
+      "warn": 7,
+      "signoff": 1,
+      "skip": 49,
+      "total": 69
+    },
+    "rules": {
+      "BUILD-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-07": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-08": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-09": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "CTX-01": {
+        "tag": "FAIL",
+        "detail": "no 'last-verified:' stamp in README.md"
+      },
+      "CTX-02": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-03": {
+        "tag": "WARN",
+        "detail": "config.sources_of_truth empty"
+      },
+      "CTX-04": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "CTX-05": {
+        "tag": "PASS",
+        "detail": "2 doc(s), links resolve"
+      },
+      "CTX-06": {
+        "tag": "SKIP",
+        "detail": "config.freshness_globs empty (opt-in)"
+      },
+      "CTX-07": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-08": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "CTX-09": {
+        "tag": "SKIP",
+        "detail": "config.grounding_docs empty (opt-in)"
+      },
+      "CTX-10": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "CLAIM-00": {
+        "tag": "PASS",
+        "detail": "docs/CLAIMS.json"
+      },
+      "CLAIM-01": {
+        "tag": "FAIL",
+        "detail": "CLM-A: build_state='planned' not in {shipped-tested|designed-unshipped|assumed-unmeasured}; CLM-B: build_state='not-a-real-state' not in {shipped-tested|designed-unshipped|assumed-unmeasured}; CLM-C: build_state='shipped' not in {shipped-tested|designed-unshipped|assumed-unmeasured}"
+      },
+      "CLAIM-02": {
+        "tag": "FAIL",
+        "detail": "CLM-A: blast_radius='company' not in {existential|recoverable}; CLM-B: no blast_radius; CLM-C: blast_radius='module' not in {existential|recoverable}"
+      },
+      "CLAIM-03": {
+        "tag": "FAIL",
+        "detail": "CLM-A: missing how_we_differ; CLM-B: prior-art stale (<N>d > <N>d); CLM-B: missing how_we_differ"
+      },
+      "CLAIM-04": {
+        "tag": "WARN",
+        "detail": "CLM-B: citation missing url/supports_because"
+      },
+      "CLAIM-05": {
+        "tag": "PASS",
+        "detail": "signed adar 2026-07-01"
+      },
+      "CLAIM-06": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
+      "SEC-01": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-02": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-03": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "SEC-04": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "SEC-05": {
+        "tag": "WARN",
+        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
+      },
+      "SEC-06": {
+        "tag": "WARN",
+        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
+      },
+      "SEC-07": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-08": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-09": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "GOV-01": {
+        "tag": "SKIP",
+        "detail": "no matching file (skipped)"
+      },
+      "GOV-02": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "GOV-03": {
+        "tag": "WARN",
+        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
+      },
+      "COMM-01": {
+        "tag": "PASS",
+        "detail": "LICENSE"
+      },
+      "COMM-02": {
+        "tag": "WARN",
+        "detail": "README.md too short (<400 chars)"
+      },
+      "COMM-03": {
+        "tag": "WARN",
+        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
+      },
+      "QUAL-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-07": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "QUAL-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-11": {
+        "tag": "SKIP",
+        "detail": "no workflow files"
+      },
+      "SEC-12": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      }
+    }
+  },
+  "docs-repo": {
+    "exitCode": 1,
+    "project_type": "docs",
+    "profiles": [
+      "advanced",
+      "core"
+    ],
+    "summary": {
+      "blockers": 2,
+      "pass": 9,
+      "warn": 9,
+      "signoff": 0,
+      "skip": 49,
+      "total": 69
+    },
+    "rules": {
+      "BUILD-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-07": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-08": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-09": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "CTX-01": {
+        "tag": "PASS",
+        "detail": "stamped <sha> (1 behind HEAD, within 3)"
+      },
+      "CTX-02": {
+        "tag": "FAIL",
+        "detail": "0004-dangling.md: superseded w/o forward link"
+      },
+      "CTX-03": {
+        "tag": "PASS",
+        "detail": "declared"
+      },
+      "CTX-04": {
+        "tag": "PASS",
+        "detail": "signed adar 2026-07-01"
+      },
+      "CTX-05": {
+        "tag": "FAIL",
+        "detail": "1 broken: docs/broken.md→nope/missing.md"
+      },
+      "CTX-06": {
+        "tag": "WARN",
+        "detail": "stale.md: <N>d old (>180)"
+      },
+      "CTX-07": {
+        "tag": "PASS",
+        "detail": "forward-links resolve"
+      },
+      "CTX-08": {
+        "tag": "WARN",
+        "detail": "1 file(s) missing marker: docs/gen/rogue.md"
+      },
+      "CTX-09": {
+        "tag": "WARN",
+        "detail": "docs/missing-doc.md missing"
+      },
+      "CTX-10": {
+        "tag": "WARN",
+        "detail": "1 missing: docs/stale.md: src/gone.js"
+      },
+      "CLAIM-00": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-01": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-02": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-03": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-04": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-05": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-06": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-01": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-02": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-03": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "SEC-04": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "SEC-05": {
+        "tag": "WARN",
+        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
+      },
+      "SEC-06": {
+        "tag": "WARN",
+        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
+      },
+      "SEC-07": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-08": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-09": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "GOV-01": {
+        "tag": "SKIP",
+        "detail": "no matching file (skipped)"
+      },
+      "GOV-02": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "GOV-03": {
+        "tag": "WARN",
+        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
+      },
+      "COMM-01": {
+        "tag": "PASS",
+        "detail": "LICENSE"
+      },
+      "COMM-02": {
+        "tag": "WARN",
+        "detail": "README.md too short (<400 chars)"
+      },
+      "COMM-03": {
+        "tag": "WARN",
+        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
+      },
+      "QUAL-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-07": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "CTX-11": {
+        "tag": "PASS",
+        "detail": "1 anchored doc(s) not lagging"
+      },
+      "QUAL-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-11": {
+        "tag": "SKIP",
+        "detail": "no workflow files"
+      },
+      "SEC-12": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      }
+    }
+  },
+  "node-fail": {
+    "exitCode": 1,
+    "project_type": "node",
+    "profiles": [
+      "core"
+    ],
+    "summary": {
+      "blockers": 7,
+      "pass": 5,
+      "warn": 20,
+      "signoff": 3,
+      "skip": 34,
+      "total": 69
+    },
+    "rules": {
+      "BUILD-01": {
+        "tag": "PASS",
+        "detail": "package.json"
+      },
+      "BUILD-02": {
+        "tag": "WARN",
+        "detail": "none of: pnpm-lock.yaml, package-lock.json, yarn.lock, poetry.lock, uv.lock"
+      },
+      "BUILD-03": {
+        "tag": "PASS",
+        "detail": ".github/workflows/deploy.yml, .github/workflows/loose.yml"
+      },
+      "BUILD-04": {
+        "tag": "WARN",
+        "detail": "none of: .env.example, .env.sample, .env.template, env.example"
+      },
+      "BUILD-05": {
+        "tag": "FAIL",
+        "detail": "failed: node -e \"process.exit(1)\" — Command failed: node -e \"process.exit(1)\""
+      },
+      "BUILD-06": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
+      "BUILD-07": {
+        "tag": "WARN",
+        "detail": "none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml"
+      },
+      "BUILD-08": {
+        "tag": "WARN",
+        "detail": "scripts.test not satisfied in package.json"
+      },
+      "BUILD-09": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "TEST-01": {
+        "tag": "FAIL",
+        "detail": "none of: **/*.test.*, **/*.spec.*, **/*_test.py, **/*_test.go, **/*Test.java"
+      },
+      "TEST-02": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "TEST-03": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "TEST-04": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "TEST-05": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "TEST-06": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "CTX-01": {
+        "tag": "FAIL",
+        "detail": "status file missing: docs/start-here.md"
+      },
+      "CTX-02": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-03": {
+        "tag": "WARN",
+        "detail": "config.sources_of_truth empty"
+      },
+      "CTX-04": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "CTX-05": {
+        "tag": "FAIL",
+        "detail": "1 broken: notes.md→docs/nope.md"
+      },
+      "CTX-06": {
+        "tag": "SKIP",
+        "detail": "config.freshness_globs empty (opt-in)"
+      },
+      "CTX-07": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-08": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "CTX-09": {
+        "tag": "SKIP",
+        "detail": "config.grounding_docs empty (opt-in)"
+      },
+      "CTX-10": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "CLAIM-00": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-01": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-02": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-03": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-04": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-05": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-06": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-01": {
+        "tag": "FAIL",
+        "detail": "matched in 2 file(s): .env, config.js"
+      },
+      "SEC-02": {
+        "tag": "FAIL",
+        "detail": "found: .env"
+      },
+      "SEC-03": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-04": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-05": {
+        "tag": "WARN",
+        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc | pattern not found"
+      },
+      "SEC-06": {
+        "tag": "WARN",
+        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
+      },
+      "SEC-07": {
+        "tag": "WARN",
+        "detail": "found: tool.exe"
+      },
+      "SEC-08": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "SEC-09": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "SEC-10": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "GOV-01": {
+        "tag": "SKIP",
+        "detail": "no matching file (skipped)"
+      },
+      "GOV-02": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "GOV-03": {
+        "tag": "WARN",
+        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
+      },
+      "COMM-01": {
+        "tag": "FAIL",
+        "detail": "none of: LICENSE, LICENSE.*, LICENCE, LICENCE.*, COPYING"
+      },
+      "COMM-02": {
+        "tag": "WARN",
+        "detail": "file absent: README.md, README.rst, readme.md"
+      },
+      "COMM-03": {
+        "tag": "WARN",
+        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
+      },
+      "QUAL-01": {
+        "tag": "WARN",
+        "detail": "none of: eslint.config.js, eslint.config.mjs, eslint.config.cjs, .eslintrc, .eslintrc.* | pattern not found"
+      },
+      "QUAL-02": {
+        "tag": "WARN",
+        "detail": "none of: .prettierrc, .prettierrc.*, prettier.config.*, rustfmt.toml, .rustfmt.toml | pattern not found"
+      },
+      "QUAL-03": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "REPRO-01": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
+      "REPRO-02": {
+        "tag": "PASS",
+        "detail": ".nvmrc"
+      },
+      "REPRO-03": {
+        "tag": "WARN",
+        "detail": "DRIFT node: .nvmrc=18, Dockerfile=20"
+      },
+      "REPRO-04": {
+        "tag": "WARN",
+        "detail": "Dockerfile: FROM node:20"
+      },
+      "OPS-01": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "OPS-02": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "OPS-03": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "OPS-04": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "OPS-05": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "OPS-06": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "BUILD-10": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
+      "TEST-07": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "QUAL-04": {
+        "tag": "SKIP",
+        "detail": "n/a (a linter config not present)"
+      },
+      "SEC-11": {
+        "tag": "WARN",
+        "detail": "deploy.yml: top-level grants a write scope (top-level should be read); loose.yml: a job grants permissions: write-all"
+      },
+      "SEC-12": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      }
+    }
+  },
+  "node-pass": {
+    "exitCode": 1,
+    "project_type": "node",
+    "profiles": [
+      "advanced",
+      "core"
+    ],
+    "summary": {
+      "blockers": 1,
+      "pass": 33,
+      "warn": 9,
+      "signoff": 4,
+      "skip": 22,
+      "total": 69
+    },
+    "rules": {
+      "BUILD-01": {
+        "tag": "PASS",
+        "detail": "package.json"
+      },
+      "BUILD-02": {
+        "tag": "PASS",
+        "detail": "package-lock.json"
+      },
+      "BUILD-03": {
+        "tag": "PASS",
+        "detail": ".github/workflows/ci.yml"
+      },
+      "BUILD-04": {
+        "tag": "PASS",
+        "detail": ".env.example"
+      },
+      "BUILD-05": {
+        "tag": "PASS",
+        "detail": "exit 0: node -e \"process.exit(0)\""
+      },
+      "BUILD-06": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
+      "BUILD-07": {
+        "tag": "WARN",
+        "detail": "none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml"
+      },
+      "BUILD-08": {
+        "tag": "PASS",
+        "detail": "package.json: scripts.test set"
+      },
+      "BUILD-09": {
+        "tag": "PASS",
+        "detail": "exit 0 x2: node -e \"process.exit(0)\""
+      },
+      "TEST-01": {
+        "tag": "PASS",
+        "detail": "test/basic.test.js"
+      },
+      "TEST-02": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
+      "TEST-03": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "TEST-04": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "TEST-05": {
+        "tag": "WARN",
+        "detail": "no sign-off recorded"
+      },
+      "TEST-06": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "CTX-01": {
+        "tag": "FAIL",
+        "detail": "no 'last-verified:' stamp in README.md"
+      },
+      "CTX-02": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-03": {
+        "tag": "WARN",
+        "detail": "config.sources_of_truth empty"
+      },
+      "CTX-04": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "CTX-05": {
+        "tag": "PASS",
+        "detail": "3 doc(s), links resolve"
+      },
+      "CTX-06": {
+        "tag": "SKIP",
+        "detail": "config.freshness_globs empty (opt-in)"
+      },
+      "CTX-07": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-08": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "CTX-09": {
+        "tag": "SKIP",
+        "detail": "config.grounding_docs empty (opt-in)"
+      },
+      "CTX-10": {
+        "tag": "SKIP",
+        "detail": "no path-like symbols found"
+      },
+      "CLAIM-00": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-01": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-02": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-03": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-04": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-05": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-06": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-01": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-02": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-03": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-04": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-05": {
+        "tag": "PASS",
+        "detail": ".github/dependabot.yml"
+      },
+      "SEC-06": {
+        "tag": "PASS",
+        "detail": "SECURITY.md ok"
+      },
+      "SEC-07": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-08": {
+        "tag": "WARN",
+        "detail": "none of: **/*.cdx.json, **/bom.json, **/cyclonedx.json, **/*.spdx.json, **/sbom.json"
+      },
+      "SEC-09": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
+      "SEC-10": {
+        "tag": "WARN",
+        "detail": "pattern not found | none of: **/*.intoto.jsonl, **/*.sigstore, **/*.sig"
+      },
+      "GOV-01": {
+        "tag": "SKIP",
+        "detail": "no matching file (skipped)"
+      },
+      "GOV-02": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "GOV-03": {
+        "tag": "PASS",
+        "detail": "CODEOWNERS ok"
+      },
+      "COMM-01": {
+        "tag": "PASS",
+        "detail": "LICENSE"
+      },
+      "COMM-02": {
+        "tag": "WARN",
+        "detail": "README.md too short (<400 chars)"
+      },
+      "COMM-03": {
+        "tag": "PASS",
+        "detail": "CHANGELOG.md ok"
+      },
+      "QUAL-01": {
+        "tag": "PASS",
+        "detail": "eslint.config.js"
+      },
+      "QUAL-02": {
+        "tag": "PASS",
+        "detail": ".prettierrc"
+      },
+      "QUAL-03": {
+        "tag": "PASS",
+        "detail": "tsconfig.json: compilerOptions.strict=true"
+      },
+      "REPRO-01": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
+      "REPRO-02": {
+        "tag": "PASS",
+        "detail": ".nvmrc"
+      },
+      "REPRO-03": {
+        "tag": "PASS",
+        "detail": "pins consistent across 1 language(s)"
+      },
+      "REPRO-04": {
+        "tag": "PASS",
+        "detail": "1 Dockerfile(s) digest-pinned"
+      },
+      "OPS-01": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "OPS-02": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "OPS-03": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "OPS-04": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "OPS-05": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "OPS-06": {
+        "tag": "SKIP",
+        "detail": "n/a for node"
+      },
+      "BUILD-10": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
+      "TEST-07": {
+        "tag": "WARN",
+        "detail": "pattern not found | jest.coverageThreshold not satisfied in package.json"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "QUAL-04": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
+      "SEC-11": {
+        "tag": "PASS",
+        "detail": "1 workflow(s) least-privilege"
+      },
+      "SEC-12": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
+      "SEC-13": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
+      "SEC-14": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      }
+    }
+  },
+  "service-repo": {
+    "exitCode": 1,
+    "project_type": "service",
+    "profiles": [
+      "core",
+      "service"
+    ],
+    "summary": {
+      "blockers": 2,
+      "pass": 16,
+      "warn": 13,
+      "signoff": 3,
+      "skip": 35,
+      "total": 69
+    },
+    "rules": {
+      "BUILD-01": {
+        "tag": "PASS",
+        "detail": "package.json"
+      },
+      "BUILD-02": {
+        "tag": "PASS",
+        "detail": "package-lock.json"
+      },
+      "BUILD-03": {
+        "tag": "FAIL",
+        "detail": "none of: .github/workflows/*.yml, .github/workflows/*.yaml, .gitlab-ci.yml, .circleci/config.yml, azure-pipelines.yml"
+      },
+      "BUILD-04": {
+        "tag": "PASS",
+        "detail": ".env.example"
+      },
+      "BUILD-05": {
+        "tag": "PASS",
+        "detail": "exit 0: node -e \"process.exit(0)\""
+      },
+      "BUILD-06": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "BUILD-07": {
+        "tag": "WARN",
+        "detail": "none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml"
+      },
+      "BUILD-08": {
+        "tag": "PASS",
+        "detail": "package.json: scripts.test set"
+      },
+      "BUILD-09": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "TEST-01": {
+        "tag": "PASS",
+        "detail": "test/smoke.test.js"
+      },
+      "TEST-02": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
+      "TEST-03": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "TEST-04": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "TEST-05": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "TEST-06": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "CTX-01": {
+        "tag": "FAIL",
+        "detail": "no 'last-verified:' stamp in README.md"
+      },
+      "CTX-02": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-03": {
+        "tag": "WARN",
+        "detail": "config.sources_of_truth empty"
+      },
+      "CTX-04": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "CTX-05": {
+        "tag": "PASS",
+        "detail": "2 doc(s), links resolve"
+      },
+      "CTX-06": {
+        "tag": "SKIP",
+        "detail": "config.freshness_globs empty (opt-in)"
+      },
+      "CTX-07": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-08": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "CTX-09": {
+        "tag": "SKIP",
+        "detail": "config.grounding_docs empty (opt-in)"
+      },
+      "CTX-10": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "CLAIM-00": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-01": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-02": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-03": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-04": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-05": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-06": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-01": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-02": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-03": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "SEC-04": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "SEC-05": {
+        "tag": "WARN",
+        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
+      },
+      "SEC-06": {
+        "tag": "WARN",
+        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
+      },
+      "SEC-07": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-08": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "SEC-09": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "SEC-10": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "GOV-01": {
+        "tag": "SKIP",
+        "detail": "no matching file (skipped)"
+      },
+      "GOV-02": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "GOV-03": {
+        "tag": "WARN",
+        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
+      },
+      "COMM-01": {
+        "tag": "PASS",
+        "detail": "LICENSE"
+      },
+      "COMM-02": {
+        "tag": "WARN",
+        "detail": "README.md too short (<400 chars)"
+      },
+      "COMM-03": {
+        "tag": "WARN",
+        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
+      },
+      "QUAL-01": {
+        "tag": "WARN",
+        "detail": "none of: eslint.config.js, eslint.config.mjs, eslint.config.cjs, .eslintrc, .eslintrc.* | pattern not found"
+      },
+      "QUAL-02": {
+        "tag": "WARN",
+        "detail": "none of: .prettierrc, .prettierrc.*, prettier.config.*, rustfmt.toml, .rustfmt.toml | pattern not found"
+      },
+      "QUAL-03": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "REPRO-01": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "REPRO-02": {
+        "tag": "WARN",
+        "detail": "none of: .tool-versions, .nvmrc, .node-version, .python-version, mise.toml | engines.node not satisfied in package.json"
+      },
+      "REPRO-03": {
+        "tag": "SKIP",
+        "detail": "runtime pinned in <2 homes (nothing to cross-check)"
+      },
+      "REPRO-04": {
+        "tag": "PASS",
+        "detail": "1 Dockerfile(s) digest-pinned"
+      },
+      "OPS-01": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
+      "OPS-02": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
+      "OPS-03": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
+      "OPS-04": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
+      "OPS-05": {
+        "tag": "WARN",
+        "detail": "file absent: runbooks/**/*.md, docs/runbooks/**/*.md, RUNBOOK.md"
+      },
+      "OPS-06": {
+        "tag": "PASS",
+        "detail": "catalog-info.yaml ok"
+      },
+      "BUILD-10": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "TEST-07": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "QUAL-04": {
+        "tag": "SKIP",
+        "detail": "n/a (a linter config not present)"
+      },
+      "SEC-11": {
+        "tag": "SKIP",
+        "detail": "no workflow files"
+      },
+      "SEC-12": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      }
+    }
+  }
+}

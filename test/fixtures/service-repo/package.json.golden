@@ -1,0 +1,12 @@
+{
+  "name": "fixture-service",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "start": "node services/api/server.js"
+  },
+  "dependencies": {
+    "pino": "^9.0.0"
+  }
+}

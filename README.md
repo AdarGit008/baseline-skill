@@ -39,26 +39,28 @@ valid for Claude Code, so the one repo is native to both.
 ## Run it directly (no agent)
 
 ```bash
-node check.mjs --repo /path/to/repo             # human-readable scorecard, exit 1 on blockers
-node check.mjs --repo /path/to/repo --json      # machine output for CI
-node check.mjs --repo /path/to/repo --profile advanced
+node baseline.mjs --repo /path/to/repo          # score (the default command) — exit 1 on blockers
+node baseline.mjs --repo /path/to/repo --json   # machine output for CI
+node baseline.mjs orient --repo /path/to/repo   # derived-state survey: lanes · backlog · divergence
 ```
 
-Needs only Node ≥ 18 and git.
+`baseline.mjs` is the entry point — `check` is the default (it delegates to `check.mjs`, still the checker), and `orient` surveys session state. Needs only Node ≥ 18 and git; `orient`'s forge view also uses `gh` and degrades gracefully without it.
 
 ## What's inside
 
 | file | purpose |
 |---|---|
-| `SKILL.md` | the skill definition (modes: score / init / fix / explain) |
-| `check.mjs` | the zero-dependency runner (thin CLI) |
-| `src/` | the runner's modules: repo index · config · evaluators · engine · report · self-check |
-| `test/` | golden corpus: fixture repos + structured-verdict pins (`test/golden/run.mjs --verify`) — source repo only, not installed |
+| `SKILL.md` | the skill definition (modes: orient / score / init / fix / explain) |
+| `baseline.mjs` | the CLI entry point — `orient`, `check`, `help` |
+| `check.mjs` | the checker (`baseline check` delegates here) |
+| `src/` | the runner's modules: repo · config · evaluators · engine · report · self-check · descriptor · probe · orient |
+| `test/` | golden corpus + orient availability tests (`test/golden/run.mjs --verify`, `test/orient/run.mjs`) — source repo only, not installed |
 | `rules.json` | the 70 rules (id, severity, profile, rationale, fix, source, check) |
 | `schema/repo.schema.json` | the descriptor schema for `baseline.repo.json` (repo identity & posture) |
 | `config.example.json` | per-repo config (copy to `baseline.config.json`) |
 | `templates/` | scaffolds: baseline.repo.json, CLAIMS.json, start-here.md, signoff.json, adr.md, doc-with-freshness.md |
 | `config-presets/` | ready-made `baseline.config.json` + `*.repo.json` posture presets (multi-lane-agents, readiness-only, node-service, …) |
+| `hooks/` | Claude Code SessionStart hook that runs `baseline orient` |
 | `README.md` | this guide — install, usage, file map |
 | `REFERENCE.md` | full reference: rule table, categories, architecture diagrams, CI wiring |
 | `GLOSSARY.md` | plain-language definitions of the DevOps/supply-chain terms |

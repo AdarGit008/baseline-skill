@@ -35,13 +35,29 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 - Hermes: `~/.hermes/skills/software-development/baseline`
 - Claude Code: `~/.claude/skills/baseline`
 
-`check.mjs` loads `rules.json` and its `src/` modules from its own directory, so always invoke the runner **by its absolute path** (`node "<abs>/check.mjs" …`); don't copy `check.mjs` away from `rules.json` + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
+The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load `rules.json` + `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from `rules.json` + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
-Co-located files: `check.mjs` (runner), `rules.json` (the 70 rules), `schema/repo.schema.json` (the descriptor schema), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `REFERENCE.md` (full reference: rule table, categories, architecture diagrams, CI wiring), `GLOSSARY.md` (plain-language term definitions).
+Co-located files: `baseline.mjs` (CLI entry: orient / check), `check.mjs` (the checker), `rules.json` (the 70 rules), `schema/repo.schema.json` (the descriptor schema), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
+
+## Orientation — the first act
+
+Before working in a repo that runs multiple agent lanes (or at session start), **run `baseline orient` first** — a derived-state survey, so you never reconstruct state from a hand-maintained status doc (C16):
+
+```bash
+node "$SKILL_DIR/baseline.mjs" orient --repo <target>
+```
+
+- **Capability header** — which planes are reachable (tree / history / forge). Every unreachable plane degrades to a note, so orient works offline and never blocks.
+- **Divergence first**, then **live lanes** (open PRs + each branch's latest session `next:`), **backlog** (open issues by milestone), and **this lane** (current branch + its `next:`).
+- It's an *agent helper, never a gate*: read-only, `gh`-based, exits 0 even degraded — `--strict` turns forge-unreachability into exit 1; `--json` for machine use.
+- **Install it as infrastructure:** wire `hooks/orient-session-start.sh` into Claude Code's `SessionStart` hook (see `hooks/README.md`) so orientation happens without being remembered. The Hermes plugin is a later slice; until then this directive is the tool-agnostic fallback (C28).
 
 ## Modes
 
 Figure out intent from the user's words; default to **score**.
+
+### orient — session start · "where am I" · "what should I do next"
+Run the survey (see **Orientation — the first act** above): `node "$SKILL_DIR/baseline.mjs" orient --repo <target>`. Read divergence → lanes → backlog → this lane's `next:`, then act. This is the first act in a lane repo, not a scored gate.
 
 ### score (default)
 1. Pick the target repo: an explicit path, else the current working directory. Confirm it looks like a repo (a manifest or `.git`).

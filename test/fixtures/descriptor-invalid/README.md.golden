@@ -1,0 +1,4 @@
+# descriptor-invalid fixture
+
+The `baseline.repo.json` here is schema-invalid (`maturity: beta`). DESC-01 warns with the
+schema error, and the invalid descriptor's declared `type` is ignored — auto-detection governs.

@@ -1,0 +1,4 @@
+# descriptor-repo fixture
+
+Carries a `package.json` for tooling, but `baseline.repo.json` declares `type: docs`,
+so the declared type supersedes filesystem auto-detection (which would otherwise say `node`).

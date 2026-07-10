@@ -27,7 +27,7 @@ mkdir -p "$DEST"
 for f in SKILL.md baseline.mjs check.mjs rules.json config.example.json README.md REFERENCE.md GLOSSARY.md; do
   cp "$SRC/$f" "$DEST/"
 done
-for d in src schema templates config-presets hooks; do
+for d in src schema templates config-presets hooks integrations; do
   rm -rf "$DEST/$d"; cp -r "$SRC/$d" "$DEST/$d"
 done
 

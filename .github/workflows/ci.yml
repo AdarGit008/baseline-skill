@@ -15,5 +15,7 @@ jobs:
         run: node check.mjs --self-check
       - name: golden corpus (structured-verdict pins)
         run: node test/golden/run.mjs --verify
+      - name: orient availability (offline / no-forge degradation)
+        run: node test/orient/run.mjs
       - name: self-score (the standard checks itself)
         run: node check.mjs --repo . --no-exec

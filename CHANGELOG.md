@@ -6,6 +6,25 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M3a: `baseline orient` (the Lens goes live)
+- **`baseline.mjs`** — the unified CLI entry point. `orient` is new; `check` (the default)
+  delegates to the intact `check.mjs`, so the golden corpus and CI keep invoking it directly.
+- **`baseline orient`** — a derived-state survey for session start (C16): a capability header
+  (tree / history / forge reachability), divergence first, live lanes (open PRs + each branch's
+  latest session `next:`), backlog (open issues by milestone), and this lane's `next:`.
+  `gh`-based, descriptor-aware, `--json` / `--strict`. Generalizes the ADR-0009 `orient.mjs`.
+- **Capability probe** (`src/probe.mjs`) — plane reachability; every unreachable plane degrades
+  to a labelled note, so orient works offline and **never hard-refuses** (C33 / FS9); `--strict`
+  turns forge-unreachability into exit 1.
+- **Claude Code SessionStart hook** (`hooks/orient-session-start.sh` + `hooks/README.md`) runs
+  orient as the session's first act; SKILL.md carries the tool-agnostic first-act directive (C28).
+- `test/orient/run.mjs` — availability tests (offline / no-forge degradation), wired into CI.
+
+### Deferred (M3 continues in later slices)
+- Typed facts layer + `.baseline/cache` + `src/join.mjs` + `derive/status.mjs` + forge
+  record/replay fixtures (M3b); the `sources/on_unreachable/contexts/certainty` metadata backfill
+  + CTX-12 (M3c); the Hermes `prefetch`/`system_prompt_block` plugin (M3d).
+
 ### Added — V2 M2: the repo descriptor
 - **`baseline.repo.json`** — the schema-validated repo descriptor (C39): the one stored piece
   of intent every applicability/severity derivation consumes. Declares `type`, `lifecycle`,

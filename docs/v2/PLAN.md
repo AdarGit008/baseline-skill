@@ -14,7 +14,7 @@ V2 splits the product into a **Ledger** (the minimal stored surface: one schema-
 - Judges' pick: **Lens & Ledger** spine (fidelity-weighted tally 175 vs 168/168 for PRISM and STRATA; 2 of 3 first-place votes), grafted with PRISM's facts-cache + inputs-digest and STRATA's golden corpus + capability probe.
 - Posture: **hybrid-graduated** (see §2) — derived-state epistemology is unconditional; the multi-lane workflow contract is graduated by descriptor declaration.
 - CTX-01, `status_file` auto-detection, `templates/start-here.md`, and the `context-management` preset are **retired via expand/contract** — no posture keeps a stored-status path alive.
-- Everything ADR-0009 was silent-but-live about (orient, session-log guard, index generation, deviation ledger) is **generalized from the GTA_6_CAD prototypes**, not invented.
+- Everything ADR-0009 was silent-but-live about (orient, session-log guard, index generation, deviation ledger) is **generalized from the ADR-0009 prototype tooling**, not invented.
 
 ## 1. Vision
 
@@ -30,7 +30,7 @@ The posture judge found the advocates had converged on ~80% of the design and ru
 - **Layer 2 — workflow contract, graduated by declaration:** *undeclared* repos get best-effort derived-state (orientation when forge reachable, advisory-only, DESC-01 warn nudging declaration); *declared single-lane* repos get readiness + records, FLOW off; *declared multi-lane* repos get the full contract — lane namespaces, session records + scrub, anchoring per the C15 knob, admit revalidation — as blockers where deterministic (C07).
 - One engine, one rule set: posture is descriptor data consumed by C21 scoping — never a code fork.
 - The author's daily posture ships as the `multi-lane-agents` preset; `readiness-only` is the V1-equivalent preset (proven by the golden corpus).
-- Escape hatches are C08 judgment records with expected-state + tripwire + expiry (GTA_6_CAD's deviation ledger, promoted to core).
+- Escape hatches are C08 judgment records with expected-state + tripwire + expiry (the ADR-0009 prototype's deviation ledger, promoted to core).
 - **✅ DECIDED (Adar, 2026-07-09):** multi-lane is the **default from V2.0** — `init` writes a multi-lane descriptor unless the user explicitly opts down; any solo dev gets lanes out of the box. The scheduled promotion review dissolves: advocate B's position is adopted at launch. Truly undeclared repos (no descriptor at all) keep advisory-only severity — you can't blocker-storm an arbitrary repo that has no records — but orient and lanes work there best-effort from day one.
 - **Recorded dissent (advocate B):** the undeclared middle state may become where users park forever, making DESC-01 ignorable noise. *Resolved by the decision above — the default is no longer the middle state.*
 
@@ -150,7 +150,7 @@ Re-sequenced (forge plane moved ahead of orient — orient's value is forge-deri
 | 6 | **M6 admit + reconcile + gen** | Fallback-first admit, digest where bindable; read-only reconcile filing issues; in-PR `gen --check` index views | fail-closed admit blocks merges during forge outages — break-glass JDG is the relief valve |
 | 7 | **M7 promote + contract** | Severity promotion (advisory→blocker per posture); **then, after one clean cycle:** delete start-here template, status-stamp kind, `status_file` default, context-management preset; pointer install + lock ships | the classic expand/contract failure is never contracting — this module has a date, not a vibe |
 
-Each module is shippable alone and immediately dogfooded on GTA_6_CAD + baseline-skill itself (the standard checks itself, C19).
+Each module is shippable alone and immediately dogfooded on **baseline-demo** (the public reference repo). baseline-skill is the tool, not a consumer repo: its CI keeps self-check + golden corpus + a minimal-config self-score (C19's own-repo enforcement, deliberately minimal); full self-application is at most a post-M7 showcase with explicit opt-downs.
 
 ## 9. V1 dispositions (every contested area decided)
 
@@ -188,7 +188,7 @@ Session-log compaction contracts (V2 bounds reads: orient consumes latest N per 
 
 ## 12. The null hypothesis, answered
 
-The scope critic's toughest question: *why not keep V1 and just patch CTX-01 + add orient.mjs (what GTA_6_CAD already half-built)?* Answer, accepted into the plan: the null hypothesis genuinely cannot deliver (a) merge-point revalidation (C30/C35 — V1 has no act-time concept), (b) derived leases and collision-free lanes (C31/C13 — no forge plane), (c) divergence detection (C36 — no cross-tier join), (d) the certainty→severity invariant (C07 — V1's severity is hand-assigned), or (e) the end of vendored skew (the pointer install needs the engine/descriptor split). What the null hypothesis *does* deliver — derived status + orientation — ships **first** (M2+M3) precisely so that if V2 stalled there, the highest-value slice would already be live. The migration order *is* the null-hypothesis hedge.
+The scope critic's toughest question: *why not keep V1 and just patch CTX-01 + add orient.mjs (what the ADR-0009 prototype already half-built)?* Answer, accepted into the plan: the null hypothesis genuinely cannot deliver (a) merge-point revalidation (C30/C35 — V1 has no act-time concept), (b) derived leases and collision-free lanes (C31/C13 — no forge plane), (c) divergence detection (C36 — no cross-tier join), (d) the certainty→severity invariant (C07 — V1's severity is hand-assigned), or (e) the end of vendored skew (the pointer install needs the engine/descriptor split). What the null hypothesis *does* deliver — derived status + orientation — ships **first** (M2+M3) precisely so that if V2 stalled there, the highest-value slice would already be live. The migration order *is* the null-hypothesis hedge.
 
 ## 13. Decisions — locked by Adar, 2026-07-09 (were: open questions)
 
@@ -197,7 +197,7 @@ The scope critic's toughest question: *why not keep V1 and just patch CTX-01 + a
 3. **Claude-memory side channel: banned.** Enforceability, honestly:
    - **Structural (guaranteed):** no V2 rule, view, or derivation ever reads agent memory — memory is *inert to derived state by construction*. Asserted in the skill's own self-check (engine property).
    - **Harness-level (strong, per workstation):** Claude Code — a permission deny / `PreToolUse` hook on writes to the project's memory directory; Hermes — the memory-provider plugin layer exposes an `on_memory_write` hook (verified in Hermes_backup: `plugins/agentmemory/plugin.yaml`) where project-scoped writes can be refused.
-   - **Repo/CI-level (not possible):** memory lives outside the repo tree; a repo checker cannot observe it. The ban is therefore: structurally inert + workstation-enforced + policy-stated in CLAUDE.md/CONTRACT.md — not repo-verifiable, and documented as exactly that. GTA_6_CAD's sanctioned-exception clause is retired when V2 lands there.
+   - **Repo/CI-level (not possible):** memory lives outside the repo tree; a repo checker cannot observe it. The ban is therefore: structurally inert + workstation-enforced + policy-stated in CLAUDE.md/CONTRACT.md — not repo-verifiable, and documented as exactly that.
 4. **Hermes: confirmed — orient can be enforced infrastructure.** Evidence from `AdarGit008/Hermes_backup`: Hermes plugins declare lifecycle hooks — `plugins/agentmemory/plugin.yaml` lists `prefetch`, `sync_turn`, `on_session_end`, `on_pre_compress`, `on_memory_write`, `system_prompt_block`; the plugin README describes "pre-LLM context injection … and system prompt block injection." V2 therefore ships a thin **`baseline-orient` Hermes plugin**: `prefetch` runs `baseline orient` when the working repo has a descriptor; `system_prompt_block` injects the result. Orientation becomes enforced on **both** runtimes (Claude Code via SessionStart hook, Hermes via plugin), with the SKILL.md first-act directive as the tool-agnostic fallback (C28). Added to M3 scope.
 
 ## 14. Pushback record — design phase (Workflow 3)
@@ -256,7 +256,7 @@ All four verdicts: *sound-with-fixes*. Disposition legend: **✔ fix** = accepte
 | S2 | major | Byte-identity contradiction | ✔ fix — same as F3 |
 | S3 | major | Lane-claim CAS broken for the actual (same-account) user | ✔ fix — same as FS2 |
 | S4 | major | inputs_digest churns on admission-irrelevant forge noise | ✔ fix — digest scope narrowed |
-| S5 | major | 9-module ceremony sized for a population of ~1 (author's repos) | ◐ partial — compressed to 7; expand/contract kept: ADR-0009 itself flags the gate-touching step ⚠, and live gates on GTA_6_CAD make staged replacement genuinely load-bearing. Further collapse **✋ rejected** |
+| S5 | major | 9-module ceremony sized for a population of ~1 (author's repos) | ◐ partial — compressed to 7; expand/contract kept: ADR-0009 itself flags the gate-touching step ⚠, and staged replacement protects any live consumer of the engine. Further collapse **✋ rejected** |
 | S6 | minor | 12-cell posture-matrix test estate | ✔ fix — 4 canonical posture fixtures |
 | S7 | minor | DESC-02 checks an engine property as a repo rule | ✔ fix — moved to skill self-check |
 | S8 | minor | Continuous maturity weight curves are an unasked-for tuning surface | ✂ cut — discrete tiers gate activation only |
@@ -292,7 +292,7 @@ All four verdicts: *sound-with-fixes*. Disposition legend: **✔ fix** = accepte
 | **C16** | Orient is SKILL.md's mandatory first act with an installable Claude Code SessionStart hook (orientation as infrastructure, not remembered discipline) and a Hermes session-start directive; it is a zero-prompt printed view headlined by the capability report. |
 | **C17** | Every judgment unit is one owned file — ADR-NNNN, JDG-NNNN, CLM-NNNN, per-session logs — with independent lifecycle and single writer; both V1 monoliths are exploded at M4. |
 | **C18** | Sharded rules/*.json on the generic engine; rules carry rationale/fix/source plus sources/on_unreachable/contexts/certainty as introspectable data; explain unchanged in spirit. |
-| **C19** | self-check validates schemas, the certainty and layering invariants, and guard selfTest()s; the skill repo runs its own check+admit+reconcile in CI, gated by the golden corpus and availability/posture fixtures; even its migration retirements are tripwired judgments in its own ledger. |
+| **C19** | self-check validates schemas, the certainty and layering invariants, and guard selfTest()s; the skill repo's CI runs the golden corpus, availability/posture fixtures, and a minimal-config self-score — full check+admit+reconcile dogfooding lives on baseline-demo, not the skill repo; migration retirements are tripwired judgments recorded where the ledger lives. |
 | **C20** | Collectors never crash on the untrusted audited repo — they emit SKIP(reason) facts; the capability probe headlines every degradation on every command; the fail-open budget is printed, and blockers cannot fail open in gating contexts. **⚠ AMENDED:** per-context fail-open/fail-closed contract clarified (FS3) |
 | **C21** | applies_to × profiles × contexts × posture axes all derive from the descriptor; skips never count against score, 'not applicable' is separated from 'could not evaluate', and readiness-only proves adoption with zero workflow noise. |
 | **C22** | GOV-01/02 flip from protection files to live forge behavior; MERGE-03 and workflow-wired verify gates actually run; BUILD-05 executes rather than checks presence; upgrades continue incrementally under golden-corpus cover. |

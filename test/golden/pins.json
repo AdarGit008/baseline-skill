@@ -149,6 +149,8 @@
       "            ↳ no path-like symbols found",
       "    SKIP  CTX-11    Docs don't lag the code they anchor",
       "            ↳ no docs declare a frontmatter sources: list (opt-in)",
+      "    PASS  CTX-12    No hand-maintained status stamp (derive it instead)",
+      "            ↳ pattern not found (good)",
       "",
       "  Claims discipline",
       "    SKIP  CLAIM-00  A claims register exists",
@@ -170,8 +172,8 @@
       "    WARN  DESC-01   Repo descriptor present and valid",
       "            ↳ no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init",
       "",
-      "  Summary  33 pass · 1 fail · 10 warn · 4 sign-off · 22 n/a",
-      "  Readiness: 69%  (33/48 applicable)",
+      "  Summary  34 pass · 1 fail · 10 warn · 4 sign-off · 22 n/a",
+      "  Readiness: 69%  (34/49 applicable)",
       "",
       "  ✗ 1 blocker(s) — not build-ready.",
       "",
@@ -186,11 +188,11 @@
     ],
     "summary": {
       "blockers": 4,
-      "pass": 8,
+      "pass": 9,
       "warn": 8,
       "signoff": 1,
       "skip": 49,
-      "total": 70
+      "total": 71
     },
     "rules": {
       "BUILD-01": {
@@ -472,6 +474,10 @@
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+      },
+      "CTX-12": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       }
     }
   },
@@ -483,11 +489,11 @@
     ],
     "summary": {
       "blockers": 3,
-      "pass": 6,
+      "pass": 7,
       "warn": 15,
       "signoff": 3,
       "skip": 43,
-      "total": 70
+      "total": 71
     },
     "rules": {
       "BUILD-01": {
@@ -769,6 +775,10 @@
       "DESC-01": {
         "tag": "WARN",
         "detail": "baseline.repo.json invalid: maturity must be one of prototype|claimed|released (got \"beta\")"
+      },
+      "CTX-12": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       }
     }
   },
@@ -780,11 +790,11 @@
     ],
     "summary": {
       "blockers": 1,
-      "pass": 6,
+      "pass": 7,
       "warn": 6,
       "signoff": 1,
       "skip": 56,
-      "total": 70
+      "total": 71
     },
     "rules": {
       "BUILD-01": {
@@ -1066,6 +1076,10 @@
       "DESC-01": {
         "tag": "PASS",
         "detail": "type=docs · production/released · workflow=single-lane · anchoring=off"
+      },
+      "CTX-12": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       }
     }
   },
@@ -1079,10 +1093,10 @@
     "summary": {
       "blockers": 2,
       "pass": 9,
-      "warn": 10,
+      "warn": 11,
       "signoff": 0,
       "skip": 49,
-      "total": 70
+      "total": 71
     },
     "rules": {
       "BUILD-01": {
@@ -1364,6 +1378,10 @@
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+      },
+      "CTX-12": {
+        "tag": "WARN",
+        "detail": "matched in 1 file(s): docs/start-here.md"
       }
     }
   },
@@ -1378,8 +1396,8 @@
       "pass": 5,
       "warn": 21,
       "signoff": 3,
-      "skip": 34,
-      "total": 70
+      "skip": 35,
+      "total": 71
     },
     "rules": {
       "BUILD-01": {
@@ -1661,6 +1679,10 @@
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+      },
+      "CTX-12": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
       }
     }
   },
@@ -1673,11 +1695,11 @@
     ],
     "summary": {
       "blockers": 1,
-      "pass": 33,
+      "pass": 34,
       "warn": 10,
       "signoff": 4,
       "skip": 22,
-      "total": 70
+      "total": 71
     },
     "rules": {
       "BUILD-01": {
@@ -1959,6 +1981,10 @@
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+      },
+      "CTX-12": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       }
     }
   },
@@ -1971,11 +1997,11 @@
     ],
     "summary": {
       "blockers": 2,
-      "pass": 16,
+      "pass": 17,
       "warn": 14,
       "signoff": 3,
       "skip": 35,
-      "total": 70
+      "total": 71
     },
     "rules": {
       "BUILD-01": {
@@ -2257,6 +2283,10 @@
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+      },
+      "CTX-12": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       }
     }
   }

@@ -48,10 +48,10 @@ ok(/forge unreachable/.test(r.out), 'git + no-gh: lanes/backlog note forge unrea
 // 3 — --strict with forge down -> exit 1 (refusal is reserved for --strict, FS9)
 ok(orient(['--strict'], g).code === 1, '--strict + forge down: exit 1')
 
-// 4 — --json valid, forge flagged unavailable
+// 4 — --json valid, forge flagged unavailable (derived-status shape: planes / forgeAvailable)
 r = orient(['--json'], bare)
 let j = null; try { j = JSON.parse(r.out) } catch {}
-ok(!!j && j.capability.forge.available === false, '--json: valid; forge.available=false')
+ok(!!j && j.planes.forge.available === false && j.forgeAvailable === false, '--json: valid; forge unavailable')
 
 for (const d of [BIN, bare, g]) fs.rmSync(d, { recursive: true, force: true })
 console.log(fails ? `\n✗ ${fails} orient check(s) failed\n` : '\n✓ orient availability checks pass\n')

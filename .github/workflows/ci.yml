@@ -17,5 +17,7 @@ jobs:
         run: node test/golden/run.mjs --verify
       - name: orient availability (offline / no-forge degradation)
         run: node test/orient/run.mjs
+      - name: facts/join/derive (deterministic over forge replay)
+        run: node test/facts/run.mjs
       - name: self-score (the standard checks itself)
         run: node check.mjs --repo . --no-exec

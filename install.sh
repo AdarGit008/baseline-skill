@@ -24,16 +24,17 @@ if [ "$NODE_MAJOR" -lt 18 ]; then
 fi
 
 mkdir -p "$DEST"
-for f in SKILL.md check.mjs rules.json config.example.json README.md REFERENCE.md GLOSSARY.md; do
+for f in SKILL.md baseline.mjs check.mjs rules.json config.example.json README.md REFERENCE.md GLOSSARY.md; do
   cp "$SRC/$f" "$DEST/"
 done
-for d in src schema templates config-presets; do
+for d in src schema templates config-presets hooks; do
   rm -rf "$DEST/$d"; cp -r "$SRC/$d" "$DEST/$d"
 done
 
-if node --check "$DEST/check.mjs" \
+if node --check "$DEST/baseline.mjs" \
+   && node --check "$DEST/check.mjs" \
    && node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' "$DEST/rules.json" \
-   && node "$DEST/check.mjs" --self-check >/dev/null; then
+   && node "$DEST/baseline.mjs" check --self-check >/dev/null; then
   RULES="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).rules.length)' "$DEST/rules.json")"
   echo "OK Installed the baseline skill to $DEST ($RULES rules)."
   if [ "$AGENT" = "hermes" ]; then

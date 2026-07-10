@@ -6,6 +6,24 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M3b: the typed Lens plumbing
+- **`src/facts/{tree,git,forge}.mjs`** — typed, provenance-carrying facts. The forge adapter wraps
+  `gh` with **record/replay**: `BASELINE_FORGE_REPLAY=<dir>` reads committed fixtures (deterministic,
+  no network) and `BASELINE_FORGE_RECORD=<dir>` captures them, so downstream lane/admit tests replay
+  a fixed forge. (Batched GraphQL is deferred to fleet scale — M5.)
+- **`.baseline/cache/facts.ndjson`** (`src/cache.mjs`) — gitignored, advisory-only (gates never read
+  it, FS8); write-through on live fetch, `observed_at` per entry.
+- **`src/join.mjs`** + **`schema/keys.md`** — the relational join over declared keys only (C38):
+  PR⇄branch and PR⇄issue (`closes #N`) active now; record joins declared but inert until M4/M5. An
+  unresolvable join is a **finding, never a guess**.
+- **`src/derive/status.mjs`** — a pure function (facts + join → the derived status view), replayable;
+  surfaces divergence first (next:→closed issue, closed-issue-live-branch).
+- **`orient` refactored onto `facts → join → derive → render`** — one forge path; it gains the cache
+  + record/replay and the same fixtures. `orient --json` now emits the derived-status shape
+  (`planes` / `forgeAvailable` / `thisLane` / `findings`).
+- `test/facts/run.mjs` — deterministic scenario over committed replay fixtures (clean close,
+  divergence, unresolvable-join finding); wired into CI. (M3c + M3d remain — see `docs/v2/PLAN.md` §8.)
+
 ### Added — V2 M3a: `baseline orient` (the Lens goes live)
 - **`baseline.mjs`** — the unified CLI entry point. `orient` is new; `check` (the default)
   delegates to the intact `check.mjs`, so the golden corpus and CI keep invoking it directly.

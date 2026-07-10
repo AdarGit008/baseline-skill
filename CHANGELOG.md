@@ -6,6 +6,18 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M3d: the Hermes plugin (M3 complete)
+- **`integrations/hermes/baseline-orient/`** — a NousResearch hermes-agent plugin that opens each
+  session oriented: a `register(ctx)` entry point registering an **`on_session_start`** hook and an
+  **`/orient`** slash command, both shelling out to `baseline orient`. No provider keys, no network of
+  its own.
+- Grounded in the official hermes-agent plugin API (`ctx.register_hook` over `VALID_HOOKS`,
+  `ctx.register_command`) — **not** the memory-provider `prefetch`/`system_prompt_block` surface the
+  plan originally sketched (those are `MemoryProvider` methods, not general hooks).
+- Conformance-authored: valid Python + `plugin.yaml`, structured like the official reference plugins,
+  but **not runtime-tested** (no Hermes on the authoring box). The `/orient` command is spec-confirmed;
+  the `on_session_start` injection return-shape needs one verification pass on a live Hermes.
+
 ### Added — V2 M3c: rule metadata backfill + CTX-12 (the Lens's contract)
 - **Every rule now declares `sources` / `on_unreachable` / `contexts` / `certainty`** (introspectable
   data): which ground-truth planes it reads, what it does when one is unreachable, the contexts it

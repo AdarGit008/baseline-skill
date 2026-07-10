@@ -50,7 +50,7 @@ node "$SKILL_DIR/baseline.mjs" orient --repo <target>
 - **Capability header** — which planes are reachable (tree / history / forge). Every unreachable plane degrades to a note, so orient works offline and never blocks.
 - **Divergence first**, then **live lanes** (open PRs + each branch's latest session `next:`), **backlog** (open issues by milestone), and **this lane** (current branch + its `next:`).
 - It's an *agent helper, never a gate*: read-only, `gh`-based, exits 0 even degraded — `--strict` turns forge-unreachability into exit 1; `--json` for machine use.
-- **Install it as infrastructure:** wire `hooks/orient-session-start.sh` into Claude Code's `SessionStart` hook (see `hooks/README.md`) so orientation happens without being remembered. The Hermes plugin is a later slice; until then this directive is the tool-agnostic fallback (C28).
+- **Install it as infrastructure:** wire `hooks/orient-session-start.sh` into Claude Code's `SessionStart` hook (see `hooks/README.md`) so orientation happens without being remembered. The Hermes twin ships in `integrations/hermes/baseline-orient/` — a plugin whose `on_session_start` hook + `/orient` command run the same survey; this directive remains the tool-agnostic fallback (C28).
 
 ## Modes
 

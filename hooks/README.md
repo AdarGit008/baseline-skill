@@ -28,6 +28,8 @@ elsewhere, set `BASELINE_DIR` in the environment or edit the path in the script.
 
 ## Hermes
 
-The Hermes `prefetch` / `system_prompt_block` plugin that runs orient as a session-start
-block is a later slice (it needs the Hermes plugin API). Until then, `SKILL.md`'s
-**Orientation — the first act** directive is the tool-agnostic fallback (C28).
+The Hermes twin ships in [`../integrations/hermes/baseline-orient/`](../integrations/hermes/baseline-orient) —
+a plugin whose `on_session_start` hook + `/orient` command run `baseline orient`. (The plan's earlier
+`prefetch`/`system_prompt_block` sketch was memory-provider-specific; the real session-start surface is
+the `on_session_start` hook.) `SKILL.md`'s **Orientation — the first act** directive remains the
+tool-agnostic fallback (C28).

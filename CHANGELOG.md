@@ -6,6 +6,21 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M3c: rule metadata backfill + CTX-12 (the Lens's contract)
+- **Every rule now declares `sources` / `on_unreachable` / `contexts` / `certainty`** (introspectable
+  data): which ground-truth planes it reads, what it does when one is unreachable, the contexts it
+  runs in, and how certain its verdict is. 38 deterministic, 28 heuristic, 5 judgment.
+- **`--self-check` enforces two structural laws** (STRATA graft): a **blocker must be deterministic**
+  and a **sign-off must be judgment** — plus per-field validity and a layering check (readiness rules
+  can't consume FLOW facts, inert until M5). The existing rule set satisfies both with zero conflicts.
+- **CTX-12** — the stored-status **tripwire** (71 rules total): warns when a hand-maintained
+  `last-verified:` stamp is present (the artifact V2 replaces with derived `orient`). Warn now while
+  CTX-01 still gates the stamp; promotes to blocker once migration completes (M7).
+- Golden corpus re-pinned: only CTX-12 added (metadata fields are inert to verdicts).
+
+### Deferred (M3 continues)
+- **M3d** — the Hermes `prefetch`/`system_prompt_block` plugin (needs the Hermes plugin API).
+
 ### Added — V2 M3b: the typed Lens plumbing
 - **`src/facts/{tree,git,forge}.mjs`** — typed, provenance-carrying facts. The forge adapter wraps
   `gh` with **record/replay**: `BASELINE_FORGE_REPLAY=<dir>` reads committed fixtures (deterministic,

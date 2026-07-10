@@ -2,7 +2,7 @@
 
 The **`baseline`** skill for **Hermes** and **Claude Code** (and any agent that loads
 `SKILL.md`): a zero-dependency project-readiness checker packaged as an installable skill. It scores a repository
-against **70 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
+against **71 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
 operability, change governance, community, context/doc-drift, and claims discipline —
 [blockers](GLOSSARY.md#blocker) fail CI, judgment calls resolve via a dated [sign-off ledger](GLOSSARY.md#sign-off-ledger).
 
@@ -10,7 +10,7 @@ operability, change governance, community, context/doc-drift, and claims discipl
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/evaluate-stack-dark.svg">
-  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 70 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 21 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
+  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 71 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 21 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
 </picture>
 
 *How a repository becomes an exit code — the [full reference](REFERENCE.md) walks every layer.*
@@ -55,7 +55,7 @@ node baseline.mjs orient --repo /path/to/repo   # derived-state survey: lanes ·
 | `check.mjs` | the checker (`baseline check` delegates here) |
 | `src/` | the runner's modules: repo · config · evaluators · engine · report · self-check · descriptor · probe · orient |
 | `test/` | golden corpus + orient availability tests (`test/golden/run.mjs --verify`, `test/orient/run.mjs`) — source repo only, not installed |
-| `rules.json` | the 70 rules (id, severity, profile, rationale, fix, source, check) |
+| `rules.json` | the 71 rules (id, severity, profile, rationale, fix, source, check) |
 | `schema/repo.schema.json` | the descriptor schema for `baseline.repo.json` (repo identity & posture) |
 | `config.example.json` | per-repo config (copy to `baseline.config.json`) |
 | `templates/` | scaffolds: baseline.repo.json, CLAIMS.json, start-here.md, signoff.json, adr.md, doc-with-freshness.md |

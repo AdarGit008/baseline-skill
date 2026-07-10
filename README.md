@@ -8,6 +8,13 @@ operability, change governance, community, context/doc-drift, and claims discipl
 
 > The premise: *don't trust a written promise — make something check it.*
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/evaluate-stack-dark.svg">
+  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 69 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 21 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
+</picture>
+
+*How a repository becomes an exit code — the [full reference](REFERENCE.md) walks every layer.*
+
 New to the jargon? The [glossary](GLOSSARY.md) defines the DevOps and supply-chain terms in plain language.
 
 ## Install

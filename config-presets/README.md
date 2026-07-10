@@ -19,6 +19,26 @@ ignores any key starting with `_`. The full key reference lives in `../config.ex
 | [`internal-tool`](internal-tool.json) | `node` | A CLI/script/utility with no claims | Lean; CLAIM-* and OPS off; stamp lives in the README |
 | [`product-with-claims`](product-with-claims.json) | `service` | A product/launch that makes competitive or novelty claims | Turns CLAIM-* discipline **on** (build-state, blast-radius, dated prior-art pass) |
 
+## Descriptor presets — `baseline.repo.json` (posture)
+
+The files above are **config** presets (`baseline.config.json` — tuning: paths, commands,
+thresholds). The `*.repo.json` files below are **descriptor** presets — the repo's *identity
+and posture* (`baseline.repo.json`, schema [`../schema/repo.schema.json`](../schema/repo.schema.json)):
+what the repo is and which agent-workflow contract it runs. A repo carries **both** — the
+descriptor declares identity, the config tunes the checks — and the descriptor's `type`
+supersedes filesystem auto-detection.
+
+```bash
+cp config-presets/multi-lane-agents.repo.json  /path/to/repo/baseline.repo.json
+```
+
+| Preset | `workflow` | For | Notable |
+|---|---|---|---|
+| [`multi-lane-agents`](multi-lane-agents.repo.json) | `multi-lane` | The V2 default — one dev or a fleet running N parallel agent lanes | Lane namespaces, 7-day leases, `anchoring: strict` |
+| [`readiness-only`](readiness-only.repo.json) | `single-lane` | Just the readiness score, no workflow contract (V1-equivalent) | Minimal descriptor; `anchoring: off`, no lanes block |
+
+`init` writes a descriptor as its first act; absent one, `DESC-01` warns and offers to scaffold.
+
 After copying a preset, run a first score:
 
 ```bash

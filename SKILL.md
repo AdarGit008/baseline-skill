@@ -1,6 +1,6 @@
 ---
 name: baseline
-description: "Use when asked to run baseline, score a repo, check build- or project-readiness, audit a repo against a standard, or adopt/scaffold the project-baseline standard. Runs a zero-dependency Node checker (69 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, and claims), reads the scorecard, and helps fix or scaffold what's missing."
+description: "Use when asked to run baseline, score a repo, check build- or project-readiness, audit a repo against a standard, or adopt/scaffold the project-baseline standard. Runs a zero-dependency Node checker (70 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, and claims), reads the scorecard, and helps fix or scaffold what's missing."
 version: 2.2.0
 author: Adar (AdarGit008)
 license: MIT
@@ -15,7 +15,7 @@ metadata:
 
 ## Overview
 
-A **testable readiness standard**: 69 rules, each backed by a check a zero-dependency Node runner executes on a repo *at rest*. Blockers fail CI (`exit 1`); the judgment calls a script can't make resolve via a dated **sign-off ledger**. The throughline: *don't trust a written promise — make something check it.* A checklist doc drifts; this is the checklist as an exit code.
+A **testable readiness standard**: 70 rules, each backed by a check a zero-dependency Node runner executes on a repo *at rest*. Blockers fail CI (`exit 1`); the judgment calls a script can't make resolve via a dated **sign-off ledger**. The throughline: *don't trust a written promise — make something check it.* A checklist doc drifts; this is the checklist as an exit code.
 
 Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SKILL.md`). The runner is portable — plain Node, no agent-specific dependency. Source: `github.com/AdarGit008/baseline-skill` (reference repo: `baseline-demo`).
 
@@ -37,7 +37,7 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 
 `check.mjs` loads `rules.json` and its `src/` modules from its own directory, so always invoke the runner **by its absolute path** (`node "<abs>/check.mjs" …`); don't copy `check.mjs` away from `rules.json` + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
-Co-located files: `check.mjs` (runner), `rules.json` (the 69 rules), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `REFERENCE.md` (full reference: rule table, categories, architecture diagrams, CI wiring), `GLOSSARY.md` (plain-language term definitions).
+Co-located files: `check.mjs` (runner), `rules.json` (the 70 rules), `schema/repo.schema.json` (the descriptor schema), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `REFERENCE.md` (full reference: rule table, categories, architecture diagrams, CI wiring), `GLOSSARY.md` (plain-language term definitions).
 
 ## Modes
 
@@ -53,21 +53,26 @@ Figure out intent from the user's words; default to **score**.
    - `--profile advanced` — opt into expert rules (SBOM, code-scanning, mutation testing, dependency-vuln-scan, coverage-floor). `service` turns on automatically for `project_type=service`.
    - `--json` — machine output instead of the scorecard.
    - **Completion criterion:** you have the readiness %, the blocker count, and each FAIL/notable WARN with its one-line detail.
-3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 69 rows — summarize and offer to fix or scaffold.
+3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 70 rows — summarize and offer to fix or scaffold.
 
 ### init — "set up / adopt / scaffold baseline"
-1. Vendor the toolkit into the repo (suggest `tools/baseline/`) or reference it in place.
-2. Pick a config: copy the closest `config-presets/*.json` (e.g. `context-management`, `node-service`, `library`) to `<repo>/baseline.config.json`, or start from `config.example.json`. Then scaffold only what's missing (never overwrite without asking):
+**Descriptor-first, always.** The repo's `baseline.repo.json` is written before anything else — it's the one file baseline requires (schema: `schema/repo.schema.json`), and every applicability/severity derivation reads it. Its `type` supersedes filesystem auto-detection.
+1. **Write the descriptor.** Copy the closest posture preset (or the blank template) to `<repo>/baseline.repo.json`, then set `type`, `lifecycle`, `maturity`, `owner`, `workflow`, `anchoring`:
    ```bash
-   cp "$SKILL_DIR/config-presets/node-service.json" <repo>/baseline.config.json   # pick the closest preset
+   cp "$SKILL_DIR/config-presets/multi-lane-agents.repo.json" <repo>/baseline.repo.json   # V2 default: lanes on
+   # or readiness-only.repo.json (just the score, V1-equivalent) · or templates/baseline.repo.json (blank)
+   ```
+   Multi-lane is the default — any solo dev gets lanes out of the box; use `readiness-only` for the score with no workflow contract.
+2. **Tune the checks (optional).** Copy the closest `config-presets/*.json` to `<repo>/baseline.config.json` for paths/commands/thresholds, or start from `config.example.json`. Then scaffold only what's missing (never overwrite without asking):
+   ```bash
+   cp "$SKILL_DIR/config-presets/node-service.json" <repo>/baseline.config.json   # tuning: bootstrap_command, globs…
    cp "$SKILL_DIR/templates/CLAIMS.json"    <repo>/docs/CLAIMS.json      # only if it makes external claims
-   cp "$SKILL_DIR/templates/start-here.md"  <repo>/docs/start-here.md    # if no status doc exists
    mkdir -p <repo>/.project-baseline && cp "$SKILL_DIR/templates/signoff.json" <repo>/.project-baseline/signoff.json
    ```
-3. Edit `baseline.config.json` to reality: `project_type` (`node`/`python`/`service`/`library`/`docs`), `bootstrap_command` (clean-checkout install+test for BUILD-05), `makes_external_claims` (false skips CLAIM-*). Opt-in `*_globs` keys stay empty until adopted.
+3. Edit `baseline.config.json` to reality: `bootstrap_command` (clean-checkout install+test for BUILD-05), `makes_external_claims` (false skips CLAIM-*). Opt-in `*_globs` keys stay empty until adopted.
 4. Wire the `baseline` job into CI as a **required** check (rule BUILD-06) — snippet is in `REFERENCE.md`.
-5. Run a first score.
-- **Completion criterion:** `node check.mjs --repo <repo>` runs and every scaffolded artifact is accounted for.
+5. Run a first score — `DESC-01` confirms the descriptor is present and valid.
+- **Completion criterion:** `baseline.repo.json` exists and validates (DESC-01 PASS), `node check.mjs --repo <repo>` runs, and every scaffolded artifact is accounted for.
 
 ### fix — "get this to green"
 1. Score first. For each blocker/warn to address, apply the rule's own `fix` field (read it from `rules.json`) as concrete edits — add the missing LICENSE, pin the action to a SHA, git-ignore + rotate the `.env` secret, add the negative test, etc.
@@ -93,6 +98,7 @@ Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / 
 - **`applies_to`** (`"all"` or a subset of `node`/`python`/`service`/`library`/`docs`) scopes each rule to the repo types it fits — e.g. a `docs` repo skips build/test/service rules.
 - **Profiles:** `core` always; `service` auto-on for `project_type=service`; `advanced` only with `--profile advanced`.
 - **Claims are opt-in:** CLAIM-* run only if a claims register exists or `makes_external_claims:true` is set.
+- **Descriptor:** a `baseline.repo.json` declares the repo's identity/posture; its `type` supersedes auto-detection, and `DESC-01` warns (and offers to scaffold) when it's absent or invalid.
 - Config auto-detects; `baseline.config.json` at the repo root overrides (keys documented in `config.example.json`). The runner is zero-dependency and crash-resilient: an unevaluable check degrades to SKIP, never crashing the run.
 
 ## Common Pitfalls
@@ -106,7 +112,7 @@ Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / 
 ## Verification Checklist
 
 - [ ] Ran the runner by its **absolute** path with `--repo <target>`
-- [ ] Reported **blockers first**, then warnings, grouped by category (not a 69-row dump)
+- [ ] Reported **blockers first**, then warnings, grouped by category (not a 70-row dump)
 - [ ] For `fix`: re-scored and confirmed no new blockers
 - [ ] For `init`: picked a preset/config, scaffolded only what was missing, ran a first score
 - [ ] Any sign-off is a real dated judgment, not a rubber stamp

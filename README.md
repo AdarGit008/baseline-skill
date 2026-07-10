@@ -2,7 +2,7 @@
 
 The **`baseline`** skill for **Hermes** and **Claude Code** (and any agent that loads
 `SKILL.md`): a zero-dependency project-readiness checker packaged as an installable skill. It scores a repository
-against **69 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
+against **70 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
 operability, change governance, community, context/doc-drift, and claims discipline —
 [blockers](GLOSSARY.md#blocker) fail CI, judgment calls resolve via a dated [sign-off ledger](GLOSSARY.md#sign-off-ledger).
 
@@ -10,7 +10,7 @@ operability, change governance, community, context/doc-drift, and claims discipl
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/evaluate-stack-dark.svg">
-  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 69 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 21 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
+  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 70 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 21 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
 </picture>
 
 *How a repository becomes an exit code — the [full reference](REFERENCE.md) walks every layer.*
@@ -54,10 +54,11 @@ Needs only Node ≥ 18 and git.
 | `check.mjs` | the zero-dependency runner (thin CLI) |
 | `src/` | the runner's modules: repo index · config · evaluators · engine · report · self-check |
 | `test/` | golden corpus: fixture repos + structured-verdict pins (`test/golden/run.mjs --verify`) — source repo only, not installed |
-| `rules.json` | the 69 rules (id, severity, profile, rationale, fix, source, check) |
+| `rules.json` | the 70 rules (id, severity, profile, rationale, fix, source, check) |
+| `schema/repo.schema.json` | the descriptor schema for `baseline.repo.json` (repo identity & posture) |
 | `config.example.json` | per-repo config (copy to `baseline.config.json`) |
-| `templates/` | scaffolds: CLAIMS.json, start-here.md, signoff.json, adr.md, doc-with-freshness.md |
-| `config-presets/` | ready-made `baseline.config.json` starting points (context-management, node-service, library, …) |
+| `templates/` | scaffolds: baseline.repo.json, CLAIMS.json, start-here.md, signoff.json, adr.md, doc-with-freshness.md |
+| `config-presets/` | ready-made `baseline.config.json` + `*.repo.json` posture presets (multi-lane-agents, readiness-only, node-service, …) |
 | `README.md` | this guide — install, usage, file map |
 | `REFERENCE.md` | full reference: rule table, categories, architecture diagrams, CI wiring |
 | `GLOSSARY.md` | plain-language definitions of the DevOps/supply-chain terms |

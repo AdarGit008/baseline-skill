@@ -1,0 +1,3 @@
+{
+  "_note": "A repo that looks like node (package.json for tooling) but declares type=docs in a valid baseline.repo.json. Proves DESC-01 PASS and that the descriptor's type supersedes filesystem auto-detection (project_type should be docs, not node)."
+}

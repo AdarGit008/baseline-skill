@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "type": "docs",
+  "lifecycle": "production",
+  "maturity": "released",
+  "owner": "AdarGit008",
+  "workflow": "single-lane",
+  "anchoring": "off"
+}

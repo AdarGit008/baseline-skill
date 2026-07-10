@@ -1,0 +1,10 @@
+{
+  "_note": "baseline-skill is the TOOL, not a multi-lane consumer repo — dogfooding of the full workflow contract lives on baseline-demo. Minimal readiness-only descriptor; type matches baseline.config.json (a docs/distribution repo).",
+  "schema_version": 1,
+  "type": "docs",
+  "lifecycle": "production",
+  "maturity": "released",
+  "owner": "AdarGit008",
+  "workflow": "single-lane",
+  "anchoring": "off"
+}

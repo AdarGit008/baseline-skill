@@ -28,14 +28,14 @@ const TYPES = RULES.project_types || ['node', 'python', 'service', 'library', 'd
 
 const color = makeColor(JSON_OUT)
 const repo = indexRepo(REPO)
-const { cfg, DEFAULTS, CLAIMS_ACTIVE, ACTIVE, SIGNOFF } = resolveConfig(repo, {
+const { cfg, DEFAULTS, CLAIMS_ACTIVE, ACTIVE, SIGNOFF, DESCRIPTOR } = resolveConfig(repo, {
   cliConfigPath: opt('--config', null),
   profileArgs: optAll('--profile'),
 })
 
 if (SELF_CHECK) process.exit(runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }))
 
-const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF })
+const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, DESCRIPTOR })
 const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck })
 
 process.exit(JSON_OUT

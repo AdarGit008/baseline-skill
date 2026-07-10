@@ -8,13 +8,13 @@ A **testable readiness standard** for new projects. Every lesson is a rule; a ze
 
 **v1** distilled 20 rules from three of the author's own repos. That sample was thin. **v2** pressure-tested v1 against the field's actual prior art — [OpenSSF Scorecard](GLOSSARY.md#openssf-scorecard), [SLSA](GLOSSARY.md#slsa), the [Twelve-Factor App](GLOSSARY.md#twelve-factor-app), Google's SRE books, [Diátaxis](GLOSSARY.md#diataxis), [Keep a Changelog](GLOSSARY.md#keep-a-changelog), [repolinter](GLOSSARY.md#repolinter), [Backstage/Cortex/OpsLevel](GLOSSARY.md#service-catalog), Stryker, and ~40 more sources — kept everything v1 had, and added what the field agreed v1 was missing. Each candidate was **adversarially verified** (is the source real? is it robot-checkable at rest? does it actually add over v1?) before it earned a place; 15 "looks-thorough-checks-nothing" candidates were dropped.
 
-**69 rules across 10 categories.** 14 blockers · 50 warnings · 5 sign-offs.
+**70 rules across 11 categories.** 14 blockers · 51 warnings · 5 sign-offs.
 
 ## Profiles — v2 stays sharp by only running what fits
 
 Not every rule fits every repo. A pre-code planning repo shouldn't be nagged about health endpoints; a CLI shouldn't be told to publish an [SBOM](GLOSSARY.md#sbom). So rules carry a **[profile](GLOSSARY.md#profile)**:
 
-- **core** (54 rules) — always on. Universal, high-confidence, machine-checkable.
+- **core** (55 rules) — always on. Universal, high-confidence, machine-checkable.
 - **service** (6 rules) — **auto-on when `project_type=service`.** Operability rules ([health check](GLOSSARY.md#health-check), [structured logs](GLOSSARY.md#structured-logging), [graceful shutdown](GLOSSARY.md#graceful-shutdown), [runbook](GLOSSARY.md#runbook)) that only make sense for a running service.
 - **advanced** (9 rules) — **opt-in** via `config.profiles: ["advanced"]`. Expert/niche rules (SBOM, [code-scanning](GLOSSARY.md#sast), [mutation testing](GLOSSARY.md#mutation-testing), symbol-integrity) that would be noise on most repos.
 
@@ -30,7 +30,7 @@ A profile decides *how expert* a rule is; **`applies_to`** decides *what kind of
 - `applies_to: ["node","python","service","library"]` — **code repos only** (build/test/lint/reproducibility rules); a `docs` repo skips them.
 - `applies_to: ["service"]` — long-running **services only** (the OPS rules).
 
-`project_type` auto-detects (`package.json` ⇒ `node`/`service`, `pyproject.toml` ⇒ `python`, else `docs`) and can be pinned in `baseline.config.json`. A rule whose `applies_to` doesn't include your type **skips** as `n/a`, exactly like an off profile.
+`project_type` auto-detects (`package.json` ⇒ `node`/`service`, `pyproject.toml` ⇒ `python`, else `docs`) and can be pinned in `baseline.config.json` — or **declared in `baseline.repo.json`**, whose `type` supersedes auto-detection (a tooling `package.json` no longer misclassifies a docs repo as `node`). A rule whose `applies_to` doesn't include your type **skips** as `n/a`, exactly like an off profile.
 
 **Integrity gate — so a scope can't silently dangle.** A mistyped scope (`"nodejs"`, `"doc"`) would make a rule quietly never run. The rule set validates itself:
 
@@ -58,7 +58,7 @@ These diagrams mirror the runner — they're its actual control flow, not a sket
 ```mermaid
 flowchart LR
   CFG["baseline.config.json — intent"] --> RES
-  RULES["rules.json — 69 rules"] --> EVAL
+  RULES["rules.json — 70 rules"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
     IDX["file index + git helpers"] --> EVAL["~20 check evaluators"]
@@ -278,9 +278,18 @@ The three opt-in `*_globs` keys default to empty, so those rules stay silent unt
 | CLAIM-04 | Citations resolve and support the claim | 🟡 warn | core |
 | CLAIM-05 | Wedge and moat are stated and pressure-tested | ✍️ sign-off | core |
 | CLAIM-06 | Specs of record carry explicit acceptance criteria | 🟡 warn | core |
+
+### Repo descriptor (1)
+
+| ID | Rule | Severity | Profile |
+|---|---|---|---|
+| DESC-01 | Repo descriptor present and valid | 🟡 warn | core |
+
+Declared identity, not a guess: a schema-validated `baseline.repo.json` (`type`, `lifecycle`, `maturity`, `owner`, `workflow`, `anchoring`) is the one stored intent every applicability/severity derivation consumes. Absent or invalid → warn + scaffold; the `type` supersedes filesystem auto-detection.
+
 ## Check kinds (how the runner verifies, with zero deps)
 
-`any-file` (glob presence; `mode:absent`, `tracked_only`, `allow`) · `grep` (regex present/absent/all over contents; `tracked_only`) · `file-contains` (file exists AND matches) · `json-field` (parse JSON, assert a dotted path) · `any-of` (pass if any alternative passes) · `command` (run the bootstrap; `repeat`) · `md-links` (relative markdown links resolve) · `doc-freshness` (frontmatter date within a window) · `adr-status` / `adr-forward-link` (decision-record status + resolvable supersede links) · `required-files` (a config list exists + non-empty) · `path-integrity` (backticked paths in docs resolve) · `version-consistency` (runtime major agrees across `.nvmrc`/CI/Dockerfile/`engines`) · `dockerfile-digest` (`FROM` pinned by `@sha256`) · `status-stamp` · `config-nonempty` · `claims-field` / `claims-citations` · `signoff`.
+`any-file` (glob presence; `mode:absent`, `tracked_only`, `allow`) · `grep` (regex present/absent/all over contents; `tracked_only`) · `file-contains` (file exists AND matches) · `json-field` (parse JSON, assert a dotted path) · `any-of` (pass if any alternative passes) · `command` (run the bootstrap; `repeat`) · `md-links` (relative markdown links resolve) · `doc-freshness` (frontmatter date within a window) · `adr-status` / `adr-forward-link` (decision-record status + resolvable supersede links) · `required-files` (a config list exists + non-empty) · `path-integrity` (backticked paths in docs resolve) · `version-consistency` (runtime major agrees across `.nvmrc`/CI/Dockerfile/`engines`) · `dockerfile-digest` (`FROM` pinned by `@sha256`) · `status-stamp` · `config-nonempty` · `claims-field` / `claims-citations` · `signoff` · `descriptor` (`baseline.repo.json` present + schema-valid).
 
 A rule with a check the runner can't evaluate (bad regex, missing target) degrades to **skip**, never a crash — one broken rule can't take down the run.
 

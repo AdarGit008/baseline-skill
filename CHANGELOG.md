@@ -6,6 +6,29 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M2: the repo descriptor
+- **`baseline.repo.json`** — the schema-validated repo descriptor (C39): the one stored piece
+  of intent every applicability/severity derivation consumes. Declares `type`, `lifecycle`,
+  `maturity`, `owner`, `workflow`, `anchoring` (+ optional forge / lanes / join-keys / staleness).
+  Schema at `schema/repo.schema.json`, loaded and validated by a zero-dependency subset validator
+  in `src/descriptor.mjs`. Read from the working tree or a git ref (the target-ref seam).
+- **`type` supersedes filesystem auto-detection** when a valid descriptor is present, so a tooling
+  `package.json` can't misclassify a docs repo as `node`; absent/invalid → auto-detect still governs.
+- **DESC-01** (new `desc` category — 70 rules across 11 categories): descriptor absent or
+  schema-invalid → WARN + scaffold fix; present and valid → PASS. Transitional — adopt incrementally.
+- **Posture presets** `config-presets/multi-lane-agents.repo.json` (the V2 default) and
+  `readiness-only.repo.json` (V1-equivalent), plus the `templates/baseline.repo.json` scaffold.
+- **`--self-check`** now enforces the descriptor invariant (S7 / DESC-02): every schema field has a
+  declared consumer (active, or reserved for a named later module).
+- **`init` is descriptor-first** — writes `baseline.repo.json` before anything else; no longer
+  scaffolds a status doc.
+- Golden corpus: two new fixtures (`descriptor-repo`, `descriptor-invalid`); pins re-captured.
+
+### Deferred (honest slice)
+- **DESC-03** (descriptor change-control) and **target-ref *enforcement*** are wired at the loader
+  seam but not yet active — their teeth need JDG records (M4) and the `admit` context (M6). See
+  `docs/v2/PLAN.md` §8.
+
 ## [2.2.0] — 2026-07-05
 
 ### Added

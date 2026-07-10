@@ -1,6 +1,7 @@
 // --self-check: validate rules.json integrity (no dangling scopes/kinds/types)
 // and print the per-type coverage matrix. Returns the process exit code.
 import { CATS } from './report.mjs'
+import { DESCRIPTOR_SCHEMA, FIELD_CONSUMERS } from './descriptor.mjs'
 
 export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
   const problems = []
@@ -39,6 +40,16 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     const has = p === 'core' ? RULES.rules.some(r => !r.profile) : RULES.rules.some(r => r.profile === p)
     if (!has) problems.push(`no rule uses profile '${p}' (orphan profile)`)
   }
+
+  // S7 (DESC-02): the descriptor schema and the engine's consumption map stay in lockstep —
+  // every declared field has a consumer (active now, or reserved for a NAMED later module), and
+  // no consumer names a field the schema lacks. This is DESC-02 rehomed to the skill's own
+  // self-check: it's an engine property, not a repo property. It makes every honest-slice
+  // deferral auditable — a field can't be silently added and left unconsumed, nor claimed as
+  // consumed without existing in the schema.
+  const descProps = Object.keys(DESCRIPTOR_SCHEMA.properties || {})
+  for (const f of descProps) if (!(f in FIELD_CONSUMERS)) problems.push(`descriptor field '${f}' has no declared consumer (add it to FIELD_CONSUMERS in src/descriptor.mjs)`)
+  for (const f of Object.keys(FIELD_CONSUMERS)) if (!descProps.includes(f)) problems.push(`FIELD_CONSUMERS names '${f}', which is absent from the descriptor schema`)
   // coverage matrix: applicable rules per type, split by profile
   const profOf = r => r.profile || 'core'
   console.log(`\n  project-baseline self-check · v${RULES.version} · ${RULES.rules.length} rules · types=[${TYPES.join(', ')}]\n`)
@@ -51,6 +62,8 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     console.log(`    ${t.padEnd(10)}  ${String(by.core).padStart(4)}  ${String(by.service).padStart(7)}  ${String(by.advanced).padStart(8)}  ${String(appl.length).padStart(6)}`)
   }
   console.log('')
+  const activeN = descProps.filter(f => /^M\d/.test(FIELD_CONSUMERS[f] || '')).length
+  console.log(`  Descriptor — ${descProps.length} schema field(s): ${activeN} active, ${descProps.length - activeN} reserved for later modules; every field has a declared consumer (S7).\n`)
   if (problems.length) {
     console.log(color(31, `  ✗ ${problems.length} integrity problem(s):`))
     for (const p of problems.slice(0, 60)) console.log('    - ' + p)

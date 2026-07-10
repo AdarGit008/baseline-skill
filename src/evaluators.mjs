@@ -5,11 +5,12 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { execSync } from 'node:child_process'
 import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf } from './util.mjs'
+import { DESCRIPTOR_FILE } from './descriptor.mjs'
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor'])
 
-export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF }) {
+export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, DESCRIPTOR }) {
   const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow } = repo
   function globsOf(c) { return c.globs_from_config ? cfg[c.globs_from_config] : (c.file_from_config ? cfg[c.file_from_config] : c.globs) }
 
@@ -365,6 +366,14 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF }) {
     }
 
     if (k === 'signoff') { const e = SIGNOFF[rule.id]; if (e && e.date) return { ok: true, detail: `signed ${e.by || '?'} ${e.date}` }; return { ok: false, detail: 'no sign-off recorded', signoff: true } }
+
+    if (k === 'descriptor') {
+      const d = DESCRIPTOR
+      if (!d || !d.present) return { ok: false, soft: true, detail: `no ${DESCRIPTOR_FILE} — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init` }
+      if (!d.valid) return { ok: false, detail: `${DESCRIPTOR_FILE} invalid: ${d.errors.slice(0, 2).join('; ')}${d.errors.length > 2 ? ` (+${d.errors.length - 2} more)` : ''}` }
+      const x = d.data
+      return { ok: true, detail: `type=${x.type} · ${x.lifecycle}/${x.maturity} · workflow=${x.workflow} · anchoring=${x.anchoring}` }
+    }
 
     return { ok: null, detail: 'unknown check kind: ' + k }
   }

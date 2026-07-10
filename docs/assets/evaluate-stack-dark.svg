@@ -4,7 +4,7 @@
 <text x="36" y="66" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="34" font-weight="bold" fill="#E7E9EE" text-anchor="start">How /baseline decides</text>
 <text x="36" y="98" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="17" font-weight="normal" fill="#A6ACB8" text-anchor="start">five layers turn a repository into an exit code — each layer knows less than the one above it</text>
 <rect x="844" y="36" width="560" height="40" rx="20" fill="none" stroke="#7B818C" stroke-width="2"/>
-<text x="1124" y="61" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">node check.mjs --repo &lt;path&gt;  →  70 rules  →  scorecard  →  exit code</text>
+<text x="1124" y="61" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">node check.mjs --repo &lt;path&gt;  →  71 rules  →  scorecard  →  exit code</text>
 <g transform="rotate(-90 20 520)"><text x="20" y="520" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#7B818C" text-anchor="middle">↓ questions go down · facts come up ↑</text></g>
 <rect x="36" y="136" width="850" height="112" rx="8" fill="#1C2044" stroke="#8F94F2" stroke-width="3"/>
 <circle cx="78" cy="192" r="21" fill="none" stroke="#8F94F2" stroke-width="2.8"/>
@@ -14,7 +14,7 @@
 <text x="114" y="224" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#C9CCFF" text-anchor="start" opacity="0.8">the only entry point</text>
 <text x="388" y="162" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#8F94F2" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="184" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">flags: --repo · --json · --no-exec</text>
-<text x="388" y="203.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">loads rules.json — the 70-rule</text>
+<text x="388" y="203.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">loads rules.json — the 71-rule</text>
 <text x="388" y="223" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">standard, as pure data</text>
 <rect x="674" y="150" width="196" height="84" rx="6" fill="#3B3417" stroke="#C7AA3A" stroke-width="2"/>
 <text x="688" y="174" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11.5" font-weight="bold" fill="#EFDF9C" text-anchor="start">never knows:</text>
@@ -159,7 +159,7 @@
 <rect x="36" y="1075" width="400" height="150" rx="6" fill="#3B3417" stroke="#C7AA3A" stroke-width="2"/>
 <text x="60" y="1109" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#EFDF9C" text-anchor="start">kept honest — this repo’s own CI</text>
 <text x="60" y="1137" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">--self-check → rules.json is internally valid</text>
-<text x="60" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">golden corpus → 7 fixture repos × 70 pinned</text>
+<text x="60" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">golden corpus → 7 fixture repos × 71 pinned</text>
 <text x="60" y="1181" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">     verdicts — ANY drift fails the build</text>
 <text x="60" y="1203" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">self-score → baseline scores its own repo</text>
 <rect x="470" y="1075" width="400" height="150" rx="6" fill="#122B3D" stroke="#4C9BD8" stroke-width="2"/>

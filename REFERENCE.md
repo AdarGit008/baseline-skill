@@ -8,13 +8,13 @@ A **testable readiness standard** for new projects. Every lesson is a rule; a ze
 
 **v1** distilled 20 rules from three of the author's own repos. That sample was thin. **v2** pressure-tested v1 against the field's actual prior art — [OpenSSF Scorecard](GLOSSARY.md#openssf-scorecard), [SLSA](GLOSSARY.md#slsa), the [Twelve-Factor App](GLOSSARY.md#twelve-factor-app), Google's SRE books, [Diátaxis](GLOSSARY.md#diataxis), [Keep a Changelog](GLOSSARY.md#keep-a-changelog), [repolinter](GLOSSARY.md#repolinter), [Backstage/Cortex/OpsLevel](GLOSSARY.md#service-catalog), Stryker, and ~40 more sources — kept everything v1 had, and added what the field agreed v1 was missing. Each candidate was **adversarially verified** (is the source real? is it robot-checkable at rest? does it actually add over v1?) before it earned a place; 15 "looks-thorough-checks-nothing" candidates were dropped.
 
-**70 rules across 11 categories.** 14 blockers · 51 warnings · 5 sign-offs.
+**71 rules across 11 categories.** 14 blockers · 52 warnings · 5 sign-offs.
 
 ## Profiles — v2 stays sharp by only running what fits
 
 Not every rule fits every repo. A pre-code planning repo shouldn't be nagged about health endpoints; a CLI shouldn't be told to publish an [SBOM](GLOSSARY.md#sbom). So rules carry a **[profile](GLOSSARY.md#profile)**:
 
-- **core** (55 rules) — always on. Universal, high-confidence, machine-checkable.
+- **core** (56 rules) — always on. Universal, high-confidence, machine-checkable.
 - **service** (6 rules) — **auto-on when `project_type=service`.** Operability rules ([health check](GLOSSARY.md#health-check), [structured logs](GLOSSARY.md#structured-logging), [graceful shutdown](GLOSSARY.md#graceful-shutdown), [runbook](GLOSSARY.md#runbook)) that only make sense for a running service.
 - **advanced** (9 rules) — **opt-in** via `config.profiles: ["advanced"]`. Expert/niche rules (SBOM, [code-scanning](GLOSSARY.md#sast), [mutation testing](GLOSSARY.md#mutation-testing), symbol-integrity) that would be noise on most repos.
 
@@ -58,7 +58,7 @@ These diagrams mirror the runner — they're its actual control flow, not a sket
 ```mermaid
 flowchart LR
   CFG["baseline.config.json — intent"] --> RES
-  RULES["rules.json — 70 rules"] --> EVAL
+  RULES["rules.json — 71 rules"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
     IDX["file index + git helpers"] --> EVAL["~20 check evaluators"]
@@ -159,6 +159,8 @@ The three opt-in `*_globs` keys default to empty, so those rules stay silent unt
 
 [`blocker`](GLOSSARY.md#blocker) fails CI · [`warn`](GLOSSARY.md#warn) is advisory · [`sign-off`](GLOSSARY.md#sign-off-ledger) (manual) is satisfied only by a dated entry in `.project-baseline/signoff.json`.
 
+Every rule also declares **`sources`** (which ground-truth planes it reads: tree · history · forge · exec), **`on_unreachable`** (skip · fail · stale-ok), **`contexts`** (check · admit · reconcile), and **`certainty`** (deterministic · heuristic · judgment). `--self-check` enforces two structural laws: a **blocker must be deterministic**, and a **sign-off must be judgment**.
+
 <!-- generated from rules.json; regenerate if rules change -->
 ### Build & execution (10)
 
@@ -251,7 +253,7 @@ The three opt-in `*_globs` keys default to empty, so those rules stay silent unt
 | COMM-02 | README exists with newcomer-critical sections | 🟡 warn | core |
 | COMM-03 | CHANGELOG present with an Unreleased section | 🟡 warn | core |
 
-### Context management (11)
+### Context management (12)
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
@@ -266,6 +268,7 @@ The three opt-in `*_globs` keys default to empty, so those rules stay silent unt
 | CTX-09 | Required grounding docs exist and are non-empty | 🟡 warn | core |
 | CTX-10 | Code symbols/paths named in docs still resolve | 🟡 warn | advanced |
 | CTX-11 | Docs don't lag the code they anchor | 🟡 warn | core |
+| CTX-12 | No hand-maintained status stamp — derive it (tripwire; retires CTX-01 at M7) | 🟡 warn | core |
 
 ### Claims discipline (7)
 

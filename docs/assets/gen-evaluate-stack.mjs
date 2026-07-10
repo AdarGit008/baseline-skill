@@ -67,7 +67,7 @@ const PALETTES = {
 
 // ---------- content ----------
 const LAYERS = [
-  { nick: 'THE CLI', file: 'check.mjs · 44 lines', role: 'the only entry point', knows: ['flags: --repo · --json · --no-exec', 'loads rules.json — the 70-rule', 'standard, as pure data'], never: ['what any rule means'] },
+  { nick: 'THE CLI', file: 'check.mjs · 44 lines', role: 'the only entry point', knows: ['flags: --repo · --json · --no-exec', 'loads rules.json — the 71-rule', 'standard, as pure data'], never: ['what any rule means'] },
   { nick: 'THE JUDGE', file: 'engine.mjs · 21 lines', role: 'gate → evaluate → tag', knows: ['3 gates: wrong type? profile off?', 'opted out? → SKIP, never punished', 'the tag ladder + severity'], never: ['how anything is checked'] },
   { nick: 'THE LAB', file: 'evaluators.mjs · 21 kinds', role: 'facts only', knows: ['how to verify each claim: grep,', 'any-file, json-field, command,', 'signoff… (any-of & implies recurse)'], never: ['severity, or what happens', 'to its result'] },
   { nick: 'THE SENSES', file: 'repo.mjs · 64 lines', role: 'the repo index, built once', knows: ['find: match(globs) · read: 3', 'paranoia levels · ask git: age,', 'ancestry, lag behind HEAD'], never: ['what a “rule” even is'] },
@@ -105,7 +105,7 @@ function board(p) {
   o.push(text(36, 66, 'How /baseline decides', { size: 34, weight: 'bold', fill: p.ink }))
   o.push(text(36, 98, 'five layers turn a repository into an exit code — each layer knows less than the one above it', { size: 17, fill: p.soft }))
   o.push(box(844, 36, 560, 40, { fill: 'none', stroke: p.faint, sw: 2, rx: 20 }))
-  o.push(text(1124, 61, 'node check.mjs --repo <path>  →  70 rules  →  scorecard  →  exit code', { size: 12.5, fill: p.soft, family: MONO, anchor: 'middle' }))
+  o.push(text(1124, 61, 'node check.mjs --repo <path>  →  71 rules  →  scorecard  →  exit code', { size: 12.5, fill: p.soft, family: MONO, anchor: 'middle' }))
 
   // vertical margin note
   o.push(`<g transform="rotate(-90 20 520)">` + text(20, 520, '↓ questions go down · facts come up ↑', { size: 13, fill: p.faint, anchor: 'middle' }) + `</g>`)
@@ -183,7 +183,7 @@ function board(p) {
   const SY = 1075
   o.push(card(36, SY, 400, 150, { fill: p.sticky.fill, stroke: p.sticky.stroke }))
   o.push(text(60, SY + 34, 'kept honest — this repo’s own CI', { size: 15.5, weight: 'bold', fill: p.sticky.text }))
-  o.push(lines(60, SY + 62, ['--self-check → rules.json is internally valid', 'golden corpus → 7 fixture repos × 70 pinned', '     verdicts — ANY drift fails the build', 'self-score → baseline scores its own repo'], { size: 13, lh: 22, fill: p.sticky.text }))
+  o.push(lines(60, SY + 62, ['--self-check → rules.json is internally valid', 'golden corpus → 7 fixture repos × 71 pinned', '     verdicts — ANY drift fails the build', 'self-score → baseline scores its own repo'], { size: 13, lh: 22, fill: p.sticky.text }))
   o.push(card(470, SY, 400, 150, { fill: p.v2sticky.fill, stroke: p.v2sticky.stroke }))
   o.push(text(494, SY + 34, 'next: V2 — “Lens & Ledger”', { size: 15.5, weight: 'bold', fill: p.v2sticky.text }))
   o.push(lines(494, SY + 62, ['layer 4, THE SENSES, grows into three', 'ground-truth planes: TREE · HISTORY · FORGE —', 'status derived on demand, never hand-written', '→ docs/v2/PLAN.md'], { size: 13, lh: 22, fill: p.v2sticky.text }))

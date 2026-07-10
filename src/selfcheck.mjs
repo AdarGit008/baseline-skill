@@ -50,6 +50,26 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
   const descProps = Object.keys(DESCRIPTOR_SCHEMA.properties || {})
   for (const f of descProps) if (!(f in FIELD_CONSUMERS)) problems.push(`descriptor field '${f}' has no declared consumer (add it to FIELD_CONSUMERS in src/descriptor.mjs)`)
   for (const f of Object.keys(FIELD_CONSUMERS)) if (!descProps.includes(f)) problems.push(`FIELD_CONSUMERS names '${f}', which is absent from the descriptor schema`)
+
+  // M3c: rule-metadata invariants. Every rule declares which planes it reads (sources), what it does
+  // when a source is unreachable (on_unreachable), the contexts it runs in, and its certainty — and
+  // two structural laws hold (the STRATA graft): a blocker must be deterministic, a sign-off must be
+  // judgment. Plus layering: a readiness rule may not consume FLOW facts (inert until M5 adds 'flow').
+  const SRC = new Set(['tree', 'history', 'forge', 'exec'])
+  const CTXV = new Set(['check', 'admit', 'reconcile'])
+  const UNR = new Set(['skip', 'fail', 'stale-ok'])
+  const CERT = new Set(['deterministic', 'heuristic', 'judgment'])
+  for (const r of RULES.rules) {
+    const id = r.id || '(no id)'
+    if (!Array.isArray(r.sources) || !r.sources.length || !r.sources.every(s => SRC.has(s))) problems.push(`${id}: sources must be a non-empty subset of {${[...SRC].join('|')}}`)
+    if (!UNR.has(r.on_unreachable)) problems.push(`${id}: on_unreachable must be one of {${[...UNR].join('|')}}`)
+    if (!Array.isArray(r.contexts) || !r.contexts.length || !r.contexts.every(c => CTXV.has(c))) problems.push(`${id}: contexts must be a non-empty subset of {${[...CTXV].join('|')}}`)
+    if (!CERT.has(r.certainty)) problems.push(`${id}: certainty must be one of {${[...CERT].join('|')}}`)
+    if (r.severity === 'blocker' && r.certainty !== 'deterministic') problems.push(`${id}: blocker must be deterministic (got '${r.certainty}') — a blocker can't rest on a heuristic/judgment`)
+    if (r.severity === 'manual' && r.certainty !== 'judgment') problems.push(`${id}: sign-off (manual) must be certainty 'judgment' (got '${r.certainty}')`)
+    if (r.certainty === 'judgment' && r.severity !== 'manual') problems.push(`${id}: certainty 'judgment' must route to a sign-off (severity 'manual', got '${r.severity}')`)
+    if (Array.isArray(r.sources) && r.sources.includes('flow')) problems.push(`${id}: readiness rules may not consume 'flow' facts (layering invariant)`)
+  }
   // coverage matrix: applicable rules per type, split by profile
   const profOf = r => r.profile || 'core'
   console.log(`\n  project-baseline self-check · v${RULES.version} · ${RULES.rules.length} rules · types=[${TYPES.join(', ')}]\n`)
@@ -64,6 +84,8 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
   console.log('')
   const activeN = descProps.filter(f => /^M\d/.test(FIELD_CONSUMERS[f] || '')).length
   console.log(`  Descriptor — ${descProps.length} schema field(s): ${activeN} active, ${descProps.length - activeN} reserved for later modules; every field has a declared consumer (S7).\n`)
+  const cBy = c => RULES.rules.filter(r => r.certainty === c).length
+  console.log(`  Metadata — every rule declares sources/on_unreachable/contexts/certainty; certainty: ${cBy('deterministic')} deterministic, ${cBy('heuristic')} heuristic, ${cBy('judgment')} judgment. Laws: blocker⇒deterministic, sign-off⇒judgment.\n`)
   if (problems.length) {
     console.log(color(31, `  ✗ ${problems.length} integrity problem(s):`))
     for (const p of problems.slice(0, 60)) console.log('    - ' + p)

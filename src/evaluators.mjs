@@ -4,7 +4,7 @@
 import path from 'node:path'
 import fs from 'node:fs'
 import { execSync } from 'node:child_process'
-import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf } from './util.mjs'
+import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE } from './util.mjs'
 import { DESCRIPTOR_FILE } from './descriptor.mjs'
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
@@ -76,7 +76,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, DESCRIPTOR }) {
       const bad = []; let checked = 0
       for (const f of files) {
         const t = read(f) || ''
-        const fm = t.match(/^---\r?\n([\s\S]*?)\r?\n---/); if (!fm) continue
+        const fm = t.match(FRONTMATTER_RE); if (!fm) continue
         const inline = fm[1].match(/(?:^|\n)\s*sources:\s*\[([^\]]*)\]/) // anchored so data_sources:/test_sources: don't collide
         const block = fm[1].match(/(?:^|\n)\s*sources:\s*\r?\n((?:\s*-\s*[^\n]+\r?\n?)+)/)
         const norm = s => s.replace(/\s+#.*$/, '').trim().replace(/['"]/g, '').replace(/^\.\//, '') // strip trailing comment + quotes + leading ./
@@ -225,7 +225,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, DESCRIPTOR }) {
       const bad = []
       for (const f of files) {
         const t = read(f) || ''
-        const fm = t.match(/^---\n([\s\S]*?)\n---/)
+        const fm = t.match(FRONTMATTER_RE) // was LF-only here: a CRLF-saved doc was invisible to doc-freshness
         const body = fm ? fm[1] : t.slice(0, 400)
         const m = body.match(new RegExp(c.field + '\\s*[:=]\\s*([0-9]{4}-[0-9]{2}-[0-9]{2})', 'i'))
         if (!m) { bad.push(`${f.split('/').pop()}: no ${c.field}`); continue }

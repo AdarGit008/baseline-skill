@@ -5,7 +5,7 @@
 // claims/REC rules read through it.
 import fs from 'node:fs'
 import { validateAgainst } from './validate.mjs'
-import { statusOf } from './util.mjs'
+import { statusOf, FRONTMATTER_RE } from './util.mjs'
 
 export const RECORD_KINDS = {
   session:  { schema: 'record.session.schema.json',  home: 'records/sessions/<lane>/<YYYY-MM-DD>-<HHMMSS>-<agent>.md' },
@@ -31,7 +31,7 @@ export function validateRecord(kind, obj) {
 // strings; the schemas bind shape by pattern). The boundary regex mirrors the one the
 // evaluators already use, so a record the checker can read is a record this can read.
 export function parseFrontmatter(md) {
-  const m = String(md).match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/)
+  const m = String(md).match(FRONTMATTER_RE)
   if (!m) return { fields: null, body: String(md) }
   const fields = {}
   for (const line of m[1].split('\n')) {

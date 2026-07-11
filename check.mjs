@@ -7,6 +7,7 @@
 // evaluators -> engine -> report). check.mjs, rules.json, and src/ are
 // co-located — invoke by absolute path, never copy this file away from them.
 import path from 'node:path'
+import { makeOpt, makeOptAll } from './src/util.mjs'
 import { loadRules } from './src/rules.mjs'
 import { indexRepo } from './src/repo.mjs'
 import { resolveConfig } from './src/config.mjs'
@@ -16,8 +17,8 @@ import { makeColor, reportJson, reportHuman } from './src/report.mjs'
 import { runSelfCheck } from './src/selfcheck.mjs'
 
 const args = process.argv.slice(2)
-const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : def }
-const optAll = (name) => args.reduce((a, v, i) => (args[i] === name && args[i + 1] && !args[i + 1].startsWith('--') ? [...a, args[i + 1]] : a), [])
+const opt = makeOpt(args)
+const optAll = makeOptAll(args)
 const REPO = path.resolve(opt('--repo', process.cwd()))
 const NO_EXEC = !!opt('--no-exec', false)
 const JSON_OUT = !!opt('--json', false)

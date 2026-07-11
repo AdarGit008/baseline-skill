@@ -1,5 +1,17 @@
 // Pure helpers shared across the runner — no I/O, no process state.
 export const DAY = 86400000
+
+// Argv helpers — ONE parser for every subcommand (check / orient / log / jdg).
+// opt refuses to eat a following '--flag' as a value; optText consumes the next
+// token unconditionally (prose legitimately starts with '--'); optAll collects a
+// repeatable flag's values with opt's guard.
+export const makeOpt = args => (name, def) => { const i = args.indexOf(name); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : def }
+export const makeOptText = args => (name, def) => { const i = args.indexOf(name); return i >= 0 ? (args[i + 1] !== undefined ? args[i + 1] : true) : def }
+export const makeOptAll = args => name => args.reduce((a, v, i) => (args[i] === name && args[i + 1] && !args[i + 1].startsWith('--') ? [...a, args[i + 1]] : a), [])
+
+// One opinion about the frontmatter boundary (CRLF-tolerant) — the writer
+// (records.mjs) and every reader (doc-code-age, doc-freshness) share it.
+export const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 export const asArr = v => v == null ? [] : Array.isArray(v) ? v : [v]
 export const parseDate = s => { const d = new Date(s); return isNaN(d) ? null : d }
 export const daysAgo = d => (Date.now() - d.getTime()) / DAY

@@ -20,6 +20,7 @@
 // Exit: 0 written · 1 scrub-blocked · 2 usage/environment.
 import fs from 'node:fs'
 import path from 'node:path'
+import { makeOpt, makeOptText, makeOptAll } from './util.mjs'
 import { currentLane, run } from './probe.mjs'
 import { validateRecord, parseFrontmatter, renderFrontmatter, sessionRelPath } from './records.mjs'
 import { scan, loadAllowlist, addAllowlistEntries, ALLOWLIST_FILE, CACHE_DIR } from './scrub.mjs'
@@ -30,9 +31,7 @@ const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').repl
 export function runLog(argv) {
   // value flags refuse a '--'-leading next token (it's another flag); TEXT flags
   // consume it regardless — "-m '--started with a dash'" is a message, not flags
-  const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? (argv[i + 1] !== undefined && !argv[i + 1].startsWith('--') ? argv[i + 1] : true) : d }
-  const optText = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? (argv[i + 1] !== undefined ? argv[i + 1] : true) : d }
-  const optAll = n => argv.reduce((a, v, i) => (argv[i] === n && argv[i + 1] !== undefined ? [...a, argv[i + 1]] : a), [])
+  const opt = makeOpt(argv), optText = makeOptText(argv), optAll = makeOptAll(argv)
   const REPO = path.resolve(String(opt('--repo', process.cwd())))
   const JSON_OUT = !!opt('--json', false)
   const usage = msg => { console.error(`baseline log: ${msg}\n  usage: baseline log -m "what happened" [--next "..."] [--deadends "..."] [--lane L] [--agent A] [--from FILE] [--allow ID --reason "..."]`); return 2 }

@@ -33,6 +33,11 @@ const HEURISTIC = [
   { name: 'high-entropy-blob', re: () => /(?<![0-9A-Za-z+/=])[0-9A-Za-z+/]{38,64}(?![0-9A-Za-z+/=])/g, entropy: 4.5 },
 ]
 
+// Introspectable copies of the deterministic signatures — the records suite pins
+// each one as a substring of SEC-01's pattern, so scrub and the rule set cannot
+// drift apart silently (the parity the module header promises, enforced).
+export const DETERMINISTIC_SOURCES = DETERMINISTIC.map(p => ({ name: p.name, source: p.re().source }))
+
 function shannon(s) {
   const freq = {}
   for (const ch of s) freq[ch] = (freq[ch] || 0) + 1
@@ -41,7 +46,6 @@ function shannon(s) {
   return h
 }
 
-const lineOf = (text, idx) => text.slice(0, idx).split('\n').length
 const mask = m => m.length <= 6 ? m[0] + '…' : m.slice(0, 4) + '…' + m.slice(-2)
 export const findingId = (name, match) => 'scrub-' + crypto.createHash('sha256').update(name + ':' + match).digest('hex').slice(0, 12)
 
@@ -53,28 +57,31 @@ export const findingId = (name, match) => 'scrub-' + crypto.createHash('sha256')
 // raw match (a scrub report must not itself leak what it caught).
 export function scan(text, { allowlist = [] } = {}) {
   const allowedIds = new Map((allowlist || []).map(e => [e.id, e]))
+  // newline offsets once per scan; line lookup is a binary search (no per-finding slicing)
+  const nl = []
+  for (let i = text.indexOf('\n'); i !== -1; i = text.indexOf('\n', i + 1)) nl.push(i)
+  const lineAt = idx => { let lo = 0, hi = nl.length; while (lo < hi) { const mid = (lo + hi) >> 1; nl[mid] < idx ? lo = mid + 1 : hi = mid } return lo + 1 }
   const seen = new Map()
   const spans = []
-  const collect = (tier, certainty, hay) => {
+  const collect = (tier, certainty) => {
     for (const pat of tier) {
       const re = pat.re()
       let m
-      while ((m = re.exec(hay))) {
+      while ((m = re.exec(text))) {
         if (pat.entropy && (shannon(m[0]) < pat.entropy || !/[a-z]/.test(m[0]) || !/[A-Z]/.test(m[0]) || !/[0-9]/.test(m[0]))) continue
+        // heuristics hunt what the signatures DIDN'T claim: a match overlapping a
+        // deterministic span is suppressed, so one value never reports under two names
+        if (certainty === 'heuristic' && spans.some(([a, b]) => m.index < b && a < m.index + m[0].length)) continue
         if (certainty === 'deterministic') spans.push([m.index, m.index + m[0].length])
         const id = findingId(pat.name, m[0])
         const prev = seen.get(id)
         if (prev) { prev.count++; continue }
-        seen.set(id, { id, name: pat.name, certainty, line: lineOf(hay, m.index), masked: mask(m[0]), count: 1 })
+        seen.set(id, { id, name: pat.name, certainty, line: lineAt(m.index), masked: mask(m[0]), count: 1 })
       }
     }
   }
-  collect(DETERMINISTIC, 'deterministic', text)
-  // heuristics hunt what the signatures DIDN'T claim: censor deterministic spans
-  // (length- and newline-preserving) so one value never reports under two names
-  let censored = text
-  for (const [a, b] of spans) censored = censored.slice(0, a) + '·'.repeat(b - a) + censored.slice(b)
-  collect(HEURISTIC, 'heuristic', censored)
+  collect(DETERMINISTIC, 'deterministic')
+  collect(HEURISTIC, 'heuristic')
   const blocked = [], warned = [], allowed = []
   for (const f of seen.values()) {
     if (allowedIds.has(f.id)) { allowed.push({ ...f, reason: allowedIds.get(f.id).reason, date: allowedIds.get(f.id).date }); continue }
@@ -84,13 +91,17 @@ export function scan(text, { allowlist = [] } = {}) {
 }
 
 export const ALLOWLIST_FILE = '.baseline/scrub-allowlist.json'
+export const CACHE_DIR = '.baseline/cache' // drafts + derived caches — must stay gitignored
 
-// Tolerant read: absent file -> empty ledger; a corrupt file is an error worth
-// surfacing (a silently ignored allowlist would re-block every allowed finding).
+// Tolerant read: absent file -> empty ledger. A corrupt file surfaces as a thrown
+// Error with a fix-it message — callers map it to a usage/environment failure, so
+// a merge-conflicted ledger is never mistaken for a scrub block (exit-code contract).
 export function loadAllowlist(repoDir) {
   const p = path.join(repoDir, ALLOWLIST_FILE)
   if (!fs.existsSync(p)) return { entries: [] }
-  const data = JSON.parse(fs.readFileSync(p, 'utf8'))
+  let data
+  try { data = JSON.parse(fs.readFileSync(p, 'utf8')) }
+  catch { throw new Error(`scrub allowlist unreadable (${ALLOWLIST_FILE}): not valid JSON — fix or delete it`) }
   return { entries: Array.isArray(data.entries) ? data.entries : [] }
 }
 

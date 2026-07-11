@@ -10,7 +10,12 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 - **`rules/` split (11 per-category modules) behind a manifest loader** (`src/rules.mjs`):
   `rules.json` keeps the runner's identity (name/version/project_types/profiles) plus the ordered
   module list. Corpus-neutral by construction — stable partition, pins keyed by rule id. Unblocks
-  M5's "extends `rules/flow.json`" premise (#22) and M4c's `rules/rec.json`.
+  M5's "extends `rules/flow.json`" premise (#22) and M4c's `rules/rec.json`. One externally visible
+  change: `--json` `results` order is now category-grouped (the late-added rules interleave into
+  their categories instead of sitting at the tail) — verdicts, ids, and the human report are
+  unchanged; positional consumers of `results[i]` must key by id. The loader fails LOUD on a
+  manifest without `modules` (stale monolith skew) and on a `rules/*.json` file the manifest
+  doesn't list — a rule can't exist yet silently never run.
 - **Record schemas** — `schema/record.{session,judgment,claim,adr}.schema.json`, validated by the
   descriptor's zero-dep subset validator (now shared as `src/validate.mjs`); `src/records.mjs` is
   the kind registry + frontmatter/ADR-header seam. The judgment schema **expresses break-glass**

@@ -15,7 +15,8 @@
     "lane": {
       "type": "string",
       "minLength": 1,
-      "description": "Lane id = branch name (FS2: lane identity is the branch, not an assignment). Must match the directory the record lives under."
+      "pattern": "^[^\\s\\\\]+$",
+      "description": "Lane id = branch name (FS2: lane identity is the branch, not an assignment). Must match the directory the record lives under; no whitespace/backslash, and the writer refuses any lane that resolves outside records/sessions/."
     },
     "agent": {
       "type": "string",

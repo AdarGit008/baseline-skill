@@ -74,8 +74,10 @@ descriptions, architecture/flow diagrams, and the CI wiring snippet.
 
 A full redesign around **derived state** is planned and underway — the checker computes
 status/lanes/orientation from ground truth (tree · git history · forge) instead of checking
-stored proxies. Plan of record: **[docs/v2/PLAN.md](docs/v2/PLAN.md)**; the verified concept
-register behind it: **[docs/v2/CONCEPTS.md](docs/v2/CONCEPTS.md)**. Work is tracked in the
+stored proxies. Plan of record: **[docs/v2/PLAN.md](https://github.com/AdarGit008/baseline-skill/blob/main/docs/v2/PLAN.md)**; the verified concept
+register behind it: **[docs/v2/CONCEPTS.md](https://github.com/AdarGit008/baseline-skill/blob/main/docs/v2/CONCEPTS.md)**.
+<!-- absolute URLs on purpose: this README ships vendored (install.sh) without docs/, and a
+     relative link would fail every consumer's CTX-05 broken-link gate — found dogfooding on baseline-demo -->> Work is tracked in the
 [V2.0 milestone](https://github.com/AdarGit008/baseline-skill/milestone/1) (modules M1–M7,
 expand/contract — removal last).
 

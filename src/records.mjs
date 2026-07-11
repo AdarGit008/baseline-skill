@@ -5,6 +5,7 @@
 // claims/REC rules read through it.
 import fs from 'node:fs'
 import { validateAgainst } from './validate.mjs'
+import { statusOf } from './util.mjs'
 
 export const RECORD_KINDS = {
   session:  { schema: 'record.session.schema.json',  home: 'records/sessions/<lane>/<YYYY-MM-DD>-<HHMMSS>-<agent>.md' },
@@ -44,13 +45,22 @@ export function renderFrontmatter(fields) {
   return '---\n' + Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join('\n') + '\n---\n'
 }
 
-// ADR header lines ('Key: value' above the first section), statuses lowercased —
-// the md-header storage form record.adr.schema.json binds.
+// The one spelling of a session record's path (CF1) — the writer (log) and any
+// future reader derive it from here, never from a second inline template.
+export function sessionRelPath(fields) {
+  const stamp = `${fields.started.slice(0, 10)}-${fields.started.slice(11, 19).replace(/:/g, '')}`
+  return `records/sessions/${fields.lane}/${stamp}-${fields.agent}.md`
+}
+
+// ADR header fields, statuses lowercased — the md-header storage form
+// record.adr.schema.json binds. Status extraction delegates to util's statusOf,
+// the SAME reader CTX-02's adr-status check uses (inline 'Status: x', '**Status**',
+// and Nygard '## Status' heading forms) — one opinion about an ADR's status.
 export function parseAdrHeader(md) {
   const head = String(md).split(/^##\s/m)[0]
   const grab = key => { const m = head.match(new RegExp('^' + key + '\\s*:\\s*([^\\n]+)$', 'im')); return m ? m[1].trim() : undefined }
   const fields = {}
-  const status = grab('Status'); if (status !== undefined) fields.status = status.toLowerCase()
+  const status = statusOf(String(md)); if (status != null) fields.status = status.toLowerCase()
   const date = grab('Date'); if (date !== undefined) fields.date = date
   const sup = grab('Supersedes'); if (sup !== undefined) fields.supersedes = sup
   const supBy = grab('Superseded-by'); if (supBy !== undefined) fields.superseded_by = supBy

@@ -10,8 +10,8 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { loadRules } from '../../src/rules.mjs'
 import { RECORD_KINDS, validateRecord, parseFrontmatter, renderFrontmatter, parseAdrHeader } from '../../src/records.mjs'
-import { scan, findingId } from '../../src/scrub.mjs'
-import { extractNext, newestLocalLog } from '../../src/facts/git.mjs'
+import { scan, findingId, DETERMINISTIC_SOURCES } from '../../src/scrub.mjs'
+import { extractNext, newestLocalLog, gitFacts } from '../../src/facts/git.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '..', '..')
@@ -101,6 +101,16 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
   ok(allowed.blocked.length === 6 && allowed.allowed.length === 1 && allowed.allowed[0].reason === 'documented example', 'allowlist suppresses exactly its finding and surfaces the judgment')
   const dup = scan(akia + ' twice ' + akia)
   ok(dup.blocked.length === 1 && dup.blocked[0].count === 2, 'repeated value dedupes to one finding with a count')
+
+  const overlap = scan('api_key: "' + akia + '"')
+  ok(overlap.blocked.length === 1 && overlap.warned.length === 0, 'a signature inside a quoted assignment reports ONCE, deterministically (span suppression)')
+
+  // scrub's deterministic tier must never drift from SEC-01 — pin each source as a
+  // substring of the rule's pattern (normalizing escaping/non-capturing differences)
+  const norm = s => s.replace(/\\-/g, '-').replace(/\(\?:/g, '(')
+  const sec01 = norm(loadRules().rules.find(r => r.id === 'SEC-01').check.pattern)
+  const shared = ['private-key-block', 'aws-access-key-id', 'google-api-key', 'slack-token', 'github-token']
+  ok(shared.every(n => sec01.includes(norm(DETERMINISTIC_SOURCES.find(p => p.name === n).source))), 'deterministic tier stays SEC-01-parity (each source pinned inside the rule pattern)')
 }
 
 // ---------- `baseline log` end-to-end ----------
@@ -131,6 +141,14 @@ try {
   ok(newestLocalLog({ REPO: t1 }, 'lane/alpha').next === 'wire CI', 'orient contract: newestLocalLog resolves lane -> next')
   const r1b = sh(t1, process.execPath, [BASELINE, 'log', '--repo', t1, '-m', 'again same second'], NOW)
   ok(r1b.code === 2 && /already exists/.test(r1b.out), 'same second + agent refuses loudly (O_EXCL, no counters)')
+  const gf = gitFacts({ REPO: t1, HEAD: null, gitIsShallow: () => false })
+  ok(gf.branch === 'lane/alpha' && gf.thisLaneLog?.next === 'wire CI', 'orient symmetry: gitFacts reads the unborn-branch lane + its next: (currentLane seam)')
+  const rTxt = sh(t1, process.execPath, [BASELINE, 'log', '--repo', t1, '-m', '--started with a dash', '--lane', 'lane/dash'], NOW)
+  ok(rTxt.code === 0, "free-text flags accept prose starting with '--'")
+  const rDe = sh(t1, process.execPath, [BASELINE, 'log', '--repo', t1, '-m', 'x', '--deadends', 'tried Y; dead', '--lane', 'lane/de'], NOW)
+  ok(rDe.code === 0 && fs.readFileSync(path.join(t1, 'records/sessions/lane/de/2026-07-11-120000-records-fixture.md'), 'utf8').includes('## Dead ends\ntried Y; dead'), '--deadends writes its own section')
+  const rTrav = sh(t1, process.execPath, [BASELINE, 'log', '--repo', t1, '-m', 'x', '--lane', '../../outside'], NOW)
+  ok(rTrav.code === 2 && /escapes records\/sessions/.test(rTrav.out), 'a traversal lane is refused before anything is written (containment check)')
 
   // scrub block -> non-lossy draft -> replay with the dated judgment
   const t2 = mkrepo('lane/beta'); tmps.push(t2)
@@ -153,12 +171,20 @@ try {
   const j3 = JSON.parse(r3.out)
   ok(r3.code === 0 && j3.written === 'records/sessions/lane/gamma/2026-07-11-120000-piped-agent.md', 'stdin message + --lane/--agent overrides + --json shape')
 
-  // environment errors
+  // environment errors + side-effect discipline
   const t4 = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-nogit-')); tmps.push(t4)
   const r4 = sh(t4, process.execPath, [BASELINE, 'log', '--repo', t4, '-m', 'x'], NOW)
   ok(r4.code === 2 && /no lane resolvable/.test(r4.out), 'outside git with no --lane: usage error, not a crash')
   const r5 = sh(t4, process.execPath, [BASELINE, 'log', '--repo', t4, '-m', 'x', '--allow', 'scrub-abc'], NOW)
   ok(r5.code === 2 && /--reason/.test(r5.out), '--allow without --reason refused (judgments are dated + reasoned)')
+
+  const t5 = mkrepo('lane/omega'); tmps.push(t5)
+  const rBadFrom = sh(t5, process.execPath, [BASELINE, 'log', '--repo', t5, '--from', 'nope.md', '--allow', 'scrub-deadbeef0000', '--reason', 'typo test'], NOW)
+  ok(rBadFrom.code === 2 && !fs.existsSync(path.join(t5, '.baseline/scrub-allowlist.json')), 'a failing invocation leaves the allowlist untouched (judgments land only on valid runs)')
+  fs.mkdirSync(path.join(t5, '.baseline'), { recursive: true })
+  fs.writeFileSync(path.join(t5, '.baseline/scrub-allowlist.json'), '{bad json')
+  const rCor = sh(t5, process.execPath, [BASELINE, 'log', '--repo', t5, '-m', 'hello world'], NOW)
+  ok(rCor.code === 2 && /allowlist unreadable/.test(rCor.out), 'corrupt allowlist -> exit 2 with a fix-it message, never a fake scrub block (exit 1)')
 } finally {
   for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })
 }

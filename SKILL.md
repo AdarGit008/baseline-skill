@@ -132,7 +132,7 @@ Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / 
 ## Common Pitfalls
 
 1. **Copying `check.mjs` away from the rule set (`rules.json` + `rules/`) + `src/`.** It loads them from its own directory — invoke by absolute path instead.
-2. **Presenting a warn as a blocker (or vice-versa).** Severity is in `rules.json` and the runner output — never upgrade/downgrade it.
+2. **Presenting a warn as a blocker (or vice-versa).** Severity is in the rule modules (`rules/*.json`) and the runner output — never upgrade/downgrade it.
 3. **Faking a sign-off.** Manual rules exist because a script can't judge them; record a real dated `signoff.json` entry, don't rubber-stamp.
 4. **Skipping BUILD-05 by habit.** Omit `--no-exec` when the repo is trusted and `bootstrap_command` is set — a green crown check is the strongest single signal.
 5. **Gaming a warn to hit 100%.** An honest advisory warn (e.g. a dependency-updater rule on a zero-dep repo) beats a presence-theater fix. 0 blockers = build-ready is the real bar.

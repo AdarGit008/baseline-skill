@@ -173,7 +173,18 @@ node baseline.mjs log -m "what happened and why" --next "the one most useful nex
 # lane = current branch (unborn included) · agent/timestamp derived · stdin accepted · never $EDITOR
 ```
 
-Every write passes the **scrub gate** (`src/scrub.mjs`, one `scan()` shared by every layer): deterministic signatures (SEC-01 parity + JWT + fine-grained PAT) **block**; assignment/entropy heuristics **warn** (C07: severity never exceeds certainty). A block is non-lossy — the draft survives under `.baseline/cache/` and the exact rerun is printed; a false positive becomes a dated judgment via `--allow <finding-id> --reason "..."` in `.baseline/scrub-allowlist.json` (the finding id is a content-derived hash — the value itself is never stored). Filenames are collision-free by construction (CF1): no counters, `O_EXCL`, same-second-same-agent refuses loudly. The judgment ledger CLI (`baseline jdg`) and the REC/FLOW advisory rules land in M4b/M4c.
+Every write passes the **scrub gate** (`src/scrub.mjs`, one `scan()` shared by every layer): deterministic signatures (SEC-01 parity + JWT + fine-grained PAT) **block**; assignment/entropy heuristics **warn** (C07: severity never exceeds certainty). A block is non-lossy — the draft survives under `.baseline/cache/` and the exact rerun is printed; a false positive becomes a dated judgment via `--allow <finding-id> --reason "..."` in `.baseline/scrub-allowlist.json` (the finding id is a content-derived hash — the value itself is never stored). Filenames are collision-free by construction (CF1): no counters, `O_EXCL`, same-second-same-agent refuses loudly.
+
+**The judgment ledger (M4b).** Judgments are dated, owned, scoped, reasoned — and they **expire**:
+
+```bash
+node baseline.mjs jdg new --kind risk-acceptance --subject SEC-13 \
+  --reason "deferred until first external consumer" --review-by 2026-10-01 \
+  --expect descriptor.maturity=prototype --tripwire "descriptor.maturity ne prototype"
+node baseline.mjs jdg check        # ✓ ok · ≈ drifted · ? unresolvable · ⏰ expired · ✗ tripped
+```
+
+The machine contract: `expected_state` snapshots the world the judgment assumed (mismatch = **DRIFTED**), `tripwire` (`fact op value`; ops `eq|ne|gt|lt|exists|absent`) VOIDS it (**TRIPPED**), `review_by` lapses it (**EXPIRED**); an unknown fact path is **UNRESOLVABLE** — surfaced, never guessed. Facts: `descriptor.*` · `planes.{tree,history,forge}.*` · `git.{branch,head,shallow}` · `today` (+ `--facts FILE` overlay). `jdg check` exits 1 on tripped/expired/invalid; M6's reconcile runs the same evaluation on cron. A `kind: sign-off` judgment whose `subject` is a manual rule's id satisfies that rule while unexpired — the unified ledger outranks the legacy `signoff.json` (dual-read until M7), and a lapsed sign-off is honestly not signed. The full hand-written forms live in **[CONTRACT.md](CONTRACT.md)**. The REC/FLOW advisory rules land in M4c.
 
 ## The rules
 

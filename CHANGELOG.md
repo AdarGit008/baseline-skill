@@ -6,6 +6,29 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M4b: the judgment ledger — `baseline jdg`, the machine contract, one sign-off home
+- **`src/jdg.mjs`** — the unified ledger surface. `jdg new` authors schema-valid, scrub-gated,
+  numbered `records/judgments/JDG-NNNN.json` (break-glass ⇒ `--gate admit|reconcile`; `--review-by`
+  mandatory — every judgment expires); `jdg check` evaluates every judgment's **machine contract**
+  against derived facts: `expected_state` mismatch = DRIFTED, `tripwire` fired = TRIPPED,
+  `review_by` past = EXPIRED, unknown fact path = UNRESOLVABLE (surfaced, never guessed — C36).
+  Worst-wins lattice; exit 1 on tripped/expired/invalid. Fact namespace: `descriptor.*` ·
+  `planes.*` · `git.*` · `today`, with a `--facts` overlay (fixtures now, M6's reconcile sweep later).
+- **signoff→JDG bridge** — a `kind: sign-off` judgment whose `subject` is a manual rule's id
+  satisfies it while unexpired; a **lapsed sign-off is honestly NOT signed** and outranks the
+  eternal legacy entry. Legacy `.project-baseline/signoff.json` keeps byte-identical V1 semantics
+  until M7. New golden fixture **`jdg-repo`** pins the JDG-only path (0 blockers, no signoff.json);
+  re-capture normalized pin key order to the post-split output order (verified zero semantic drift).
+- **`CONTRACT.md`** — the plain-git twin (C28): the orient-first/log-last loop, record homes +
+  hand-written forms, the judgment machine contract + numbering/merge-renumbering, the scrub gate,
+  the **FS5 break-glass discipline** (own prior PR on main; enforcement lands at M6 admit), and
+  the reserved M5/M6/M7 surfaces. Ships with installs.
+- **Deferred-from-M4a consolidations** — `util.mjs` gains `makeOpt`/`makeOptText`/`makeOptAll`
+  (check/orient/log/jdg share one argv parser) and `FRONTMATTER_RE` (one boundary opinion; fixes
+  doc-freshness's LF-only regex that made CRLF-saved docs invisible to CTX-06). Corpus-proof.
+- Suite grows to **76 assertions** incl. the DESC-03-shape acceptance bullet: a descriptor-change
+  JDG validates and its tripwire fires on posture weakening.
+
 ### Added — V2 M4a: the Ledger's shapes — rules split, record schemas, `baseline log` + scrub
 - **`rules/` split (11 per-category modules) behind a manifest loader** (`src/rules.mjs`):
   `rules.json` keeps the runner's identity (name/version/project_types/profiles) plus the ordered

@@ -18,6 +18,13 @@ export function currentBranch(repo) {
   return b === 'HEAD' ? '(detached)' : (b || null)
 }
 
+// Lane identity = branch name (FS2), INCLUDING an unborn branch (fresh repo before
+// the first commit — rev-parse has no HEAD yet, symbolic-ref still names it). The
+// one derivation `log` writes with, git-facts reads with, and M5 leases will reuse.
+export function currentLane(repo) {
+  return currentBranch(repo) || run('git', ['-C', repo.REPO, 'symbolic-ref', '--short', 'HEAD'])
+}
+
 function probeForge(repo) {
   if (gh(['--version']) == null) return { available: false, gh: false, reason: 'gh not installed' }
   if (run('gh', ['auth', 'status']) == null) return { available: false, gh: true, authed: false, reason: 'gh not authenticated (gh auth login)' }

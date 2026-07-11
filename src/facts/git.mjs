@@ -3,7 +3,7 @@
 // path first, then the legacy prototype path; a lane's branch name is its record namespace.
 import fs from 'node:fs'
 import path from 'node:path'
-import { currentBranch } from '../probe.mjs'
+import { currentLane } from '../probe.mjs'
 
 export const SESSION_BASES = ['records/sessions', 'docs/session-log']
 
@@ -34,10 +34,12 @@ export function newestLocalLog(repo, branch) {
 }
 
 export function gitFacts(repo) {
-  const branch = repo.HEAD ? currentBranch(repo) : null
+  // currentLane, not currentBranch: a record written on an unborn branch (first
+  // session, pre-first-commit) must be readable here or the log/orient symmetry lies
+  const branch = currentLane(repo)
   return {
     available: !!repo.HEAD,
-    reason: repo.HEAD ? null : 'not a git repository (no HEAD)',
+    reason: repo.HEAD ? null : (branch ? 'unborn branch (no commits yet)' : 'not a git repository (no HEAD)'),
     branch,
     head: repo.HEAD || null,
     shallow: repo.HEAD ? repo.gitIsShallow() : false,

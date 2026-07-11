@@ -1,0 +1,26 @@
+{
+  "rules": [
+    {
+      "id": "DESC-01",
+      "title": "Repo descriptor present and valid",
+      "category": "desc",
+      "severity": "warn",
+      "applies_to": "all",
+      "source": "https://backstage.io/docs/features/software-catalog/descriptor-format (kind/type/lifecycle/owner); Kubernetes declared-spec vs observed-status",
+      "lesson": "C39 — the repo declares itself; applicability, scrutiny, and ownership consume a schema-validated descriptor, not per-rule tree-sniffing that misfires and can't express intent",
+      "rationale": "type/lifecycle/maturity/owner/workflow cannot be reliably inferred from the tree. A minimal baseline.repo.json is the one stored intent every derivation hangs off. Absent, the checker falls back to fragile auto-detection; present-but-invalid, its declared intent can't be trusted. Transitional WARN — a repo can adopt incrementally.",
+      "fix": "Add baseline.repo.json at the repo root: copy templates/baseline.repo.json or a config-presets/*.repo.json posture preset, then set type, lifecycle, maturity, owner, workflow, and anchoring. `init` scaffolds it as its first act.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "descriptor"
+      }
+    }
+  ]
+}

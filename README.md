@@ -42,6 +42,7 @@ valid for Claude Code, so the one repo is native to both.
 node baseline.mjs --repo /path/to/repo          # score (the default command) — exit 1 on blockers
 node baseline.mjs --repo /path/to/repo --json   # machine output for CI
 node baseline.mjs orient --repo /path/to/repo   # derived-state survey: lanes · backlog · divergence
+node baseline.mjs log -m "..." --next "..."     # write a scrubbed session record (the forensic tier)
 ```
 
 `baseline.mjs` is the entry point — `check` is the default (it delegates to `check.mjs`, still the checker), and `orient` surveys session state. Needs only Node ≥ 18 and git; `orient`'s forge view also uses `gh` and degrades gracefully without it.
@@ -51,14 +52,15 @@ node baseline.mjs orient --repo /path/to/repo   # derived-state survey: lanes ·
 | file | purpose |
 |---|---|
 | `SKILL.md` | the skill definition (modes: orient / score / init / fix / explain) |
-| `baseline.mjs` | the CLI entry point — `orient`, `check`, `help` |
+| `baseline.mjs` | the CLI entry point — `orient`, `check`, `log`, `help` |
 | `check.mjs` | the checker (`baseline check` delegates here) |
-| `src/` | the runner's modules: repo · config · evaluators · engine · report · self-check · descriptor · probe · orient |
-| `test/` | golden corpus + orient availability tests (`test/golden/run.mjs --verify`, `test/orient/run.mjs`) — source repo only, not installed |
-| `rules.json` | the 71 rules (id, severity, profile, rationale, fix, source, check) |
-| `schema/repo.schema.json` | the descriptor schema for `baseline.repo.json` (repo identity & posture) |
+| `src/` | the runner's modules: repo · config · evaluators · engine · report · self-check · descriptor · probe · orient · rules · records · validate · scrub · log |
+| `test/` | golden corpus + orient/facts/records suites (`test/golden/run.mjs --verify`, `test/{orient,facts,records}/run.mjs`) — source repo only, not installed |
+| `rules.json` | the rule-set manifest (version, profiles, module list) — the 71 rules live in `rules/` |
+| `rules/` | the rules, one module per category (build, test, ctx, … desc); M5+ families land as new files |
+| `schema/` | `repo.schema.json` (the descriptor) + `record.{session,judgment,claim,adr}.schema.json` (the Ledger's shapes) |
 | `config.example.json` | per-repo config (copy to `baseline.config.json`) |
-| `templates/` | scaffolds: baseline.repo.json, CLAIMS.json, start-here.md, signoff.json, adr.md, doc-with-freshness.md |
+| `templates/` | scaffolds: baseline.repo.json, session-log.md, judgment.json, claim.json, adr.md, CLAIMS.json, start-here.md, signoff.json, doc-with-freshness.md |
 | `config-presets/` | ready-made `baseline.config.json` + `*.repo.json` posture presets (multi-lane-agents, readiness-only, node-service, …) |
 | `hooks/` | Claude Code SessionStart hook that runs `baseline orient` |
 | `README.md` | this guide — install, usage, file map |
@@ -72,8 +74,10 @@ descriptions, architecture/flow diagrams, and the CI wiring snippet.
 
 A full redesign around **derived state** is planned and underway — the checker computes
 status/lanes/orientation from ground truth (tree · git history · forge) instead of checking
-stored proxies. Plan of record: **[docs/v2/PLAN.md](docs/v2/PLAN.md)**; the verified concept
-register behind it: **[docs/v2/CONCEPTS.md](docs/v2/CONCEPTS.md)**. Work is tracked in the
+stored proxies. Plan of record: **[docs/v2/PLAN.md](https://github.com/AdarGit008/baseline-skill/blob/main/docs/v2/PLAN.md)**; the verified concept
+register behind it: **[docs/v2/CONCEPTS.md](https://github.com/AdarGit008/baseline-skill/blob/main/docs/v2/CONCEPTS.md)**.
+<!-- absolute URLs on purpose: this README ships vendored (install.sh) without docs/, and a
+     relative link would fail every consumer's CTX-05 broken-link gate — found dogfooding on baseline-demo -->> Work is tracked in the
 [V2.0 milestone](https://github.com/AdarGit008/baseline-skill/milestone/1) (modules M1–M7,
 expand/contract — removal last).
 

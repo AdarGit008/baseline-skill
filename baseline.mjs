@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // The baseline CLI — the unified entry point (V2). Routes subcommands:
-//   check   score a repo against rules.json (the default; delegates to the intact
+//   check   score a repo against the rule set (the default; delegates to the intact
 //           check.mjs, so the golden corpus and CI keep invoking check.mjs directly)
 //   orient  derived-state survey for session start — lanes, backlog, divergence
+//   log     write one scrubbed, schema-valid session record (the forensic tier)
 //   help    usage
 // Zero-dependency. check.mjs / rules.json / src/ are co-located — invoke by absolute path.
 import path from 'node:path'
@@ -27,16 +28,21 @@ if (cmd === 'check') {
 } else if (cmd === 'orient') {
   const { runOrient } = await import('./src/orient.mjs')
   process.exit(await runOrient(rest))
+} else if (cmd === 'log') {
+  const { runLog } = await import('./src/log.mjs')
+  process.exit(runLog(rest))
 } else if (cmd === 'help' || cmd === '--help' || cmd === '-h') {
   console.log(`baseline <command> [options]
 
   check [--repo DIR] [--json] [--no-exec] [--profile P]   score a repo (default)
   orient [--repo DIR] [--json] [--strict]                 derived-state survey for session start
+  log -m "..." [--next "..."] [--lane L] [--agent A]      write a scrubbed session record
+      [--from FILE] [--allow ID --reason "..."]           (stdin accepted; never \$EDITOR)
   help                                                    this message
 
   Run \`baseline\` with no command (or a leading --flag) to score, e.g. \`baseline --repo .\`.`)
   process.exit(0)
 } else {
-  console.error(`baseline: unknown command '${cmd}' (try: check, orient, help)`)
+  console.error(`baseline: unknown command '${cmd}' (try: check, orient, log, help)`)
   process.exit(2)
 }

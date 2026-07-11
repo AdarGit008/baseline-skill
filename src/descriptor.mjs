@@ -7,6 +7,7 @@
 // validator against schema/repo.schema.json (the single source of truth).
 import fs from 'node:fs'
 import { execFileSync } from 'node:child_process'
+import { validateAgainst } from './validate.mjs'
 
 export const DESCRIPTOR_FILE = 'baseline.repo.json'
 
@@ -32,42 +33,8 @@ export const FIELD_CONSUMERS = {
   staleness:             'reserved:M3 · orient staleness ceilings',
 }
 
-function matchesType(v, t) {
-  switch (t) {
-    case 'object':  return v !== null && typeof v === 'object' && !Array.isArray(v)
-    case 'array':   return Array.isArray(v)
-    case 'integer': return typeof v === 'number' && Number.isInteger(v)
-    case 'number':  return typeof v === 'number'
-    case 'string':  return typeof v === 'string'
-    case 'boolean': return typeof v === 'boolean'
-    default:        return true
-  }
-}
-const describe = v => (v !== null && typeof v === 'object') ? (Array.isArray(v) ? 'array' : 'object') : JSON.stringify(v)
-const childPath = (where, k) => where ? `${where}.${k}` : k
-
-// A small, deterministic subset of JSON Schema — enough for the descriptor and no more:
-// type, enum, pattern, minLength, required, additionalProperties:false, nested properties,
-// array items. Messages are input-derived only (no paths/dates) so golden pins stay stable.
-function validateAgainst(value, schema, where, errors) {
-  if (schema.type && !matchesType(value, schema.type)) {
-    errors.push(`${where || 'descriptor'} must be ${schema.type} (got ${describe(value)})`)
-    return // a type mismatch cascades into noise — stop at this node
-  }
-  if (schema.enum && !schema.enum.includes(value)) errors.push(`${where} must be one of ${schema.enum.join('|')} (got ${describe(value)})`)
-  if (schema.pattern && typeof value === 'string' && !new RegExp(schema.pattern).test(value)) errors.push(`${where} must match ${schema.pattern} (got ${describe(value)})`)
-  if (schema.minLength != null && typeof value === 'string' && value.length < schema.minLength) errors.push(`${where} must be non-empty`)
-  if (schema.type === 'object' && matchesType(value, 'object')) {
-    const props = schema.properties || {}
-    for (const req of (schema.required || [])) if (!(req in value)) errors.push(`${where ? where + ': ' : ''}missing required field '${req}'`)
-    for (const k of Object.keys(value)) {
-      if (k.startsWith('_')) continue // inline comment keys, ignored (matches the config-file convention)
-      if (!(k in props)) { if (schema.additionalProperties === false) errors.push(`'${childPath(where, k)}' is not a known field`); continue }
-      validateAgainst(value[k], props[k], childPath(where, k), errors)
-    }
-  }
-  if (schema.type === 'array' && Array.isArray(value) && schema.items) value.forEach((el, i) => validateAgainst(el, schema.items, `${where}[${i}]`, errors))
-}
+// The subset validator lives in src/validate.mjs since M4a (shared with the record
+// schemas); the descriptor's messages and semantics are unchanged.
 
 function readSource(repo, ref) {
   if (ref) {

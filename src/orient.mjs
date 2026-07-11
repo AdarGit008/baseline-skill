@@ -23,6 +23,7 @@ const ageOf = (iso) => {
 
 export async function runOrient(argv) {
   const opt = makeOpt(argv)
+  if (opt('--repo', null) === true) { console.error('orient: --repo needs a value'); return 2 }
   const REPO = path.resolve(opt('--repo', process.cwd()))
   const JSON_OUT = !!opt('--json', false)
   const STRICT = !!opt('--strict', false)

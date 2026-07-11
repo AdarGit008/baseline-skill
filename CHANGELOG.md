@@ -26,8 +26,21 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 - **Deferred-from-M4a consolidations** — `util.mjs` gains `makeOpt`/`makeOptText`/`makeOptAll`
   (check/orient/log/jdg share one argv parser) and `FRONTMATTER_RE` (one boundary opinion; fixes
   doc-freshness's LF-only regex that made CRLF-saved docs invisible to CTX-06). Corpus-proof.
-- Suite grows to **76 assertions** incl. the DESC-03-shape acceptance bullet: a descriptor-change
+- Suite grows to **87 assertions** incl. the DESC-03-shape acceptance bullet: a descriptor-change
   JDG validates and its tripwire fires on posture weakening.
+- **Review pass (4-angle adversarial, all findings fixed):** evaluator findings are structured
+  (`{code, fact, want, got, text}` — M6 dedup-keys firings without parsing prose) and `facts.today`
+  is the ONE clock (overlays time-travel expiry too); the signoff bridge loads via the strict
+  `loadJudgments` + `selectSignoffs` (a malformed `review_by` can never read as signed-forever);
+  one clock helper (`util.nowUTC`) ends the raw-env `TODAY` slice; `deepEq` is order-insensitive
+  (JSON key order is not a changed world); tripwire values keep inner whitespace verbatim;
+  `jdg new` blocks are non-lossy (draft + `--from` replay) with the same `--allow/--allow-reason`
+  surface as `log` (log's allowlist flag renamed from `--reason`, which `jdg` needs for the
+  judgment itself); value flags refuse to swallow a following flag (`--repo`/`--by`/`--facts`
+  followed by a flag is a usage error, not a record attributed to "true"); the forge probe is
+  skipped unless a judgment references `planes.forge`; `liteRepo` (repo.mjs) replaces the third
+  hand-rolled repo shim. Behavior note: doc-freshness's CRLF fix means a CRLF doc whose stamp sat
+  in the body (outside frontmatter) no longer passes by accident — LF and CRLF now agree.
 
 ### Added — V2 M4a: the Ledger's shapes — rules split, record schemas, `baseline log` + scrub
 - **`rules/` split (11 per-category modules) behind a manifest loader** (`src/rules.mjs`):

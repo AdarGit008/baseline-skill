@@ -19,6 +19,20 @@ function walk(dir, base = dir, out = []) {
   return out
 }
 
+// The light handle for commands that don't need the tree walk (log/jdg): just
+// enough of indexRepo's surface for loadDescriptor + capabilityProbe. One home —
+// the third hand-rolled copy of this shim was the review's cue to name it.
+export function liteRepo(REPO) {
+  let HEAD = null
+  try { HEAD = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() } catch {}
+  return {
+    REPO,
+    HEAD,
+    read: rel => { try { return fs.readFileSync(path.join(REPO, rel), 'utf8') } catch { return null } },
+    gitIsShallow: () => { try { return execFileSync('git', ['rev-parse', '--is-shallow-repository'], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() === 'true' } catch { return false } },
+  }
+}
+
 export function indexRepo(REPO) {
   const FILES = walk(REPO)
 

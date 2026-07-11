@@ -160,7 +160,7 @@ try {
   const draftRel = (r2.out.match(/\.baseline\/cache\/[^\s]+\.md/) || [])[0]
   ok(!!draftRel && fs.existsSync(path.join(t2, draftRel)), `draft survives at ${draftRel || '(missing)'}`)
   const allowId = (r2.out.match(/scrub-[0-9a-f]{12}/) || [])[0]
-  const r2b = sh(t2, process.execPath, [BASELINE, 'log', '--repo', t2, '--from', draftRel, '--allow', allowId, '--reason', 'AWS documented example key'], NOW)
+  const r2b = sh(t2, process.execPath, [BASELINE, 'log', '--repo', t2, '--from', draftRel, '--allow', allowId, '--allow-reason', 'AWS documented example key'], NOW)
   ok(r2b.code === 0 && fs.existsSync(path.join(t2, 'records/sessions/lane/beta/2026-07-11-120000-records-fixture.md')), 'draft replay + --allow writes the record at the original stamp')
   const wl = JSON.parse(fs.readFileSync(path.join(t2, '.baseline/scrub-allowlist.json'), 'utf8'))
   ok(wl.entries.length === 1 && wl.entries[0].id === allowId && wl.entries[0].date === '2026-07-11' && !!wl.entries[0].reason, 'allowlist entry is a dated judgment (id + reason + date, never the secret)')
@@ -177,10 +177,10 @@ try {
   const r4 = sh(t4, process.execPath, [BASELINE, 'log', '--repo', t4, '-m', 'x'], NOW)
   ok(r4.code === 2 && /no lane resolvable/.test(r4.out), 'outside git with no --lane: usage error, not a crash')
   const r5 = sh(t4, process.execPath, [BASELINE, 'log', '--repo', t4, '-m', 'x', '--allow', 'scrub-abc'], NOW)
-  ok(r5.code === 2 && /--reason/.test(r5.out), '--allow without --reason refused (judgments are dated + reasoned)')
+  ok(r5.code === 2 && /--allow-reason/.test(r5.out), '--allow without --allow-reason refused (judgments are dated + reasoned)')
 
   const t5 = mkrepo('lane/omega'); tmps.push(t5)
-  const rBadFrom = sh(t5, process.execPath, [BASELINE, 'log', '--repo', t5, '--from', 'nope.md', '--allow', 'scrub-deadbeef0000', '--reason', 'typo test'], NOW)
+  const rBadFrom = sh(t5, process.execPath, [BASELINE, 'log', '--repo', t5, '--from', 'nope.md', '--allow', 'scrub-deadbeef0000', '--allow-reason', 'typo test'], NOW)
   ok(rBadFrom.code === 2 && !fs.existsSync(path.join(t5, '.baseline/scrub-allowlist.json')), 'a failing invocation leaves the allowlist untouched (judgments land only on valid runs)')
   fs.mkdirSync(path.join(t5, '.baseline'), { recursive: true })
   fs.writeFileSync(path.join(t5, '.baseline/scrub-allowlist.json'), '{bad json')
@@ -190,13 +190,13 @@ try {
   // ---- the judgment machine contract (M4b): pure evaluator ----
   const F = { today: '2026-07-11', descriptor: { present: true, valid: true, workflow: 'multi-lane', anchoring: 'strict', maturity: 'prototype' }, planes: { forge: { available: false } }, git: { branch: 'lane/x' } }
   const J = over => ({ record: 'judgment/1', id: 'JDG-0001', kind: 'risk-acceptance', date: '2026-07-01', by: 'adar', subject: 'SEC-13', reason: 'r', review_by: '2026-12-31', ...over })
-  ok(evaluateJudgment(J({ tripwire: { fact: 'descriptor.maturity', op: 'ne', value: 'prototype' } }), F, '2026-07-11').verdict === 'ok', 'evaluator: healthy judgment -> ok')
-  ok(evaluateJudgment(J({}), F, '2026-07-11').notes.some(n => /no tripwire/.test(n)), 'evaluator: tripwire-less deviation-class judgment carries the warning note')
-  ok(evaluateJudgment(J({ review_by: '2026-07-10' }), F, '2026-07-11').verdict === 'expired', 'evaluator: past review_by -> expired')
-  ok(evaluateJudgment(J({ expected_state: { 'descriptor.maturity': 'claimed' } }), F, '2026-07-11').verdict === 'drifted', 'evaluator: expected_state mismatch -> drifted')
-  ok(evaluateJudgment(J({ tripwire: { fact: 'descriptor.workflow', op: 'ne', value: 'single-lane' } }), F, '2026-07-11').verdict === 'tripped', 'evaluator: fired tripwire -> tripped')
-  ok(evaluateJudgment(J({ tripwire: { fact: 'descriptor.nope', op: 'eq', value: 1 } }), F, '2026-07-11').verdict === 'unresolvable', 'evaluator: unknown fact path -> unresolvable, never a guess')
-  ok(evaluateJudgment(J({ review_by: '2026-07-10', tripwire: { fact: 'descriptor.workflow', op: 'ne', value: 'single-lane' } }), F, '2026-07-11').verdict === 'tripped', 'evaluator lattice: tripped outranks expired')
+  ok(evaluateJudgment(J({ tripwire: { fact: 'descriptor.maturity', op: 'ne', value: 'prototype' } }), F).verdict === 'ok', 'evaluator: healthy judgment -> ok')
+  ok(evaluateJudgment(J({}), F).findings.some(f => f.code === 'advice' && /no tripwire/.test(f.text)), 'evaluator: tripwire-less deviation-class judgment carries the warning note')
+  ok(evaluateJudgment(J({ review_by: '2026-07-10' }), F).verdict === 'expired', 'evaluator: past review_by -> expired')
+  ok(evaluateJudgment(J({ expected_state: { 'descriptor.maturity': 'claimed' } }), F).verdict === 'drifted', 'evaluator: expected_state mismatch -> drifted')
+  ok(evaluateJudgment(J({ tripwire: { fact: 'descriptor.workflow', op: 'ne', value: 'single-lane' } }), F).verdict === 'tripped', 'evaluator: fired tripwire -> tripped')
+  ok(evaluateJudgment(J({ tripwire: { fact: 'descriptor.nope', op: 'eq', value: 1 } }), F).verdict === 'unresolvable', 'evaluator: unknown fact path -> unresolvable, never a guess')
+  ok(evaluateJudgment(J({ review_by: '2026-07-10', tripwire: { fact: 'descriptor.workflow', op: 'ne', value: 'single-lane' } }), F).verdict === 'tripped', 'evaluator lattice: tripped outranks expired')
   ok(evalCondition({ fact: 'a', op: 'gt', value: 2 }, { a: 3 }).fired === true && evalCondition({ fact: 'a', op: 'lt', value: '2026-08-01' }, { a: '2026-07-11' }).fired === true, 'evalCondition: numeric gt + ISO-date string lt compare correctly')
   ok(evalCondition({ fact: 'x.y', op: 'exists' }, { x: { y: 0 } }).fired === true && evalCondition({ fact: 'x.z', op: 'absent' }, { x: {} }).fired === true, 'evalCondition: exists/absent are presence tests (falsy-zero exists)')
   ok(evalCondition({ fact: 'a', op: 'gt', value: 2 }, { a: 'three' }).fired === null, 'evalCondition: mixed-type comparison is unresolvable, not false')
@@ -204,8 +204,8 @@ try {
   // the DESC-03 shape — the record M2 deferred to this schema (issue #21 acceptance)
   const desc03 = { record: 'judgment/1', id: 'JDG-0002', kind: 'sign-off', date: '2026-07-11', by: 'adar', subject: 'baseline.repo.json', reason: 'posture change reviewed: workflow stays multi-lane, anchoring strict', review_by: '2026-10-01', expected_state: { 'descriptor.workflow': 'multi-lane', 'descriptor.anchoring': 'strict' }, tripwire: { fact: 'descriptor.workflow', op: 'ne', value: 'multi-lane' } }
   ok(validateRecord('judgment', desc03).length === 0, 'DESC-03-shape descriptor-change JDG validates with machine-readable expected_state + tripwire + review_by')
-  ok(evaluateJudgment(desc03, F, '2026-07-11').verdict === 'ok', 'DESC-03 shape: evaluates ok while the posture holds')
-  ok(evaluateJudgment(desc03, { ...F, descriptor: { ...F.descriptor, workflow: 'single-lane' } }, '2026-07-11').verdict === 'tripped', 'DESC-03 shape: posture weakening fires the tripwire')
+  ok(evaluateJudgment(desc03, F).verdict === 'ok', 'DESC-03 shape: evaluates ok while the posture holds')
+  ok(evaluateJudgment(desc03, { ...F, descriptor: { ...F.descriptor, workflow: 'single-lane' } }).verdict === 'tripped', 'DESC-03 shape: posture weakening fires the tripwire')
 
   // ---- jdg new|check end-to-end ----
   const t6 = mkrepo('lane/jdg'); tmps.push(t6)
@@ -217,6 +217,16 @@ try {
   ok(jGate.code === 2 && /--gate/.test(jGate.out), 'break-glass without --gate refused (FS5 shape law)')
   const jSecret = sh(t6, process.execPath, [BASELINE, 'jdg', 'new', '--repo', t6, '--kind', 'deviation', '--subject', 'SEC-01', '--reason', 'token ' + 'ghp_' + 'abcdefghijklmnopqrstuvwxyz0123456789', '--review-by', '2026-08-01'], NOW)
   ok(jSecret.code === 1 && !fs.existsSync(path.join(t6, 'records/judgments/JDG-0003.json')), 'a live secret in --reason is scrub-blocked, nothing written')
+  const jdgDraft = (jSecret.out.match(/\.baseline\/cache\/[^\s]+\.json/) || [])[0]
+  const jdgAllow = (jSecret.out.match(/scrub-[0-9a-f]{12}/) || [])[0]
+  ok(!!jdgDraft && fs.existsSync(path.join(t6, jdgDraft)), 'jdg block is non-lossy: the draft survives under .baseline/cache/')
+  const jReplay = sh(t6, process.execPath, [BASELINE, 'jdg', 'new', '--repo', t6, '--from', jdgDraft, '--allow', jdgAllow, '--allow-reason', 'concatenated fixture token'], NOW)
+  ok(jReplay.code === 0 && fs.existsSync(path.join(t6, 'records/judgments/JDG-0003.json')), 'jdg draft replay + --allow writes the record at the next free number')
+  const jWs = sh(t6, process.execPath, [BASELINE, 'jdg', 'new', '--repo', t6, '--kind', 'deviation', '--subject', 'x', '--reason', 'r', '--review-by', '2026-08-01', '--tripwire', 'git.branch eq "feat  x"'], NOW)
+  ok(jWs.code === 0 && JSON.parse(fs.readFileSync(path.join(t6, 'records/judgments/JDG-0004.json'), 'utf8')).tripwire.value === 'feat  x', 'tripwire values keep their inner whitespace verbatim')
+  ok(sh(t6, process.execPath, [BASELINE, 'jdg', 'new', '--repo', t6, '--kind', 'sign-off', '--subject', 's', '--reason', 'r', '--review-by', '2026-08-01', '--by', '--json'], NOW).code === 2, 'a value flag followed by a flag is refused — no ledger record attributed to "true"')
+  ok(sh(t6, process.execPath, [BASELINE, 'jdg', 'check', '--repo', t6, '--facts', '--json'], NOW).code === 2, '--facts without a value is a usage error, not a silent no-overlay success')
+  ok(evalCondition({ fact: 'o', op: 'ne', value: { a: 1, b: 2 } }, { o: { b: 2, a: 1 } }).fired === false, 'deepEq: JSON key order is not a changed world')
   const c1 = sh(t6, process.execPath, [BASELINE, 'jdg', 'check', '--repo', t6], NOW)
   ok(c1.code === 0 && /ledger healthy/.test(c1.out), 'check: healthy ledger exits 0')
   fs.writeFileSync(path.join(t6, 'facts.json'), JSON.stringify({ descriptor: { maturity: 'claimed' } }))
@@ -247,6 +257,11 @@ try {
   const br = sh(t7, process.execPath, [CHECK, '--repo', t7, '--json', '--no-exec'], NOW)
   const ctx04 = JSON.parse(br.out).results.find(r => r.id === 'CTX-04')
   ok(ctx04.tag === 'SIGN-OFF' && /lapsed/.test(ctx04.detail), 'bridge: a LAPSED sign-off JDG is honestly not signed — and outranks the eternal legacy entry')
+  // a malformed record must never read as signed-forever: strict loading excludes it
+  fs.writeFileSync(path.join(t7, 'records/judgments/JDG-0002.json'), JSON.stringify({ record: 'judgment/1', id: 'JDG-0002', kind: 'sign-off', date: '2026-07-01', by: 'adar', subject: 'CTX-04', reason: 'r', review_by: 20200101 }))
+  const br2 = sh(t7, process.execPath, [CHECK, '--repo', t7, '--json', '--no-exec'], NOW)
+  const ctx04b = JSON.parse(br2.out).results.find(r => r.id === 'CTX-04')
+  ok(ctx04b.tag === 'SIGN-OFF' && /lapsed/.test(ctx04b.detail), 'bridge: a schema-invalid sign-off (numeric review_by) is excluded — it can never read as signed while jdg check calls it INVALID')
 } finally {
   for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })
 }

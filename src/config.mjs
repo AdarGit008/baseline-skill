@@ -5,6 +5,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { loadDescriptor } from './descriptor.mjs'
+import { loadJudgments, selectSignoffs } from './jdg.mjs'
 
 export function detectType(repo) {
   const { FILES } = repo
@@ -67,20 +68,11 @@ export function resolveConfig(repo, { cliConfigPath = null, profileArgs = [], de
   let SIGNOFF = {}; const so = repo.read(cfg.signoff_file); if (so) try { SIGNOFF = JSON.parse(so) } catch {}
 
   // The unified ledger (M4b): kind=sign-off judgments satisfy manual rules by
-  // subject — newest date wins (id breaks ties). Lenient here like SIGNOFF (strict
-  // validation is `jdg check`'s job); legacy signoff.json stays a dual-read until
-  // M7's contraction. Expiry is judged at evaluation time, not load time.
-  const JDGS = {}
-  for (const f of repo.match(['records/judgments/JDG-*.json'])) {
-    const t = repo.read(f); if (!t) continue
-    try {
-      const j = JSON.parse(t)
-      if (j && j.kind === 'sign-off' && j.id && j.date && j.by && j.subject && j.review_by) {
-        const prev = JDGS[j.subject]
-        if (!prev || j.date > prev.date || (j.date === prev.date && j.id > prev.id)) JDGS[j.subject] = j
-      }
-    } catch {}
-  }
+  // subject. ONE loader and ONE selection rule (jdg.mjs) — schema-valid records
+  // only, so a malformed review_by can never read as signed-forever while
+  // `jdg check` calls the same file INVALID. Legacy signoff.json stays a
+  // dual-read until M7's contraction. Expiry is judged at evaluation time.
+  const JDGS = selectSignoffs(loadJudgments(repo.REPO).records)
 
   return { cfg, DEFAULTS, EXPLICIT, CLAIMS_ACTIVE, ACTIVE, SIGNOFF, JDGS, DESCRIPTOR }
 }

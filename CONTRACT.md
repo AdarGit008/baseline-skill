@@ -75,7 +75,9 @@ A judgment is **dated, owned, scoped, reasoned, and it expires**:
 
 - **Kinds:** `sign-off` (satisfies a manual rule whose id is `subject` — the
   unified ledger outranks the legacy `signoff.json`, and a **lapsed sign-off is
-  not signed**) · `deviation` · `risk-acceptance` · `break-glass`.
+  not signed**; the **newest** sign-off per subject governs, so a lapsed newest
+  is not rescued by an older unexpired record — re-judge) · `deviation` ·
+  `risk-acceptance` · `break-glass`.
 - **The machine contract:** `expected_state` is the world you assumed (mismatch =
   DRIFTED, re-look); `tripwire` is the condition that VOIDS the judgment
   (`fact op value`, ops `eq|ne|gt|lt|exists|absent`; fired = TRIPPED, act);
@@ -91,7 +93,8 @@ A judgment is **dated, owned, scoped, reasoned, and it expires**:
 ### Descriptor changes (DESC-03, enforced at M6)
 
 A PR that touches `baseline.repo.json` carries a JDG **in the same PR** whose
-`subject` is `baseline.repo.json`, snapshotting the new posture in
+`subject` is exactly `baseline.repo.json` (the descriptor filename — the one
+constant the tool owns), snapshotting the new posture in
 `expected_state` with a tripwire on the load-bearing axis. Posture-*weakening*
 diffs become blocker-severity at admit (M6).
 
@@ -111,7 +114,8 @@ Every tool-written record is scanned before it exists (`src/scrub.mjs`):
 the draft survives under `.baseline/cache/` (keep that path **gitignored**; the
 tool warns if it isn't) and the exact rerun is printed. A false positive becomes
 a dated judgment in `.baseline/scrub-allowlist.json` via `--allow <finding-id>
---reason "..."` — the allowlist stores a content-derived hash, never the value.
+--allow-reason "..."` (one flag surface across `log` and `jdg`) — the allowlist
+stores a content-derived hash, never the value.
 Never bypass a block by hand-writing the file; rotate the secret or record the
 judgment. Hand-written records get the same scan from the pre-push hook (M4c)
 and REC-02 at PR (M4c, warn until M7).

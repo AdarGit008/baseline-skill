@@ -19,6 +19,8 @@ import { runSelfCheck } from './src/selfcheck.mjs'
 const args = process.argv.slice(2)
 const opt = makeOpt(args)
 const optAll = makeOptAll(args)
+// a value flag followed by another flag (or nothing) must not String(true) into a path
+for (const f of ['--repo', '--config']) if (opt(f, null) === true) { console.error(`check: ${f} needs a value`); process.exit(2) }
 const REPO = path.resolve(opt('--repo', process.cwd()))
 const NO_EXEC = !!opt('--no-exec', false)
 const JSON_OUT = !!opt('--json', false)

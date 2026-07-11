@@ -173,7 +173,7 @@ node baseline.mjs log -m "what happened and why" --next "the one most useful nex
 # lane = current branch (unborn included) · agent/timestamp derived · stdin accepted · never $EDITOR
 ```
 
-Every write passes the **scrub gate** (`src/scrub.mjs`, one `scan()` shared by every layer): deterministic signatures (SEC-01 parity + JWT + fine-grained PAT) **block**; assignment/entropy heuristics **warn** (C07: severity never exceeds certainty). A block is non-lossy — the draft survives under `.baseline/cache/` and the exact rerun is printed; a false positive becomes a dated judgment via `--allow <finding-id> --reason "..."` in `.baseline/scrub-allowlist.json` (the finding id is a content-derived hash — the value itself is never stored). Filenames are collision-free by construction (CF1): no counters, `O_EXCL`, same-second-same-agent refuses loudly.
+Every write passes the **scrub gate** (`src/scrub.mjs`, one `scan()` shared by every layer): deterministic signatures (SEC-01 parity + JWT + fine-grained PAT) **block**; assignment/entropy heuristics **warn** (C07: severity never exceeds certainty). A block is non-lossy — the draft survives under `.baseline/cache/` and the exact rerun is printed; a false positive becomes a dated judgment via `--allow <finding-id> --allow-reason "..."` in `.baseline/scrub-allowlist.json` (one flag surface across `log` and `jdg`; the finding id is a content-derived hash — the value itself is never stored). Filenames are collision-free by construction (CF1): no counters, `O_EXCL`, same-second-same-agent refuses loudly.
 
 **The judgment ledger (M4b).** Judgments are dated, owned, scoped, reasoned — and they **expire**:
 

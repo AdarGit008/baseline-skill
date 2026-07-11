@@ -4,7 +4,7 @@
 import path from 'node:path'
 import fs from 'node:fs'
 import { execSync } from 'node:child_process'
-import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE } from './util.mjs'
+import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE, nowUTC } from './util.mjs'
 import { DESCRIPTOR_FILE } from './descriptor.mjs'
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
@@ -12,8 +12,11 @@ export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions',
 
 export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR }) {
   const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow } = repo
-  // the record-tooling clock override keeps sign-off expiry deterministic in tests
-  const TODAY = (process.env.BASELINE_LOG_NOW || new Date().toISOString()).slice(0, 10)
+  // one clock (util.nowUTC): the override is parsed + ISO-normalized so a
+  // non-ISO-but-parseable BASELINE_LOG_NOW can't turn expiry comparisons into
+  // lexicographic garbage; unparseable falls back to the wall clock — a scoring
+  // run degrades to real time rather than crashing or silently lying
+  const TODAY = (nowUTC() ?? new Date()).toISOString().slice(0, 10)
   function globsOf(c) { return c.globs_from_config ? cfg[c.globs_from_config] : (c.file_from_config ? cfg[c.file_from_config] : c.globs) }
 
   function evalCheck(c, rule) {

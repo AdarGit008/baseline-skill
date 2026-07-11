@@ -6,6 +6,33 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M4a: the Ledger's shapes — rules split, record schemas, `baseline log` + scrub
+- **`rules/` split (11 per-category modules) behind a manifest loader** (`src/rules.mjs`):
+  `rules.json` keeps the runner's identity (name/version/project_types/profiles) plus the ordered
+  module list. Corpus-neutral by construction — stable partition, pins keyed by rule id. Unblocks
+  M5's "extends `rules/flow.json`" premise (#22) and M4c's `rules/rec.json`.
+- **Record schemas** — `schema/record.{session,judgment,claim,adr}.schema.json`, validated by the
+  descriptor's zero-dep subset validator (now shared as `src/validate.mjs`); `src/records.mjs` is
+  the kind registry + frontmatter/ADR-header seam. The judgment schema **expresses break-glass**
+  (kind + `gate`) — FS5 *enforcement* stays M6, per the #21 amendment. Templates: `session-log.md`,
+  `judgment.json`, `claim.json`.
+- **`src/scrub.mjs`** — one `scan()` for every layer (C34): the deterministic tier (SEC-01 parity
+  + JWT + fine-grained PAT) blocks; the heuristic tier (assignment shapes, entropy-floored blobs —
+  a 40-hex commit SHA never trips) warns; deterministic spans are censored before the heuristic
+  pass so one value never reports under two names. `.baseline/scrub-allowlist.json` holds **dated
+  judgments keyed by content-derived finding id** — the flagged value itself is never stored.
+- **`baseline log`** — the pinned one-liner (#21 amendment, item 4): `baseline log -m "..."
+  [--next "..."]`; lane/agent/timestamp derived (lane = branch, unborn branches included — the M5
+  seam), stdin accepted, never `$EDITOR`. Writes `records/sessions/<lane>/<date>-<time>-<agent>.md`
+  (CF1: `O_EXCL`, no counters) in exactly the `## Left open` / `next:` shape orient already reads.
+  Scrub blocks are **non-lossy**: the full draft survives under `.baseline/cache/` and the exact
+  rerun is printed (`--from <draft> --allow <finding-id> --reason "..."`).
+- **`test/records/run.mjs`** (41 assertions, a CI step): lossless split, per-kind schema
+  accept/reject, scrub tiers + allowlist + finding-id stability, log end-to-end including the
+  orient round-trip, O_EXCL collision refusal, and draft replay with a dated judgment.
+- Ruling record: the #21 amendment comment (FS5 rewording · REC-02 warn resolution · `rec.json`
+  home · pinned log UX · hardened dogfood acceptance) and the M7 delete-list addition on #24.
+
 ### Added — V2 M3d: the Hermes plugin (M3 complete)
 - **`integrations/hermes/baseline-orient/`** — a NousResearch hermes-agent plugin that opens each
   session oriented: a `register(ctx)` entry point registering an **`on_session_start`** hook and an

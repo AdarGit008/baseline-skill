@@ -35,9 +35,9 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 - Hermes: `~/.hermes/skills/software-development/baseline`
 - Claude Code: `~/.claude/skills/baseline`
 
-The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load `rules.json` + `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from `rules.json` + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
+The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `log`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
-Co-located files: `baseline.mjs` (CLI entry: orient / check), `check.mjs` (the checker), `rules.json` (the 71 rules), `schema/repo.schema.json` (the descriptor schema), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
+Co-located files: `baseline.mjs` (CLI entry: orient / check / log), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 71 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
 
 ## Orientation — the first act
 
@@ -51,6 +51,18 @@ node "$SKILL_DIR/baseline.mjs" orient --repo <target>
 - **Divergence first**, then **live lanes** (open PRs + each branch's latest session `next:`), **backlog** (open issues by milestone), and **this lane** (current branch + its `next:`).
 - It's an *agent helper, never a gate*: read-only, `gh`-based, exits 0 even degraded — `--strict` turns forge-unreachability into exit 1; `--json` for machine use.
 - **Install it as infrastructure:** wire `hooks/orient-session-start.sh` into Claude Code's `SessionStart` hook (see `hooks/README.md`) so orientation happens without being remembered. The Hermes twin ships in `integrations/hermes/baseline-orient/` — a plugin whose `on_session_start` hook + `/orient` command run the same survey; this directive remains the tool-agnostic fallback (C28).
+
+## Recording — the last act
+
+When pausing or ending a working session in a repo that keeps records (a `records/` dir or a multi-lane descriptor), **write the session record before you stop** — one command, never an editor:
+
+```bash
+node "$SKILL_DIR/baseline.mjs" log --repo <target> -m "what happened and why; dead ends" --next "the one most useful next step"
+```
+
+- Lane, agent, and timestamp are derived (lane = current branch); the record lands at `records/sessions/<lane>/<date>-<time>-<agent>.md`, schema-validated, in the exact `next:` shape `orient` reads back at the next session start. That symmetry — orient first, log last — is the whole loop.
+- The write is **scrub-gated**: a deterministic secret signature blocks (non-lossy — the draft survives under `.baseline/cache/` and the exact rerun is printed); a false positive becomes a dated judgment: rerun with `--allow <finding-id> --reason "..."`. Never bypass a block by hand-writing the file instead — rotate the secret or record the judgment.
+- Records are **append-only once committed**: never edit a committed session record; write the next one.
 
 ## Modes
 
@@ -105,7 +117,7 @@ The rule set validates itself:
 ```bash
 node "$SKILL_DIR/check.mjs" --self-check
 ```
-Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / profile / severity / category / `requires` key, a duplicate id, or an orphan type/profile — and prints a per-type **coverage matrix**. Use it if you edit `rules.json`, or wire it into CI so a malformed rule set can't merge.
+Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / profile / severity / category / `requires` key, a duplicate id, or an orphan type/profile — and prints a per-type **coverage matrix**. Use it if you edit the rule modules under `rules/` (or the `rules.json` manifest), or wire it into CI so a malformed rule set can't merge.
 
 ## How the runner decides (so you can read detail lines)
 
@@ -119,7 +131,7 @@ Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / 
 
 ## Common Pitfalls
 
-1. **Copying `check.mjs` away from `rules.json` + `src/`.** It loads both from its own directory — invoke by absolute path instead.
+1. **Copying `check.mjs` away from the rule set (`rules.json` + `rules/`) + `src/`.** It loads them from its own directory — invoke by absolute path instead.
 2. **Presenting a warn as a blocker (or vice-versa).** Severity is in `rules.json` and the runner output — never upgrade/downgrade it.
 3. **Faking a sign-off.** Manual rules exist because a script can't judge them; record a real dated `signoff.json` entry, don't rubber-stamp.
 4. **Skipping BUILD-05 by habit.** Omit `--no-exec` when the repo is trusted and `bootstrap_command` is set — a green crown check is the strongest single signal.
@@ -132,4 +144,5 @@ Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / 
 - [ ] For `fix`: re-scored and confirmed no new blockers
 - [ ] For `init`: picked a preset/config, scaffolded only what was missing, ran a first score
 - [ ] Any sign-off is a real dated judgment, not a rubber stamp
-- [ ] `--self-check` still passes if `rules.json` was edited
+- [ ] `--self-check` still passes if the rule set (`rules.json` / `rules/*.json`) was edited
+- [ ] Session end in a record-keeping repo: `baseline log` written (scrubbed, with a real `next:`)

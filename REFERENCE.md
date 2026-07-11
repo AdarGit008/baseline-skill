@@ -58,7 +58,7 @@ These diagrams mirror the runner — they're its actual control flow, not a sket
 ```mermaid
 flowchart LR
   CFG["baseline.config.json — intent"] --> RES
-  RULES["rules.json — 71 rules"] --> EVAL
+  RULES["rules/ — 71 rules (manifest: rules.json)"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
     IDX["file index + git helpers"] --> EVAL["~20 check evaluators"]
@@ -154,6 +154,26 @@ Everything auto-detects; override only what you need in `baseline.config.json` (
 | `doc_lag_days` | CTX-11 warns when a doc's anchored `sources:` code was committed more than this many days after the doc (default 30). |
 
 The three opt-in `*_globs` keys default to empty, so those rules stay silent until you adopt the convention — no nagging a repo that hasn't opted in.
+
+## Records & the write gate (V2 M4a)
+
+The stored surface the Lens can't derive (plan §5) is the **Ledger** — records, one unit per file, schema-bound like the descriptor:
+
+| kind | home | schema |
+|---|---|---|
+| session | `records/sessions/<lane>/<YYYY-MM-DD>-<HHMMSS>-<agent>.md` | `schema/record.session.schema.json` |
+| judgment | `records/judgments/JDG-NNNN.json` (sign-off · deviation · risk-acceptance · break-glass) | `schema/record.judgment.schema.json` |
+| claim | `records/claims/CLM-NNNN.json` | `schema/record.claim.schema.json` |
+| decision | `records/decisions/ADR-NNNN.md` (header fields) | `schema/record.adr.schema.json` |
+
+Write sessions with the CLI — one command, nothing to remember:
+
+```bash
+node baseline.mjs log -m "what happened and why" --next "the one most useful next step"
+# lane = current branch (unborn included) · agent/timestamp derived · stdin accepted · never $EDITOR
+```
+
+Every write passes the **scrub gate** (`src/scrub.mjs`, one `scan()` shared by every layer): deterministic signatures (SEC-01 parity + JWT + fine-grained PAT) **block**; assignment/entropy heuristics **warn** (C07: severity never exceeds certainty). A block is non-lossy — the draft survives under `.baseline/cache/` and the exact rerun is printed; a false positive becomes a dated judgment via `--allow <finding-id> --reason "..."` in `.baseline/scrub-allowlist.json` (the finding id is a content-derived hash — the value itself is never stored). Filenames are collision-free by construction (CF1): no counters, `O_EXCL`, same-second-same-agent refuses loudly. The judgment ledger CLI (`baseline jdg`) and the REC/FLOW advisory rules land in M4b/M4c.
 
 ## The rules
 

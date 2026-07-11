@@ -27,7 +27,7 @@ mkdir -p "$DEST"
 for f in SKILL.md baseline.mjs check.mjs rules.json config.example.json README.md REFERENCE.md GLOSSARY.md; do
   cp "$SRC/$f" "$DEST/"
 done
-for d in src schema templates config-presets hooks integrations; do
+for d in src rules schema templates config-presets hooks integrations; do
   rm -rf "$DEST/$d"; cp -r "$SRC/$d" "$DEST/$d"
 done
 
@@ -35,7 +35,7 @@ if node --check "$DEST/baseline.mjs" \
    && node --check "$DEST/check.mjs" \
    && node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' "$DEST/rules.json" \
    && node "$DEST/baseline.mjs" check --self-check >/dev/null; then
-  RULES="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).rules.length)' "$DEST/rules.json")"
+  RULES="$(node --input-type=module -e 'import { pathToFileURL } from "node:url"; const { loadRules } = await import(pathToFileURL(process.argv[1])); console.log(loadRules().rules.length)' "$DEST/src/rules.mjs")"
   echo "OK Installed the baseline skill to $DEST ($RULES rules)."
   if [ "$AGENT" = "hermes" ]; then
     echo "   Start a NEW Hermes session (the skill loader is cached per session), then say 'run baseline' / 'score this repo'."

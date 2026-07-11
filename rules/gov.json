@@ -1,0 +1,91 @@
+{
+  "rules": [
+    {
+      "id": "GOV-01",
+      "title": "Merge protection is declared in-repo",
+      "category": "governance",
+      "severity": "warn",
+      "applies_to": "all",
+      "source": "https://backstage.spotify.com/docs/soundcheck/",
+      "lesson": "change-control gate",
+      "rationale": "Green CI means nothing if anyone can force-push to main; protection-as-code makes the merge gate reviewable. Skips if you configure protection in the GitHub UI (nothing in-repo to check).",
+      "fix": "Commit a ruleset (.github/rulesets/*.json), a probot settings.yml, or a terraform github_branch_protection that requires reviews and disables force-push.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "file-contains",
+        "globs": [
+          ".github/rulesets/*.json",
+          ".github/settings.yml",
+          ".github/settings.yaml"
+        ],
+        "pattern": "required_pull_request_reviews|required_approving_review_count|require_pull_request|pull_request:\\s*(true|required)|dismiss_stale",
+        "null_if_absent": true
+      }
+    },
+    {
+      "id": "GOV-02",
+      "title": "Strict/up-to-date merges and conversation resolution enabled",
+      "category": "governance",
+      "severity": "warn",
+      "applies_to": "all",
+      "source": "https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository",
+      "lesson": "stale-branch-merges-green failure mode",
+      "rationale": "Without strict status checks a stale branch can merge green; without conversation-resolution, unresolved review comments merge silently.",
+      "fix": "In the committed ruleset set strict status checks and required_conversation_resolution to true.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "heuristic",
+      "check": {
+        "kind": "grep",
+        "globs": [
+          ".github/rulesets/*.json",
+          ".github/settings.yml",
+          ".github/settings.yaml"
+        ],
+        "pattern": "strict\"?\\s*[:=]\\s*true|required[_-]?conversation[_-]?resolution\"?\\s*[:=]\\s*true|require[_-]?conversation[_-]?resolution\"?\\s*[:=]\\s*true",
+        "mode": "present"
+      }
+    },
+    {
+      "id": "GOV-03",
+      "title": "CODEOWNERS exists and names an owner",
+      "category": "governance",
+      "severity": "warn",
+      "applies_to": "all",
+      "source": "https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
+      "lesson": "every path has an accountable reviewer",
+      "rationale": "A CODEOWNERS file routes reviews to the people accountable for each path, in one canonical location.",
+      "fix": "Add CODEOWNERS (or .github/CODEOWNERS) with at least one path→owner mapping.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "file-contains",
+        "globs": [
+          "CODEOWNERS",
+          ".github/CODEOWNERS",
+          "docs/CODEOWNERS"
+        ],
+        "flags": "im",
+        "pattern": "^\\s*[^#\\s]\\S*\\s+(@[\\w/-]+|[\\w.+-]+@[\\w.-]+)"
+      }
+    }
+  ]
+}

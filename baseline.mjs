@@ -31,6 +31,9 @@ if (cmd === 'check') {
 } else if (cmd === 'log') {
   const { runLog } = await import('./src/log.mjs')
   process.exit(runLog(rest))
+} else if (cmd === 'jdg') {
+  const { runJdg } = await import('./src/jdg.mjs')
+  process.exit(runJdg(rest))
 } else if (cmd === 'help' || cmd === '--help' || cmd === '-h') {
   console.log(`baseline <command> [options]
 
@@ -38,11 +41,14 @@ if (cmd === 'check') {
   orient [--repo DIR] [--json] [--strict]                 derived-state survey for session start
   log -m "..." [--next "..."] [--lane L] [--agent A]      write a scrubbed session record
       [--from FILE] [--allow ID --reason "..."]           (stdin accepted; never \$EDITOR)
+  jdg new --kind K --subject S --reason "..."             record a judgment (sign-off ·
+      --review-by DATE [--expect p=v] [--tripwire "..."]  deviation · risk-acceptance · break-glass)
+  jdg check [--repo DIR] [--json] [--facts FILE]          evaluate the ledger: tripwires · expiry · drift
   help                                                    this message
 
   Run \`baseline\` with no command (or a leading --flag) to score, e.g. \`baseline --repo .\`.`)
   process.exit(0)
 } else {
-  console.error(`baseline: unknown command '${cmd}' (try: check, orient, log, help)`)
+  console.error(`baseline: unknown command '${cmd}' (try: check, orient, log, jdg, help)`)
   process.exit(2)
 }

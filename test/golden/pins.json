@@ -231,6 +231,10 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "BUILD-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
       "TEST-01": {
         "tag": "SKIP",
         "detail": "n/a for docs"
@@ -252,6 +256,10 @@
         "detail": "n/a for docs"
       },
       "TEST-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-07": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -294,6 +302,14 @@
       "CTX-10": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "CTX-12": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       },
       "CLAIM-00": {
         "tag": "PASS",
@@ -363,6 +379,22 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "SEC-11": {
+        "tag": "SKIP",
+        "detail": "no workflow files"
+      },
+      "SEC-12": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
       "GOV-01": {
         "tag": "SKIP",
         "detail": "no matching file (skipped)"
@@ -396,6 +428,10 @@
         "detail": "n/a for docs"
       },
       "QUAL-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-04": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -439,45 +475,9 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "BUILD-10": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-07": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "CTX-11": {
-        "tag": "SKIP",
-        "detail": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "QUAL-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-11": {
-        "tag": "SKIP",
-        "detail": "no workflow files"
-      },
-      "SEC-12": {
-        "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
-      },
-      "SEC-13": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-14": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
-      },
-      "CTX-12": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
       }
     }
   },
@@ -532,6 +532,10 @@
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
+      "BUILD-10": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
       "TEST-01": {
         "tag": "FAIL",
         "detail": "none of: **/*.test.*, **/*.spec.*, **/*_test.py, **/*_test.go, **/*Test.java"
@@ -553,6 +557,10 @@
         "detail": "profile 'advanced' off"
       },
       "TEST-06": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "TEST-07": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
@@ -595,6 +603,14 @@
       "CTX-10": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "CTX-12": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -664,6 +680,22 @@
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
+      "SEC-11": {
+        "tag": "SKIP",
+        "detail": "no workflow files"
+      },
+      "SEC-12": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
       "GOV-01": {
         "tag": "SKIP",
         "detail": "no matching file (skipped)"
@@ -699,6 +731,10 @@
       "QUAL-03": {
         "tag": "SKIP",
         "detail": "n/a (no applicable target)"
+      },
+      "QUAL-04": {
+        "tag": "SKIP",
+        "detail": "n/a (a linter config not present)"
       },
       "REPRO-01": {
         "tag": "SKIP",
@@ -740,45 +776,9 @@
         "tag": "SKIP",
         "detail": "n/a for node"
       },
-      "BUILD-10": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "TEST-07": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "CTX-11": {
-        "tag": "SKIP",
-        "detail": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "QUAL-04": {
-        "tag": "SKIP",
-        "detail": "n/a (a linter config not present)"
-      },
-      "SEC-11": {
-        "tag": "SKIP",
-        "detail": "no workflow files"
-      },
-      "SEC-12": {
-        "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
-      },
-      "SEC-13": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "SEC-14": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
       "DESC-01": {
         "tag": "WARN",
         "detail": "baseline.repo.json invalid: maturity must be one of prototype|claimed|released (got \"beta\")"
-      },
-      "CTX-12": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
       }
     }
   },
@@ -833,6 +833,10 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "BUILD-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
       "TEST-01": {
         "tag": "SKIP",
         "detail": "n/a for docs"
@@ -854,6 +858,10 @@
         "detail": "n/a for docs"
       },
       "TEST-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-07": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -896,6 +904,14 @@
       "CTX-10": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "CTX-12": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -965,6 +981,22 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "SEC-11": {
+        "tag": "SKIP",
+        "detail": "no workflow files"
+      },
+      "SEC-12": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
       "GOV-01": {
         "tag": "SKIP",
         "detail": "no matching file (skipped)"
@@ -998,6 +1030,10 @@
         "detail": "n/a for docs"
       },
       "QUAL-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-04": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -1041,45 +1077,9 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "BUILD-10": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-07": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "CTX-11": {
-        "tag": "SKIP",
-        "detail": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "QUAL-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-11": {
-        "tag": "SKIP",
-        "detail": "no workflow files"
-      },
-      "SEC-12": {
-        "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
-      },
-      "SEC-13": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-14": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
       "DESC-01": {
         "tag": "PASS",
         "detail": "type=docs · production/released · workflow=single-lane · anchoring=off"
-      },
-      "CTX-12": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
       }
     }
   },
@@ -1135,6 +1135,10 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "BUILD-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
       "TEST-01": {
         "tag": "SKIP",
         "detail": "n/a for docs"
@@ -1156,6 +1160,10 @@
         "detail": "n/a for docs"
       },
       "TEST-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-07": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -1198,6 +1206,14 @@
       "CTX-10": {
         "tag": "WARN",
         "detail": "1 missing: docs/stale.md: src/gone.js"
+      },
+      "CTX-11": {
+        "tag": "PASS",
+        "detail": "1 anchored doc(s) not lagging"
+      },
+      "CTX-12": {
+        "tag": "WARN",
+        "detail": "matched in 1 file(s): docs/start-here.md"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -1267,6 +1283,22 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "SEC-11": {
+        "tag": "SKIP",
+        "detail": "no workflow files"
+      },
+      "SEC-12": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
       "GOV-01": {
         "tag": "SKIP",
         "detail": "no matching file (skipped)"
@@ -1300,6 +1332,10 @@
         "detail": "n/a for docs"
       },
       "QUAL-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-04": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -1343,7 +1379,88 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "DESC-01": {
+        "tag": "WARN",
+        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+      }
+    }
+  },
+  "jdg-repo": {
+    "exitCode": 0,
+    "project_type": "docs",
+    "profiles": [
+      "core"
+    ],
+    "summary": {
+      "blockers": 0,
+      "pass": 8,
+      "warn": 7,
+      "signoff": 0,
+      "skip": 56,
+      "total": 71
+    },
+    "rules": {
+      "BUILD-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-07": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-08": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-09": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
       "BUILD-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-06": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -1351,11 +1468,119 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "CTX-11": {
+      "CTX-01": {
         "tag": "PASS",
-        "detail": "1 anchored doc(s) not lagging"
+        "detail": "stamped <sha> (1 behind HEAD, within 3)"
       },
-      "QUAL-04": {
+      "CTX-02": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-03": {
+        "tag": "WARN",
+        "detail": "config.sources_of_truth empty"
+      },
+      "CTX-04": {
+        "tag": "PASS",
+        "detail": "JDG-0001 by adar 2026-07-05 (review by 2099-12-31)"
+      },
+      "CTX-05": {
+        "tag": "PASS",
+        "detail": "2 doc(s), links resolve"
+      },
+      "CTX-06": {
+        "tag": "SKIP",
+        "detail": "config.freshness_globs empty (opt-in)"
+      },
+      "CTX-07": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-08": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "CTX-09": {
+        "tag": "SKIP",
+        "detail": "config.grounding_docs empty (opt-in)"
+      },
+      "CTX-10": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "CTX-12": {
+        "tag": "WARN",
+        "detail": "matched in 1 file(s): docs/start-here.md"
+      },
+      "CLAIM-00": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-01": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-02": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-03": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-04": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-05": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-06": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-01": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-02": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-03": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "SEC-04": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "SEC-05": {
+        "tag": "WARN",
+        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
+      },
+      "SEC-06": {
+        "tag": "WARN",
+        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
+      },
+      "SEC-07": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-08": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-09": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-10": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -1375,13 +1600,89 @@
         "tag": "SKIP",
         "detail": "no files to scan"
       },
-      "DESC-01": {
-        "tag": "WARN",
-        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+      "GOV-01": {
+        "tag": "SKIP",
+        "detail": "no matching file (skipped)"
       },
-      "CTX-12": {
+      "GOV-02": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "GOV-03": {
         "tag": "WARN",
-        "detail": "matched in 1 file(s): docs/start-here.md"
+        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
+      },
+      "COMM-01": {
+        "tag": "PASS",
+        "detail": "LICENSE"
+      },
+      "COMM-02": {
+        "tag": "WARN",
+        "detail": "README.md too short (<400 chars)"
+      },
+      "COMM-03": {
+        "tag": "WARN",
+        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
+      },
+      "QUAL-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "DESC-01": {
+        "tag": "PASS",
+        "detail": "type=docs · production/prototype · workflow=single-lane · anchoring=off"
       }
     }
   },
@@ -1436,6 +1737,10 @@
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
+      "BUILD-10": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
       "TEST-01": {
         "tag": "FAIL",
         "detail": "none of: **/*.test.*, **/*.spec.*, **/*_test.py, **/*_test.go, **/*Test.java"
@@ -1457,6 +1762,10 @@
         "detail": "profile 'advanced' off"
       },
       "TEST-06": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "TEST-07": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
@@ -1499,6 +1808,14 @@
       "CTX-10": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "CTX-12": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -1568,6 +1885,22 @@
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
+      "SEC-11": {
+        "tag": "WARN",
+        "detail": "deploy.yml: top-level grants a write scope (top-level should be read); loose.yml: a job grants permissions: write-all"
+      },
+      "SEC-12": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
       "GOV-01": {
         "tag": "SKIP",
         "detail": "no matching file (skipped)"
@@ -1603,6 +1936,10 @@
       "QUAL-03": {
         "tag": "SKIP",
         "detail": "n/a (no applicable target)"
+      },
+      "QUAL-04": {
+        "tag": "SKIP",
+        "detail": "n/a (a linter config not present)"
       },
       "REPRO-01": {
         "tag": "WARN",
@@ -1644,45 +1981,9 @@
         "tag": "SKIP",
         "detail": "n/a for node"
       },
-      "BUILD-10": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "TEST-07": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "CTX-11": {
-        "tag": "SKIP",
-        "detail": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "QUAL-04": {
-        "tag": "SKIP",
-        "detail": "n/a (a linter config not present)"
-      },
-      "SEC-11": {
-        "tag": "WARN",
-        "detail": "deploy.yml: top-level grants a write scope (top-level should be read); loose.yml: a job grants permissions: write-all"
-      },
-      "SEC-12": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "SEC-13": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "SEC-14": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
-      },
-      "CTX-12": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
       }
     }
   },
@@ -1738,6 +2039,10 @@
         "tag": "PASS",
         "detail": "exit 0 x2: node -e \"process.exit(0)\""
       },
+      "BUILD-10": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
       "TEST-01": {
         "tag": "PASS",
         "detail": "test/basic.test.js"
@@ -1761,6 +2066,10 @@
       "TEST-06": {
         "tag": "SIGN-OFF",
         "detail": "no sign-off recorded"
+      },
+      "TEST-07": {
+        "tag": "WARN",
+        "detail": "pattern not found | jest.coverageThreshold not satisfied in package.json"
       },
       "CTX-01": {
         "tag": "FAIL",
@@ -1801,6 +2110,14 @@
       "CTX-10": {
         "tag": "SKIP",
         "detail": "no path-like symbols found"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "CTX-12": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -1870,6 +2187,22 @@
         "tag": "WARN",
         "detail": "pattern not found | none of: **/*.intoto.jsonl, **/*.sigstore, **/*.sig"
       },
+      "SEC-11": {
+        "tag": "PASS",
+        "detail": "1 workflow(s) least-privilege"
+      },
+      "SEC-12": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
+      },
+      "SEC-13": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
+      "SEC-14": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
       "GOV-01": {
         "tag": "SKIP",
         "detail": "no matching file (skipped)"
@@ -1905,6 +2238,10 @@
       "QUAL-03": {
         "tag": "PASS",
         "detail": "tsconfig.json: compilerOptions.strict=true"
+      },
+      "QUAL-04": {
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
       },
       "REPRO-01": {
         "tag": "PASS",
@@ -1946,45 +2283,9 @@
         "tag": "SKIP",
         "detail": "n/a for node"
       },
-      "BUILD-10": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "TEST-07": {
-        "tag": "WARN",
-        "detail": "pattern not found | jest.coverageThreshold not satisfied in package.json"
-      },
-      "CTX-11": {
-        "tag": "SKIP",
-        "detail": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "QUAL-04": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "SEC-11": {
-        "tag": "PASS",
-        "detail": "1 workflow(s) least-privilege"
-      },
-      "SEC-12": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "SEC-13": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "SEC-14": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
-      },
-      "CTX-12": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
       }
     }
   },
@@ -2040,6 +2341,10 @@
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
+      "BUILD-10": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
       "TEST-01": {
         "tag": "PASS",
         "detail": "test/smoke.test.js"
@@ -2061,6 +2366,10 @@
         "detail": "profile 'advanced' off"
       },
       "TEST-06": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "TEST-07": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
@@ -2103,6 +2412,14 @@
       "CTX-10": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "CTX-12": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -2172,6 +2489,22 @@
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
+      "SEC-11": {
+        "tag": "SKIP",
+        "detail": "no workflow files"
+      },
+      "SEC-12": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
       "GOV-01": {
         "tag": "SKIP",
         "detail": "no matching file (skipped)"
@@ -2207,6 +2540,10 @@
       "QUAL-03": {
         "tag": "SKIP",
         "detail": "n/a (no applicable target)"
+      },
+      "QUAL-04": {
+        "tag": "SKIP",
+        "detail": "n/a (a linter config not present)"
       },
       "REPRO-01": {
         "tag": "SKIP",
@@ -2248,45 +2585,9 @@
         "tag": "PASS",
         "detail": "catalog-info.yaml ok"
       },
-      "BUILD-10": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "TEST-07": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "CTX-11": {
-        "tag": "SKIP",
-        "detail": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "QUAL-04": {
-        "tag": "SKIP",
-        "detail": "n/a (a linter config not present)"
-      },
-      "SEC-11": {
-        "tag": "SKIP",
-        "detail": "no workflow files"
-      },
-      "SEC-12": {
-        "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
-      },
-      "SEC-13": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "SEC-14": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
-      },
-      "CTX-12": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
       }
     }
   }

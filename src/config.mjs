@@ -66,5 +66,21 @@ export function resolveConfig(repo, { cliConfigPath = null, profileArgs = [], de
 
   let SIGNOFF = {}; const so = repo.read(cfg.signoff_file); if (so) try { SIGNOFF = JSON.parse(so) } catch {}
 
-  return { cfg, DEFAULTS, EXPLICIT, CLAIMS_ACTIVE, ACTIVE, SIGNOFF, DESCRIPTOR }
+  // The unified ledger (M4b): kind=sign-off judgments satisfy manual rules by
+  // subject — newest date wins (id breaks ties). Lenient here like SIGNOFF (strict
+  // validation is `jdg check`'s job); legacy signoff.json stays a dual-read until
+  // M7's contraction. Expiry is judged at evaluation time, not load time.
+  const JDGS = {}
+  for (const f of repo.match(['records/judgments/JDG-*.json'])) {
+    const t = repo.read(f); if (!t) continue
+    try {
+      const j = JSON.parse(t)
+      if (j && j.kind === 'sign-off' && j.id && j.date && j.by && j.subject && j.review_by) {
+        const prev = JDGS[j.subject]
+        if (!prev || j.date > prev.date || (j.date === prev.date && j.id > prev.id)) JDGS[j.subject] = j
+      }
+    } catch {}
+  }
+
+  return { cfg, DEFAULTS, EXPLICIT, CLAIMS_ACTIVE, ACTIVE, SIGNOFF, JDGS, DESCRIPTOR }
 }

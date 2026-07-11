@@ -1,0 +1,5 @@
+# jdg-repo
+
+Golden fixture: the unified judgment ledger satisfies a manual rule with NO legacy
+signoff.json present — records/judgments/JDG-0001.json (kind: sign-off, subject:
+CTX-04, review_by far-future) is the only judgment surface in this repo.

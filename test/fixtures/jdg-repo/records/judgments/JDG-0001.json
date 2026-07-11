@@ -1,0 +1,10 @@
+{
+  "record": "judgment/1",
+  "id": "JDG-0001",
+  "kind": "sign-off",
+  "date": "2026-07-05",
+  "by": "adar",
+  "subject": "CTX-04",
+  "reason": "No frozen consolidated spec; decisions live in per-file records with status + forward links.",
+  "review_by": "2099-12-31"
+}

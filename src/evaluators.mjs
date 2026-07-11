@@ -10,8 +10,10 @@ import { DESCRIPTOR_FILE } from './descriptor.mjs'
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
 export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor'])
 
-export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, DESCRIPTOR }) {
+export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR }) {
   const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow } = repo
+  // the record-tooling clock override keeps sign-off expiry deterministic in tests
+  const TODAY = (process.env.BASELINE_LOG_NOW || new Date().toISOString()).slice(0, 10)
   function globsOf(c) { return c.globs_from_config ? cfg[c.globs_from_config] : (c.file_from_config ? cfg[c.file_from_config] : c.globs) }
 
   function evalCheck(c, rule) {
@@ -365,7 +367,18 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, DESCRIPTOR }) {
       return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') : `${claims.length} claim(s) ok` }
     }
 
-    if (k === 'signoff') { const e = SIGNOFF[rule.id]; if (e && e.date) return { ok: true, detail: `signed ${e.by || '?'} ${e.date}` }; return { ok: false, detail: 'no sign-off recorded', signoff: true } }
+    if (k === 'signoff') {
+      // the unified ledger first (M4b): a kind=sign-off JDG whose subject is this
+      // rule id satisfies it while unexpired — a lapsed one is honestly NOT signed.
+      // Legacy signoff.json keeps its exact V1 semantics + detail until M7.
+      const j = JDGS && JDGS[rule.id]
+      if (j) {
+        if (j.review_by < TODAY) return { ok: false, detail: `sign-off ${j.id} lapsed (review_by ${j.review_by}) — re-judge: baseline jdg new`, signoff: true }
+        return { ok: true, detail: `${j.id} by ${j.by} ${j.date} (review by ${j.review_by})` }
+      }
+      const e = SIGNOFF[rule.id]; if (e && e.date) return { ok: true, detail: `signed ${e.by || '?'} ${e.date}` }
+      return { ok: false, detail: 'no sign-off recorded', signoff: true }
+    }
 
     if (k === 'descriptor') {
       const d = DESCRIPTOR

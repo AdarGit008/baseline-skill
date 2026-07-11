@@ -54,21 +54,27 @@ export const findingId = (name, match) => 'scrub-' + crypto.createHash('sha256')
 export function scan(text, { allowlist = [] } = {}) {
   const allowedIds = new Map((allowlist || []).map(e => [e.id, e]))
   const seen = new Map()
-  const collect = (tier, certainty) => {
+  const spans = []
+  const collect = (tier, certainty, hay) => {
     for (const pat of tier) {
       const re = pat.re()
       let m
-      while ((m = re.exec(text))) {
+      while ((m = re.exec(hay))) {
         if (pat.entropy && (shannon(m[0]) < pat.entropy || !/[a-z]/.test(m[0]) || !/[A-Z]/.test(m[0]) || !/[0-9]/.test(m[0]))) continue
+        if (certainty === 'deterministic') spans.push([m.index, m.index + m[0].length])
         const id = findingId(pat.name, m[0])
         const prev = seen.get(id)
         if (prev) { prev.count++; continue }
-        seen.set(id, { id, name: pat.name, certainty, line: lineOf(text, m.index), masked: mask(m[0]), count: 1 })
+        seen.set(id, { id, name: pat.name, certainty, line: lineOf(hay, m.index), masked: mask(m[0]), count: 1 })
       }
     }
   }
-  collect(DETERMINISTIC, 'deterministic')
-  collect(HEURISTIC, 'heuristic')
+  collect(DETERMINISTIC, 'deterministic', text)
+  // heuristics hunt what the signatures DIDN'T claim: censor deterministic spans
+  // (length- and newline-preserving) so one value never reports under two names
+  let censored = text
+  for (const [a, b] of spans) censored = censored.slice(0, a) + '·'.repeat(b - a) + censored.slice(b)
+  collect(HEURISTIC, 'heuristic', censored)
   const blocked = [], warned = [], allowed = []
   for (const f of seen.values()) {
     if (allowedIds.has(f.id)) { allowed.push({ ...f, reason: allowedIds.get(f.id).reason, date: allowedIds.get(f.id).date }); continue }

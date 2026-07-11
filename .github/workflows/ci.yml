@@ -19,5 +19,7 @@ jobs:
         run: node test/orient/run.mjs
       - name: facts/join/derive (deterministic over forge replay)
         run: node test/facts/run.mjs
+      - name: records — loader split, schemas, scrub, log write-gate
+        run: node test/records/run.mjs
       - name: self-score (the standard checks itself)
         run: node check.mjs --repo . --no-exec

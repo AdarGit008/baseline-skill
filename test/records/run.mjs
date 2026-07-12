@@ -13,6 +13,11 @@ import { RECORD_KINDS, validateRecord, parseFrontmatter, renderFrontmatter, pars
 import { evaluateJudgment, evalCondition, loadJudgments } from '../../src/jdg.mjs'
 import { scan, findingId, DETERMINISTIC_SOURCES } from '../../src/scrub.mjs'
 import { extractNext, newestLocalLog, gitFacts } from '../../src/facts/git.mjs'
+import { runRules } from '../../src/engine.mjs'
+import { makeEvalCheck } from '../../src/evaluators.mjs'
+import { indexRepo } from '../../src/repo.mjs'
+import { resolveConfig } from '../../src/config.mjs'
+import { loadClaims } from '../../src/claims.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '..', '..')
@@ -25,8 +30,8 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
 {
   const R = loadRules()
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'rules.json'), 'utf8'))
-  ok(R.rules.length === 71, `loader assembles 71 rules (got ${R.rules.length})`)
-  ok((manifest.modules || []).length === 11, `manifest lists 11 modules (got ${(manifest.modules || []).length})`)
+  ok(R.rules.length === 78, `loader assembles 78 rules (got ${R.rules.length})`)
+  ok((manifest.modules || []).length === 13, `manifest lists 13 modules (got ${(manifest.modules || []).length})`)
   ok(!('rules' in manifest), 'manifest itself carries no rules (they live in rules/)')
   ok(new Set(R.rules.map(r => r.id)).size === R.rules.length, 'rule ids unique across modules')
   ok(!!R.version && !!R.profiles && Array.isArray(R.project_types), 'identity fields (version/profiles/project_types) ride the manifest')
@@ -36,7 +41,7 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
     const mod = JSON.parse(fs.readFileSync(path.join(ROOT, m), 'utf8'))
     for (const r of mod.rules) {
       const prefix = r.id.split('-')[0].toLowerCase()
-      const want = { build: 'build', test: 'test', ctx: 'ctx', claim: 'claim', sec: 'sec', gov: 'gov', comm: 'comm', qual: 'qual', repro: 'repro', ops: 'ops', desc: 'desc' }[prefix]
+      const want = { build: 'build', test: 'test', ctx: 'ctx', claim: 'claim', sec: 'sec', gov: 'gov', comm: 'comm', qual: 'qual', repro: 'repro', ops: 'ops', rec: 'rec', flow: 'flow', desc: 'desc' }[prefix]
       if (want !== cat) { homed = false; console.log(`      ${r.id} lives in ${m}`) }
     }
   }
@@ -262,6 +267,178 @@ try {
   const br2 = sh(t7, process.execPath, [CHECK, '--repo', t7, '--json', '--no-exec'], NOW)
   const ctx04b = JSON.parse(br2.out).results.find(r => r.id === 'CTX-04')
   ok(ctx04b.tag === 'SIGN-OFF' && /lapsed/.test(ctx04b.detail), 'bridge: a schema-invalid sign-off (numeric review_by) is excluded — it can never read as signed while jdg check calls it INVALID')
+
+  // ---- M4c: engine posture/branch/opt-out gates (pure, data-driven) ----
+  {
+    const gate = (rule, over = {}) => runRules({
+      rules: [{ id: 'X-01', severity: 'warn', applies_to: 'all', check: { kind: 'x' }, ...rule }],
+      cfg: { project_type: 'docs', ...(over.cfg || {}) }, ACTIVE: new Set(['core']),
+      CLAIMS_ACTIVE: over.CLAIMS_ACTIVE ?? true, CLAIMS_REASON: over.CLAIMS_REASON ?? null,
+      evalCheck: () => ({ ok: true, detail: 'ran' }),
+      DESCRIPTOR: over.DESCRIPTOR ?? null, BRANCH: over.BRANCH ?? null, DEFAULT_BRANCH: over.DEFAULT_BRANCH ?? 'main',
+    })[0]
+    const ML = { valid: true, data: { workflow: 'multi-lane' } }, SL = { valid: true, data: { workflow: 'single-lane' } }
+    ok(gate({ workflow: 'multi-lane' }).tag === 'SKIP' && /workflow contract off/.test(gate({ workflow: 'multi-lane' }).detail), 'engine: workflow rule SKIPs with no descriptor (best-effort posture)')
+    ok(/workflow=single-lane/.test(gate({ workflow: 'multi-lane' }, { DESCRIPTOR: SL }).detail), 'engine: workflow rule SKIPs on the other posture, says which')
+    ok(gate({ workflow: 'multi-lane', branch_scope: 'lane' }, { DESCRIPTOR: ML, BRANCH: 'main' }).tag === 'SKIP', 'engine: lane rule SKIPs on the default branch')
+    ok(gate({ workflow: 'multi-lane', branch_scope: 'lane' }, { DESCRIPTOR: ML, BRANCH: 'lane/x' }).tag === 'PASS', 'engine: lane rule runs on a lane branch of a multi-lane repo')
+    ok(/no branch/.test(gate({ branch_scope: 'lane' }, { BRANCH: null }).detail), 'engine: lane rule SKIPs on detached HEAD, honestly')
+    const opted = gate({ requires: 'status_file' }, { cfg: { status_file: false }, DESCRIPTOR: SL })
+    ok(opted.tag === 'SKIP' && /opted out \(status_file:false\)/.test(opted.detail), 'engine: status_file:false honored WITH a valid descriptor')
+    ok(gate({ requires: 'status_file' }, { cfg: { status_file: false } }).tag === 'PASS', 'engine: status_file:false NOT honored without a descriptor — the rule still runs')
+    ok(gate({ requires: 'status_file' }, { cfg: { status_file: false }, DESCRIPTOR: { valid: false, present: true } }).tag === 'PASS', 'engine: an invalid descriptor confers no opt-out')
+    const cskip = gate({ requires: 'makes_external_claims' }, { CLAIMS_ACTIVE: false, CLAIMS_REASON: "maturity=prototype — CLAIM activates at 'claimed'" })
+    ok(cskip.tag === 'SKIP' && /maturity=prototype/.test(cskip.detail), 'engine: the claims skip detail carries the maturity reason')
+  }
+
+  // ---- M4c: descriptor maturity gates CLAIM activation (C24, discrete tiers) ----
+  {
+    const t9 = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-maturity-')); tmps.push(t9)
+    fs.mkdirSync(path.join(t9, 'docs'), { recursive: true })
+    fs.writeFileSync(path.join(t9, 'docs/CLAIMS.json'), JSON.stringify({ claims: [{ id: 'x', statement: 's', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }] }))
+    const desc = m => JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: m, owner: 'a', workflow: 'single-lane', anchoring: 'off' })
+    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('prototype'))
+    const proto = resolveConfig(indexRepo(t9))
+    ok(proto.CLAIMS_ACTIVE === false && /maturity=prototype/.test(proto.CLAIMS_REASON), 'maturity=prototype: register present but CLAIM inactive (activates at claimed)')
+    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('claimed'))
+    ok(resolveConfig(indexRepo(t9)).CLAIMS_ACTIVE === true, 'maturity=claimed: CLAIM active')
+    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('prototype'))
+    fs.writeFileSync(path.join(t9, 'baseline.config.json'), JSON.stringify({ makes_external_claims: true }))
+    ok(resolveConfig(indexRepo(t9)).CLAIMS_ACTIVE === true, 'maturity=prototype + explicit makes_external_claims:true: explicit intent wins')
+    fs.rmSync(path.join(t9, 'docs/CLAIMS.json'))
+    fs.mkdirSync(path.join(t9, 'records/claims'), { recursive: true })
+    fs.writeFileSync(path.join(t9, 'records/claims/CLM-0001.json'), JSON.stringify({ record: 'claim/1', id: 'CLM-0001', statement: 's', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }))
+    fs.rmSync(path.join(t9, 'baseline.config.json'))
+    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('claimed'))
+    ok(resolveConfig(indexRepo(t9)).CLAIMS_ACTIVE === true, 'the exploded home alone (records/claims/) activates CLAIM — no monolith needed')
+  }
+
+  // ---- M4c: REC evaluators against real history ----
+  {
+    const t10 = mkrepo('main'); tmps.push(t10)
+    const rec = 'records/sessions/main/2026-07-01-100000-a.md'
+    fs.mkdirSync(path.join(t10, path.dirname(rec)), { recursive: true })
+    fs.writeFileSync(path.join(t10, rec), '---\nrecord: session/1\nlane: main\nagent: a\nstarted: 2026-07-01T10:00:00Z\n---\n\n## Did\nx\n\n## Left open\nnext: y\n')
+    sh(t10, 'git', ['add', '-A']); sh(t10, 'git', ['commit', '-qm', 'r1'])
+    const mk = () => makeEvalCheck({ repo: indexRepo(t10), cfg: { decision_globs: ['docs/decisions/*.md'] }, NO_EXEC: true, SIGNOFF: {}, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    const AO = { kind: 'records-append-only', path: 'records/' }, RS = { kind: 'records-scrub', globs: ['records/**'] }, OH = { kind: 'records-one-home' }
+    ok(mk()(AO, { id: 'REC-01' }).ok === true, 'REC-01: append-only history passes')
+    fs.appendFileSync(path.join(t10, rec), 'edited\n'); sh(t10, 'git', ['add', '-A']); sh(t10, 'git', ['commit', '-qm', 'edit'])
+    let r = mk()(AO, { id: 'REC-01' })
+    ok(r.ok === false && /edited/.test(r.detail), 'REC-01: an edit to a committed record is a mutation finding')
+    sh(t10, 'git', ['mv', rec, rec.replace('-a.md', '-b.md')]); sh(t10, 'git', ['commit', '-qm', 'rename'])
+    r = mk()(AO, { id: 'REC-01' })
+    ok(r.ok === false && /renamed/.test(r.detail), 'REC-01: a rename is a mutation finding')
+    sh(t10, 'git', ['rm', '-q', rec.replace('-a.md', '-b.md')]); sh(t10, 'git', ['commit', '-qm', 'delete'])
+    r = mk()(AO, { id: 'REC-01' })
+    ok(r.ok === false && /deleted/.test(r.detail), 'REC-01: a delete is a mutation finding')
+
+    const t11 = mkrepo('main'); tmps.push(t11)
+    const rec2 = 'records/sessions/main/2026-07-01-110000-a.md'
+    fs.mkdirSync(path.join(t11, path.dirname(rec2)), { recursive: true })
+    fs.writeFileSync(path.join(t11, rec2), 'token: ' + 'ghp_' + 'abcdefghijklmnopqrstuvwxyz0123456789' + '\n')
+    sh(t11, 'git', ['add', '-A']); sh(t11, 'git', ['commit', '-qm', 'r1'])
+    const mk11 = () => makeEvalCheck({ repo: indexRepo(t11), cfg: {}, NO_EXEC: true, SIGNOFF: {}, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    r = mk11()(RS, { id: 'REC-02' })
+    ok(r.ok === false && !r.soft && /deterministic/.test(r.detail) && !/ghp_a/.test(r.detail), 'REC-02: a landed deterministic secret fails — and the detail never reproduces it')
+    const fid = findingId('github-token', 'ghp_' + 'abcdefghijklmnopqrstuvwxyz0123456789')
+    fs.mkdirSync(path.join(t11, '.baseline'), { recursive: true })
+    fs.writeFileSync(path.join(t11, '.baseline/scrub-allowlist.json'), JSON.stringify({ entries: [{ id: fid, reason: 'doc example', date: '2026-07-12' }] }))
+    r = mk11()(RS, { id: 'REC-02' })
+    ok(r.ok === true && /allowlisted/.test(r.detail), 'REC-02: a dated allowlist judgment clears exactly that finding')
+    fs.writeFileSync(path.join(t11, rec2), 'password = "hunter2hunter2"\n'); sh(t11, 'git', ['add', '-A']); sh(t11, 'git', ['commit', '-qm', 'heur'])
+    r = mk11()(RS, { id: 'REC-02' })
+    ok(r.ok === false && r.soft === true, 'REC-02: heuristic-only findings are soft — WARN even after M7 promotes the severity')
+
+    fs.mkdirSync(path.join(t11, 'records/judgments'), { recursive: true })
+    const jdg = { record: 'judgment/1', id: 'JDG-0001', kind: 'sign-off', date: '2026-07-01', by: 'a', subject: 'S', reason: 'r', review_by: '2027-01-01' }
+    fs.writeFileSync(path.join(t11, 'records/judgments/JDG-0001.json'), JSON.stringify(jdg))
+    fs.writeFileSync(path.join(t11, 'records/judgments/JDG-0002.json'), JSON.stringify(jdg))
+    r = mk11()(OH, { id: 'REC-04' })
+    ok(r.ok === false && /JDG JDG-0001 in both/.test(r.detail), 'REC-04: the same judgment id in two files is a duplication finding')
+    fs.writeFileSync(path.join(t11, 'records/judgments/JDG-0002.json'), JSON.stringify({ ...jdg, id: 'JDG-0002' }))
+    fs.mkdirSync(path.join(t11, 'docs/session-log'), { recursive: true })
+    fs.writeFileSync(path.join(t11, 'docs/session-log/old.md'), 'legacy\n')
+    r = mk11()(OH, { id: 'REC-04' })
+    ok(r.ok === false && /two homes/.test(r.detail), 'REC-04: session narrative in both records/sessions and docs/session-log is flagged')
+    fs.rmSync(path.join(t11, 'docs/session-log'), { recursive: true })
+    ok(mk11()(OH, { id: 'REC-04' }).ok === true, 'REC-04: unique ids, one home — clean')
+  }
+
+  // ---- M4c: the lane loop end-to-end through check.mjs (FLOW + opt-out + REC threading) ----
+  {
+    const t12 = mkrepo('main'); tmps.push(t12)
+    fs.writeFileSync(path.join(t12, 'README.md'), '# lane fixture\n')
+    fs.writeFileSync(path.join(t12, 'LICENSE'), 'MIT\n')
+    fs.writeFileSync(path.join(t12, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 'a', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
+    fs.writeFileSync(path.join(t12, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false, status_file: false }))
+    sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'base'])
+    const CHECK12 = path.join(ROOT, 'check.mjs')
+    const byId = out => Object.fromEntries(JSON.parse(out).results.map(x => [x.id, x]))
+    let res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
+    ok(res['FLOW-02'].tag === 'SKIP' && /default branch/.test(res['FLOW-02'].detail), 'e2e: FLOW-02 SKIPs on the default branch — no wallpaper warns')
+    ok(res['CTX-01'].tag === 'SKIP' && /opted out/.test(res['CTX-01'].detail), 'e2e: status_file:false + descriptor = CTX-01 opted out')
+    ok(res['CTX-12'].tag === 'SKIP', 'e2e: CTX-12 rides the same opt-out')
+    sh(t12, 'git', ['checkout', '-qb', 'lane/t'])
+    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
+    ok(res['FLOW-02'].tag === 'WARN' && /baseline log/.test(res['FLOW-02'].detail), 'e2e: a lane with no session record WARNs with the fix')
+    ok(res['FLOW-06'].tag === 'SKIP' && /no gated subject/.test(res['FLOW-06'].detail), 'e2e: FLOW-06 SKIPs when nothing gated changed')
+    const lrec = 'records/sessions/lane/t/2026-07-11-120000-a.md'
+    fs.mkdirSync(path.join(t12, path.dirname(lrec)), { recursive: true })
+    fs.writeFileSync(path.join(t12, lrec), '---\nrecord: session/1\nlane: lane/t\nagent: a\nstarted: 2026-07-11T12:00:00Z\n---\n\n## Did\nx\n\n## Left open\nnext: y\n')
+    fs.writeFileSync(path.join(t12, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 'a', workflow: 'multi-lane', anchoring: 'relaxed', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
+    sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'lane work + descriptor change'])
+    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
+    ok(res['FLOW-02'].tag === 'PASS', 'e2e: the session record riding the lane flips FLOW-02 to PASS')
+    ok(res['FLOW-06'].tag === 'WARN' && /DESC-03 preview/.test(res['FLOW-06'].detail), 'e2e: a descriptor change with no judgment in range WARNs (same-PR atomicity)')
+    fs.mkdirSync(path.join(t12, 'records/judgments'), { recursive: true })
+    fs.writeFileSync(path.join(t12, 'records/judgments/JDG-0001.json'), JSON.stringify({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-07-11', by: 'a', subject: 'descriptor change', reason: 'r', review_by: '2027-01-01' }))
+    sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'jdg'])
+    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
+    ok(res['FLOW-06'].tag === 'PASS', 'e2e: the judgment record in the same range satisfies FLOW-06')
+  }
+
+  // ---- M4c: claims dual-read + gen migrate-claims ----
+  {
+    const t13 = mkrepo('main'); tmps.push(t13)
+    fs.mkdirSync(path.join(t13, 'docs'), { recursive: true })
+    fs.mkdirSync(path.join(t13, 'records/claims'), { recursive: true })
+    fs.writeFileSync(path.join(t13, 'docs/CLAIMS.json'), JSON.stringify({ claims: [
+      { id: 'alpha', statement: 'legacy alpha', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' },
+      { id: 'beta', statement: 'legacy beta', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' },
+    ] }))
+    fs.writeFileSync(path.join(t13, 'records/claims/CLM-0002.json'), JSON.stringify({ record: 'claim/1', id: 'CLM-0002', slug: 'alpha', statement: 'record alpha', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }))
+    const merged = loadClaims(indexRepo(t13), { claims_file: 'docs/CLAIMS.json' })
+    ok(merged.claims.length === 2 && merged.claims.find(c => c.slug === 'alpha').statement === 'record alpha' && merged.claims.some(c => c.id === 'beta'), 'dual-read: records shadow their migrated legacy twin; unmigrated legacy claims survive')
+    const g1 = sh(t13, process.execPath, [BASELINE, 'gen', 'migrate-claims', '--repo', t13], NOW)
+    ok(g1.code === 0 && /1 written/.test(g1.out) && /1 already migrated/.test(g1.out), 'gen: migrates only the unmigrated claim (numbering continues past CLM-0002)')
+    ok(fs.existsSync(path.join(t13, 'records/claims/CLM-0003.json')) && JSON.parse(fs.readFileSync(path.join(t13, 'records/claims/CLM-0003.json'), 'utf8')).slug === 'beta', 'gen: the new record gets the next number and keeps the V1 id as slug')
+    const g2 = sh(t13, process.execPath, [BASELINE, 'gen', 'migrate-claims', '--repo', t13], NOW)
+    ok(g2.code === 0 && /0 written/.test(g2.out) && /2 already migrated/.test(g2.out), 'gen: idempotent — a second run writes nothing')
+    fs.writeFileSync(path.join(t13, 'docs/CLAIMS.json'), JSON.stringify({ claims: [{ id: 'gamma', statement: 's', type: 'capability', build_state: 'planned', blast_radius: 'company' }] }))
+    const g3 = sh(t13, process.execPath, [BASELINE, 'gen', 'migrate-claims', '--repo', t13], NOW)
+    ok(g3.code === 1 && /refused/.test(g3.out) && !fs.existsSync(path.join(t13, 'records/claims/CLM-0004.json')), 'gen: a schema-invalid legacy claim is REFUSED loudly, nothing partial written')
+  }
+
+  // ---- M4c: `baseline scrub` (the pre-push hook's engine) ----
+  {
+    const t14 = mkrepo('main'); tmps.push(t14)
+    const srec = 'records/sessions/main/2026-07-11-130000-a.md'
+    fs.mkdirSync(path.join(t14, path.dirname(srec)), { recursive: true })
+    fs.writeFileSync(path.join(t14, srec), 'AKIA' + 'IOSFODNN7EXAMPLE' + '\n')
+    const s1 = sh(t14, process.execPath, [BASELINE, 'scrub', srec, '--repo', t14], NOW)
+    ok(s1.code === 1 && /BLOCK/.test(s1.out) && /scrub-[0-9a-f]{12}/.test(s1.out), 'scrub: worktree mode blocks a deterministic shape and prints the finding id')
+    sh(t14, 'git', ['add', '-A']); sh(t14, 'git', ['commit', '-qm', 'r1'])
+    const s2 = sh(t14, process.execPath, [BASELINE, 'scrub', '--repo', t14, '--pushed', 'HEAD'], NOW)
+    ok(s2.code === 1 && /BLOCK/.test(s2.out), 'scrub: --pushed mode scans committed blob content (a new ref scans the whole records/ tree)')
+    const fid14 = findingId('aws-access-key-id', 'AKIA' + 'IOSFODNN7EXAMPLE')
+    const s3 = sh(t14, process.execPath, [BASELINE, 'scrub', '--allow', fid14, '--allow-reason', 'documented example key', '--repo', t14], NOW)
+    ok(s3.code === 0 && /allowlisted/.test(s3.out), 'scrub: --allow writes the dated judgment')
+    const s4 = sh(t14, process.execPath, [BASELINE, 'scrub', '--repo', t14, '--pushed', 'HEAD'], NOW)
+    ok(s4.code === 0 && /allowlisted/.test(s4.out), 'scrub: the allowlist clears the push')
+    const s5 = sh(t14, process.execPath, [BASELINE, 'scrub', '--repo', t14], NOW)
+    ok(s5.code === 2, 'scrub: no files and no --pushed is a usage error')
+  }
 } finally {
   for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })
 }

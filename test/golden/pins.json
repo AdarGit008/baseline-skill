@@ -167,12 +167,30 @@
       "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
       "    SKIP  CLAIM-06  Specs of record carry explicit acceptance criteria",
       "            ↳ n/a (no applicable target)",
+      "    SKIP  CLAIM-07  Claims live in per-claim records, not the legacy monolith",
+      "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
+      "",
+      "  Records & ledger",
+      "    SKIP  REC-01    Committed records are append-only",
+      "            ↳ no committed records under records/ yet",
+      "    SKIP  REC-02    Landed records are scrub-clean",
+      "            ↳ no committed records to scan",
+      "    SKIP  REC-04    Every record fact has one home",
+      "            ↳ no records to cross-check",
+      "    SKIP  REC-05    Records are covered by a push-time secret gate",
+      "            ↳ n/a (committed records not present)",
+      "",
+      "  Lane workflow",
+      "    SKIP  FLOW-02   A lane branch carries its own session record",
+      "            ↳ workflow contract off (no valid baseline.repo.json)",
+      "    SKIP  FLOW-06   A gated subject changes with its record in the same PR",
+      "            ↳ workflow contract off (no valid baseline.repo.json)",
       "",
       "  Repo descriptor",
       "    WARN  DESC-01   Repo descriptor present and valid",
       "            ↳ no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init",
       "",
-      "  Summary  34 pass · 1 fail · 10 warn · 4 sign-off · 22 n/a",
+      "  Summary  34 pass · 1 fail · 10 warn · 4 sign-off · 29 n/a",
       "  Readiness: 69%  (34/49 applicable)",
       "",
       "  ✗ 1 blocker(s) — not build-ready.",
@@ -189,10 +207,10 @@
     "summary": {
       "blockers": 4,
       "pass": 9,
-      "warn": 8,
+      "warn": 9,
       "signoff": 1,
-      "skip": 49,
-      "total": 71
+      "skip": 55,
+      "total": 78
     },
     "rules": {
       "BUILD-01": {
@@ -339,6 +357,10 @@
         "tag": "PASS",
         "detail": "matched in 1 file(s)"
       },
+      "CLAIM-07": {
+        "tag": "WARN",
+        "detail": "found: docs/CLAIMS.json"
+      },
       "SEC-01": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
@@ -475,6 +497,30 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "no committed records under records/ yet"
+      },
+      "REC-02": {
+        "tag": "SKIP",
+        "detail": "no committed records to scan"
+      },
+      "REC-04": {
+        "tag": "SKIP",
+        "detail": "no records to cross-check"
+      },
+      "REC-05": {
+        "tag": "SKIP",
+        "detail": "n/a (committed records not present)"
+      },
+      "FLOW-02": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-06": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
@@ -492,8 +538,8 @@
       "pass": 7,
       "warn": 15,
       "signoff": 3,
-      "skip": 43,
-      "total": 71
+      "skip": 50,
+      "total": 78
     },
     "rules": {
       "BUILD-01": {
@@ -640,6 +686,10 @@
         "tag": "SKIP",
         "detail": "n/a (no applicable target)"
       },
+      "CLAIM-07": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
       "SEC-01": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
@@ -776,6 +826,30 @@
         "tag": "SKIP",
         "detail": "n/a for node"
       },
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "no committed records under records/ yet"
+      },
+      "REC-02": {
+        "tag": "SKIP",
+        "detail": "no committed records to scan"
+      },
+      "REC-04": {
+        "tag": "SKIP",
+        "detail": "no records to cross-check"
+      },
+      "REC-05": {
+        "tag": "SKIP",
+        "detail": "n/a (committed records not present)"
+      },
+      "FLOW-02": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-06": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DESC-01": {
         "tag": "WARN",
         "detail": "baseline.repo.json invalid: maturity must be one of prototype|claimed|released (got \"beta\")"
@@ -793,8 +867,8 @@
       "pass": 7,
       "warn": 6,
       "signoff": 1,
-      "skip": 56,
-      "total": 71
+      "skip": 63,
+      "total": 78
     },
     "rules": {
       "BUILD-01": {
@@ -941,6 +1015,10 @@
         "tag": "SKIP",
         "detail": "n/a (no applicable target)"
       },
+      "CLAIM-07": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
       "SEC-01": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
@@ -1077,6 +1155,30 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "no committed records under records/ yet"
+      },
+      "REC-02": {
+        "tag": "SKIP",
+        "detail": "no committed records to scan"
+      },
+      "REC-04": {
+        "tag": "SKIP",
+        "detail": "no records to cross-check"
+      },
+      "REC-05": {
+        "tag": "SKIP",
+        "detail": "n/a (committed records not present)"
+      },
+      "FLOW-02": {
+        "tag": "SKIP",
+        "detail": "workflow=single-lane (rule needs multi-lane)"
+      },
+      "FLOW-06": {
+        "tag": "SKIP",
+        "detail": "workflow=single-lane (rule needs multi-lane)"
+      },
       "DESC-01": {
         "tag": "PASS",
         "detail": "type=docs · production/released · workflow=single-lane · anchoring=off"
@@ -1095,8 +1197,8 @@
       "pass": 9,
       "warn": 11,
       "signoff": 0,
-      "skip": 49,
-      "total": 71
+      "skip": 56,
+      "total": 78
     },
     "rules": {
       "BUILD-01": {
@@ -1243,6 +1345,10 @@
         "tag": "SKIP",
         "detail": "n/a (no applicable target)"
       },
+      "CLAIM-07": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
       "SEC-01": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
@@ -1379,9 +1485,362 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "no committed records under records/ yet"
+      },
+      "REC-02": {
+        "tag": "SKIP",
+        "detail": "no committed records to scan"
+      },
+      "REC-04": {
+        "tag": "SKIP",
+        "detail": "no records to cross-check"
+      },
+      "REC-05": {
+        "tag": "SKIP",
+        "detail": "n/a (committed records not present)"
+      },
+      "FLOW-02": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-06": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+      }
+    }
+  },
+  "flow-repo": {
+    "exitCode": 0,
+    "project_type": "docs",
+    "profiles": [
+      "core"
+    ],
+    "summary": {
+      "blockers": 0,
+      "pass": 9,
+      "warn": 9,
+      "signoff": 1,
+      "skip": 59,
+      "total": 78
+    },
+    "rules": {
+      "BUILD-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-07": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-08": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-09": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-07": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "CTX-01": {
+        "tag": "SKIP",
+        "detail": "opted out (status_file:false)"
+      },
+      "CTX-02": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-03": {
+        "tag": "WARN",
+        "detail": "config.sources_of_truth empty"
+      },
+      "CTX-04": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "CTX-05": {
+        "tag": "PASS",
+        "detail": "3 doc(s), links resolve"
+      },
+      "CTX-06": {
+        "tag": "SKIP",
+        "detail": "config.freshness_globs empty (opt-in)"
+      },
+      "CTX-07": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-08": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "CTX-09": {
+        "tag": "SKIP",
+        "detail": "config.grounding_docs empty (opt-in)"
+      },
+      "CTX-10": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "CTX-12": {
+        "tag": "SKIP",
+        "detail": "opted out (status_file:false)"
+      },
+      "CLAIM-00": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-01": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-02": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-03": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-04": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-05": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-06": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "CLAIM-07": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "SEC-01": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-02": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-03": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "SEC-04": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "SEC-05": {
+        "tag": "WARN",
+        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
+      },
+      "SEC-06": {
+        "tag": "WARN",
+        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
+      },
+      "SEC-07": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-08": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-09": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-11": {
+        "tag": "SKIP",
+        "detail": "no workflow files"
+      },
+      "SEC-12": {
+        "tag": "SKIP",
+        "detail": "n/a (no applicable target)"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "GOV-01": {
+        "tag": "SKIP",
+        "detail": "no matching file (skipped)"
+      },
+      "GOV-02": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "GOV-03": {
+        "tag": "WARN",
+        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
+      },
+      "COMM-01": {
+        "tag": "PASS",
+        "detail": "LICENSE"
+      },
+      "COMM-02": {
+        "tag": "WARN",
+        "detail": "README.md too short (<400 chars)"
+      },
+      "COMM-03": {
+        "tag": "WARN",
+        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
+      },
+      "QUAL-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REC-01": {
+        "tag": "WARN",
+        "detail": "1 mutation(s): <sha> edited records/sessions/main/2026-06-30-100000-golden.md"
+      },
+      "REC-02": {
+        "tag": "PASS",
+        "detail": "2 record(s) scrub-clean"
+      },
+      "REC-04": {
+        "tag": "PASS",
+        "detail": "every record fact has one home"
+      },
+      "REC-05": {
+        "tag": "WARN",
+        "detail": "no push-time secret gate found — enable GitHub push protection, wire gitleaks, or install hooks/scrub-pre-push.sh"
+      },
+      "FLOW-02": {
+        "tag": "PASS",
+        "detail": "1 session record(s) ride this lane"
+      },
+      "FLOW-06": {
+        "tag": "WARN",
+        "detail": "baseline.repo.json changed with no judgment record in the same range (DESC-03 preview)"
+      },
+      "DESC-01": {
+        "tag": "PASS",
+        "detail": "type=docs · production/released · workflow=multi-lane · anchoring=relaxed"
       }
     }
   },
@@ -1393,11 +1852,11 @@
     ],
     "summary": {
       "blockers": 0,
-      "pass": 8,
-      "warn": 7,
+      "pass": 11,
+      "warn": 8,
       "signoff": 0,
-      "skip": 56,
-      "total": 71
+      "skip": 59,
+      "total": 78
     },
     "rules": {
       "BUILD-01": {
@@ -1544,6 +2003,10 @@
         "tag": "SKIP",
         "detail": "n/a (no applicable target)"
       },
+      "CLAIM-07": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
       "SEC-01": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
@@ -1680,6 +2143,30 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "REC-01": {
+        "tag": "PASS",
+        "detail": "1 record(s), history append-only"
+      },
+      "REC-02": {
+        "tag": "PASS",
+        "detail": "1 record(s) scrub-clean"
+      },
+      "REC-04": {
+        "tag": "PASS",
+        "detail": "every record fact has one home"
+      },
+      "REC-05": {
+        "tag": "WARN",
+        "detail": "no push-time secret gate found — enable GitHub push protection, wire gitleaks, or install hooks/scrub-pre-push.sh"
+      },
+      "FLOW-02": {
+        "tag": "SKIP",
+        "detail": "workflow=single-lane (rule needs multi-lane)"
+      },
+      "FLOW-06": {
+        "tag": "SKIP",
+        "detail": "workflow=single-lane (rule needs multi-lane)"
+      },
       "DESC-01": {
         "tag": "PASS",
         "detail": "type=docs · production/prototype · workflow=single-lane · anchoring=off"
@@ -1697,8 +2184,8 @@
       "pass": 5,
       "warn": 21,
       "signoff": 3,
-      "skip": 35,
-      "total": 71
+      "skip": 42,
+      "total": 78
     },
     "rules": {
       "BUILD-01": {
@@ -1845,6 +2332,10 @@
         "tag": "SKIP",
         "detail": "n/a (no applicable target)"
       },
+      "CLAIM-07": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
       "SEC-01": {
         "tag": "FAIL",
         "detail": "matched in 2 file(s): .env, config.js"
@@ -1981,6 +2472,30 @@
         "tag": "SKIP",
         "detail": "n/a for node"
       },
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "no committed records under records/ yet"
+      },
+      "REC-02": {
+        "tag": "SKIP",
+        "detail": "no committed records to scan"
+      },
+      "REC-04": {
+        "tag": "SKIP",
+        "detail": "no records to cross-check"
+      },
+      "REC-05": {
+        "tag": "SKIP",
+        "detail": "n/a (committed records not present)"
+      },
+      "FLOW-02": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-06": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
@@ -1999,8 +2514,8 @@
       "pass": 34,
       "warn": 10,
       "signoff": 4,
-      "skip": 22,
-      "total": 71
+      "skip": 29,
+      "total": 78
     },
     "rules": {
       "BUILD-01": {
@@ -2147,6 +2662,10 @@
         "tag": "SKIP",
         "detail": "n/a (no applicable target)"
       },
+      "CLAIM-07": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
       "SEC-01": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
@@ -2283,6 +2802,30 @@
         "tag": "SKIP",
         "detail": "n/a for node"
       },
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "no committed records under records/ yet"
+      },
+      "REC-02": {
+        "tag": "SKIP",
+        "detail": "no committed records to scan"
+      },
+      "REC-04": {
+        "tag": "SKIP",
+        "detail": "no records to cross-check"
+      },
+      "REC-05": {
+        "tag": "SKIP",
+        "detail": "n/a (committed records not present)"
+      },
+      "FLOW-02": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-06": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
@@ -2301,8 +2844,8 @@
       "pass": 17,
       "warn": 14,
       "signoff": 3,
-      "skip": 35,
-      "total": 71
+      "skip": 42,
+      "total": 78
     },
     "rules": {
       "BUILD-01": {
@@ -2449,6 +2992,10 @@
         "tag": "SKIP",
         "detail": "n/a (no applicable target)"
       },
+      "CLAIM-07": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
       "SEC-01": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
@@ -2584,6 +3131,30 @@
       "OPS-06": {
         "tag": "PASS",
         "detail": "catalog-info.yaml ok"
+      },
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "no committed records under records/ yet"
+      },
+      "REC-02": {
+        "tag": "SKIP",
+        "detail": "no committed records to scan"
+      },
+      "REC-04": {
+        "tag": "SKIP",
+        "detail": "no records to cross-check"
+      },
+      "REC-05": {
+        "tag": "SKIP",
+        "detail": "n/a (committed records not present)"
+      },
+      "FLOW-02": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-06": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
       },
       "DESC-01": {
         "tag": "WARN",

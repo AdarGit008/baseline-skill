@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "type": "docs",
+  "lifecycle": "production",
+  "maturity": "released",
+  "owner": "golden",
+  "workflow": "multi-lane",
+  "anchoring": "relaxed",
+  "lanes": { "namespace": "lane/*", "lease_ttl": "7d" },
+  "ground_truth_boundary": { "forge": "none", "default_branch": "main" }
+}

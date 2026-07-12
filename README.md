@@ -43,6 +43,7 @@ node baseline.mjs --repo /path/to/repo          # score (the default command) �
 node baseline.mjs --repo /path/to/repo --json   # machine output for CI
 node baseline.mjs orient --repo /path/to/repo   # derived-state survey: lanes · backlog · divergence
 node baseline.mjs log -m "..." --next "..."     # write a scrubbed session record (the forensic tier)
+node baseline.mjs jdg check                     # evaluate the judgment ledger: tripwires · expiry · drift
 ```
 
 `baseline.mjs` is the entry point — `check` is the default (it delegates to `check.mjs`, still the checker), and `orient` surveys session state. Needs only Node ≥ 18 and git; `orient`'s forge view also uses `gh` and degrades gracefully without it.
@@ -52,9 +53,10 @@ node baseline.mjs log -m "..." --next "..."     # write a scrubbed session recor
 | file | purpose |
 |---|---|
 | `SKILL.md` | the skill definition (modes: orient / score / init / fix / explain) |
-| `baseline.mjs` | the CLI entry point — `orient`, `check`, `log`, `help` |
+| `CONTRACT.md` | the plain-git twin: what the workflow expects of a repo, no tool required |
+| `baseline.mjs` | the CLI entry point — `orient`, `check`, `log`, `jdg`, `help` |
 | `check.mjs` | the checker (`baseline check` delegates here) |
-| `src/` | the runner's modules: repo · config · evaluators · engine · report · self-check · descriptor · probe · orient · rules · records · validate · scrub · log |
+| `src/` | the runner's modules: repo · config · evaluators · engine · report · self-check · descriptor · probe · orient · rules · records · validate · scrub · log · jdg |
 | `test/` | golden corpus + orient/facts/records suites (`test/golden/run.mjs --verify`, `test/{orient,facts,records}/run.mjs`) — source repo only, not installed |
 | `rules.json` | the rule-set manifest (version, profiles, module list) — the 71 rules live in `rules/` |
 | `rules/` | the rules, one module per category (build, test, ctx, … desc); M5+ families land as new files |

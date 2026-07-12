@@ -20,9 +20,10 @@
 // Exit: 0 written · 1 scrub-blocked · 2 usage/environment.
 import fs from 'node:fs'
 import path from 'node:path'
+import { makeOpt, makeOptText, makeOptAll } from './util.mjs'
 import { currentLane, run } from './probe.mjs'
 import { validateRecord, parseFrontmatter, renderFrontmatter, sessionRelPath } from './records.mjs'
-import { scan, loadAllowlist, addAllowlistEntries, ALLOWLIST_FILE, CACHE_DIR } from './scrub.mjs'
+import { scan, loadAllowlist, addAllowlistEntries, keepDraft, ALLOWLIST_FILE, CACHE_DIR } from './scrub.mjs'
 import { extractNext } from './facts/git.mjs'
 
 const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24)
@@ -30,17 +31,18 @@ const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').repl
 export function runLog(argv) {
   // value flags refuse a '--'-leading next token (it's another flag); TEXT flags
   // consume it regardless — "-m '--started with a dash'" is a message, not flags
-  const opt = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? (argv[i + 1] !== undefined && !argv[i + 1].startsWith('--') ? argv[i + 1] : true) : d }
-  const optText = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? (argv[i + 1] !== undefined ? argv[i + 1] : true) : d }
-  const optAll = n => argv.reduce((a, v, i) => (argv[i] === n && argv[i + 1] !== undefined ? [...a, argv[i + 1]] : a), [])
+  const opt = makeOpt(argv), optText = makeOptText(argv), optAll = makeOptAll(argv)
+  const usage = msg => { console.error(`baseline log: ${msg}\n  usage: baseline log -m "what happened" [--next "..."] [--deadends "..."] [--lane L] [--agent A] [--from FILE] [--allow ID --allow-reason "..."]`); return 2 }
+  // a value flag followed by another flag (or nothing) is a mistake, not a value —
+  // never let String(true) become the repo a record silently lands in
+  for (const f of ['--repo', '--lane', '--agent', '--from']) if (opt(f, null) === true) return usage(`${f} needs a value`)
   const REPO = path.resolve(String(opt('--repo', process.cwd())))
   const JSON_OUT = !!opt('--json', false)
-  const usage = msg => { console.error(`baseline log: ${msg}\n  usage: baseline log -m "what happened" [--next "..."] [--deadends "..."] [--lane L] [--agent A] [--from FILE] [--allow ID --reason "..."]`); return 2 }
   const jsonOut = (obj, code) => { console.log(JSON.stringify({ written: null, draft: null, blocked: [], warned: [], allowed: [], ...obj }, null, 2)); return code }
 
   const allowIds = optAll('--allow')
-  const reason = optText('--reason', null)
-  if (allowIds.length && (typeof reason !== 'string' || !reason.trim())) return usage('--allow requires --reason "why this is not a secret" (allowlist entries are dated judgments)')
+  const reason = optText('--allow-reason', null)
+  if (allowIds.length && (typeof reason !== 'string' || !reason.trim())) return usage('--allow requires --allow-reason "why this is not a secret" (allowlist entries are dated judgments; one flag name across log and jdg)')
   const now = process.env.BASELINE_LOG_NOW ? new Date(process.env.BASELINE_LOG_NOW) : new Date()
   if (isNaN(now)) return usage('BASELINE_LOG_NOW is not a parseable instant')
   const started = now.toISOString().replace(/\.\d{3}Z$/, 'Z')
@@ -103,18 +105,14 @@ export function runLog(argv) {
   // the write-time scrub gate: deterministic blocks, heuristic warns (C34/C07)
   const { blocked, warned, allowed } = scan(content, { allowlist })
   if (blocked.length) {
-    const draftRel = `${CACHE_DIR}/rejected-log-${sessionRelPath(fields).split('/').pop().replace(/\.md$/, '')}.md`
-    const draftAbs = path.join(REPO, draftRel)
-    fs.mkdirSync(path.dirname(draftAbs), { recursive: true })
-    fs.writeFileSync(draftAbs, content)
-    const ignored = run('git', ['-C', REPO, 'check-ignore', '-q', draftRel]) !== null
-    if (JSON_OUT) return jsonOut({ draft: draftRel, blocked, warned }, 1)
+    const draft = keepDraft(REPO, `rejected-log-${sessionRelPath(fields).split('/').pop()}`, content)
+    if (JSON_OUT) return jsonOut({ draft: draft.rel, blocked, warned }, 1)
     console.error(`✗ scrub blocked the record — nothing written under records/.`)
     for (const f of blocked) console.error(`    ${f.name}  line ${f.line}  (${f.masked}${f.count > 1 ? ` ×${f.count}` : ''})   id ${f.id}`)
-    console.error(`  draft kept (NOT lost): ${draftRel} — it contains the flagged content.`)
-    if (!ignored) console.error(`  ⚠ ${CACHE_DIR}/ is NOT gitignored in this repo — add it BEFORE committing anything:  echo '${CACHE_DIR}/' >> .gitignore`)
-    console.error(`  real secret?  rotate it, edit the draft, rerun:  baseline log --from ${draftRel}`)
-    console.error(`  false positive?  rerun with the dated judgment:  baseline log --from ${draftRel}${blocked.map(f => ` --allow ${f.id}`).join('')} --reason "why this is not a secret"`)
+    console.error(`  draft kept (NOT lost): ${draft.rel} — it contains the flagged content.`)
+    if (!draft.ignored) console.error(`  ⚠ ${CACHE_DIR}/ is NOT gitignored in this repo — add it BEFORE committing anything:  echo '${CACHE_DIR}/' >> .gitignore`)
+    console.error(`  real secret?  rotate it, edit the draft, rerun:  baseline log --from ${draft.rel}`)
+    console.error(`  false positive?  rerun with the dated judgment:  baseline log --from ${draft.rel}${blocked.map(f => ` --allow ${f.id}`).join('')} --allow-reason "why this is not a secret"`)
     return 1
   }
 

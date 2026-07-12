@@ -35,9 +35,9 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 - Hermes: `~/.hermes/skills/software-development/baseline`
 - Claude Code: `~/.claude/skills/baseline`
 
-The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `log`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
+The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `log`, `jdg`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
-Co-located files: `baseline.mjs` (CLI entry: orient / check / log), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 71 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
+Co-located files: `baseline.mjs` (CLI entry: orient / check / log / jdg), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 71 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
 
 ## Orientation — the first act
 
@@ -61,8 +61,10 @@ node "$SKILL_DIR/baseline.mjs" log --repo <target> -m "what happened and why; de
 ```
 
 - Lane, agent, and timestamp are derived (lane = current branch); the record lands at `records/sessions/<lane>/<date>-<time>-<agent>.md`, schema-validated, in the exact `next:` shape `orient` reads back at the next session start. That symmetry — orient first, log last — is the whole loop.
-- The write is **scrub-gated**: a deterministic secret signature blocks (non-lossy — the draft survives under `.baseline/cache/` and the exact rerun is printed); a false positive becomes a dated judgment: rerun with `--allow <finding-id> --reason "..."`. Never bypass a block by hand-writing the file instead — rotate the secret or record the judgment.
+- The write is **scrub-gated**: a deterministic secret signature blocks (non-lossy — the draft survives under `.baseline/cache/` and the exact rerun is printed); a false positive becomes a dated judgment: rerun with `--allow <finding-id> --allow-reason "..."`. Never bypass a block by hand-writing the file instead — rotate the secret or record the judgment.
 - Records are **append-only once committed**: never edit a committed session record; write the next one.
+
+**Judgments** (accepting a risk, deviating from a rule, satisfying a manual rule) are ledger records, not chat: `baseline jdg new --kind <sign-off|deviation|risk-acceptance|break-glass> --subject <rule-or-scope> --reason "..." --review-by <date>` — every judgment expires; add a `--tripwire "fact op value"` so the engine can detect when the accepted world changes. `baseline jdg check` evaluates the ledger (exit 1 on tripped/expired/invalid records). **Never fake a sign-off**: a real dated judgment by the user, or nothing. The plain-git forms live in `CONTRACT.md`.
 
 ## Modes
 

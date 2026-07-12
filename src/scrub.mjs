@@ -13,6 +13,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 
 // SEC-01's exact signatures, split out; scrub and the rule set must never disagree
 // about the deterministic tier.
@@ -103,6 +104,19 @@ export function loadAllowlist(repoDir) {
   try { data = JSON.parse(fs.readFileSync(p, 'utf8')) }
   catch { throw new Error(`scrub allowlist unreadable (${ALLOWLIST_FILE}): not valid JSON — fix or delete it`) }
   return { entries: Array.isArray(data.entries) ? data.entries : [] }
+}
+
+// Non-lossy blocks, one implementation: park the rejected content under the cache
+// dir and report whether that dir is actually gitignored HERE (the draft holds the
+// flagged content — a false "stays gitignored" claim is how secrets get committed).
+export function keepDraft(REPO, name, content) {
+  const rel = `${CACHE_DIR}/${name}`
+  const abs = path.join(REPO, rel)
+  fs.mkdirSync(path.dirname(abs), { recursive: true })
+  fs.writeFileSync(abs, content)
+  let ignored = false
+  try { execFileSync('git', ['-C', REPO, 'check-ignore', '-q', rel], { stdio: 'ignore' }); ignored = true } catch {}
+  return { rel, ignored }
 }
 
 // Every entry is a dated judgment: { id, reason, date }. Re-allowing an id updates

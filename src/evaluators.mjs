@@ -4,14 +4,19 @@
 import path from 'node:path'
 import fs from 'node:fs'
 import { execSync } from 'node:child_process'
-import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf } from './util.mjs'
+import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE, nowUTC } from './util.mjs'
 import { DESCRIPTOR_FILE } from './descriptor.mjs'
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
 export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor'])
 
-export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, DESCRIPTOR }) {
+export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR }) {
   const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow } = repo
+  // one clock (util.nowUTC): the override is parsed + ISO-normalized so a
+  // non-ISO-but-parseable BASELINE_LOG_NOW can't turn expiry comparisons into
+  // lexicographic garbage; unparseable falls back to the wall clock — a scoring
+  // run degrades to real time rather than crashing or silently lying
+  const TODAY = (nowUTC() ?? new Date()).toISOString().slice(0, 10)
   function globsOf(c) { return c.globs_from_config ? cfg[c.globs_from_config] : (c.file_from_config ? cfg[c.file_from_config] : c.globs) }
 
   function evalCheck(c, rule) {
@@ -76,7 +81,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, DESCRIPTOR }) {
       const bad = []; let checked = 0
       for (const f of files) {
         const t = read(f) || ''
-        const fm = t.match(/^---\r?\n([\s\S]*?)\r?\n---/); if (!fm) continue
+        const fm = t.match(FRONTMATTER_RE); if (!fm) continue
         const inline = fm[1].match(/(?:^|\n)\s*sources:\s*\[([^\]]*)\]/) // anchored so data_sources:/test_sources: don't collide
         const block = fm[1].match(/(?:^|\n)\s*sources:\s*\r?\n((?:\s*-\s*[^\n]+\r?\n?)+)/)
         const norm = s => s.replace(/\s+#.*$/, '').trim().replace(/['"]/g, '').replace(/^\.\//, '') // strip trailing comment + quotes + leading ./
@@ -225,7 +230,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, DESCRIPTOR }) {
       const bad = []
       for (const f of files) {
         const t = read(f) || ''
-        const fm = t.match(/^---\n([\s\S]*?)\n---/)
+        const fm = t.match(FRONTMATTER_RE) // was LF-only here: a CRLF-saved doc was invisible to doc-freshness
         const body = fm ? fm[1] : t.slice(0, 400)
         const m = body.match(new RegExp(c.field + '\\s*[:=]\\s*([0-9]{4}-[0-9]{2}-[0-9]{2})', 'i'))
         if (!m) { bad.push(`${f.split('/').pop()}: no ${c.field}`); continue }
@@ -365,7 +370,18 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, DESCRIPTOR }) {
       return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') : `${claims.length} claim(s) ok` }
     }
 
-    if (k === 'signoff') { const e = SIGNOFF[rule.id]; if (e && e.date) return { ok: true, detail: `signed ${e.by || '?'} ${e.date}` }; return { ok: false, detail: 'no sign-off recorded', signoff: true } }
+    if (k === 'signoff') {
+      // the unified ledger first (M4b): a kind=sign-off JDG whose subject is this
+      // rule id satisfies it while unexpired — a lapsed one is honestly NOT signed.
+      // Legacy signoff.json keeps its exact V1 semantics + detail until M7.
+      const j = JDGS && JDGS[rule.id]
+      if (j) {
+        if (j.review_by < TODAY) return { ok: false, detail: `sign-off ${j.id} lapsed (review_by ${j.review_by}) — re-judge: baseline jdg new`, signoff: true }
+        return { ok: true, detail: `${j.id} by ${j.by} ${j.date} (review by ${j.review_by})` }
+      }
+      const e = SIGNOFF[rule.id]; if (e && e.date) return { ok: true, detail: `signed ${e.by || '?'} ${e.date}` }
+      return { ok: false, detail: 'no sign-off recorded', signoff: true }
+    }
 
     if (k === 'descriptor') {
       const d = DESCRIPTOR

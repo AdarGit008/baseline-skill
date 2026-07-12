@@ -6,6 +6,42 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M4b: the judgment ledger — `baseline jdg`, the machine contract, one sign-off home
+- **`src/jdg.mjs`** — the unified ledger surface. `jdg new` authors schema-valid, scrub-gated,
+  numbered `records/judgments/JDG-NNNN.json` (break-glass ⇒ `--gate admit|reconcile`; `--review-by`
+  mandatory — every judgment expires); `jdg check` evaluates every judgment's **machine contract**
+  against derived facts: `expected_state` mismatch = DRIFTED, `tripwire` fired = TRIPPED,
+  `review_by` past = EXPIRED, unknown fact path = UNRESOLVABLE (surfaced, never guessed — C36).
+  Worst-wins lattice; exit 1 on tripped/expired/invalid. Fact namespace: `descriptor.*` ·
+  `planes.*` · `git.*` · `today`, with a `--facts` overlay (fixtures now, M6's reconcile sweep later).
+- **signoff→JDG bridge** — a `kind: sign-off` judgment whose `subject` is a manual rule's id
+  satisfies it while unexpired; a **lapsed sign-off is honestly NOT signed** and outranks the
+  eternal legacy entry. Legacy `.project-baseline/signoff.json` keeps byte-identical V1 semantics
+  until M7. New golden fixture **`jdg-repo`** pins the JDG-only path (0 blockers, no signoff.json);
+  re-capture normalized pin key order to the post-split output order (verified zero semantic drift).
+- **`CONTRACT.md`** — the plain-git twin (C28): the orient-first/log-last loop, record homes +
+  hand-written forms, the judgment machine contract + numbering/merge-renumbering, the scrub gate,
+  the **FS5 break-glass discipline** (own prior PR on main; enforcement lands at M6 admit), and
+  the reserved M5/M6/M7 surfaces. Ships with installs.
+- **Deferred-from-M4a consolidations** — `util.mjs` gains `makeOpt`/`makeOptText`/`makeOptAll`
+  (check/orient/log/jdg share one argv parser) and `FRONTMATTER_RE` (one boundary opinion; fixes
+  doc-freshness's LF-only regex that made CRLF-saved docs invisible to CTX-06). Corpus-proof.
+- Suite grows to **87 assertions** incl. the DESC-03-shape acceptance bullet: a descriptor-change
+  JDG validates and its tripwire fires on posture weakening.
+- **Review pass (4-angle adversarial, all findings fixed):** evaluator findings are structured
+  (`{code, fact, want, got, text}` — M6 dedup-keys firings without parsing prose) and `facts.today`
+  is the ONE clock (overlays time-travel expiry too); the signoff bridge loads via the strict
+  `loadJudgments` + `selectSignoffs` (a malformed `review_by` can never read as signed-forever);
+  one clock helper (`util.nowUTC`) ends the raw-env `TODAY` slice; `deepEq` is order-insensitive
+  (JSON key order is not a changed world); tripwire values keep inner whitespace verbatim;
+  `jdg new` blocks are non-lossy (draft + `--from` replay) with the same `--allow/--allow-reason`
+  surface as `log` (log's allowlist flag renamed from `--reason`, which `jdg` needs for the
+  judgment itself); value flags refuse to swallow a following flag (`--repo`/`--by`/`--facts`
+  followed by a flag is a usage error, not a record attributed to "true"); the forge probe is
+  skipped unless a judgment references `planes.forge`; `liteRepo` (repo.mjs) replaces the third
+  hand-rolled repo shim. Behavior note: doc-freshness's CRLF fix means a CRLF doc whose stamp sat
+  in the body (outside frontmatter) no longer passes by accident — LF and CRLF now agree.
+
 ### Added — V2 M4a: the Ledger's shapes — rules split, record schemas, `baseline log` + scrub
 - **`rules/` split (11 per-category modules) behind a manifest loader** (`src/rules.mjs`):
   `rules.json` keeps the runner's identity (name/version/project_types/profiles) plus the ordered

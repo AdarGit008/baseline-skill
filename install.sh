@@ -24,7 +24,7 @@ if [ "$NODE_MAJOR" -lt 18 ]; then
 fi
 
 mkdir -p "$DEST"
-for f in SKILL.md baseline.mjs check.mjs rules.json config.example.json README.md REFERENCE.md GLOSSARY.md; do
+for f in SKILL.md CONTRACT.md baseline.mjs check.mjs rules.json config.example.json README.md REFERENCE.md GLOSSARY.md; do
   cp "$SRC/$f" "$DEST/"
 done
 for d in src rules schema templates config-presets hooks integrations; do

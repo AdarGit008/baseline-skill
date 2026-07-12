@@ -6,6 +6,42 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M4c: the record checks — REC/FLOW rules, claims explosion, the push-boundary scrub
+- **`rules/rec.json`** (78 rules total, 13 modules) — REC-01 **append-only proof** from history
+  (`--diff-filter=MDR` events + a blob-at-introduction comparison closing the CF7 delete-recreate
+  and merge-hidden holes; shallow history = SKIP, never a guess), REC-02 **landed-records scrub**
+  (the same `scan()` as the write gate; deterministic findings fail — M7's promotion is a pure
+  severity flip — heuristics stay soft), REC-04 **one-home duplication detector** (warn-pinned per
+  CF10), REC-05 **push-time gate delegation** (F7: PASSes by delegating to push-protection/gitleaks
+  evidence; warns when nothing owns the push boundary).
+- **`rules/flow.json`** — FLOW-02 (a lane carries its own session record) + FLOW-06 (a gated
+  subject changes with its record in the same range — the DESC-03 preview, CF9). Both are
+  **data-gated, not special-cased**: rules declare `workflow`/`branch_scope`, the engine turns
+  them into SKIPs on single-lane repos, missing descriptors, and the default branch — "no
+  wallpaper warns" is structural. `--self-check` validates the new fields.
+- **Claims explosion (C17)** — `baseline gen migrate-claims` writes per-claim
+  `records/claims/CLM-NNNN.json` (V1 id survives as `slug`, numbering continues past existing
+  records, O_EXCL, schema-invalid claims refused per claim, idempotent). The CLAIM checks
+  **dual-read** both homes (records shadow migrated legacy ids) until M7; CLAIM-07 warns the
+  monolith into motion; CLAIM-00 accepts either home. Activation is **maturity-gated** (C24):
+  descriptor `prototype` skips CLAIM unless explicitly opted in — the skip says why.
+- **`baseline scrub`** — the pre-push hook's engine: worktree files or `--pushed SHA
+  [--since SHA]` committed-blob ranges; `--allow <id> --allow-reason "..."` writes the same dated
+  allowlist judgments as `log`/`jdg`. **`hooks/scrub-pre-push.sh`** scaffolds the push-boundary
+  layer for hand-written records (missing runtime fails OPEN with a loud warning — documented
+  residual risk; REC-02 in CI is the backstop).
+- **`status_file: false` honored** with a valid descriptor present (M4 ruling item 7): CTX-01 and
+  CTX-12 skip as `opted out`; without a descriptor the opt-out is refused with the fix named —
+  a bare repo can't silence CTX by config alone. Relief for derived-orient repos ahead of M7.
+- Engine threading: `runRules` now receives the descriptor, current branch, and declared default
+  branch; `FIELD_CONSUMERS` flips `workflow`/`ground_truth_boundary`/`maturity` to active (S7);
+  `lifecycle` re-reserved to M7 (M4 shipped no consumer — #24 decides consume-or-drop).
+- Suite +42 assertions (engine gates, REC evaluators against real history, the lane loop
+  end-to-end, gen/scrub e2e); golden harness gains deterministic `git init -b main` + a
+  `_branch/` lane-commit overlay; new **`flow-repo`** fixture pins FLOW-02 PASS / FLOW-06 WARN /
+  REC-01 WARN / CTX opt-out SKIPs at 0 blockers. Corpus re-pin is additive — every pre-M4c
+  verdict unchanged.
+
 ### Added — V2 M4b: the judgment ledger — `baseline jdg`, the machine contract, one sign-off home
 - **`src/jdg.mjs`** — the unified ledger surface. `jdg new` authors schema-valid, scrub-gated,
   numbered `records/judgments/JDG-NNNN.json` (break-glass ⇒ `--gate admit|reconcile`; `--review-by`

@@ -1,6 +1,6 @@
 # baseline-skill — status
 
-last-verified: 3f2f6f9 2026-07-05
+last-verified: f73d7d6 2026-07-12
 
 **What this is.** The installable `/baseline` skill — the *project-baseline* readiness
 standard packaged for Claude Code and compatible agents. The canonical toolkit is

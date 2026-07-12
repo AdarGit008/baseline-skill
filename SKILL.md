@@ -1,6 +1,6 @@
 ---
 name: baseline
-description: "Use when asked to run baseline, score a repo, check build- or project-readiness, audit a repo against a standard, or adopt/scaffold the project-baseline standard. Runs a zero-dependency Node checker (71 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, and claims), reads the scorecard, and helps fix or scaffold what's missing."
+description: "Use when asked to run baseline, score a repo, check build- or project-readiness, audit a repo against a standard, or adopt/scaffold the project-baseline standard. Runs a zero-dependency Node checker (78 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, and claims), reads the scorecard, and helps fix or scaffold what's missing."
 version: 2.2.0
 author: Adar (AdarGit008)
 license: MIT
@@ -15,7 +15,7 @@ metadata:
 
 ## Overview
 
-A **testable readiness standard**: 71 rules, each backed by a check a zero-dependency Node runner executes on a repo *at rest*. Blockers fail CI (`exit 1`); the judgment calls a script can't make resolve via a dated **sign-off ledger**. The throughline: *don't trust a written promise — make something check it.* A checklist doc drifts; this is the checklist as an exit code.
+A **testable readiness standard**: 78 rules, each backed by a check a zero-dependency Node runner executes on a repo *at rest*. Blockers fail CI (`exit 1`); the judgment calls a script can't make resolve via a dated **sign-off ledger**. The throughline: *don't trust a written promise — make something check it.* A checklist doc drifts; this is the checklist as an exit code.
 
 Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SKILL.md`). The runner is portable — plain Node, no agent-specific dependency. Source: `github.com/AdarGit008/baseline-skill` (reference repo: `baseline-demo`).
 
@@ -37,7 +37,7 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 
 The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `log`, `jdg`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
-Co-located files: `baseline.mjs` (CLI entry: orient / check / log / jdg), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 71 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
+Co-located files: `baseline.mjs` (CLI entry: orient / check / log / jdg / gen / scrub), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 78 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook + pre-push scrub hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
 
 ## Orientation — the first act
 
@@ -66,6 +66,8 @@ node "$SKILL_DIR/baseline.mjs" log --repo <target> -m "what happened and why; de
 
 **Judgments** (accepting a risk, deviating from a rule, satisfying a manual rule) are ledger records, not chat: `baseline jdg new --kind <sign-off|deviation|risk-acceptance|break-glass> --subject <rule-or-scope> --reason "..." --review-by <date>` — every judgment expires; add a `--tripwire "fact op value"` so the engine can detect when the accepted world changes. `baseline jdg check` evaluates the ledger (exit 1 on tripped/expired/invalid records). **Never fake a sign-off**: a real dated judgment by the user, or nothing. The plain-git forms live in `CONTRACT.md`.
 
+**Claims** (M4c): if CLAIM-07 warns about a legacy `docs/CLAIMS.json`, run `baseline gen migrate-claims` — it explodes the monolith into per-claim `records/claims/CLM-*.json` (the V1 id survives as `slug`), refuses invalid claims loudly, and is idempotent. Review + commit the records, then delete the monolith. Hand-written records are pushed through the same scrub as `log` when the pre-push hook is installed (`cp hooks/scrub-pre-push.sh .git/hooks/pre-push`); `baseline scrub <files>` runs the scan on demand.
+
 ## Modes
 
 Figure out intent from the user's words; default to **score**.
@@ -83,7 +85,7 @@ Run the survey (see **Orientation — the first act** above): `node "$SKILL_DIR/
    - `--profile advanced` — opt into expert rules (SBOM, code-scanning, mutation testing, dependency-vuln-scan, coverage-floor). `service` turns on automatically for `project_type=service`.
    - `--json` — machine output instead of the scorecard.
    - **Completion criterion:** you have the readiness %, the blocker count, and each FAIL/notable WARN with its one-line detail.
-3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 71 rows — summarize and offer to fix or scaffold.
+3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 78 rows — summarize and offer to fix or scaffold.
 
 ### init — "set up / adopt / scaffold baseline"
 **Descriptor-first, always.** The repo's `baseline.repo.json` is written before anything else — it's the one file baseline requires (schema: `schema/repo.schema.json`), and every applicability/severity derivation reads it. Its `type` supersedes filesystem auto-detection.

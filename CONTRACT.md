@@ -20,11 +20,12 @@ All durable intent lives under `records/` (schemas in `schema/record.*.schema.js
 |---|---|---|
 | session | `records/sessions/<lane>/<YYYY-MM-DD>-<HHMMSS>-<agent>.md` | frontmatter + prose |
 | judgment | `records/judgments/JDG-NNNN.json` | JSON |
-| claim | `records/claims/CLM-NNNN.json` | JSON (lands M4c) |
+| claim | `records/claims/CLM-NNNN.json` | JSON |
 | decision | `records/decisions/ADR-NNNN.md` | header lines + prose |
 
 **Append-only:** never edit a committed record — write the next one. (REC-01
-proves this from history at M4c: modify/delete/rename of a record is a finding.)
+proves this from history: modify/delete/rename of a record is a finding, and a
+blob-at-introduction comparison catches merge-hidden edits.)
 
 ### Session records (by hand)
 
@@ -52,7 +53,8 @@ next: the one most useful next step
 
 `## Left open` + `next:` is load-bearing — orient reads exactly that shape.
 Prefer `baseline log -m "..." --next "..."` — it derives everything, validates,
-and scrubs. Hand-written records are covered by the pre-push scrub hook (M4c).
+and scrubs. Hand-written records are covered by the pre-push scrub hook
+(`cp hooks/scrub-pre-push.sh .git/hooks/pre-push`; engine: `baseline scrub`).
 
 ### Judgment records
 
@@ -117,8 +119,8 @@ a dated judgment in `.baseline/scrub-allowlist.json` via `--allow <finding-id>
 --allow-reason "..."` (one flag surface across `log` and `jdg`) — the allowlist
 stores a content-derived hash, never the value.
 Never bypass a block by hand-writing the file; rotate the secret or record the
-judgment. Hand-written records get the same scan from the pre-push hook (M4c)
-and REC-02 at PR (M4c, warn until M7).
+judgment. Hand-written records get the same scan from the pre-push hook and
+REC-02 re-scans everything that landed (warn until M7's promotion).
 
 ## Reserved (lands later, documented now)
 

@@ -74,5 +74,32 @@ export function indexRepo(REPO) {
   function gitLag(sha) { try { return parseInt(execFileSync('git', ['rev-list', '--count', `${sha}..HEAD`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(), 10) } catch { return null } }
   function gitIsShallow() { try { return execFileSync('git', ['rev-parse', '--is-shallow-repository'], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() === 'true' } catch { return false } }
 
-  return { REPO, FILES, TRACKED, HEAD, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitLag, gitIsShallow }
+  // History events for a path scope: git log --name-status filtered to the given
+  // change types (e.g. 'MDR', 'A'), oldest first. -> [{sha, status, path, to}]
+  // (to only on renames). Returns null when history is unreadable (not a repo).
+  function gitNameStatus(diffFilter, rel) {
+    let out
+    try { out = execFileSync('git', ['log', '--reverse', '--format=@%H', '--name-status', `--diff-filter=${diffFilter}`, '--', rel], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8') } catch { return null }
+    const events = []; let sha = null
+    for (const line of out.split('\n')) {
+      if (line.startsWith('@')) { sha = line.slice(1); continue }
+      const m = line.match(/^([AMDR])\d*\t([^\t]+)(?:\t(.+))?$/)
+      if (m && sha) events.push({ sha, status: m[1], path: m[2], to: m[3] })
+    }
+    return events
+  }
+  // Files changed on this branch since it diverged (merge-base semantics), optionally
+  // restricted to a path scope and to added-only. -> [paths] or null when the range
+  // doesn't resolve (missing base ref, not a repo).
+  function gitDiffNames(range, rel, { addedOnly = false } = {}) {
+    const args = ['diff', '--name-only', ...(addedOnly ? ['--diff-filter=A'] : []), range, '--', ...(rel ? [rel] : ['.'])]
+    try { return execFileSync('git', args, { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\n').filter(Boolean) } catch { return null }
+  }
+  // Blob id of a path at a ref -> sha string or null. Used by the append-only proof
+  // to compare a record's current content against its content at introduction.
+  function gitBlobAt(ref, rel) {
+    try { return execFileSync('git', ['rev-parse', `${ref}:${rel}`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() } catch { return null }
+  }
+
+  return { REPO, FILES, TRACKED, HEAD, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitLag, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt }
 }

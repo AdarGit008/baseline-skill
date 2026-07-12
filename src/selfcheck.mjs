@@ -33,6 +33,10 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     if (!sevOk.has(r.severity)) problems.push(`${curId}: invalid severity '${r.severity}'`)
     if (!catKeys.has(r.category)) problems.push(`${curId}: unknown category '${r.category}'`)
     if (r.requires !== undefined && !(r.requires in DEFAULTS)) problems.push(`${curId}: 'requires' names unknown config key '${r.requires}'`)
+    // M4c posture/branch gates are data: a rule may declare the workflow it needs and/or
+    // that it only runs on a lane (non-default) branch — values are closed sets.
+    if (r.workflow !== undefined && !['multi-lane', 'single-lane'].includes(r.workflow)) problems.push(`${curId}: workflow must be 'multi-lane' or 'single-lane' (got '${r.workflow}')`)
+    if (r.branch_scope !== undefined && r.branch_scope !== 'lane') problems.push(`${curId}: branch_scope must be 'lane' (got '${r.branch_scope}')`)
     checkKinds(r.check)
   }
   for (const t of TYPES) if (!RULES.rules.some(r => expand(r).includes(t))) problems.push(`no rule applies to type '${t}' (orphan type)`)

@@ -56,9 +56,18 @@ export function resolveConfig(repo, { cliConfigPath = null, profileArgs = [], de
   if (DESCRIPTOR.valid && DESCRIPTOR.data.type) cfg.project_type = DESCRIPTOR.data.type
 
   // Claims are OPT-IN: whether a repo makes external claims isn't robot-detectable at rest.
-  // Active only if a claims register is present, OR makes_external_claims was explicitly set true.
-  const claimsRegisterExists = (repo.FILES.includes(cfg.claims_file) || repo.match(cfg.claims_file).length > 0)
-  const CLAIMS_ACTIVE = EXPLICIT.has('makes_external_claims') ? (cfg.makes_external_claims !== false) : claimsRegisterExists
+  // Active only if a claims register is present (either home — the legacy monolith or the
+  // exploded records/claims/), OR makes_external_claims was explicitly set true. The
+  // descriptor's maturity gates activation (C24, discrete tiers per S8): a declared
+  // 'prototype' repo isn't held to claims discipline unless it explicitly opted in —
+  // drift climbs the stack as a project matures.
+  const claimsRegisterExists = (repo.FILES.includes(cfg.claims_file) || repo.match(cfg.claims_file).length > 0 || repo.match('records/claims/CLM-*.json').length > 0)
+  let CLAIMS_ACTIVE = EXPLICIT.has('makes_external_claims') ? (cfg.makes_external_claims !== false) : claimsRegisterExists
+  let CLAIMS_REASON = null
+  if (CLAIMS_ACTIVE && DESCRIPTOR.valid && DESCRIPTOR.data.maturity === 'prototype' && !(EXPLICIT.has('makes_external_claims') && cfg.makes_external_claims === true)) {
+    CLAIMS_ACTIVE = false
+    CLAIMS_REASON = "maturity=prototype — CLAIM activates at 'claimed' (or set makes_external_claims:true)"
+  }
 
   // active profiles: core always; service auto-on for services; others opt-in
   const ACTIVE = new Set(['core'])
@@ -74,5 +83,5 @@ export function resolveConfig(repo, { cliConfigPath = null, profileArgs = [], de
   // dual-read until M7's contraction. Expiry is judged at evaluation time.
   const JDGS = selectSignoffs(loadJudgments(repo.REPO).records)
 
-  return { cfg, DEFAULTS, EXPLICIT, CLAIMS_ACTIVE, ACTIVE, SIGNOFF, JDGS, DESCRIPTOR }
+  return { cfg, DEFAULTS, EXPLICIT, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, SIGNOFF, JDGS, DESCRIPTOR }
 }

@@ -10,6 +10,7 @@ import path from 'node:path'
 import { makeOpt, makeOptAll } from './src/util.mjs'
 import { loadRules } from './src/rules.mjs'
 import { indexRepo } from './src/repo.mjs'
+import { currentLane } from './src/probe.mjs'
 import { resolveConfig } from './src/config.mjs'
 import { CHECK_KINDS, makeEvalCheck } from './src/evaluators.mjs'
 import { runRules } from './src/engine.mjs'
@@ -31,15 +32,20 @@ const TYPES = RULES.project_types || ['node', 'python', 'service', 'library', 'd
 
 const color = makeColor(JSON_OUT)
 const repo = indexRepo(REPO)
-const { cfg, DEFAULTS, CLAIMS_ACTIVE, ACTIVE, SIGNOFF, JDGS, DESCRIPTOR } = resolveConfig(repo, {
+const { cfg, DEFAULTS, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, SIGNOFF, JDGS, DESCRIPTOR } = resolveConfig(repo, {
   cliConfigPath: opt('--config', null),
   profileArgs: optAll('--profile'),
 })
 
 if (SELF_CHECK) process.exit(runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }))
 
-const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR })
-const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck })
+// Lane identity for the M4c branch-scoped rules: lane = branch name (the FS2 seam
+// log/orient already use); the default branch is the descriptor's declared one.
+const BRANCH = currentLane(repo) || null
+const DEFAULT_BRANCH = (DESCRIPTOR.valid && DESCRIPTOR.data.ground_truth_boundary?.default_branch) || 'main'
+
+const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH })
+const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH })
 
 process.exit(JSON_OUT
   ? reportJson({ results, REPO, cfg, ACTIVE, HEAD: repo.HEAD })

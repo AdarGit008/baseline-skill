@@ -8,8 +8,8 @@
       "applies_to": "all",
       "lesson": "Claims-1..5",
       "requires": "makes_external_claims",
-      "rationale": "Competitive/novelty/security claims need one structured, checkable home — not scattered README prose.",
-      "fix": "Add the claims register (see templates/CLAIMS.json); set makes_external_claims:false to opt out.",
+      "rationale": "Competitive/novelty/security claims need one structured, checkable home — not scattered README prose. Either home satisfies this: per-claim records (records/claims/, the V2 form) or the legacy monolith (dual-read until M7).",
+      "fix": "Add per-claim records (see templates/claim.json) or the legacy register (templates/CLAIMS.json); set makes_external_claims:false to opt out.",
       "sources": [
         "tree"
       ],
@@ -19,8 +19,19 @@
       ],
       "certainty": "deterministic",
       "check": {
-        "kind": "any-file",
-        "globs_from_config": "claims_file"
+        "kind": "any-of",
+        "checks": [
+          {
+            "kind": "any-file",
+            "globs": [
+              "records/claims/CLM-*.json"
+            ]
+          },
+          {
+            "kind": "any-file",
+            "globs_from_config": "claims_file"
+          }
+        ]
       }
     },
     {
@@ -194,6 +205,31 @@
             "mode": "present"
           }
         ]
+      }
+    },
+    {
+      "id": "CLAIM-07",
+      "title": "Claims live in per-claim records, not the legacy monolith",
+      "category": "claims",
+      "severity": "warn",
+      "applies_to": "all",
+      "requires": "makes_external_claims",
+      "lesson": "C17 — both V1 monoliths are exploded at M4; the monolith collides under lanes (the legacy read survives, at warn, until M7)",
+      "rationale": "A single shared CLAIMS.json is a collision magnet under concurrent lanes and a second home for facts the per-claim records own. The checker still reads it (dual-read), but its presence is migration debt.",
+      "fix": "Run `baseline gen migrate-claims`, review + commit the records/claims/CLM-*.json files, then delete the legacy register.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check",
+        "reconcile"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "any-file",
+        "globs_from_config": "claims_file",
+        "mode": "absent"
       }
     }
   ]

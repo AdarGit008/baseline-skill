@@ -4,14 +4,23 @@
 import path from 'node:path'
 import fs from 'node:fs'
 import { execSync } from 'node:child_process'
-import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE, nowUTC } from './util.mjs'
+import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE, nowUTC, globToRe } from './util.mjs'
 import { DESCRIPTOR_FILE } from './descriptor.mjs'
+import { scan, loadAllowlist } from './scrub.mjs'
+import { loadClaims, CLAIM_RECORD_GLOB } from './claims.mjs'
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'records-append-only', 'records-scrub', 'records-one-home', 'branch-session-record', 'branch-atomicity'])
 
-export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR }) {
-  const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow } = repo
+export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = 'main' }) {
+  const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt } = repo
+  // The lane rules diff against where the branch diverged: the descriptor-declared
+  // default branch if it resolves locally, else its origin/ twin, else nothing —
+  // an unresolvable base is a SKIP (never a guess against the wrong base).
+  function baseRef() {
+    for (const ref of [DEFAULT_BRANCH, `origin/${DEFAULT_BRANCH}`]) if (gitObjExists(`${ref}^{commit}`)) return ref
+    return null
+  }
   // one clock (util.nowUTC): the override is parsed + ISO-normalized so a
   // non-ISO-but-parseable BASELINE_LOG_NOW can't turn expiry comparisons into
   // lexicographic garbage; unparseable falls back to the wall clock — a scoring
@@ -163,7 +172,10 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR })
     }
 
     if (k === 'status-stamp') {
-      const f = cfg[c.file_from_config]; const t = f && read(f); if (!t) return { ok: false, detail: `status file missing: ${f}` }
+      const f = cfg[c.file_from_config]
+      // an unhonored opt-out (engine let it through: no valid descriptor) fails with the fix, not "missing: false"
+      if (f === false) return { ok: false, detail: `${c.file_from_config}:false is honored only with a valid ${DESCRIPTOR_FILE} present (orient replaces the status file)` }
+      const t = f && read(f); if (!t) return { ok: false, detail: `status file missing: ${f}` }
       const m = t.match(new RegExp(c.stamp_key + '\\s*[:=]\\s*([^\\n]+)', 'i'))
       if (!m) return { ok: false, detail: `no '${c.stamp_key}:' stamp in ${f}` }
       const val = m[1].trim()
@@ -344,16 +356,17 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR })
     }
 
     if (k === 'claims-field' || k === 'claims-citations') {
-      const f = cfg.claims_file; const raw = f && read(f); if (!raw) return { ok: false, detail: `claims register missing: ${f}` }
-      let data; try { data = JSON.parse(raw) } catch (e) { return { ok: false, detail: 'claims register not valid JSON' } }
-      if (!Array.isArray(data.claims)) return { ok: false, detail: 'claims register: "claims" must be an array' }
-      let claims = data.claims.filter(cl => cl && typeof cl === 'object')
-      if (!claims.length) return { ok: false, detail: 'claims register is empty' }
+      // dual-read (M4c): exploded records/claims/CLM-*.json + the legacy monolith,
+      // records shadowing migrated legacy ids — one merged set, one verdict.
+      const loaded = loadClaims(repo, cfg)
+      if (loaded.errors.length) return { ok: false, detail: loaded.errors.slice(0, 2).join('; ') + (loaded.errors.length > 2 ? ` (+${loaded.errors.length - 2})` : '') }
+      let claims = loaded.claims
+      if (!claims.length) return { ok: false, detail: loaded.legacyPresent ? `claims register is empty: ${cfg.claims_file}` : `no claims found (${cfg.claims_file} or ${CLAIM_RECORD_GLOB})` }
       if (c.applies_to_types) claims = claims.filter(cl => c.applies_to_types.includes(String(cl.type || '').toLowerCase()))
       if (!claims.length) return { ok: null, detail: 'no claims of type ' + c.applies_to_types.join('/') }
       const bad = []
       for (const cl of claims) {
-        const id = cl.id || (typeof cl.statement === 'string' ? cl.statement.slice(0, 24) : '?')
+        const id = cl.slug || cl.id || (typeof cl.statement === 'string' ? cl.statement.slice(0, 24) : '?')
         if (k === 'claims-citations') {
           const cits = Array.isArray(cl.citations) ? cl.citations : (cl.citations == null ? [] : null)
           if (cits === null) { bad.push(`${id}: "citations" must be an array`); continue }
@@ -381,6 +394,113 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR })
       }
       const e = SIGNOFF[rule.id]; if (e && e.date) return { ok: true, detail: `signed ${e.by || '?'} ${e.date}` }
       return { ok: false, detail: 'no sign-off recorded', signoff: true }
+    }
+
+    if (k === 'records-append-only') {
+      // REC-01 (C12/CF7): prove from history that committed records were never edited.
+      // Layer 1: any modify/delete/rename event under the scope is a finding (MDR).
+      // Layer 2 (the evil-merge holes MDR can't see, because plain `git log` shows no
+      // file changes for merge commits): (a) a path that was Added but neither exists
+      // now nor has a D event vanished inside a merge; (b) a still-present path with
+      // no M/R event whose current blob differs from its blob at introduction was
+      // edited inside a merge. Deterministic; shallow history is a SKIP, not a guess.
+      const scope = c.path || 'records/'
+      if (!HEAD) return { ok: null, detail: 'not a git repo — history unavailable' }
+      if (gitIsShallow()) return { ok: null, detail: 'shallow clone — history truncated, append-only not provable' }
+      const mdr = gitNameStatus('MDR', scope)
+      const adds = gitNameStatus('A', scope)
+      if (mdr === null || adds === null) return { ok: null, detail: 'git history unreadable' }
+      const current = new Set(match([scope + '**'], { tracked: true }))
+      if (!adds.length && !mdr.length && !current.size) return { ok: null, detail: `no committed records under ${scope} yet` }
+      const bad = mdr.map(e => `${e.sha.slice(0, 7)} ${e.status === 'M' ? 'edited' : e.status === 'D' ? 'deleted' : 'renamed'} ${e.to || e.path}`)
+      const touched = new Set(mdr.map(e => e.path))
+      const lastAdd = new Map(); for (const e of adds) lastAdd.set(e.path, e.sha)
+      for (const [p, sha] of lastAdd) {
+        if (!current.has(p)) { if (!mdr.some(e => e.status === 'D' && e.path === p)) bad.push(`${p} vanished with no recorded delete (merge-hidden?)`); continue }
+        if (touched.has(p)) continue // already reported above
+        const intro = gitBlobAt(sha, p), now = gitBlobAt('HEAD', p)
+        if (intro && now && intro !== now) bad.push(`${p} content differs from its introduction with no recorded edit (merge-hidden?)`)
+      }
+      return { ok: bad.length === 0, detail: bad.length ? `${bad.length} mutation(s): ` + bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') : `${current.size} record(s), history append-only` }
+    }
+
+    if (k === 'records-scrub') {
+      // REC-02 (C34): re-scan LANDED records with the one scan API the write gate uses.
+      // Deterministic signatures fail the rule (warn now; M7's promotion is a pure
+      // severity flip); heuristic findings are soft — they stay WARN even at blocker.
+      const files = match(c.globs || ['records/**'], { tracked: true })
+      if (!files.length) return { ok: null, detail: 'no committed records to scan' }
+      let allowlist = []
+      try { allowlist = loadAllowlist(REPO).entries } catch (e) { return { ok: false, soft: true, detail: String(e.message).slice(0, 120) } }
+      const det = [], heu = []; let allowed = 0
+      for (const f of files) {
+        const t = readRaw(f); if (t == null) continue
+        const res = scan(t, { allowlist })
+        allowed += res.allowed.length
+        for (const x of res.blocked) det.push(`${f}:${x.line} ${x.name} (${x.masked}) [${x.id}]`)
+        for (const x of res.warned) heu.push(`${f}:${x.line} ${x.name} (${x.masked}) [${x.id}]`)
+      }
+      const okNote = `${files.length} record(s) scrub-clean` + (allowed ? ` (${allowed} allowlisted)` : '')
+      if (det.length) return { ok: false, detail: `deterministic secret shape(s): ` + det.slice(0, 3).join('; ') + (det.length > 3 ? ` (+${det.length - 3})` : '') }
+      if (heu.length) return { ok: false, soft: true, detail: `heuristic finding(s): ` + heu.slice(0, 3).join('; ') + (heu.length > 3 ? ` (+${heu.length - 3})` : '') }
+      return { ok: true, detail: okNote }
+    }
+
+    if (k === 'records-one-home') {
+      // REC-04 (C09, pinned warn-only per CF10): the same fact must not live in two
+      // record homes — duplicate ids/slugs across record files, or the session
+      // narrative kept in both the V2 home and the legacy prototype home.
+      const bad = []
+      const seen = new Map() // key -> first file
+      const claim = (key, f) => { const prev = seen.get(key); if (prev && prev !== f) bad.push(`${key} in both ${prev} and ${f}`); else seen.set(key, f) }
+      let any = false
+      for (const [kind, glob] of [['JDG', 'records/judgments/*.json'], ['CLM', 'records/claims/*.json']]) {
+        for (const f of match([glob])) {
+          any = true
+          const raw = read(f); if (raw == null) continue
+          let obj; try { obj = JSON.parse(raw) } catch { continue } // unparseable is REC-02/schema territory, not duplication
+          if (obj.id) claim(`${kind} ${obj.id}`, f)
+          if (kind === 'CLM' && obj.slug) claim(`slug '${obj.slug}'`, f)
+        }
+      }
+      for (const f of match(cfg.decision_globs)) {
+        const m = f.split('/').pop().match(/^ADR-?(\d{1,4})/i)
+        if (m) { any = true; claim(`ADR ${String(parseInt(m[1], 10))}`, f) }
+      }
+      const v2Sessions = match(['records/sessions/**']), legacySessions = match(['docs/session-log/**'])
+      if (v2Sessions.length || legacySessions.length) any = true
+      if (v2Sessions.length && legacySessions.length) bad.push(`session narrative has two homes (records/sessions/ and docs/session-log/)`)
+      if (!any) return { ok: null, detail: 'no records to cross-check' }
+      return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') : 'every record fact has one home' }
+    }
+
+    if (k === 'branch-session-record') {
+      // FLOW-02 (C14): work on a lane carries its own session record — the forensic
+      // tier rides the same PR as the change it describes. Engine gates guarantee
+      // this only runs on a non-default branch of a declared multi-lane repo.
+      const base = baseRef()
+      if (!base) return { ok: null, detail: `default branch '${DEFAULT_BRANCH}' not resolvable locally — lane coupling not provable` }
+      const added = gitDiffNames(`${base}...HEAD`, `records/sessions/${BRANCH}/`, { addedOnly: true })
+      if (added === null) return { ok: null, detail: `diff ${base}...HEAD failed — lane coupling not provable` }
+      return { ok: added.length > 0, detail: added.length ? `${added.length} session record(s) ride this lane` : `no session record for lane '${BRANCH}' — write one: baseline log -m "..." --next "..."` }
+    }
+
+    if (k === 'branch-atomicity') {
+      // FLOW-06 (C14/C26, heuristic per CF9): a branch changing a gated subject
+      // should carry the corresponding record in the same range — same-PR atomicity.
+      const base = baseRef()
+      if (!base) return { ok: null, detail: `default branch '${DEFAULT_BRANCH}' not resolvable locally` }
+      const changed = gitDiffNames(`${base}...HEAD`, null)
+      if (changed === null) return { ok: null, detail: `diff ${base}...HEAD failed` }
+      const hits = globs => { const res = asArr(globs).map(globToRe); return changed.some(f => res.some(re => re.test(f))) }
+      const bad = []; let triggered = 0
+      for (const p of (c.pairs || [])) {
+        if (!hits(p.if_changed)) continue
+        triggered++
+        if (!hits(p.expect)) bad.push(p.note || `${asArr(p.if_changed).join(',')} changed without ${asArr(p.expect).join(',')}`)
+      }
+      if (!triggered) return { ok: null, detail: 'no gated subject changed on this branch' }
+      return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 2).join('; ') : `${triggered} gated change(s) carry their record` }
     }
 
     if (k === 'descriptor') {

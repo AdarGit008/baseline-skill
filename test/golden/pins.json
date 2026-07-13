@@ -166,7 +166,7 @@
       "    SKIP  CLAIM-05  Wedge and moat are stated and pressure-tested",
       "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
       "    SKIP  CLAIM-06  Specs of record carry explicit acceptance criteria",
-      "            ↳ n/a (no applicable target)",
+      "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
       "    SKIP  CLAIM-07  Claims live in per-claim records, not the legacy monolith",
       "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
       "",
@@ -684,7 +684,7 @@
       },
       "CLAIM-06": {
         "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-07": {
         "tag": "SKIP",
@@ -1013,7 +1013,7 @@
       },
       "CLAIM-06": {
         "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-07": {
         "tag": "SKIP",
@@ -1343,7 +1343,7 @@
       },
       "CLAIM-06": {
         "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-07": {
         "tag": "SKIP",
@@ -1672,7 +1672,7 @@
       },
       "CLAIM-06": {
         "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-07": {
         "tag": "SKIP",
@@ -2001,7 +2001,7 @@
       },
       "CLAIM-06": {
         "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-07": {
         "tag": "SKIP",
@@ -2330,7 +2330,7 @@
       },
       "CLAIM-06": {
         "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-07": {
         "tag": "SKIP",
@@ -2660,7 +2660,7 @@
       },
       "CLAIM-06": {
         "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-07": {
         "tag": "SKIP",
@@ -2990,7 +2990,7 @@
       },
       "CLAIM-06": {
         "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-07": {
         "tag": "SKIP",

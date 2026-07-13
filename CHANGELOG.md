@@ -26,9 +26,9 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   records, O_EXCL, schema-invalid claims refused per claim, idempotent). The CLAIM checks
   **dual-read** both homes (records shadow migrated legacy ids) until M7; CLAIM-07 warns the
   monolith into motion; CLAIM-00 accepts either home. Activation is **maturity-gated** (C24):
-  descriptor `prototype` skips the register-coupled CLAIM rules unless explicitly opted in — the
-  skip says why. (CLAIM-06, the spec acceptance-criteria rule, is register-independent and stays
-  ungated — whether it should join the opt-in is an open maintainer call.)
+  descriptor `prototype` skips CLAIM unless explicitly opted in — the skip says why. CLAIM-06
+  (spec acceptance-criteria) joins the family gate per the M4c review ruling: the CLAIM family
+  is now uniformly opt-in, keeping "no wallpaper warns" whole for never-opted-in repos.
 - **`baseline scrub`** — the pre-push hook's engine: worktree files or `--pushed SHA
   [--since SHA]` committed-blob ranges; `--allow <id> --allow-reason "..."` writes the same dated
   allowlist judgments as `log`/`jdg`. **`hooks/scrub-pre-push.sh`** scaffolds the push-boundary

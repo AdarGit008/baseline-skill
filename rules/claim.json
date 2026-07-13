@@ -176,6 +176,7 @@
       "category": "claims",
       "severity": "warn",
       "applies_to": "all",
+      "requires": "makes_external_claims",
       "source": "https://www.atlassian.com/agile/project-management/definition-of-ready",
       "lesson": "Definition-of-Ready: no work item without acceptance criteria",
       "rationale": "A spec with no acceptance criteria section is unfalsifiable — nothing can later prove it was met.",

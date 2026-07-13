@@ -41,6 +41,10 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     if (r.workflow !== undefined && !['multi-lane', 'single-lane'].includes(r.workflow)) problems.push(`${curId}: workflow must be 'multi-lane' or 'single-lane' (got '${r.workflow}')`)
     if (r.branch_scope !== undefined && r.branch_scope !== 'lane') problems.push(`${curId}: branch_scope must be 'lane' (got '${r.branch_scope}')`)
     if (r.branch_scope !== undefined && r.workflow === undefined) problems.push(`${curId}: branch_scope requires a workflow declaration — a lane rule must be posture-gated (no wallpaper warns)`)
+    // M4c review ruling: the CLAIM family is uniformly opt-in — a claims rule
+    // without the family gate would fire on repos that never opted into claims
+    // discipline (the CLAIM-06 wallpaper class, fixed once, kept fixed here).
+    if (r.category === 'claims' && r.requires !== 'makes_external_claims') problems.push(`${curId}: claims-category rules must carry requires:makes_external_claims (uniform family opt-in)`)
     checkKinds(r.check)
   }
   for (const t of TYPES) if (!RULES.rules.some(r => expand(r).includes(t))) problems.push(`no rule applies to type '${t}' (orphan type)`)

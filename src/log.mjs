@@ -20,13 +20,11 @@
 // Exit: 0 written · 1 scrub-blocked · 2 usage/environment.
 import fs from 'node:fs'
 import path from 'node:path'
-import { makeOpt, makeOptText, makeOptAll } from './util.mjs'
+import { makeOpt, makeOptText, makeOptAll, slug } from './util.mjs'
 import { currentLane, run } from './probe.mjs'
 import { validateRecord, parseFrontmatter, renderFrontmatter, sessionRelPath } from './records.mjs'
 import { scan, loadAllowlist, addAllowlistEntries, keepDraft, ALLOWLIST_FILE, CACHE_DIR } from './scrub.mjs'
 import { extractNext } from './facts/git.mjs'
-
-const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24)
 
 const LOG_USAGE = `usage: baseline log -m "what happened" [--next "..."] [--deadends "..."] [--lane L] [--agent A] [--from FILE] [--allow ID --allow-reason "..."]`
 

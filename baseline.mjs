@@ -3,6 +3,7 @@
 //   check   score a repo against the rule set (the default; delegates to the intact
 //           check.mjs, so the golden corpus and CI keep invoking check.mjs directly)
 //   orient  derived-state survey for session start — lanes, backlog, divergence
+//   lane    claim a work lane — atomic branch creation at origin (M5a; reclaim at M5b)
 //   log     write one scrubbed, schema-valid session record (the forensic tier)
 //   jdg     author/evaluate the judgment ledger (sign-offs, deviations, break-glass)
 //   gen     generators — M4c: migrate-claims (the C17 monolith explosion)
@@ -33,6 +34,9 @@ if (cmd === 'check') {
 } else if (cmd === 'orient') {
   const { runOrient } = await import('./src/orient.mjs')
   process.exit(await runOrient(rest))
+} else if (cmd === 'lane') {
+  const { runLane } = await import('./src/lane.mjs')
+  process.exit(runLane(rest))
 } else if (cmd === 'log') {
   const { runLog } = await import('./src/log.mjs')
   process.exit(runLog(rest))
@@ -50,6 +54,8 @@ if (cmd === 'check') {
 
   check [--repo DIR] [--json] [--no-exec] [--profile P]   score a repo (default)
   orient [--repo DIR] [--json] [--strict]                 derived-state survey for session start
+  lane claim <issue> [--agent A]                          claim a work lane: atomic branch creation
+                                                          at origin (exit 3 = already claimed)
   log -m "..." [--next "..."] [--lane L] [--agent A]      write a scrubbed session record
       [--from FILE] [--allow ID --allow-reason "..."]     (stdin accepted; never \$EDITOR)
   jdg new --kind K --subject S --reason "..."             record a judgment (sign-off ·
@@ -63,6 +69,6 @@ if (cmd === 'check') {
   Run \`baseline\` with no command (or a leading --flag) to score, e.g. \`baseline --repo .\`.`)
   process.exit(0)
 } else {
-  console.error(`baseline: unknown command '${cmd}' (try: check, orient, log, jdg, gen, scrub, help)`)
+  console.error(`baseline: unknown command '${cmd}' (try: check, orient, lane, log, jdg, gen, scrub, help)`)
   process.exit(2)
 }

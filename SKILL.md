@@ -35,9 +35,9 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 - Hermes: `~/.hermes/skills/software-development/baseline`
 - Claude Code: `~/.claude/skills/baseline`
 
-The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `log`, `jdg`, `gen`, `scrub`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
+The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `lane`, `log`, `jdg`, `gen`, `scrub`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
-Co-located files: `baseline.mjs` (CLI entry: orient / check / log / jdg / gen / scrub), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 78 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook + pre-push scrub hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
+Co-located files: `baseline.mjs` (CLI entry: orient / check / lane / log / jdg / gen / scrub), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 78 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook + pre-push scrub hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
 
 ## Orientation — the first act
 
@@ -51,6 +51,16 @@ node "$SKILL_DIR/baseline.mjs" orient --repo <target>
 - **Divergence first**, then **live lanes** (open PRs + each branch's latest session `next:`), **backlog** (open issues by milestone), and **this lane** (current branch + its `next:`).
 - It's an *agent helper, never a gate*: read-only, `gh`-based, exits 0 even degraded — `--strict` turns forge-unreachability into exit 1; `--json` for machine use.
 - **Install it as infrastructure:** wire `hooks/orient-session-start.sh` into Claude Code's `SessionStart` hook (see `hooks/README.md`) so orientation happens without being remembered. The Hermes twin ships in `integrations/hermes/baseline-orient/` — a plugin whose `on_session_start` hook + `/orient` command run the same survey; this directive remains the tool-agnostic fallback (C28).
+
+## Claiming a lane — before work starts (M5a)
+
+In a repo whose descriptor declares `lanes.namespace`, **never hand-create a lane branch**. Claim it:
+
+```bash
+node "$SKILL_DIR/baseline.mjs" lane claim <issue> --repo <target>
+```
+
+- The claim is **atomic branch creation at origin** — the ref name is the namespace with the issue number substituted (`lane/22`), so two agents claiming the same issue race on one refname and exactly one wins. Exit 0 = yours (also when the lane already stands under your own agent trailer — reruns are idempotent); exit 3 = another agent holds it, cleanly (nothing was created locally): run `baseline orient` and pick different work. A hand-pushed branch (`git push origin HEAD:lane/22-foo`) mints a second, trailer-less lane for the issue — the exact dual-lane state the claim exists to prevent.
 
 ## Recording — the last act
 

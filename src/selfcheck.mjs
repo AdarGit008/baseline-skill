@@ -38,7 +38,9 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     // branch_scope REQUIRES workflow: a lane rule without a posture gate would run on
     // every non-default branch of every undeclared repo (the wallpaper-warn class the
     // M4 ruling forbids) — "no wallpaper warns is structural" is a law, not a habit.
-    if (r.workflow !== undefined && !['multi-lane', 'single-lane'].includes(r.workflow)) problems.push(`${curId}: workflow must be 'multi-lane' or 'single-lane' (got '${r.workflow}')`)
+    // single values only until M5c's array (family) support; keep this list in lockstep
+    // with the descriptor schema's workflow enum (schema/repo.schema.json)
+    if (r.workflow !== undefined && !['multi-lane', 'single-lane', 'multi-lane-local'].includes(r.workflow)) problems.push(`${curId}: workflow must be 'multi-lane', 'single-lane', or 'multi-lane-local' (got '${r.workflow}')`)
     if (r.branch_scope !== undefined && r.branch_scope !== 'lane') problems.push(`${curId}: branch_scope must be 'lane' (got '${r.branch_scope}')`)
     if (r.branch_scope !== undefined && r.workflow === undefined) problems.push(`${curId}: branch_scope requires a workflow declaration — a lane rule must be posture-gated (no wallpaper warns)`)
     // M4c review ruling: the CLAIM family is uniformly opt-in — a claims rule

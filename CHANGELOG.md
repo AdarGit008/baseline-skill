@@ -34,8 +34,28 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   join_keys omitting a trailer / closed issue via forge replay / no origin), the
   multi-lane-local never-consults proof (a CLOSED replay fixture that is irrelevant because
   the forge is never asked), and a rejecting pre-receive origin (exit 2 with git's reason).
-- Consolidation: the agent-identity `slug` chain moved to `src/util.mjs` — `log` frontmatter
-  and claim trailers derive the same name or the join lies.
+- Consolidation: the whole agent-identity derivation is ONE helper now —
+  `resolveAgent` (`src/probe.mjs`) over the shared `slug` (`src/util.mjs`) — and the lane
+  trailer names live beside it (`TRAILER_ISSUE`/`TRAILER_AGENT`, pointed at by
+  `schema/keys.md`): `log` frontmatter and claim trailers derive the same name or the
+  lane⇄agent join lies.
+- **Hardened by an 8-angle pre-merge review** (all confirmed findings fixed in-branch):
+  a push whose success report is lost after origin applied the ref is recognized by
+  tip==sha as a **win, never a fake loss**; a lane already standing under this agent's
+  own trailer settles as an **idempotent win** (a crashed claimer rerunning is never told
+  it "lost" to itself); the claim base is fetched into a **private ref** — FETCH_HEAD is
+  never read (a concurrent IDE autofetch could hand the claim an arbitrary branch's tip);
+  an **absent `join_keys` refuses like an incomplete one** (undeclared trailers are never
+  stamped); a stateless forge answer stays **unverified**, never announced "open";
+  single-branch clones get the lane **opted into the fetch refspec** (detected by the
+  set-upstream refusal itself) so upstream just works; the stale-local-branch note no
+  longer prints a checkout recipe that would land on the wrong tip; `makeForge` owns the
+  **posture closure** (a multi-lane-local forge stays closed even under replay — one home
+  for the label, inherited by M5b/M5c); the schema now `pattern`-enforces the
+  one-`*` namespace invariant; the rule-side workflow enum matches the descriptor's;
+  claim runs on `liteRepo` (no tree walk) with **one preflight round trip** answering
+  reachability + origin HEAD + ref existence. Deliberately open (recorded on the PR):
+  FLOW-02/06 stay `multi-lane`-exact until M5c's family-array conversion + re-pin.
 
 ### Added — V2 M4c: the record checks — REC/FLOW rules, claims explosion, the push-boundary scrub
 - **`rules/rec.json`** (78 rules total, 13 modules) — REC-01 **append-only proof** from history

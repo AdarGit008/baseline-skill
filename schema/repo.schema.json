@@ -56,7 +56,7 @@
       "additionalProperties": false,
       "description": "Multi-lane workflow configuration. namespace is consumed by `lane claim` (M5a); lease_ttl by the lease derivation (M5b).",
       "properties": {
-        "namespace": { "type": "string", "description": "Branch-name pattern for lane claims, e.g. lane/*. Exactly one '*', which the claimed issue number replaces — the ref IS the claim (FS2), so the pattern must yield one deterministic name per issue." },
+        "namespace": { "type": "string", "pattern": "^[^*]*\\*[^*]*$", "description": "Branch-name pattern for lane claims, e.g. lane/*. Exactly one '*', which the claimed issue number replaces — the ref IS the claim (FS2), so the pattern must yield one deterministic name per issue." },
         "lease_ttl": { "type": "string", "pattern": "^[0-9]+[dh]$", "description": "Lease horizon; a lane with no push within it derives as ABANDONED and is reclaimable." }
       }
     },

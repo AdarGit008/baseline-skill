@@ -17,6 +17,11 @@ export const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 // claim's Baseline-Agent trailer must derive the SAME name or the join lies.
 export const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24)
 
+// The lane join-key trailers (schema/keys.md): `lane claim` WRITES them (M5a);
+// derive/lanes + join READ them (M5b). One home, or the lane⇄agent join lies.
+export const TRAILER_ISSUE = 'Baseline-Issue'
+export const TRAILER_AGENT = 'Baseline-Agent'
+
 // One clock for all record tooling (log / jdg / the signoff bridge): the
 // BASELINE_LOG_NOW override parsed + ISO-normalized, null when unparseable —
 // callers decide whether that's a usage error (CLIs) or a wall-clock fallback.

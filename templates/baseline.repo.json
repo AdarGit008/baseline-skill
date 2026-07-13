@@ -9,7 +9,7 @@
   "_maturity": "prototype | claimed | released — scrutiny rises with maturity (CLAIM rules activate at 'claimed').",
   "owner": "your-github-handle-or-team",
   "workflow": "multi-lane",
-  "_workflow": "multi-lane (V2 default — any solo dev gets lanes) | single-lane (readiness-only).",
+  "_workflow": "multi-lane (V2 default — any solo dev gets lanes) | single-lane (readiness-only) | multi-lane-local (CF5: lanes from origin alone, the forge is never consulted).",
   "anchoring": "strict",
   "_anchoring": "strict | relaxed | off — work-to-issue anchoring strictness, orthogonal to workflow.",
   "ground_truth_boundary": { "forge": "github", "default_branch": "main" },

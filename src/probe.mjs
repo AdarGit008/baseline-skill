@@ -3,6 +3,7 @@
 // string; the probe never throws. Forge reachability is gh presence + auth + a repo the
 // working directory actually resolves to (which also proves the network/API is up).
 import { execFileSync } from 'node:child_process'
+import { slug } from './util.mjs'
 
 // Short, no-shell runner: literal argv, bounded time, null on ANY failure (missing binary,
 // non-zero exit, timeout). cwd matters for gh — it resolves the repo from the directory.
@@ -34,7 +35,16 @@ export function laneOrNull(repo) {
   return l && l !== '(detached)' ? l : null
 }
 
-function probeForge(repo) {
+// One derivation of agent identity for every writer (log's record frontmatter, lane
+// claim's trailer): explicit flag > BASELINE_AGENT > git user.name > 'agent', slugged.
+// Two writers deriving different names would silently break the lane⇄agent join.
+export function resolveAgent(explicit, REPO) {
+  return slug(explicit || process.env.BASELINE_AGENT || run('git', ['-C', REPO, 'config', 'user.name'])) || 'agent'
+}
+
+// Exported alone for surfaces that need ONLY the forge answer (lane claim): the
+// tree/history probes spawn git for facts such callers never read.
+export function probeForge(repo) {
   if (gh(['--version']) == null) return { available: false, gh: false, reason: 'gh not installed' }
   if (run('gh', ['auth', 'status']) == null) return { available: false, gh: true, authed: false, reason: 'gh not authenticated (gh auth login)' }
   const nwo = ghJson(['repo', 'view', '--json', 'nameWithOwner'], { cwd: repo.REPO })?.nameWithOwner

@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { loadDescriptor } from './descriptor.mjs'
 import { loadJudgments, selectSignoffs } from './jdg.mjs'
+import { CLAIM_RECORD_GLOB } from './claims.mjs'
 
 export function detectType(repo) {
   const { FILES } = repo
@@ -24,7 +25,7 @@ export function buildDefaults(repo) {
     command_timeout_ms: 600000,
     status_file: firstExisting(['docs/start-here.md', 'docs/start_here.md', 'start-here.md', 'start_here.md', 'README.md']),
     claims_file: 'docs/CLAIMS.json',
-    decision_globs: ['docs/decisions/*.md', 'docs/adr/*.md', 'adr/*.md', 'docs/decisions/**/*.md'],
+    decision_globs: ['docs/decisions/*.md', 'docs/adr/*.md', 'adr/*.md', 'docs/decisions/**/*.md', 'records/decisions/*.md'], // records/decisions/ is CONTRACT.md's V2 decision home — REC-04's cross-check must see it
     doc_globs: ['**/*.md'],
     sources_of_truth: {},
     signoff_file: '.project-baseline/signoff.json',
@@ -61,7 +62,7 @@ export function resolveConfig(repo, { cliConfigPath = null, profileArgs = [], de
   // descriptor's maturity gates activation (C24, discrete tiers per S8): a declared
   // 'prototype' repo isn't held to claims discipline unless it explicitly opted in —
   // drift climbs the stack as a project matures.
-  const claimsRegisterExists = (repo.FILES.includes(cfg.claims_file) || repo.match(cfg.claims_file).length > 0 || repo.match('records/claims/CLM-*.json').length > 0)
+  const claimsRegisterExists = (repo.FILES.includes(cfg.claims_file) || repo.match(cfg.claims_file).length > 0 || repo.match(CLAIM_RECORD_GLOB).length > 0)
   let CLAIMS_ACTIVE = EXPLICIT.has('makes_external_claims') ? (cfg.makes_external_claims !== false) : claimsRegisterExists
   let CLAIMS_REASON = null
   if (CLAIMS_ACTIVE && DESCRIPTOR.valid && DESCRIPTOR.data.maturity === 'prototype' && !(EXPLICIT.has('makes_external_claims') && cfg.makes_external_claims === true)) {

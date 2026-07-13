@@ -5,7 +5,7 @@
 // declares `workflow` / `branch_scope`), so "no wallpaper warns" is structural:
 // a lane rule is unrepresentable as a finding on a single-lane repo or on the
 // default branch — it never runs there.
-export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIPTOR = null, BRANCH = null, DEFAULT_BRANCH = 'main', CLAIMS_REASON = null }) {
+export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIPTOR = null, BRANCH = null, DEFAULT_BRANCH = null, CLAIMS_REASON = null }) {
   const results = []
   for (const r of rules) {
     if (r.applies_to && r.applies_to !== 'all' && !r.applies_to.includes(cfg.project_type)) { results.push({ r, tag: 'SKIP', detail: `n/a for ${cfg.project_type}` }); continue }
@@ -23,7 +23,10 @@ export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIP
       if (DESCRIPTOR.data.workflow !== r.workflow) { results.push({ r, tag: 'SKIP', detail: `workflow=${DESCRIPTOR.data.workflow} (rule needs ${r.workflow})` }); continue }
     }
     if (r.branch_scope === 'lane') {
-      if (!BRANCH) { results.push({ r, tag: 'SKIP', detail: 'no branch resolved (detached HEAD?) — lane rules n/a' }); continue }
+      if (!BRANCH) { results.push({ r, tag: 'SKIP', detail: 'no branch resolved (detached HEAD / CI checkout) — lane rules n/a' }); continue }
+      // an undeclared default branch is a SKIP, never a guessed 'main' — a guess can
+      // put lane rules ON the real default branch, the exact wallpaper the gate forbids
+      if (!DEFAULT_BRANCH) { results.push({ r, tag: 'SKIP', detail: 'default branch undeclared (set ground_truth_boundary.default_branch) — lane rules n/a' }); continue }
       if (BRANCH === DEFAULT_BRANCH) { results.push({ r, tag: 'SKIP', detail: `on default branch '${DEFAULT_BRANCH}' — lane rules n/a` }); continue }
     }
     let res; try { res = evalCheck(r.check, r) } catch (e) { res = { ok: null, detail: 'check errored: ' + String(e.message).slice(0, 60) } }

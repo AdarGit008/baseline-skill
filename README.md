@@ -3,7 +3,8 @@
 The **`baseline`** skill for **Hermes** and **Claude Code** (and any agent that loads
 `SKILL.md`): a zero-dependency project-readiness checker packaged as an installable skill. It scores a repository
 against **78 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
-operability, change governance, community, context/doc-drift, and claims discipline —
+operability, change governance, community, context/doc-drift, claims discipline,
+records & ledger, and lane workflow —
 [blockers](GLOSSARY.md#blocker) fail CI, judgment calls resolve via a dated [sign-off ledger](GLOSSARY.md#sign-off-ledger).
 
 > The premise: *don't trust a written promise — make something check it.*
@@ -44,6 +45,8 @@ node baseline.mjs --repo /path/to/repo --json   # machine output for CI
 node baseline.mjs orient --repo /path/to/repo   # derived-state survey: lanes · backlog · divergence
 node baseline.mjs log -m "..." --next "..."     # write a scrubbed session record (the forensic tier)
 node baseline.mjs jdg check                     # evaluate the judgment ledger: tripwires · expiry · drift
+node baseline.mjs gen migrate-claims            # explode a legacy docs/CLAIMS.json into records/claims/CLM-*.json
+node baseline.mjs scrub --pushed <sha>          # scan record content for secret shapes (the pre-push hook's engine)
 ```
 
 `baseline.mjs` is the entry point — `check` is the default (it delegates to `check.mjs`, still the checker), and `orient` surveys session state. Needs only Node ≥ 18 and git; `orient`'s forge view also uses `gh` and degrades gracefully without it.
@@ -54,7 +57,7 @@ node baseline.mjs jdg check                     # evaluate the judgment ledger: 
 |---|---|
 | `SKILL.md` | the skill definition (modes: orient / score / init / fix / explain) |
 | `CONTRACT.md` | the plain-git twin: what the workflow expects of a repo, no tool required |
-| `baseline.mjs` | the CLI entry point — `orient`, `check`, `log`, `jdg`, `help` |
+| `baseline.mjs` | the CLI entry point — `orient`, `check`, `log`, `jdg`, `gen`, `scrub`, `help` |
 | `check.mjs` | the checker (`baseline check` delegates here) |
 | `src/` | the runner's modules: repo · config · evaluators · engine · report · self-check · descriptor · probe · orient · rules · records · validate · scrub · log · jdg |
 | `test/` | golden corpus + orient/facts/records suites (`test/golden/run.mjs --verify`, `test/{orient,facts,records}/run.mjs`) — source repo only, not installed |
@@ -64,7 +67,7 @@ node baseline.mjs jdg check                     # evaluate the judgment ledger: 
 | `config.example.json` | per-repo config (copy to `baseline.config.json`) |
 | `templates/` | scaffolds: baseline.repo.json, session-log.md, judgment.json, claim.json, adr.md, CLAIMS.json, start-here.md, signoff.json, doc-with-freshness.md |
 | `config-presets/` | ready-made `baseline.config.json` + `*.repo.json` posture presets (multi-lane-agents, readiness-only, node-service, …) |
-| `hooks/` | Claude Code SessionStart hook that runs `baseline orient` |
+| `hooks/` | Claude Code SessionStart hook that runs `baseline orient`, plus `scrub-pre-push.sh` (pre-push records scrub scaffold) |
 | `README.md` | this guide — install, usage, file map |
 | `REFERENCE.md` | full reference: rule table, categories, architecture diagrams, CI wiring |
 | `GLOSSARY.md` | plain-language definitions of the DevOps/supply-chain terms |

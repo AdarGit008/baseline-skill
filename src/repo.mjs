@@ -36,9 +36,12 @@ export function liteRepo(REPO) {
 export function indexRepo(REPO) {
   const FILES = walk(REPO)
 
-  // git-tracked set (for tracked_only checks); null when not a git repo
+  // git-tracked set (for tracked_only checks); null when not a git repo.
+  // -z: NUL-separated, unquoted — core.quotePath C-quotes non-ASCII names, and a
+  // quoted string never matches the fs-walked FILES spelling (a café.md record
+  // would silently fall out of every tracked_only scan, including REC-02's).
   let TRACKED = null
-  try { TRACKED = new Set(execSync('git ls-files', { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().split('\n').filter(Boolean)) } catch {}
+  try { TRACKED = new Set(execFileSync('git', ['ls-files', '-z'], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\0').filter(Boolean)) } catch {}
   let HEAD = null
   try { HEAD = execSync('git rev-parse --short HEAD', { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() } catch {}
 
@@ -70,16 +73,21 @@ export function indexRepo(REPO) {
   function gitCommitISO(rel) { try { const iso = execFileSync('git', ['log', '-1', '--format=%cI', '--', rel], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); return parseDate(iso) } catch { return null } }
   function gitAgeDays(rel) { const d = gitCommitISO(rel); return d ? (Date.now() - d.getTime()) / 86400000 : null }
   function gitObjExists(ref) { try { execFileSync('git', ['cat-file', '-e', ref], { cwd: REPO, stdio: 'ignore' }); return true } catch { return false } }
-  function gitIsAncestor(sha) { try { execFileSync('git', ['merge-base', '--is-ancestor', sha, 'HEAD'], { cwd: REPO, stdio: 'ignore' }); return 0 } catch (e) { return e.status ?? 1 } }
+  function gitIsAncestor(sha, of = 'HEAD') { try { execFileSync('git', ['merge-base', '--is-ancestor', sha, of], { cwd: REPO, stdio: 'ignore' }); return 0 } catch (e) { return e.status ?? 1 } }
   function gitLag(sha) { try { return parseInt(execFileSync('git', ['rev-list', '--count', `${sha}..HEAD`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(), 10) } catch { return null } }
   function gitIsShallow() { try { return execFileSync('git', ['rev-parse', '--is-shallow-repository'], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() === 'true' } catch { return false } }
 
   // History events for a path scope: git log --name-status filtered to the given
   // change types (e.g. 'MDR', 'A'), oldest first. -> [{sha, status, path, to}]
   // (to only on renames). Returns null when history is unreadable (not a repo).
-  function gitNameStatus(diffFilter, rel) {
+  // quotePath=false keeps non-ASCII names literal so they match FILES/TRACKED
+  // spelling; names containing a literal newline/quote stay C-quoted (pathological
+  // — accepted residual, the -z log format can't be mixed with --format records).
+  // fullHistory disables history simplification: an add that only ever lived on a
+  // merged-in side branch is invisible to the default first-parent-simplified walk.
+  function gitNameStatus(diffFilter, rel, { fullHistory = false } = {}) {
     let out
-    try { out = execFileSync('git', ['log', '--reverse', '--format=@%H', '--name-status', `--diff-filter=${diffFilter}`, '--', rel], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8') } catch { return null }
+    try { out = execFileSync('git', ['-c', 'core.quotePath=false', 'log', '--reverse', ...(fullHistory ? ['--full-history'] : []), '--format=@%H', '--name-status', `--diff-filter=${diffFilter}`, '--', rel], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8') } catch { return null }
     const events = []; let sha = null
     for (const line of out.split('\n')) {
       if (line.startsWith('@')) { sha = line.slice(1); continue }
@@ -90,16 +98,22 @@ export function indexRepo(REPO) {
   }
   // Files changed on this branch since it diverged (merge-base semantics), optionally
   // restricted to a path scope and to added-only. -> [paths] or null when the range
-  // doesn't resolve (missing base ref, not a repo).
+  // doesn't resolve (missing base ref, not a repo). -z: unquoted, NUL-separated.
   function gitDiffNames(range, rel, { addedOnly = false } = {}) {
-    const args = ['diff', '--name-only', ...(addedOnly ? ['--diff-filter=A'] : []), range, '--', ...(rel ? [rel] : ['.'])]
-    try { return execFileSync('git', args, { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\n').filter(Boolean) } catch { return null }
+    const args = ['diff', '--name-only', '-z', ...(addedOnly ? ['--diff-filter=A'] : []), range, '--', ...(rel ? [rel] : ['.'])]
+    try { return execFileSync('git', args, { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\0').filter(Boolean) } catch { return null }
   }
   // Blob id of a path at a ref -> sha string or null. Used by the append-only proof
   // to compare a record's current content against its content at introduction.
   function gitBlobAt(ref, rel) {
     try { return execFileSync('git', ['rev-parse', `${ref}:${rel}`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() } catch { return null }
   }
+  // Blob CONTENT at a ref, decoded utf8 (the one decoding every scan() call site
+  // uses — a finding id must hash the same bytes-as-text on every surface). null on
+  // any failure; callers surface that as "unscanned", never fold it into "clean".
+  function gitCatFile(ref, rel) {
+    try { return execFileSync('git', ['cat-file', 'blob', `${ref}:${rel}`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 256 * 1024 * 1024 }).toString('utf8') } catch { return null }
+  }
 
-  return { REPO, FILES, TRACKED, HEAD, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitLag, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt }
+  return { REPO, FILES, TRACKED, HEAD, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitLag, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile }
 }

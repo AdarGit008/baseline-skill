@@ -10,7 +10,7 @@ import path from 'node:path'
 import { makeOpt, makeOptAll } from './src/util.mjs'
 import { loadRules } from './src/rules.mjs'
 import { indexRepo } from './src/repo.mjs'
-import { currentLane } from './src/probe.mjs'
+import { laneOrNull } from './src/probe.mjs'
 import { resolveConfig } from './src/config.mjs'
 import { CHECK_KINDS, makeEvalCheck } from './src/evaluators.mjs'
 import { runRules } from './src/engine.mjs'
@@ -40,9 +40,11 @@ const { cfg, DEFAULTS, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, SIGNOFF, JDGS, DESC
 if (SELF_CHECK) process.exit(runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }))
 
 // Lane identity for the M4c branch-scoped rules: lane = branch name (the FS2 seam
-// log/orient already use); the default branch is the descriptor's declared one.
-const BRANCH = currentLane(repo) || null
-const DEFAULT_BRANCH = (DESCRIPTOR.valid && DESCRIPTOR.data.ground_truth_boundary?.default_branch) || 'main'
+// log/orient already use), with detached HEAD honestly null — a CI checkout or a
+// bisect is not a lane. The default branch is the descriptor's declared one only;
+// undeclared stays null and the branch gate SKIPs rather than guessing 'main'.
+const BRANCH = laneOrNull(repo)
+const DEFAULT_BRANCH = (DESCRIPTOR.valid && DESCRIPTOR.data.ground_truth_boundary?.default_branch) || null
 
 const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH })
 const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH })

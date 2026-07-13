@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 // Generates docs/assets/evaluate-stack-{light,dark}.svg — the README "evaluate stack" board.
-// Deterministic: re-running produces byte-identical SVGs, so diffs stay honest.
+// Deterministic: re-running produces byte-identical SVGs (for the same repo state), so diffs
+// stay honest. Counts (rules, check kinds, fixtures, pins, module sizes) are DERIVED from the
+// code, never hardcoded — a stale number can't ship. Never hand-edit the SVGs; rerun this.
 // Usage: node docs/assets/gen-evaluate-stack.mjs
 import fs from 'node:fs'
 import path from 'node:path'
+import { CHECK_KINDS } from '../../src/evaluators.mjs'
+import { loadRules } from '../../src/rules.mjs'
 
 const W = 1440, H = 1265
 const SANS = 'Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif'
@@ -65,12 +69,23 @@ const PALETTES = {
   },
 }
 
+// ---------- derived facts (from the code itself, so the board can't go stale) ----------
+const here = path.dirname(new URL(import.meta.url).pathname)
+const ROOT = path.join(here, '..', '..')
+const RULES = loadRules().rules.length
+const KINDS = CHECK_KINDS.size
+const wc = f => fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').length - 1 // wc -l
+const FIXTURES = fs.readdirSync(path.join(ROOT, 'test/fixtures'), { withFileTypes: true }).filter(d => d.isDirectory()).length
+const pinsFile = JSON.parse(fs.readFileSync(path.join(ROOT, 'test/golden/pins.json'), 'utf8'))
+const pinCounts = [...new Set(Object.values(pinsFile).filter(v => v && v.rules).map(v => Object.keys(v.rules).length))]
+const PINNED = pinCounts.length === 1 ? pinCounts[0] : Math.min(...pinCounts) // uniform by construction; understate if ever not
+
 // ---------- content ----------
 const LAYERS = [
-  { nick: 'THE CLI', file: 'check.mjs · 44 lines', role: 'the only entry point', knows: ['flags: --repo · --json · --no-exec', 'loads rules.json — the 71-rule', 'standard, as pure data'], never: ['what any rule means'] },
-  { nick: 'THE JUDGE', file: 'engine.mjs · 21 lines', role: 'gate → evaluate → tag', knows: ['3 gates: wrong type? profile off?', 'opted out? → SKIP, never punished', 'the tag ladder + severity'], never: ['how anything is checked'] },
-  { nick: 'THE LAB', file: 'evaluators.mjs · 21 kinds', role: 'facts only', knows: ['how to verify each claim: grep,', 'any-file, json-field, command,', 'signoff… (any-of & implies recurse)'], never: ['severity, or what happens', 'to its result'] },
-  { nick: 'THE SENSES', file: 'repo.mjs · 64 lines', role: 'the repo index, built once', knows: ['find: match(globs) · read: 3', 'paranoia levels · ask git: age,', 'ancestry, lag behind HEAD'], never: ['what a “rule” even is'] },
+  { nick: 'THE CLI', file: `check.mjs · ${wc('check.mjs')} lines`, role: 'the only entry point', knows: ['flags: --repo · --json · --no-exec', `loads rules.json — the ${RULES}-rule`, 'standard, as pure data'], never: ['what any rule means'] },
+  { nick: 'THE JUDGE', file: `engine.mjs · ${wc('src/engine.mjs')} lines`, role: 'gate → evaluate → tag', knows: ['5 gates: type? profile? opt-out?', 'posture? branch? → SKIP, never', 'punished · tag ladder + severity'], never: ['how anything is checked'] },
+  { nick: 'THE LAB', file: `evaluators.mjs · ${KINDS} kinds`, role: 'facts only', knows: ['how to verify each claim: grep,', 'any-file, json-field, command,', 'signoff… (any-of & implies recurse)'], never: ['severity, or what happens', 'to its result'] },
+  { nick: 'THE SENSES', file: `repo.mjs · ${wc('src/repo.mjs')} lines`, role: 'the repo index, built once', knows: ['find: match(globs) · read: 3', 'paranoia levels · ask git: age,', 'ancestry, lag behind HEAD'], never: ['what a “rule” even is'] },
   { nick: 'THE WORLD', file: 'node:fs + git', role: 'the only true things', knows: ['bytes on disk', 'the git object database'], never: ['everything above'] },
 ]
 const WAISTS = [
@@ -105,7 +120,7 @@ function board(p) {
   o.push(text(36, 66, 'How /baseline decides', { size: 34, weight: 'bold', fill: p.ink }))
   o.push(text(36, 98, 'five layers turn a repository into an exit code — each layer knows less than the one above it', { size: 17, fill: p.soft }))
   o.push(box(844, 36, 560, 40, { fill: 'none', stroke: p.faint, sw: 2, rx: 20 }))
-  o.push(text(1124, 61, 'node check.mjs --repo <path>  →  71 rules  →  scorecard  →  exit code', { size: 12.5, fill: p.soft, family: MONO, anchor: 'middle' }))
+  o.push(text(1124, 61, `node check.mjs --repo <path>  →  ${RULES} rules  →  scorecard  →  exit code`, { size: 12.5, fill: p.soft, family: MONO, anchor: 'middle' }))
 
   // vertical margin note
   o.push(`<g transform="rotate(-90 20 520)">` + text(20, 520, '↓ questions go down · facts come up ↑', { size: 13, fill: p.faint, anchor: 'middle' }) + `</g>`)
@@ -183,7 +198,7 @@ function board(p) {
   const SY = 1075
   o.push(card(36, SY, 400, 150, { fill: p.sticky.fill, stroke: p.sticky.stroke }))
   o.push(text(60, SY + 34, 'kept honest — this repo’s own CI', { size: 15.5, weight: 'bold', fill: p.sticky.text }))
-  o.push(lines(60, SY + 62, ['--self-check → rules.json is internally valid', 'golden corpus → 7 fixture repos × 71 pinned', '     verdicts — ANY drift fails the build', 'self-score → baseline scores its own repo'], { size: 13, lh: 22, fill: p.sticky.text }))
+  o.push(lines(60, SY + 62, ['--self-check → rules.json is internally valid', `golden corpus → ${FIXTURES} fixture repos × ${PINNED} pinned`, '     verdicts — ANY drift fails the build', 'self-score → baseline scores its own repo'], { size: 13, lh: 22, fill: p.sticky.text }))
   o.push(card(470, SY, 400, 150, { fill: p.v2sticky.fill, stroke: p.v2sticky.stroke }))
   o.push(text(494, SY + 34, 'next: V2 — “Lens & Ledger”', { size: 15.5, weight: 'bold', fill: p.v2sticky.text }))
   o.push(lines(494, SY + 62, ['layer 4, THE SENSES, grows into three', 'ground-truth planes: TREE · HISTORY · FORGE —', 'status derived on demand, never hand-written', '→ docs/v2/PLAN.md'], { size: 13, lh: 22, fill: p.v2sticky.text }))
@@ -193,6 +208,5 @@ function board(p) {
   return o.join('\n') + '\n'
 }
 
-const here = path.dirname(new URL(import.meta.url).pathname)
 for (const [name, p] of Object.entries(PALETTES)) fs.writeFileSync(path.join(here, `evaluate-stack-${name}.svg`), board(p))
 console.log('wrote evaluate-stack-light.svg + evaluate-stack-dark.svg')

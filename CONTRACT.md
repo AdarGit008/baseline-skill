@@ -53,8 +53,8 @@ next: the one most useful next step
 
 `## Left open` + `next:` is load-bearing — orient reads exactly that shape.
 Prefer `baseline log -m "..." --next "..."` — it derives everything, validates,
-and scrubs. Hand-written records are covered by the pre-push scrub hook
-(`cp hooks/scrub-pre-push.sh .git/hooks/pre-push`; engine: `baseline scrub`).
+and scrubs. Hand-written records are covered once the pre-push hook is installed
+(`cp hooks/scrub-pre-push.sh .git/hooks/pre-push` per clone; engine: `baseline scrub`).
 
 ### Judgment records
 
@@ -119,8 +119,17 @@ a dated judgment in `.baseline/scrub-allowlist.json` via `--allow <finding-id>
 --allow-reason "..."` (one flag surface across `log` and `jdg`) — the allowlist
 stores a content-derived hash, never the value.
 Never bypass a block by hand-writing the file; rotate the secret or record the
-judgment. Hand-written records get the same scan from the pre-push hook and
-REC-02 re-scans everything that landed (warn until M7's promotion).
+judgment. Hand-written records get the same scan from the pre-push hook (once
+installed) and REC-02 re-scans everything that landed (warn until M7's promotion).
+
+**Documented residual risk (C34):** the `--pushed` scan reads the allowlist from
+the worktree, which may itself be uncommitted — the judgment doesn't necessarily
+ride the push (REC-02 in CI is the backstop). `scan()` matches text shapes
+decoded as utf8 — a UTF-16-encoded record is a known blind spot the delegation
+layer (gitleaks-class scanners, server-side push protection) covers. And until
+M6's `admit`, the FLOW posture gate reads the *worktree* descriptor, so a branch
+that weakens posture can self-silence FLOW-06 — the base-ref read lands with
+admit (FS1).
 
 ## Reserved (lands later, documented now)
 

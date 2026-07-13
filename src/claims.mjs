@@ -1,9 +1,12 @@
 // Claims dual-read (M4c -> M7): the CLAIM rules read BOTH homes — the legacy
 // docs/CLAIMS.json monolith (V1) and the exploded per-claim records/claims/CLM-*.json
-// (C17/C23). A record whose `slug` (or id) matches a legacy claim's id supersedes it,
-// so the sanctioned migration overlap window never double-counts a claim. The legacy
-// read retires at M7 (#24's delete list); until then CLAIM-07 warns it into motion.
-// `gen migrate-claims` writes through the same shapes.
+// (C17/C23). THE MIGRATION KEY IS THE SLUG, nowhere else: a record whose `slug`
+// matches a legacy claim's id supersedes it, so the sanctioned overlap window never
+// double-counts a claim — and never false-shadows one (a record's own CLM-NNNN id
+// must not hide an unmigrated legacy claim that happens to share the spelling; the
+// reader and `gen migrate-claims` share this one definition of "migrated"). The
+// legacy read retires at M7 (#24's delete list); until then CLAIM-07 warns it into
+// motion. `gen migrate-claims` writes through the same shapes.
 import { validateRecord } from './records.mjs'
 
 export const CLAIM_RECORD_GLOB = 'records/claims/CLM-*.json'
@@ -29,7 +32,8 @@ export function loadClaimRecords(repo) {
 // error set when it exists but can't be read as {claims:[...]}.
 export function loadLegacyClaims(repo, cfg) {
   const f = cfg.claims_file
-  const raw = f && repo.read(f)
+  if (!f || typeof f !== 'string') return { present: false, claims: [], error: null } // claims_file:false is absence, not JSON.parse(false)
+  const raw = repo.read(f)
   if (raw == null) return { present: false, claims: [], error: null }
   let data
   try { data = JSON.parse(raw) } catch { return { present: true, claims: [], error: `${f}: not valid JSON` } }
@@ -38,12 +42,14 @@ export function loadLegacyClaims(repo, cfg) {
 }
 
 // The merged view the CLAIM checks evaluate. Records win: a legacy claim whose id
-// matches a record's slug (or id) is shadowed — its migrated copy is the one home.
+// matches a record's SLUG is shadowed — its migrated copy is the one home. Slug
+// only: shadowing by record id would silently drop an unmigrated legacy claim
+// whose author picked a CLM-NNNN-shaped id (green-by-omission on blocker rules).
 export function loadClaims(repo, cfg) {
   const rec = loadClaimRecords(repo)
   const legacy = loadLegacyClaims(repo, cfg)
   const migrated = new Set()
-  for (const cl of rec.claims) { if (cl.slug) migrated.add(String(cl.slug)); if (cl.id) migrated.add(String(cl.id)) }
+  for (const cl of rec.claims) if (cl.slug) migrated.add(String(cl.slug))
   const survivors = legacy.claims.filter(cl => !migrated.has(String(cl.id ?? '')))
   const errors = [...rec.errors, ...(legacy.error ? [legacy.error] : [])]
   return { claims: [...rec.claims, ...survivors], recordCount: rec.claims.length, legacyPresent: legacy.present, legacyCount: legacy.claims.length, errors }

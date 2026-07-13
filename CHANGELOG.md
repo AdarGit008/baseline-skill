@@ -8,12 +8,14 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ### Added — V2 M4c: the record checks — REC/FLOW rules, claims explosion, the push-boundary scrub
 - **`rules/rec.json`** (78 rules total, 13 modules) — REC-01 **append-only proof** from history
-  (`--diff-filter=MDR` events + a blob-at-introduction comparison closing the CF7 delete-recreate
+  (`--diff-filter=MDR` events + full-history add-blob comparison closing the CF7 delete-recreate
   and merge-hidden holes; shallow history = SKIP, never a guess), REC-02 **landed-records scrub**
-  (the same `scan()` as the write gate; deterministic findings fail — M7's promotion is a pure
-  severity flip — heuristics stay soft), REC-04 **one-home duplication detector** (warn-pinned per
-  CF10), REC-05 **push-time gate delegation** (F7: PASSes by delegating to push-protection/gitleaks
-  evidence; warns when nothing owns the push boundary).
+  (the same `scan()` as the write gate, over blob content **at HEAD**; deterministic findings fire
+  the rule — warn until M7's promotion flips them to blocker — heuristics stay soft), REC-04
+  **one-home duplication detector** (warn-pinned per CF10), REC-05 **push-time gate delegation**
+  (F7: PASSes on at-rest evidence — gitleaks-class wiring or a committed scrub-pre-push hook;
+  GitHub push protection satisfies the intent but isn't observable at rest, so M6's forge rules
+  assert it live; warns when nothing visibly owns the push boundary).
 - **`rules/flow.json`** — FLOW-02 (a lane carries its own session record) + FLOW-06 (a gated
   subject changes with its record in the same range — the DESC-03 preview, CF9). Both are
   **data-gated, not special-cased**: rules declare `workflow`/`branch_scope`, the engine turns
@@ -24,7 +26,9 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   records, O_EXCL, schema-invalid claims refused per claim, idempotent). The CLAIM checks
   **dual-read** both homes (records shadow migrated legacy ids) until M7; CLAIM-07 warns the
   monolith into motion; CLAIM-00 accepts either home. Activation is **maturity-gated** (C24):
-  descriptor `prototype` skips CLAIM unless explicitly opted in — the skip says why.
+  descriptor `prototype` skips the register-coupled CLAIM rules unless explicitly opted in — the
+  skip says why. (CLAIM-06, the spec acceptance-criteria rule, is register-independent and stays
+  ungated — whether it should join the opt-in is an open maintainer call.)
 - **`baseline scrub`** — the pre-push hook's engine: worktree files or `--pushed SHA
   [--since SHA]` committed-blob ranges; `--allow <id> --allow-reason "..."` writes the same dated
   allowlist judgments as `log`/`jdg`. **`hooks/scrub-pre-push.sh`** scaffolds the push-boundary
@@ -36,11 +40,44 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 - Engine threading: `runRules` now receives the descriptor, current branch, and declared default
   branch; `FIELD_CONSUMERS` flips `workflow`/`ground_truth_boundary`/`maturity` to active (S7);
   `lifecycle` re-reserved to M7 (M4 shipped no consumer — #24 decides consume-or-drop).
-- Suite +42 assertions (engine gates, REC evaluators against real history, the lane loop
-  end-to-end, gen/scrub e2e); golden harness gains deterministic `git init -b main` + a
-  `_branch/` lane-commit overlay; new **`flow-repo`** fixture pins FLOW-02 PASS / FLOW-06 WARN /
-  REC-01 WARN / CTX opt-out SKIPs at 0 blockers. Corpus re-pin is additive — every pre-M4c
-  verdict unchanged.
+- Suite +68 assertions (engine gates, REC evaluators against real history — evil merges
+  included — the lane loop end-to-end, gen/scrub e2e, the hook's stdin protocol); golden harness
+  gains deterministic `git init -b main` + a `_branch/` lane-commit overlay; new **`flow-repo`**
+  fixture pins FLOW-02 PASS / FLOW-06 WARN / REC-01 WARN / REC-05 PASS (committed hook) / CTX
+  opt-out SKIPs at 0 blockers. Corpus re-pin is additive — every pre-M4c verdict unchanged.
+
+### Fixed — M4c pre-merge review (9-angle adversarial pass)
+- **Lane identity**: detached HEAD (every CI checkout) is no longer a lane called `(detached)` —
+  the engine gate and `log` now share one `laneOrNull()` decision; an **undeclared default
+  branch SKIPs** lane rules instead of guessing `main`; a freshly-cut lane with no work SKIPs
+  FLOW-02 (the record couples to work, not branch creation); `baseRef()` prefers the newer of
+  local/origin default. `--self-check` law: `branch_scope` requires `workflow`.
+- **Scrub gate integrity**: `--pushed` walks every commit in the range (a secret added then
+  removed mid-range still blocks), `-z`/quotePath-safe listing (a `café.md` record can no longer
+  silently skip the scan — also fixed in `ls-files`/`log --name-status` for REC-01/REC-02),
+  unresolvable `--since` falls back to a loud whole-tree scan instead of bricking the push with
+  a wrong error, unreadable blobs are loud exit-2 (never "clean"), committed `.baseline/cache/`
+  paths hard-block, and all scan surfaces decode utf8 so finding ids match across log/CI/hook.
+  The hook distinguishes findings (exit 1, blocks) from errors (exit ≥2, fails open loudly) and
+  shields its stdin ref list.
+- **REC evaluators**: REC-02 scans what LANDED (HEAD blobs — a dirty worktree can no longer flip
+  the verdict) and surfaces unscannable files instead of counting them clean; REC-01 uses
+  `--full-history` add-blob sets (side-branch-only records killed inside a merge are caught; two
+  lanes adding the same record then resolving to one side is no longer a false edit) and a rename
+  is ONE finding (no bogus merge-hidden line); REC-04 sees `records/decisions/`, strips BOMs, and
+  counts unparseable files; REC-05's evidence pattern actually matches the shipped scaffold hook
+  (and the golden corpus now pins the PASS arm).
+- **Claims migration**: the migration key is the slug, everywhere — a record id can no longer
+  shadow an unmigrated legacy claim (green-by-omission), id-less legacy claims are refused
+  loudly instead of duplicating on every rerun, duplicate ids within one monolith mint one
+  record, corrupt existing records abort before any write, non-array `citations` refuse the
+  claim, and stripped citation subfields report into the dropped-loudly channel. `CLAIM_FIELDS`
+  now derives from the schema. `claims_file: false` reads as absence, not `JSON.parse(false)`.
+- **CLI surfaces**: `--help`/`-h` reach help everywhere (top level was running a full check;
+  `gen migrate-claims --help` was performing the migration), `gen`/`scrub` reject unknown flags
+  instead of acting on misunderstood argv, record writers report "a file exists where the
+  directory belongs" instead of stack-tracing, and every `--allow` hint spells the real flag
+  (`--allow-reason`).
 
 ### Added — V2 M4b: the judgment ledger — `baseline jdg`, the machine contract, one sign-off home
 - **`src/jdg.mjs`** — the unified ledger surface. `jdg new` authors schema-valid, scrub-gated,
@@ -129,7 +166,7 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 - **`--self-check` enforces two structural laws** (STRATA graft): a **blocker must be deterministic**
   and a **sign-off must be judgment** — plus per-field validity and a layering check (readiness rules
   can't consume FLOW facts, inert until M5). The existing rule set satisfies both with zero conflicts.
-- **CTX-12** — the stored-status **tripwire** (71 rules total): warns when a hand-maintained
+- **CTX-12** — the stored-status **tripwire** (71 rules at this slice; M4c takes the set to 78): warns when a hand-maintained
   `last-verified:` stamp is present (the artifact V2 replaces with derived `orient`). Warn now while
   CTX-01 still gates the stamp; promotes to blocker once migration completes (M7).
 - Golden corpus re-pinned: only CTX-12 added (metadata fields are inert to verdicts).

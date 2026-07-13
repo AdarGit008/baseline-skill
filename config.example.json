@@ -10,6 +10,7 @@
   "_bootstrap_command": "the clean-checkout Task-1 command for BUILD-05; must exit 0. Omit to skip.",
   "command_timeout_ms": 600000,
   "status_file": "docs/start-here.md",
+  "_status_file": "CTX-01's single status owner. Setting false (with a valid baseline.repo.json present) is an honored opt-out — orient replaces the status file.",
   "claims_file": "docs/CLAIMS.json",
   "decision_globs": ["docs/decisions/0*.md", "adr/*.md"],
   "doc_globs": ["**/*.md"],

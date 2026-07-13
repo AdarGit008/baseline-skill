@@ -11,7 +11,8 @@ started: <YYYY-MM-DDTHH:MM:SSZ>
 Written by `baseline log -m "..." [--next "..."]` — prefer the command over this
 template: it derives lane/agent/timestamp, validates against
 schema/record.session.schema.json, and scrubs for secrets before the file exists.
-Hand-written copies of this template are covered by the pre-push scrub hook (hooks/scrub-pre-push.sh).
+Hand-written copies of this template are covered by the pre-push scrub hook once
+it is installed (cp hooks/scrub-pre-push.sh .git/hooks/pre-push, per clone).
 One session = one file at records/sessions/<lane>/<YYYY-MM-DD>-<HHMMSS>-<agent>.md
 (collision-free by construction — never edit a committed record, write the next one).
 -->

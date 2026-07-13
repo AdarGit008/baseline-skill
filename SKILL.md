@@ -1,6 +1,6 @@
 ---
 name: baseline
-description: "Use when asked to run baseline, score a repo, check build- or project-readiness, audit a repo against a standard, or adopt/scaffold the project-baseline standard. Runs a zero-dependency Node checker (78 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, and claims), reads the scorecard, and helps fix or scaffold what's missing."
+description: "Use when asked to run baseline, score a repo, check build- or project-readiness, audit a repo against a standard, or adopt/scaffold the project-baseline standard. Runs a zero-dependency Node checker (78 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, claims, records & ledger, and lane workflow), reads the scorecard, and helps fix or scaffold what's missing."
 version: 2.2.0
 author: Adar (AdarGit008)
 license: MIT
@@ -35,7 +35,7 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 - Hermes: `~/.hermes/skills/software-development/baseline`
 - Claude Code: `~/.claude/skills/baseline`
 
-The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `log`, `jdg`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
+The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `log`, `jdg`, `gen`, `scrub`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
 Co-located files: `baseline.mjs` (CLI entry: orient / check / log / jdg / gen / scrub), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 78 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook + pre-push scrub hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
 
@@ -66,7 +66,7 @@ node "$SKILL_DIR/baseline.mjs" log --repo <target> -m "what happened and why; de
 
 **Judgments** (accepting a risk, deviating from a rule, satisfying a manual rule) are ledger records, not chat: `baseline jdg new --kind <sign-off|deviation|risk-acceptance|break-glass> --subject <rule-or-scope> --reason "..." --review-by <date>` — every judgment expires; add a `--tripwire "fact op value"` so the engine can detect when the accepted world changes. `baseline jdg check` evaluates the ledger (exit 1 on tripped/expired/invalid records). **Never fake a sign-off**: a real dated judgment by the user, or nothing. The plain-git forms live in `CONTRACT.md`.
 
-**Claims** (M4c): if CLAIM-07 warns about a legacy `docs/CLAIMS.json`, run `baseline gen migrate-claims` — it explodes the monolith into per-claim `records/claims/CLM-*.json` (the V1 id survives as `slug`), refuses invalid claims loudly, and is idempotent. Review + commit the records, then delete the monolith. Hand-written records are pushed through the same scrub as `log` when the pre-push hook is installed (`cp hooks/scrub-pre-push.sh .git/hooks/pre-push`); `baseline scrub <files>` runs the scan on demand.
+**Claims** (M4c): if CLAIM-07 warns about a legacy `docs/CLAIMS.json`, run `baseline gen migrate-claims` — it explodes the monolith into per-claim `records/claims/CLM-*.json` (the V1 id survives as `slug`), refuses invalid claims loudly, and is idempotent. Review + commit the records, then delete the monolith. Hand-written records are pushed through the same scrub as `log` when the pre-push hook is installed (`cp "$SKILL_DIR/hooks/scrub-pre-push.sh" <repo>/.git/hooks/pre-push`); `baseline scrub <files>` runs the scan on demand.
 
 ## Modes
 
@@ -98,9 +98,10 @@ Run the survey (see **Orientation — the first act** above): `node "$SKILL_DIR/
 2. **Tune the checks (optional).** Copy the closest `config-presets/*.json` to `<repo>/baseline.config.json` for paths/commands/thresholds, or start from `config.example.json`. Then scaffold only what's missing (never overwrite without asking):
    ```bash
    cp "$SKILL_DIR/config-presets/node-service.json" <repo>/baseline.config.json   # tuning: bootstrap_command, globs…
-   cp "$SKILL_DIR/templates/CLAIMS.json"    <repo>/docs/CLAIMS.json      # only if it makes external claims
+   mkdir -p <repo>/records/claims && cp "$SKILL_DIR/templates/claim.json" <repo>/records/claims/CLM-0001.json   # only if it makes external claims — one claim, one record
    mkdir -p <repo>/.project-baseline && cp "$SKILL_DIR/templates/signoff.json" <repo>/.project-baseline/signoff.json
    ```
+   Per-claim records (`records/claims/CLM-NNNN.json`) are the claims home; a legacy `docs/CLAIMS.json` monolith is still dual-read until M7 — CLAIM-07 nudges migration (`baseline gen migrate-claims`).
 3. Edit `baseline.config.json` to reality: `bootstrap_command` (clean-checkout install+test for BUILD-05), `makes_external_claims` (false skips CLAIM-*). Opt-in `*_globs` keys stay empty until adopted.
 4. Wire the `baseline` job into CI as a **required** check (rule BUILD-06) — snippet is in `REFERENCE.md`.
 5. Run a first score — `DESC-01` confirms the descriptor is present and valid.
@@ -144,7 +145,7 @@ Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / 
 ## Verification Checklist
 
 - [ ] Ran the runner by its **absolute** path with `--repo <target>`
-- [ ] Reported **blockers first**, then warnings, grouped by category (not a 71-row dump)
+- [ ] Reported **blockers first**, then warnings, grouped by category (not a 78-row dump)
 - [ ] For `fix`: re-scored and confirmed no new blockers
 - [ ] For `init`: picked a preset/config, scaffolded only what was missing, ran a first score
 - [ ] Any sign-off is a real dated judgment, not a rubber stamp

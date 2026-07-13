@@ -1523,8 +1523,8 @@
     ],
     "summary": {
       "blockers": 0,
-      "pass": 9,
-      "warn": 9,
+      "pass": 10,
+      "warn": 8,
       "signoff": 1,
       "skip": 59,
       "total": 78
@@ -1820,15 +1820,15 @@
       },
       "REC-02": {
         "tag": "PASS",
-        "detail": "2 record(s) scrub-clean"
+        "detail": "2 record(s) scrub-clean at HEAD"
       },
       "REC-04": {
         "tag": "PASS",
         "detail": "every record fact has one home"
       },
       "REC-05": {
-        "tag": "WARN",
-        "detail": "no push-time secret gate found — enable GitHub push protection, wire gitleaks, or install hooks/scrub-pre-push.sh"
+        "tag": "PASS",
+        "detail": "matched in 1 file(s)"
       },
       "FLOW-02": {
         "tag": "PASS",
@@ -2149,7 +2149,7 @@
       },
       "REC-02": {
         "tag": "PASS",
-        "detail": "1 record(s) scrub-clean"
+        "detail": "1 record(s) scrub-clean at HEAD"
       },
       "REC-04": {
         "tag": "PASS",
@@ -2157,7 +2157,7 @@
       },
       "REC-05": {
         "tag": "WARN",
-        "detail": "no push-time secret gate found — enable GitHub push protection, wire gitleaks, or install hooks/scrub-pre-push.sh"
+        "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
       },
       "FLOW-02": {
         "tag": "SKIP",

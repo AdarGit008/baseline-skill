@@ -15,11 +15,18 @@ cp hooks/scrub-pre-push.sh .git/hooks/pre-push && chmod +x .git/hooks/pre-push
 ```
 
 Failure modes are honest: a missing baseline runtime fails OPEN with a loud warning
-(REC-02 in CI still sees what landed); a blocked push prints each finding id, and a true
-false-positive is cleared with a dated judgment:
+(REC-02 in CI still sees what landed) — and so does a scrub **error**: exit ≥ 2 or a
+crash is an environment problem, not a finding, so the hook prints a loud warning and
+lets the push through; only exit 1 (real findings) blocks. A blocked push prints each
+finding id, and a true false-positive is cleared with a dated judgment:
 `baseline scrub --allow <finding-id> --allow-reason "..."` — commit the allowlist and
-push again. Where GitHub push protection or gitleaks is present, REC-05 delegates to
-them; this hook is one layer, not the gate.
+push again. `git push --no-verify` skips this hook; repos using `core.hooksPath`
+(husky et al.) must install into that directory; scanning covers `records/`
+(+ `.baseline/cache/` presence) in the pushed range — server-side push protection is
+the layer that cannot be skipped. REC-05 PASSes on at-rest evidence of a push-time
+gate: gitleaks-class config, or this hook committed into the repo's `hooks/`. GitHub
+push protection satisfies the same intent but is only assertable live at M6 (its
+forge rules), so at rest it alone still warns.
 
 ## Wire it into Claude Code
 

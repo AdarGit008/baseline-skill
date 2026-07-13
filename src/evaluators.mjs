@@ -12,14 +12,18 @@ import { loadClaims, CLAIM_RECORD_GLOB } from './claims.mjs'
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
 export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'records-append-only', 'records-scrub', 'records-one-home', 'branch-session-record', 'branch-atomicity'])
 
-export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = 'main' }) {
-  const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt } = repo
+export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null }) {
+  const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile } = repo
   // The lane rules diff against where the branch diverged: the descriptor-declared
-  // default branch if it resolves locally, else its origin/ twin, else nothing —
-  // an unresolvable base is a SKIP (never a guess against the wrong base).
+  // default branch, preferring whichever of local/origin twin is NEWER (a stale
+  // local default widens the branch diff with upstream-authored commits); an
+  // undeclared or unresolvable base is a SKIP (never a guess against a wrong base).
   function baseRef() {
-    for (const ref of [DEFAULT_BRANCH, `origin/${DEFAULT_BRANCH}`]) if (gitObjExists(`${ref}^{commit}`)) return ref
-    return null
+    if (!DEFAULT_BRANCH) return null
+    const local = gitObjExists(`${DEFAULT_BRANCH}^{commit}`) ? DEFAULT_BRANCH : null
+    const remote = gitObjExists(`origin/${DEFAULT_BRANCH}^{commit}`) ? `origin/${DEFAULT_BRANCH}` : null
+    if (local && remote) return gitIsAncestor(local, remote) === 0 ? remote : local
+    return local || remote
   }
   // one clock (util.nowUTC): the override is parsed + ISO-normalized so a
   // non-ISO-but-parseable BASELINE_LOG_NOW can't turn expiry comparisons into
@@ -401,49 +405,60 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       // Layer 1: any modify/delete/rename event under the scope is a finding (MDR).
       // Layer 2 (the evil-merge holes MDR can't see, because plain `git log` shows no
       // file changes for merge commits): (a) a path that was Added but neither exists
-      // now nor has a D event vanished inside a merge; (b) a still-present path with
-      // no M/R event whose current blob differs from its blob at introduction was
-      // edited inside a merge. Deterministic; shallow history is a SKIP, not a guess.
+      // now nor has a D/R disposal event vanished inside a merge; (b) a still-present
+      // path with no M/R event whose HEAD blob matches NO add-blob was edited inside
+      // a merge. "Introduction" is deliberately the SET of add-blobs across full
+      // history (--full-history: a side-branch-only add is invisible to the default
+      // simplified walk, and two lanes adding the same path then resolving to one
+      // side must not read as an edit). Deterministic; shallow history is a SKIP.
       const scope = c.path || 'records/'
-      if (!HEAD) return { ok: null, detail: 'not a git repo — history unavailable' }
+      if (!HEAD) return { ok: null, detail: 'no commit history here (not a git repo, or no commits yet)' }
       if (gitIsShallow()) return { ok: null, detail: 'shallow clone — history truncated, append-only not provable' }
-      const mdr = gitNameStatus('MDR', scope)
-      const adds = gitNameStatus('A', scope)
+      const mdr = gitNameStatus('MDR', scope, { fullHistory: true })
+      const adds = gitNameStatus('A', scope, { fullHistory: true })
       if (mdr === null || adds === null) return { ok: null, detail: 'git history unreadable' }
       const current = new Set(match([scope + '**'], { tracked: true }))
       if (!adds.length && !mdr.length && !current.size) return { ok: null, detail: `no committed records under ${scope} yet` }
       const bad = mdr.map(e => `${e.sha.slice(0, 7)} ${e.status === 'M' ? 'edited' : e.status === 'D' ? 'deleted' : 'renamed'} ${e.to || e.path}`)
       const touched = new Set(mdr.map(e => e.path))
-      const lastAdd = new Map(); for (const e of adds) lastAdd.set(e.path, e.sha)
-      for (const [p, sha] of lastAdd) {
-        if (!current.has(p)) { if (!mdr.some(e => e.status === 'D' && e.path === p)) bad.push(`${p} vanished with no recorded delete (merge-hidden?)`); continue }
+      const addBlobs = new Map() // path -> Set of blob shas at each add
+      for (const e of adds) { const b = gitBlobAt(e.sha, e.path); if (b) { if (!addBlobs.has(e.path)) addBlobs.set(e.path, new Set()); addBlobs.get(e.path).add(b) } }
+      for (const [p, blobs] of addBlobs) {
+        if (!current.has(p)) { if (!mdr.some(e => (e.status === 'D' || e.status === 'R') && e.path === p)) bad.push(`${p} vanished with no recorded delete (merge-hidden?)`); continue }
         if (touched.has(p)) continue // already reported above
-        const intro = gitBlobAt(sha, p), now = gitBlobAt('HEAD', p)
-        if (intro && now && intro !== now) bad.push(`${p} content differs from its introduction with no recorded edit (merge-hidden?)`)
+        const now = gitBlobAt('HEAD', p)
+        if (now && blobs.size && !blobs.has(now)) bad.push(`${p} content differs from its introduction with no recorded edit (merge-hidden?)`)
       }
       return { ok: bad.length === 0, detail: bad.length ? `${bad.length} mutation(s): ` + bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') : `${current.size} record(s), history append-only` }
     }
 
     if (k === 'records-scrub') {
-      // REC-02 (C34): re-scan LANDED records with the one scan API the write gate uses.
-      // Deterministic signatures fail the rule (warn now; M7's promotion is a pure
-      // severity flip); heuristic findings are soft — they stay WARN even at blocker.
+      // REC-02 (C34): re-scan LANDED records with the one scan API the write gate
+      // uses — blob content at HEAD, not the worktree ("what landed" must give the
+      // same verdict on a dirty tree and in CI, or M7's promotion to blocker breaks
+      // reproducibility). Deterministic signatures fail the rule (warn now; M7's
+      // promotion is a pure severity flip); heuristic findings are soft — they stay
+      // WARN even at blocker. A blob we cannot read is surfaced as unscanned, never
+      // folded into the clean count.
       const files = match(c.globs || ['records/**'], { tracked: true })
       if (!files.length) return { ok: null, detail: 'no committed records to scan' }
       let allowlist = []
       try { allowlist = loadAllowlist(REPO).entries } catch (e) { return { ok: false, soft: true, detail: String(e.message).slice(0, 120) } }
-      const det = [], heu = []; let allowed = 0
+      const det = [], heu = [], unscanned = []; let allowed = 0, scanned = 0
       for (const f of files) {
-        const t = readRaw(f); if (t == null) continue
+        const t = gitCatFile('HEAD', f)
+        if (t == null) { unscanned.push(f); continue }
+        scanned++
         const res = scan(t, { allowlist })
         allowed += res.allowed.length
         for (const x of res.blocked) det.push(`${f}:${x.line} ${x.name} (${x.masked}) [${x.id}]`)
         for (const x of res.warned) heu.push(`${f}:${x.line} ${x.name} (${x.masked}) [${x.id}]`)
       }
-      const okNote = `${files.length} record(s) scrub-clean` + (allowed ? ` (${allowed} allowlisted)` : '')
-      if (det.length) return { ok: false, detail: `deterministic secret shape(s): ` + det.slice(0, 3).join('; ') + (det.length > 3 ? ` (+${det.length - 3})` : '') }
-      if (heu.length) return { ok: false, soft: true, detail: `heuristic finding(s): ` + heu.slice(0, 3).join('; ') + (heu.length > 3 ? ` (+${heu.length - 3})` : '') }
-      return { ok: true, detail: okNote }
+      const unscannedNote = unscanned.length ? ` — ${unscanned.length} record(s) UNSCANNED at HEAD (${unscanned.slice(0, 2).join(', ')}${unscanned.length > 2 ? ', …' : ''})` : ''
+      if (det.length) return { ok: false, detail: `deterministic secret shape(s): ` + det.slice(0, 3).join('; ') + (det.length > 3 ? ` (+${det.length - 3})` : '') + unscannedNote }
+      if (heu.length) return { ok: false, soft: true, detail: `heuristic finding(s): ` + heu.slice(0, 3).join('; ') + (heu.length > 3 ? ` (+${heu.length - 3})` : '') + unscannedNote }
+      if (unscanned.length) return { ok: false, soft: true, detail: `${scanned} scanned clean, but${unscannedNote.slice(3)}` }
+      return { ok: true, detail: `${scanned} record(s) scrub-clean at HEAD` + (allowed ? ` (${allowed} allowlisted)` : '') }
     }
 
     if (k === 'records-one-home') {
@@ -453,12 +468,14 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       const bad = []
       const seen = new Map() // key -> first file
       const claim = (key, f) => { const prev = seen.get(key); if (prev && prev !== f) bad.push(`${key} in both ${prev} and ${f}`); else seen.set(key, f) }
-      let any = false
+      let any = false, unparseable = 0
       for (const [kind, glob] of [['JDG', 'records/judgments/*.json'], ['CLM', 'records/claims/*.json']]) {
         for (const f of match([glob])) {
           any = true
           const raw = read(f); if (raw == null) continue
-          let obj; try { obj = JSON.parse(raw) } catch { continue } // unparseable is REC-02/schema territory, not duplication
+          // BOM-tolerant: a BOM-prefixed duplicate must not escape the cross-check;
+          // still-unparseable files are counted, not silently waved through
+          let obj; try { obj = JSON.parse(raw.replace(/^\uFEFF/, '')) } catch { unparseable++; continue }
           if (obj.id) claim(`${kind} ${obj.id}`, f)
           if (kind === 'CLM' && obj.slug) claim(`slug '${obj.slug}'`, f)
         }
@@ -471,7 +488,8 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       if (v2Sessions.length || legacySessions.length) any = true
       if (v2Sessions.length && legacySessions.length) bad.push(`session narrative has two homes (records/sessions/ and docs/session-log/)`)
       if (!any) return { ok: null, detail: 'no records to cross-check' }
-      return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') : 'every record fact has one home' }
+      const unpNote = unparseable ? ` (${unparseable} unparseable file(s) not cross-checked)` : ''
+      return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') + unpNote : 'every record fact has one home' + unpNote }
     }
 
     if (k === 'branch-session-record') {
@@ -480,6 +498,12 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       // this only runs on a non-default branch of a declared multi-lane repo.
       const base = baseRef()
       if (!base) return { ok: null, detail: `default branch '${DEFAULT_BRANCH}' not resolvable locally — lane coupling not provable` }
+      const changed = gitDiffNames(`${base}...HEAD`, null)
+      if (changed === null) return { ok: null, detail: `diff ${base}...HEAD failed — lane coupling not provable` }
+      // a freshly-cut lane with no work yet has nothing for a record to describe —
+      // the record couples to the merge, not to branch creation (ceremony thinnest
+      // where value is thinnest)
+      if (!changed.length) return { ok: null, detail: 'no work on this branch yet — nothing for a record to describe' }
       const added = gitDiffNames(`${base}...HEAD`, `records/sessions/${BRANCH}/`, { addedOnly: true })
       if (added === null) return { ok: null, detail: `diff ${base}...HEAD failed — lane coupling not provable` }
       return { ok: added.length > 0, detail: added.length ? `${added.length} session record(s) ride this lane` : `no session record for lane '${BRANCH}' — write one: baseline log -m "..." --next "..."` }

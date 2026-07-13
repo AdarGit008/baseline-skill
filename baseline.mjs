@@ -16,8 +16,10 @@ import { execFileSync } from 'node:child_process'
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const argv = process.argv.slice(2)
 // A leading non-flag token is the subcommand; a leading --flag (or nothing) means `check`,
-// so `baseline --repo x` stays back-compatible with the old `check.mjs --repo x`.
-const cmd = (argv[0] && !argv[0].startsWith('-')) ? argv[0] : 'check'
+// so `baseline --repo x` stays back-compatible with the old `check.mjs --repo x` —
+// EXCEPT --help/-h, which must reach the help branch, never run a scoring check.
+const cmd = (argv[0] === '--help' || argv[0] === '-h') ? 'help'
+  : (argv[0] && !argv[0].startsWith('-')) ? argv[0] : 'check'
 const rest = (argv[0] === cmd) ? argv.slice(1) : argv
 
 function delegateToCheck() {

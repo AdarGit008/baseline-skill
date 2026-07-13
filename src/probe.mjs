@@ -25,6 +25,15 @@ export function currentLane(repo) {
   return currentBranch(repo) || run('git', ['-C', repo.REPO, 'symbolic-ref', '--short', 'HEAD'])
 }
 
+// Lane identity for GATES: a real branch name or null — never the '(detached)'
+// display sentinel. log refuses the sentinel as a lane (log.mjs); the engine's
+// branch gate must agree with the writer, so both route through this one decision
+// (M5 leases reuse it too). currentLane stays display-oriented for orient/facts.
+export function laneOrNull(repo) {
+  const l = currentLane(repo)
+  return l && l !== '(detached)' ? l : null
+}
+
 function probeForge(repo) {
   if (gh(['--version']) == null) return { available: false, gh: false, reason: 'gh not installed' }
   if (run('gh', ['auth', 'status']) == null) return { available: false, gh: true, authed: false, reason: 'gh not authenticated (gh auth login)' }

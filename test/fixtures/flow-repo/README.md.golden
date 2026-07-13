@@ -1,0 +1,4 @@
+# flow-repo
+
+Golden fixture: a multi-lane repo on a lane branch — pins the M4c FLOW gates,
+the REC append-only proof, and the honored status_file:false opt-out.

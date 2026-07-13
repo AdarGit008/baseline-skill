@@ -33,6 +33,18 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     if (!sevOk.has(r.severity)) problems.push(`${curId}: invalid severity '${r.severity}'`)
     if (!catKeys.has(r.category)) problems.push(`${curId}: unknown category '${r.category}'`)
     if (r.requires !== undefined && !(r.requires in DEFAULTS)) problems.push(`${curId}: 'requires' names unknown config key '${r.requires}'`)
+    // M4c posture/branch gates are data: a rule may declare the workflow it needs and/or
+    // that it only runs on a lane (non-default) branch — values are closed sets, and
+    // branch_scope REQUIRES workflow: a lane rule without a posture gate would run on
+    // every non-default branch of every undeclared repo (the wallpaper-warn class the
+    // M4 ruling forbids) — "no wallpaper warns is structural" is a law, not a habit.
+    if (r.workflow !== undefined && !['multi-lane', 'single-lane'].includes(r.workflow)) problems.push(`${curId}: workflow must be 'multi-lane' or 'single-lane' (got '${r.workflow}')`)
+    if (r.branch_scope !== undefined && r.branch_scope !== 'lane') problems.push(`${curId}: branch_scope must be 'lane' (got '${r.branch_scope}')`)
+    if (r.branch_scope !== undefined && r.workflow === undefined) problems.push(`${curId}: branch_scope requires a workflow declaration — a lane rule must be posture-gated (no wallpaper warns)`)
+    // M4c review ruling: the CLAIM family is uniformly opt-in — a claims rule
+    // without the family gate would fire on repos that never opted into claims
+    // discipline (the CLAIM-06 wallpaper class, fixed once, kept fixed here).
+    if (r.category === 'claims' && r.requires !== 'makes_external_claims') problems.push(`${curId}: claims-category rules must carry requires:makes_external_claims (uniform family opt-in)`)
     checkKinds(r.check)
   }
   for (const t of TYPES) if (!RULES.rules.some(r => expand(r).includes(t))) problems.push(`no rule applies to type '${t}' (orphan type)`)

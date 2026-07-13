@@ -6,9 +6,10 @@
       "category": "context",
       "severity": "blocker",
       "applies_to": "all",
+      "requires": "status_file",
       "lesson": "CTX-6 status is a computed exit-state",
       "rationale": "The costliest context failure is misdirecting the next session into redoing settled work.",
-      "fix": "Add 'last-verified: <short-sha> <date>' to the status file; reconcile it whenever you update the status doc.",
+      "fix": "Add 'last-verified: <short-sha> <date>' to the status file; with a valid baseline.repo.json present, set status_file:false to opt out (derived orient replaces it — the stored-status surface retires at M7).",
       "sources": [
         "tree",
         "history"
@@ -269,6 +270,7 @@
       "category": "context",
       "severity": "warn",
       "applies_to": "all",
+      "requires": "status_file",
       "source": "V2 ADR-0009 — a stored status stamp manufactures the multi-lane collision class it exists to prevent; state is derived by `baseline orient`, not hand-stamped",
       "lesson": "CTX-12 stored-status tripwire — flags the artifact V2 retires (CTX-01) for migration",
       "rationale": "A `last-verified:` stamp is a hand-maintained proxy for derived state (the drift-and-collide artifact of ADR-0009). Warn now while CTX-01 still gates the stamp; promotes to blocker once the migration to derived `orient` completes (M7). A repo with no status file simply skips.",

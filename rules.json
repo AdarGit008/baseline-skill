@@ -25,6 +25,8 @@
     "rules/qual.json",
     "rules/repro.json",
     "rules/ops.json",
+    "rules/rec.json",
+    "rules/flow.json",
     "rules/desc.json"
   ]
 }

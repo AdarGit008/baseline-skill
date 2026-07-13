@@ -46,9 +46,10 @@ const SECRETS = {
   '{{SECRET_GHP}}': 'ghp_' + 'abcdefghijklmnopqrstuvwxyz0123456789',
   '{{SECRET_AKIA}}': 'AKIA' + 'IOSFODNN7REALKEY',
 }
-function copyTree(src, dst) {
+function copyTree(src, dst, { skipBranchDir = false } = {}) {
   fs.mkdirSync(dst, { recursive: true })
   for (const e of fs.readdirSync(src, { withFileTypes: true })) {
+    if (skipBranchDir && e.name === '_branch') continue // committed later, on the fixture's lane branch
     const s = path.join(src, e.name)
     const d = path.join(dst, e.name.endsWith('.golden') ? e.name.slice(0, -'.golden'.length) : e.name)
     if (e.isDirectory()) { copyTree(s, d); continue }
@@ -83,10 +84,10 @@ function materialize(name) {
   const src = path.join(FIXTURES, name)
   const manifest = JSON.parse(fs.readFileSync(path.join(src, '_fixture.json'), 'utf8'))
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `baseline-golden-${name}-`))
-  copyTree(src, tmp)
+  copyTree(src, tmp, { skipBranchDir: true })
   fs.rmSync(path.join(tmp, '_fixture.json'))
   substitute(tmp, '{{TODAY}}', TODAY)
-  git(tmp, 'init', '-q')
+  git(tmp, 'init', '-q', '-b', 'main') // deterministic default-branch name — the M4c lane gates compare against it
   git(tmp, 'config', 'user.email', 'golden@fixture.local')
   git(tmp, 'config', 'user.name', 'Golden Fixture')
   git(tmp, 'config', 'commit.gpgsign', 'false')
@@ -97,6 +98,18 @@ function materialize(name) {
     substitute(tmp, '{{HEAD1}}', head1)
     git(tmp, 'add', '-A')
     git(tmp, 'commit', '-q', '-m', 'fixture: stamp advance')
+  }
+  // manifest.branch: check out a lane branch and commit the fixture's _branch/ overlay
+  // there — the FLOW/REC lane rules only evaluate off the default branch (M4c).
+  if (manifest.branch) {
+    git(tmp, 'checkout', '-q', '-b', manifest.branch)
+    const bsrc = path.join(src, '_branch')
+    if (fs.existsSync(bsrc)) {
+      copyTree(bsrc, tmp)
+      substitute(tmp, '{{TODAY}}', TODAY)
+      git(tmp, 'add', '-A')
+      git(tmp, 'commit', '-q', '-m', 'fixture: lane work')
+    }
   }
   return { tmp, args: manifest.args || [] }
 }

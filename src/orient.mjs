@@ -22,6 +22,7 @@ const ageOf = (iso) => {
 }
 
 export async function runOrient(argv) {
+  if (argv[0] === '--help' || argv[0] === '-h') { console.log('baseline orient — derived-state survey for session start\n  usage: baseline orient [--repo DIR] [--json] [--strict]'); return 0 }
   const opt = makeOpt(argv)
   if (opt('--repo', null) === true) { console.error('orient: --repo needs a value'); return 2 }
   const REPO = path.resolve(opt('--repo', process.cwd()))

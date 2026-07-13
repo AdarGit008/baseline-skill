@@ -3,7 +3,7 @@
   "project_type": "docs",
   "makes_external_claims": false,
   "status_file": "docs/start-here.md",
-  "_status_file": "CTX-01: the single owner file carrying a 'last-verified: <sha> <date>' stamp.",
+  "_status_file": "CTX-01: the single owner file carrying a 'last-verified: <sha> <date>' stamp. Setting false (with a valid baseline.repo.json present) is an honored opt-out — orient replaces the status file.",
   "decision_globs": ["docs/decisions/0*.md", "adr/*.md"],
   "_decision_globs": "CTX-02/CTX-07: decision records must carry a Status; superseded ones link forward to a file that exists.",
   "doc_globs": ["**/*.md"],

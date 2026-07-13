@@ -130,6 +130,6 @@ export function addAllowlistEntries(repoDir, ids, reason, date) {
     if (i >= 0) cur.entries[i] = e; else cur.entries.push(e)
   }
   fs.mkdirSync(path.dirname(p), { recursive: true })
-  fs.writeFileSync(p, JSON.stringify({ _help: 'Dated scrub judgments: each entry allows exactly one finding id (a content-derived hash — the secret itself is never stored). Added via `baseline log --allow <id> --reason "..."`.', entries: cur.entries }, null, 2) + '\n')
+  fs.writeFileSync(p, JSON.stringify({ _help: 'Dated scrub judgments: each entry allows exactly one finding id (a content-derived hash — the secret itself is never stored). Added via `baseline log/scrub --allow <id> --allow-reason "..."`.', entries: cur.entries }, null, 2) + '\n')
   return cur.entries
 }

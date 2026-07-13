@@ -2,11 +2,11 @@
 // tier, C06). The UX is pinned by the M4 ruling (#21): one command, lane/agent/
 // timestamp derived, stdin accepted, never $EDITOR; a scrub block is NON-LOSSY —
 // the draft survives under the cache dir and the exact rerun is printed, with
-// inline `--allow <finding-id> --reason "..."` writing the dated allowlist entry.
+// inline `--allow <finding-id> --allow-reason "..."` writing the dated allowlist entry.
 //
 //   baseline log -m "what happened" [--next "the one next step"]
 //     [--deadends "..."] [--lane L] [--agent A] [--repo DIR] [--json]
-//     [--from FILE] [--allow ID ... --reason "..."]
+//     [--from FILE] [--allow ID ... --allow-reason "..."]
 //
 // Message: --from FILE > -m TEXT (or `-m -`) > piped stdin. A --from file whose
 // frontmatter declares `record: session/1` is a saved draft (what a scrub block
@@ -28,11 +28,14 @@ import { extractNext } from './facts/git.mjs'
 
 const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24)
 
+const LOG_USAGE = `usage: baseline log -m "what happened" [--next "..."] [--deadends "..."] [--lane L] [--agent A] [--from FILE] [--allow ID --allow-reason "..."]`
+
 export function runLog(argv) {
+  if (argv[0] === '--help' || argv[0] === '-h') { console.log(`baseline log — write one scrubbed, schema-valid session record\n  ${LOG_USAGE}\n  exit: 0 written · 1 scrub-blocked · 2 usage/environment`); return 0 }
   // value flags refuse a '--'-leading next token (it's another flag); TEXT flags
   // consume it regardless — "-m '--started with a dash'" is a message, not flags
   const opt = makeOpt(argv), optText = makeOptText(argv), optAll = makeOptAll(argv)
-  const usage = msg => { console.error(`baseline log: ${msg}\n  usage: baseline log -m "what happened" [--next "..."] [--deadends "..."] [--lane L] [--agent A] [--from FILE] [--allow ID --allow-reason "..."]`); return 2 }
+  const usage = msg => { console.error(`baseline log: ${msg}\n  ${LOG_USAGE}`); return 2 }
   // a value flag followed by another flag (or nothing) is a mistake, not a value —
   // never let String(true) become the repo a record silently lands in
   for (const f of ['--repo', '--lane', '--agent', '--from']) if (opt(f, null) === true) return usage(`${f} needs a value`)
@@ -117,13 +120,14 @@ export function runLog(argv) {
   }
 
   const abs = path.join(REPO, rel)
-  fs.mkdirSync(path.dirname(abs), { recursive: true })
+  try { fs.mkdirSync(path.dirname(abs), { recursive: true }) }
+  catch (e) { return usage(e.code === 'EEXIST' || e.code === 'ENOTDIR' ? `cannot create ${path.dirname(rel)}/ — a file exists where the directory belongs` : e.message) }
   try { fs.writeFileSync(abs, content, { flag: 'wx' }) } // O_EXCL: CF1 forbids counters; same agent + same second = retry, honestly
   catch (e) { return usage(e.code === 'EEXIST' ? `record already exists at ${rel} (same second + agent) — retry` : e.message) }
 
   if (JSON_OUT) return jsonOut({ written: rel, warned, allowed }, 0)
   console.log(`✓ logged ${rel}`)
-  for (const f of warned) console.log(`  ⚠ heuristic finding (written anyway): ${f.name} line ${f.line} (${f.masked}) — silence: --allow ${f.id} --reason "..."`)
+  for (const f of warned) console.log(`  ⚠ heuristic finding (written anyway): ${f.name} line ${f.line} (${f.masked}) — silence: --allow ${f.id} --allow-reason "..."`)
   for (const f of allowed) console.log(`  · allowed by ${ALLOWLIST_FILE}: ${f.name} (${f.date}: ${f.reason})`)
   const next = extractNext(content)
   if (next) console.log(`  next: ${next}`)

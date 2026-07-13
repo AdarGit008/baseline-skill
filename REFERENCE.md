@@ -8,7 +8,7 @@ A **testable readiness standard** for new projects. Every lesson is a rule; a ze
 
 **v1** distilled 20 rules from three of the author's own repos. That sample was thin. **v2** pressure-tested v1 against the field's actual prior art — [OpenSSF Scorecard](GLOSSARY.md#openssf-scorecard), [SLSA](GLOSSARY.md#slsa), the [Twelve-Factor App](GLOSSARY.md#twelve-factor-app), Google's SRE books, [Diátaxis](GLOSSARY.md#diataxis), [Keep a Changelog](GLOSSARY.md#keep-a-changelog), [repolinter](GLOSSARY.md#repolinter), [Backstage/Cortex/OpsLevel](GLOSSARY.md#service-catalog), Stryker, and ~40 more sources — kept everything v1 had, and added what the field agreed v1 was missing. Each candidate was **adversarially verified** (is the source real? is it robot-checkable at rest? does it actually add over v1?) before it earned a place; 15 "looks-thorough-checks-nothing" candidates were dropped.
 
-**71 rules across 11 categories.** 14 blockers · 52 warnings · 5 sign-offs.
+**78 rules across 13 categories.** 14 blockers · 59 warnings · 5 sign-offs.
 
 ## Profiles — v2 stays sharp by only running what fits
 
@@ -58,10 +58,10 @@ These diagrams mirror the runner — they're its actual control flow, not a sket
 ```mermaid
 flowchart LR
   CFG["baseline.config.json — intent"] --> RES
-  RULES["rules/ — 71 rules (manifest: rules.json)"] --> EVAL
+  RULES["rules/ — 78 rules (manifest: rules.json)"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
-    IDX["file index + git helpers"] --> EVAL["~20 check evaluators"]
+    IDX["file index + git helpers"] --> EVAL["~28 check evaluators"]
     RES["config resolution"] --> EVAL
   end
   SO["signoff.json — human judgments"] --> EVAL
@@ -75,7 +75,7 @@ flowchart TD
   A["CLI args: --repo / --config / --profile / --no-exec / --json"] --> B["Index repo files: walk + git ls-files + HEAD"]
   B --> C["Resolve config: DEFAULTS then detectType then baseline.config.json then --config then --profile"]
   C --> D["Active profiles: core always; service auto if type=service; others opt-in"]
-  C --> E["Claims active? register present OR makes_external_claims:true"]
+  C --> E["Claims active? register in either home (docs/CLAIMS.json or records/claims/) + not maturity-gated (prototype skips unless makes_external_claims:true)"]
   D --> F{"for each rule"}
   E --> F
   F --> G["evalCheck by check.kind"]
@@ -84,7 +84,7 @@ flowchart TD
   I --> J["exit 1 if any blocker FAILs, else exit 0"]
 ```
 
-**Per-rule gate → tag.** Every rule runs the same funnel. Three gates can short-circuit it to `SKIP` (wrong type, off profile, opted out) before the check ever runs; only a `blocker` that evaluates to `false` fails CI.
+**Per-rule gate → tag.** Every rule runs the same funnel. Five gates can short-circuit it to `SKIP` (wrong type, off profile, opted out, workflow posture, branch scope) before the check ever runs; only a `blocker` that evaluates to `false` fails CI.
 
 ```mermaid
 flowchart TD
@@ -94,7 +94,11 @@ flowchart TD
   P -- "no" --> S2["SKIP — profile off"]
   P -- "yes / core" --> Q{"requires satisfied?"}
   Q -- "no" --> S3["SKIP — opted out / claims off"]
-  Q -- "yes" --> E["evalCheck → ok"]
+  Q -- "yes" --> WF{"rule workflow matches descriptor posture?"}
+  WF -- "no / no valid descriptor" --> S5["SKIP — workflow posture off"]
+  WF -- "yes / unset" --> BR{"branch_scope satisfied? (lane = non-default branch)"}
+  BR -- "no / default branch undeclared" --> S6["SKIP — branch scope n/a"]
+  BR -- "yes / unset" --> E["evalCheck → ok"]
   E -- "ok = null" --> S4["SKIP — not evaluable"]
   E -- "ok = true" --> PASS["PASS"]
   E -- "ok = false, has sign-off" --> SO["SIGN-OFF"]
@@ -111,8 +115,9 @@ cp -r baseline-v2 tools/baseline
 # 2. declare intent (copy + edit)
 cp tools/baseline/config.example.json baseline.config.json
 
-# 3. scaffold the artifacts the standard expects
-cp tools/baseline/templates/CLAIMS.json   docs/CLAIMS.json
+# 3. scaffold the artifacts the standard expects (per-claim records — the
+#    legacy docs/CLAIMS.json monolith stays dual-readable until M7, CLAIM-07 nudges migration)
+mkdir -p records/claims && cp tools/baseline/templates/claim.json records/claims/CLM-0001.json
 cp tools/baseline/templates/start-here.md docs/start-here.md
 mkdir -p .project-baseline && cp tools/baseline/templates/signoff.json .project-baseline/signoff.json
 
@@ -155,7 +160,7 @@ Everything auto-detects; override only what you need in `baseline.config.json` (
 
 The three opt-in `*_globs` keys default to empty, so those rules stay silent until you adopt the convention — no nagging a repo that hasn't opted in.
 
-## Records & the write gate (V2 M4a)
+## Records & the write gate (V2 M4a–M4c)
 
 The stored surface the Lens can't derive (plan §5) is the **Ledger** — records, one unit per file, schema-bound like the descriptor:
 
@@ -184,7 +189,11 @@ node baseline.mjs jdg new --kind risk-acceptance --subject SEC-13 \
 node baseline.mjs jdg check        # ✓ ok · ≈ drifted · ? unresolvable · ⏰ expired · ✗ tripped
 ```
 
-The machine contract: `expected_state` snapshots the world the judgment assumed (mismatch = **DRIFTED**), `tripwire` (`fact op value`; ops `eq|ne|gt|lt|exists|absent`) VOIDS it (**TRIPPED**), `review_by` lapses it (**EXPIRED**); an unknown fact path is **UNRESOLVABLE** — surfaced, never guessed. Facts: `descriptor.*` · `planes.{tree,history,forge}.*` · `git.{branch,head,shallow}` · `today` (+ `--facts FILE` overlay). `jdg check` exits 1 on tripped/expired/invalid; M6's reconcile runs the same evaluation on cron. A `kind: sign-off` judgment whose `subject` is a manual rule's id satisfies that rule while unexpired — the unified ledger outranks the legacy `signoff.json` (dual-read until M7), and a lapsed sign-off is honestly not signed. The full hand-written forms live in **[CONTRACT.md](CONTRACT.md)**. The REC/FLOW advisory rules land in M4c.
+The machine contract: `expected_state` snapshots the world the judgment assumed (mismatch = **DRIFTED**), `tripwire` (`fact op value`; ops `eq|ne|gt|lt|exists|absent`) VOIDS it (**TRIPPED**), `review_by` lapses it (**EXPIRED**); an unknown fact path is **UNRESOLVABLE** — surfaced, never guessed. Facts: `descriptor.*` · `planes.{tree,history,forge}.*` · `git.{branch,head,shallow}` · `today` (+ `--facts FILE` overlay). `jdg check` exits 1 on tripped/expired/invalid; M6's reconcile runs the same evaluation on cron. A `kind: sign-off` judgment whose `subject` is a manual rule's id satisfies that rule while unexpired — the unified ledger outranks the legacy `signoff.json` (dual-read until M7), and a lapsed sign-off is honestly not signed. The full hand-written forms live in **[CONTRACT.md](CONTRACT.md)**.
+
+**The record checks (M4c).** What the write gate promises, the REC rules verify on what actually landed: **REC-01** proves records are append-only from history (modify/delete/rename events, plus a blob-at-introduction comparison that catches merge-hidden edits), **REC-02** re-scans landed records with the same `scan()` — blob content at HEAD, *what landed*, never the worktree — where deterministic findings fire the rule (warn until M7's promotion flips them to blocker) and heuristics stay soft (WARN forever), **REC-04** flags a record fact living in two homes, and **REC-05** wants a push-time secret gate visible **at rest**: it PASSes on gitleaks-class wiring (CI, pre-commit, or a config) or a committed `scrub-pre-push` hook script. GitHub push protection satisfies the same intent, but it isn't observable at rest — M6's forge rules assert it live — so on its own REC-05 still warns. Hand-written records get the scrub at the push boundary once the scaffolded hook is installed per clone (`cp tools/baseline/hooks/scrub-pre-push.sh .git/hooks/pre-push`), whose engine is `baseline scrub` (worktree files, or `--pushed SHA [--since SHA]` committed-blob ranges). The record-coupled **FLOW** rules run only on a lane branch of a declared multi-lane repo — the engine turns the rule-declared `workflow`/`branch_scope` fields into SKIPs everywhere else, so there are no wallpaper warns: **FLOW-02** wants the lane's session record riding the branch, **FLOW-06** wants a gated subject (the descriptor) changing with its judgment record in the same range (the DESC-03 preview; enforcement lands at M6 admit).
+
+**Claims explosion (M4c).** `baseline gen migrate-claims` explodes the V1 `docs/CLAIMS.json` monolith into per-claim `records/claims/CLM-NNNN.json` (C17) — `slug` preserves the V1 id, numbering continues past existing records, schema-invalid claims are refused loudly, reruns are idempotent. The CLAIM checks dual-read both homes (a record shadows its migrated legacy twin) until M7 retires the legacy read; **CLAIM-07** warns while the monolith lingers. CLAIM activation is also maturity-gated (C24): a descriptor-declared `prototype` repo isn't held to claims discipline unless it explicitly opts in — uniformly, all eight CLAIM rules (CLAIM-06 joined the family gate in the M4c review). And with a valid descriptor present, `status_file: false` is an honored opt-out — CTX-01/CTX-12 skip, `orient` is the status surface.
 
 ## The rules
 
@@ -301,17 +310,40 @@ Every rule also declares **`sources`** (which ground-truth planes it reads: tree
 | CTX-11 | Docs don't lag the code they anchor | 🟡 warn | core |
 | CTX-12 | No hand-maintained status stamp — derive it (tripwire; retires CTX-01 at M7) | 🟡 warn | core |
 
-### Claims discipline (7)
+### Claims discipline (8)
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
-| CLAIM-00 | A claims register exists | 🔴 blocker | core |
+| CLAIM-00 | A claims register exists (either home — records/claims/ or the legacy monolith) | 🔴 blocker | core |
 | CLAIM-01 | Every claim tagged with a build-state | 🔴 blocker | core |
 | CLAIM-02 | Every claim graded by blast radius | 🔴 blocker | core |
 | CLAIM-03 | Novelty/competitive claims have a dated prior-art pass | 🔴 blocker | core |
 | CLAIM-04 | Citations resolve and support the claim | 🟡 warn | core |
 | CLAIM-05 | Wedge and moat are stated and pressure-tested | ✍️ sign-off | core |
 | CLAIM-06 | Specs of record carry explicit acceptance criteria | 🟡 warn | core |
+| CLAIM-07 | Claims live in per-claim records, not the legacy monolith | 🟡 warn | core |
+
+All CLAIM rules are opt-in (`makes_external_claims` / a register present) and maturity-gated: a descriptor-declared `prototype` repo skips them unless explicitly opted in (C24).
+
+### Records & ledger (4) — M4c
+
+| ID | Rule | Severity | Profile |
+|---|---|---|---|
+| REC-01 | Committed records are append-only (proven from history) | 🟡 warn → blocker at M7 | core |
+| REC-02 | Landed records are scrub-clean | 🟡 warn → blocker at M7 | core |
+| REC-04 | Every record fact has one home | 🟡 warn (pinned — heuristic) | core |
+| REC-05 | Records are covered by a push-time secret gate (at-rest evidence: gitleaks-class config or a committed scrub hook) | 🟡 warn | core |
+
+REC-01/02/05 skip when no records are committed; REC-04 also cross-checks the ADR homes (`docs/decisions/`, `adr/`, `records/decisions/`), so it can fire on a true ADR-number duplication even without `records/`. REC-01/REC-02 are deterministic — M7's promotion per posture is a pure severity flip; REC-03 (record schema conformance as a rule) is reserved.
+
+### Lane workflow (2) — M4c
+
+| ID | Rule | Severity | Profile |
+|---|---|---|---|
+| FLOW-02 | A lane branch carries its own session record | 🟡 warn → promoted at M7 | core |
+| FLOW-06 | A gated subject changes with its record in the same PR (DESC-03 preview) | 🟡 warn (heuristic ceiling) | core |
+
+Both run **only** on a non-default branch of a declared `multi-lane` repo — the engine's data-driven posture/branch gates (`workflow`, `branch_scope` rule fields) make them unrepresentable elsewhere. M5 extends this module with the lane-coupled set (anchoring per the C15 knob, the `next:` guard, push discipline, lease liveness).
 
 ### Repo descriptor (1)
 

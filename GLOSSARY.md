@@ -32,6 +32,12 @@ GitHub rules on a branch (usually `main`) that block direct pushes and require
 pull requests, passing checks, or reviews before a merge. "Branch-protection-as-code"
 means declaring those rules in a file in the repo, not just in web settings.
 
+## Claims explosion
+The C17 migration of the legacy `docs/CLAIMS.json` monolith into per-claim
+`records/claims/CLM-NNNN.json` records, run by `baseline gen migrate-claims`.
+Each V1 claim id survives as the record's `slug`; both homes are read during the
+migration window (see [dual-read](#dual-read)) until M7 retires the legacy read.
+
 ## CODEOWNERS
 A file that maps paths in the repo to the people or teams responsible for them,
 so the right owners are auto-requested for review when those paths change.
@@ -53,6 +59,12 @@ tutorials, how-to guides, reference, and explanation. See <https://diataxis.fr>.
 Referencing a container base image by its immutable content hash
 (`FROM node@sha256:…`) instead of a moving tag (`FROM node:22`), so the exact
 image can't change underneath you.
+
+## Dual-read
+Reading both the old and the new home of a record during a sanctioned migration
+window (per-claim records alongside the legacy `CLAIMS.json`; the JDG ledger
+alongside `signoff.json`), so a repo mid-migration is never punished. The
+exploded record shadows its migrated twin by slug; the legacy reads end at M7.
 
 ## Exit code
 The number a program returns when it finishes; `0` means success, non-zero means
@@ -86,6 +98,11 @@ re-run on an already-set-up machine without breaking or duplicating state.
 A widely used convention for human-readable `CHANGELOG.md` files, including an
 `Unreleased` section for changes not yet shipped. See <https://keepachangelog.com>.
 
+## Lane
+A working branch treated as the unit of parallel work in a multi-lane repo.
+Lane identity **is** the branch name — session records live under
+`records/sessions/<lane>/` — and a detached HEAD is not a lane.
+
 ## last-verified stamp
 A line like `last-verified: <short-sha> <date>` in a status doc, naming the last
 commit whose described state was actually reconciled with reality. The baseline
@@ -115,6 +132,12 @@ long-lived secrets. Reduces the blast radius of a leak.
 An open-source tool from the Open Source Security Foundation that scores a repo
 on security best practices (branch protection, pinned actions, signed releases,
 etc.). One of the prior-art sources the baseline was pressure-tested against.
+
+## Posture gate
+An engine gate that skips any rule whose declared workflow doesn't match the
+repo descriptor's — e.g. [lane](#lane)-workflow rules are unrepresentable on a
+repo that never declared `multi-lane`, so they skip instead of warning as
+wallpaper.
 
 ## Pre-commit hook
 A check that runs automatically before a commit is recorded (via the `pre-commit`
@@ -159,6 +182,11 @@ security flaws without running it (e.g. CodeQL, Semgrep), typically wired into C
 and dependency in a build (formats like CycloneDX or SPDX), used to answer "am I
 affected?" when a vulnerability drops.
 
+## Scrub tiers
+The scrub gate's severity ladder: deterministic secret signatures **block**,
+heuristic findings **warn** and never block, and a dated allowlist judgment
+clears exactly one finding id. Severity never exceeds certainty.
+
 ## Secret scanning
 Automated detection of committed credentials (API keys, tokens, private keys) in
 the repo and its history, so leaked secrets are caught and rotated.
@@ -174,9 +202,12 @@ process before force-killing it. Well-behaved services trap it and shut down
 gracefully.
 
 ## Sign-off ledger
-A dated JSON file (`.project-baseline/signoff.json`) where a human records that a
-judgment a script can't automate — like a prior-art pass — was actually done.
-It's how "manual" rules leave a checkable trace instead of being taken on trust.
+Where a human records that a judgment a script can't automate — like a prior-art
+pass — was actually done, so "manual" rules leave a checkable trace instead of
+being taken on trust. The primary home is the unified JDG ledger
+(`records/judgments/JDG-*.json`, M4b): a dated, unexpired `kind: sign-off`
+judgment naming the rule as its subject. The legacy
+`.project-baseline/signoff.json` file is [dual-read](#dual-read) until M7.
 
 ## SLSA
 **Supply-chain Levels for Software Artifacts** — a framework of graded

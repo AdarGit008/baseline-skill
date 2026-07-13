@@ -128,11 +128,15 @@ export function gatherJdgFacts(REPO, { overlay = null, today, probeForge = true 
   return facts
 }
 
+const JDG_USAGE = `usage: baseline jdg new --kind K --subject S --reason "..." --review-by YYYY-MM-DD [--by W] [--expect path=json ...] [--tripwire "fact op [value]"] [--gate admit|reconcile]
+         baseline jdg check [--repo DIR] [--json] [--facts FILE]`
+
 export function runJdg(argv) {
+  if (argv[0] === '--help' || argv[0] === '-h') { console.log(`baseline jdg — author/evaluate the judgment ledger\n  ${JDG_USAGE}`); return 0 }
   const sub = argv[0] && !argv[0].startsWith('-') ? argv[0] : null
   const rest = sub ? argv.slice(1) : argv
   const opt = makeOpt(rest), optText = makeOptText(rest), optAll = makeOptAll(rest)
-  const usage = msg => { console.error(`baseline jdg: ${msg}\n  usage: baseline jdg new --kind K --subject S --reason "..." --review-by YYYY-MM-DD [--by W] [--expect path=json ...] [--tripwire "fact op [value]"] [--gate admit|reconcile]\n         baseline jdg check [--repo DIR] [--json] [--facts FILE]`); return 2 }
+  const usage = msg => { console.error(`baseline jdg: ${msg}\n  ${JDG_USAGE}`); return 2 }
   // a value flag followed by another flag (or nothing) is a mistake, not a value —
   // never let String(true) become a repo path, an author name, or a silent no-op
   for (const f of ['--repo', '--by', '--date', '--gate', '--kind', '--review-by', '--facts', '--from']) if (opt(f, null) === true) return usage(`${f} needs a value`)
@@ -249,7 +253,8 @@ export function runJdg(argv) {
     }
     const rel = `${JUDGMENTS_DIR}/${record.id}.json`
     const abs = path.join(REPO, rel)
-    fs.mkdirSync(path.dirname(abs), { recursive: true })
+    try { fs.mkdirSync(path.dirname(abs), { recursive: true }) }
+    catch (e) { return usage(e.code === 'EEXIST' || e.code === 'ENOTDIR' ? `cannot create ${JUDGMENTS_DIR}/ — a file exists where the directory belongs` : e.message) }
     try { fs.writeFileSync(abs, content, { flag: 'wx' }) }
     catch (e) { return usage(e.code === 'EEXIST' ? `${rel} already exists (parallel write?) — rerun to take the next number` : e.message) }
     if (JSON_OUT) { console.log(JSON.stringify({ written: rel, draft: null, blocked: [], warned, allowed }, null, 2)); return 0 }

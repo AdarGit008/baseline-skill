@@ -19,8 +19,8 @@ An unresolvable `closes #N` (no such issue) is emitted as an `unresolvable-join`
 | Edge | Key | Arrives with |
 |---|---|---|
 | session ⇄ lane | branch namespace (`records/sessions/<lane>/`) | M4 records |
-| session ⇄ issue | `Baseline-Issue` trailer | M4 records |
-| lane ⇄ agent | `Baseline-Agent` trailer | M5 lanes |
+| session ⇄ issue | `Baseline-Issue` trailer | M4 records; `lane claim` stamps it since M5a (one home: `src/util.mjs` TRAILER_ISSUE) |
+| lane ⇄ agent | `Baseline-Agent` trailer | M5 lanes; `lane claim` stamps it since M5a (one home: `src/util.mjs` TRAILER_AGENT), the join reads it at M5b |
 | JDG ⇄ rule | `rule` field | M4 judgment ledger |
 | CLM ⇄ claim unit | record id | M4 claims |
 

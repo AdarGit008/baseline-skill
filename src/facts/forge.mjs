@@ -11,11 +11,16 @@ import path from 'node:path'
 import { gh, ghJson } from '../probe.mjs'
 import { cacheWrite } from '../cache.mjs'
 
-export function makeForge(repo, { available = false, nwo = null } = {}) {
+export function makeForge(repo, { available = false, nwo = null, posture = null } = {}) {
+  // CF5: a multi-lane-local posture CLOSES the forge — and replay must not reopen it,
+  // or fixtures would derive from consultations the posture promises never happen.
+  // One home for the closure + its reason string; every surface (claim now, leases/
+  // rules at M5b/M5c) inherits the same honest label instead of hand-rolling the gate.
+  const CLOSED = posture === 'multi-lane-local'
   const REPLAY = process.env.BASELINE_FORGE_REPLAY || null
   const RECORD = process.env.BASELINE_FORGE_RECORD || null
   const memo = new Map()
-  const isAvail = () => REPLAY ? true : !!available
+  const isAvail = () => CLOSED ? false : (REPLAY ? true : !!available)
 
   const readFixture = (key) => { try { return JSON.parse(fs.readFileSync(path.join(REPLAY, key + '.json'), 'utf8')) } catch { return undefined } }
   const writeFixture = (key, val) => { try { fs.mkdirSync(RECORD, { recursive: true }); fs.writeFileSync(path.join(RECORD, key + '.json'), JSON.stringify(val, null, 2) + '\n') } catch {} }
@@ -41,8 +46,8 @@ export function makeForge(repo, { available = false, nwo = null } = {}) {
 
   return {
     available: isAvail(),
-    source: REPLAY ? 'replay' : 'forge',
-    reason: isAvail() ? null : 'forge unreachable',
+    source: CLOSED ? 'posture' : REPLAY ? 'replay' : 'forge',
+    reason: isAvail() ? null : CLOSED ? 'forge not consulted (multi-lane-local posture)' : 'forge unreachable',
     prsOpen() { return isAvail() ? (q('prs-open', ['pr', 'list', '--state', 'open', '--json', 'number,title,headRefName,isDraft,updatedAt,body', '--limit', '50']) || []) : [] },
     issuesOpen() { return isAvail() ? (q('issues-open', ['issue', 'list', '--state', 'open', '--json', 'number,title,labels,milestone,updatedAt', '--limit', '200']) || []) : [] },
     issue(n) { return isAvail() ? q(`issue-${safeKey(n)}`, ['issue', 'view', String(n), '--json', 'number,state,title']) : null },

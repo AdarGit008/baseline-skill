@@ -6,6 +6,57 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M5a: `baseline lane claim` — atomic branch creation at origin
+- **`baseline lane claim <issue>`** (`src/lane.mjs`) — the M5 claim primitive (FS2/S3): the ref
+  IS the claim. The branch name is the descriptor's `lanes.namespace` with the issue number
+  substituted — exactly that, **no slug** (M5 panel: two spellings would both push-succeed and
+  mint two lanes for one issue), and ref creation inside origin's ref transaction is first-wins.
+  **Checkout-free**: `fetch` → `commit-tree` (an empty commit stamped with `Baseline-Issue` +
+  `Baseline-Agent` trailers, validated against descriptor `join_keys` — C38, keys are
+  machine-generated, never hand-typed) → `push <sha>:refs/heads/<ref>`; the loser exits **3**
+  having never touched HEAD, worktree, or local branches — clean-loser is structural, not
+  cleanup. On push rejection the CLI re-asks origin: ref now exists → lost race (exit 3, tip
+  named); still absent → transport/policy failure (exit 2, git's reason) — never a fake race.
+  Issue verification is **posture-gated**: an issue positively known closed refuses the claim
+  (divergence at birth, the reopen command named); unverifiable proceeds labeled; workflow
+  **`multi-lane-local`** (new `workflow` enum value, CF5) never consults the forge and says so —
+  "forge not consulted (multi-lane-local posture)", the posture named, never faked
+  unreachability. Undeclared `ground_truth_boundary.default_branch` is **asked of origin**
+  (`ls-remote --symref origin HEAD`), labeled, never guessed.
+- **M5 sliced by adversarial panel** (scope-cutter / friction skeptic / dependency auditor —
+  all AMEND): M5a claim (this slice) · M5b leases + reclaim + orient · M5c FLOW/DIV rules +
+  DIVERGED verdicts + the one corpus re-pin. Ruling record: PLAN.md §8 M5 amendment block.
+  Descriptor field flips are earned per slice: `lanes` + `join_keys` active at M5a; `owner`
+  has no M5 consumer (lane identity is the trailer) — filed consume-or-drop on #24.
+- **`test/lane/run.mjs`** — the claim suite against local bare origins: the two-clone
+  **concurrent race** (exactly one winner, one clean exit-3 loser — issue #22 checkbox 1,
+  structurally), trailer/base pins, refusal coverage (no descriptor / bad namespace /
+  join_keys omitting a trailer / closed issue via forge replay / no origin), the
+  multi-lane-local never-consults proof (a CLOSED replay fixture that is irrelevant because
+  the forge is never asked), and a rejecting pre-receive origin (exit 2 with git's reason).
+- Consolidation: the whole agent-identity derivation is ONE helper now —
+  `resolveAgent` (`src/probe.mjs`) over the shared `slug` (`src/util.mjs`) — and the lane
+  trailer names live beside it (`TRAILER_ISSUE`/`TRAILER_AGENT`, pointed at by
+  `schema/keys.md`): `log` frontmatter and claim trailers derive the same name or the
+  lane⇄agent join lies.
+- **Hardened by an 8-angle pre-merge review** (all confirmed findings fixed in-branch):
+  a push whose success report is lost after origin applied the ref is recognized by
+  tip==sha as a **win, never a fake loss**; a lane already standing under this agent's
+  own trailer settles as an **idempotent win** (a crashed claimer rerunning is never told
+  it "lost" to itself); the claim base is fetched into a **private ref** — FETCH_HEAD is
+  never read (a concurrent IDE autofetch could hand the claim an arbitrary branch's tip);
+  an **absent `join_keys` refuses like an incomplete one** (undeclared trailers are never
+  stamped); a stateless forge answer stays **unverified**, never announced "open";
+  single-branch clones get the lane **opted into the fetch refspec** (detected by the
+  set-upstream refusal itself) so upstream just works; the stale-local-branch note no
+  longer prints a checkout recipe that would land on the wrong tip; `makeForge` owns the
+  **posture closure** (a multi-lane-local forge stays closed even under replay — one home
+  for the label, inherited by M5b/M5c); the schema now `pattern`-enforces the
+  one-`*` namespace invariant; the rule-side workflow enum matches the descriptor's;
+  claim runs on `liteRepo` (no tree walk) with **one preflight round trip** answering
+  reachability + origin HEAD + ref existence. Deliberately open (recorded on the PR):
+  FLOW-02/06 stay `multi-lane`-exact until M5c's family-array conversion + re-pin.
+
 ### Added — V2 M4c: the record checks — REC/FLOW rules, claims explosion, the push-boundary scrub
 - **`rules/rec.json`** (78 rules total, 13 modules) — REC-01 **append-only proof** from history
   (`--diff-filter=MDR` events + full-history add-blob comparison closing the CF7 delete-recreate

@@ -21,12 +21,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { makeOpt, makeOptText, makeOptAll } from './util.mjs'
-import { currentLane, run } from './probe.mjs'
+import { currentLane, resolveAgent, run } from './probe.mjs'
 import { validateRecord, parseFrontmatter, renderFrontmatter, sessionRelPath } from './records.mjs'
 import { scan, loadAllowlist, addAllowlistEntries, keepDraft, ALLOWLIST_FILE, CACHE_DIR } from './scrub.mjs'
 import { extractNext } from './facts/git.mjs'
-
-const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24)
 
 const LOG_USAGE = `usage: baseline log -m "what happened" [--next "..."] [--deadends "..."] [--lane L] [--agent A] [--from FILE] [--allow ID --allow-reason "..."]`
 
@@ -76,7 +74,7 @@ export function runLog(argv) {
     const branch = currentLane({ REPO })
     const lane = typeof opt('--lane', null) === 'string' ? opt('--lane', null) : (branch && branch !== '(detached)' ? branch : null)
     if (!lane) return usage(`no lane resolvable (${branch === '(detached)' ? 'detached HEAD' : 'no git branch here'}) — pass --lane <name>`)
-    const agent = slug(opt('--agent', null) || process.env.BASELINE_AGENT || run('git', ['-C', REPO, 'config', 'user.name']) || 'agent') || 'agent'
+    const agent = resolveAgent(opt('--agent', null), REPO)
     fields = { record: 'session/1', lane, agent, started }
     const next = typeof optText('--next', null) === 'string' ? optText('--next', null).trim() : ''
     const deadends = typeof optText('--deadends', null) === 'string' ? optText('--deadends', null).trim() : ''

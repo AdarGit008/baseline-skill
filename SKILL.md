@@ -1,6 +1,6 @@
 ---
 name: baseline
-description: "Use when asked to run baseline, score a repo, check build- or project-readiness, audit a repo against a standard, or adopt/scaffold the project-baseline standard. Runs a zero-dependency Node checker (78 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, claims, records & ledger, and lane workflow), reads the scorecard, and helps fix or scaffold what's missing."
+description: "Use when asked to run baseline, score a repo, check build- or project-readiness, audit a repo against a standard, or adopt/scaffold the project-baseline standard. Runs a zero-dependency Node checker (86 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, claims, records & ledger, lane workflow, and divergence), reads the scorecard, and helps fix or scaffold what's missing."
 version: 2.2.0
 author: Adar (AdarGit008)
 license: MIT
@@ -15,7 +15,7 @@ metadata:
 
 ## Overview
 
-A **testable readiness standard**: 78 rules, each backed by a check a zero-dependency Node runner executes on a repo *at rest*. Blockers fail CI (`exit 1`); the judgment calls a script can't make resolve via a dated **sign-off ledger**. The throughline: *don't trust a written promise — make something check it.* A checklist doc drifts; this is the checklist as an exit code.
+A **testable readiness standard**: 86 rules, each backed by a check a zero-dependency Node runner executes on a repo *at rest*. Blockers fail CI (`exit 1`); the judgment calls a script can't make resolve via a dated **sign-off ledger**. The throughline: *don't trust a written promise — make something check it.* A checklist doc drifts; this is the checklist as an exit code.
 
 Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SKILL.md`). The runner is portable — plain Node, no agent-specific dependency. Source: `github.com/AdarGit008/baseline-skill` (reference repo: `baseline-demo`).
 
@@ -37,7 +37,7 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 
 The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `lane`, `log`, `jdg`, `gen`, `scrub`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
-Co-located files: `baseline.mjs` (CLI entry: orient / check / lane / log / jdg / gen / scrub), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 78 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook + pre-push scrub hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
+Co-located files: `baseline.mjs` (CLI entry: orient / check / lane / log / jdg / gen / scrub), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 86 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook + pre-push scrub hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
 
 ## Orientation — the first act
 
@@ -61,6 +61,16 @@ node "$SKILL_DIR/baseline.mjs" lane claim <issue> --repo <target>
 ```
 
 - The claim is **atomic branch creation at origin** — the ref name is the namespace with the issue number substituted (`lane/22`), so two agents claiming the same issue race on one refname and exactly one wins. Exit 0 = yours (also when the lane already stands under your own agent trailer — reruns are idempotent); exit 3 = another agent holds it, cleanly (nothing was created locally): run `baseline orient` and pick different work. A hand-pushed branch (`git push origin HEAD:lane/22-foo`) mints a second, trailer-less lane for the issue — the exact dual-lane state the claim exists to prevent.
+
+## Taking over a dead lane (M5b)
+
+`orient`'s Lanes section derives every claimed lane's lease — **LIVE | STALE | ABANDONED** (freshness = the later of tip commit and PR activity vs the descriptor's `lease_ttl`, default 7d). Only a lane that **derives ABANDONED** is reclaimable:
+
+```bash
+node "$SKILL_DIR/baseline.mjs" lane reclaim <issue> --repo <target>
+```
+
+- The takeover is an empty child commit under your agent trailer, pushed under an exact-value CAS — a lane that moved mid-reclaim (someone pushed, rewound, or deleted it) rejects and the tool tells you the truth (exit 3: it's active). A dated takeover record is machine-written through `baseline log`, and the issue gets a best-effort comment. **Never bypass the gate with a plain `git push`** — a LIVE lane belongs to its agent; if a live takeover is genuinely sanctioned (agent on leave), record a `deviation` judgment naming the lane and pass `--jdg <id>`.
 
 ## Recording — the last act
 
@@ -95,7 +105,7 @@ Run the survey (see **Orientation — the first act** above): `node "$SKILL_DIR/
    - `--profile advanced` — opt into expert rules (SBOM, code-scanning, mutation testing, dependency-vuln-scan, coverage-floor). `service` turns on automatically for `project_type=service`.
    - `--json` — machine output instead of the scorecard.
    - **Completion criterion:** you have the readiness %, the blocker count, and each FAIL/notable WARN with its one-line detail.
-3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 78 rows — summarize and offer to fix or scaffold.
+3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 86 rows — summarize and offer to fix or scaffold.
 
 ### init — "set up / adopt / scaffold baseline"
 **Descriptor-first, always.** The repo's `baseline.repo.json` is written before anything else — it's the one file baseline requires (schema: `schema/repo.schema.json`), and every applicability/severity derivation reads it. Its `type` supersedes filesystem auto-detection.
@@ -155,7 +165,7 @@ Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / 
 ## Verification Checklist
 
 - [ ] Ran the runner by its **absolute** path with `--repo <target>`
-- [ ] Reported **blockers first**, then warnings, grouped by category (not a 78-row dump)
+- [ ] Reported **blockers first**, then warnings, grouped by category (not an 86-row dump)
 - [ ] For `fix`: re-scored and confirmed no new blockers
 - [ ] For `init`: picked a preset/config, scaffolded only what was missing, ran a first score
 - [ ] Any sign-off is a real dated judgment, not a rubber stamp

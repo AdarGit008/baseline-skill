@@ -30,8 +30,8 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
 {
   const R = loadRules()
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'rules.json'), 'utf8'))
-  ok(R.rules.length === 78, `loader assembles 78 rules (got ${R.rules.length})`)
-  ok((manifest.modules || []).length === 13, `manifest lists 13 modules (got ${(manifest.modules || []).length})`)
+  ok(R.rules.length === 86, `loader assembles 86 rules (got ${R.rules.length})`)
+  ok((manifest.modules || []).length === 14, `manifest lists 14 modules (got ${(manifest.modules || []).length})`)
   ok(!('rules' in manifest), 'manifest itself carries no rules (they live in rules/)')
   ok(new Set(R.rules.map(r => r.id)).size === R.rules.length, 'rule ids unique across modules')
   ok(!!R.version && !!R.profiles && Array.isArray(R.project_types), 'identity fields (version/profiles/project_types) ride the manifest')
@@ -41,7 +41,7 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
     const mod = JSON.parse(fs.readFileSync(path.join(ROOT, m), 'utf8'))
     for (const r of mod.rules) {
       const prefix = r.id.split('-')[0].toLowerCase()
-      const want = { build: 'build', test: 'test', ctx: 'ctx', claim: 'claim', sec: 'sec', gov: 'gov', comm: 'comm', qual: 'qual', repro: 'repro', ops: 'ops', rec: 'rec', flow: 'flow', desc: 'desc' }[prefix]
+      const want = { build: 'build', test: 'test', ctx: 'ctx', claim: 'claim', sec: 'sec', gov: 'gov', comm: 'comm', qual: 'qual', repro: 'repro', ops: 'ops', rec: 'rec', flow: 'flow', div: 'div', desc: 'desc' }[prefix]
       if (want !== cat) { homed = false; console.log(`      ${r.id} lives in ${m}`) }
     }
   }

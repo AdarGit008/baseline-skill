@@ -1,0 +1,6 @@
+# lanes-repo fixture
+
+The M5c lane-world fixture: a multi-lane docs repo with a claimed `lane/7`, a bare
+origin (push-discipline + lease git-plane paths), and a committed forge replay
+(`_forge/`) whose issue #7 is CLOSED — so DIV-01 derives DIVERGED while FLOW-01's
+strict anchoring still PASSES (the anchor exists and resolves; open-ness is DIV's).

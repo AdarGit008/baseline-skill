@@ -103,6 +103,20 @@ A working branch treated as the unit of parallel work in a multi-lane repo.
 Lane identity **is** the branch name — session records live under
 `records/sessions/<lane>/` — and a detached HEAD is not a lane.
 
+## Lease
+The fully **derived** liveness of a claimed lane (nothing stored to go stale):
+freshness = max(tip committedDate, PR updatedAt) against the descriptor's
+`lease_ttl` → **LIVE** | **STALE** (past ttl/2 — orient's nudge, never a finding)
+| **ABANDONED** (past ttl — FLOW-07 warns; `lane reclaim` may take over). An
+unresolvable freshness derives no state at all — surfaced, never guessed.
+
+## DIVERGED
+The engine tag for a cross-tier contradiction (DIV rules): the git plane and the
+forge disagree — issue closed under an active lane, a recorded `next:` at a dead
+issue, an open PR closing a closed issue. Its own verdict in the scorecard and
+`summary.diverged` in `--json`; severity stays warn (the exit code is unchanged
+until M7) because divergence demands a human resolution, not a red build.
+
 ## last-verified stamp
 A line like `last-verified: <short-sha> <date>` in a status doc, naming the last
 commit whose described state was actually reconciled with reality. The baseline

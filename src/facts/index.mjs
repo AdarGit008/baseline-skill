@@ -6,8 +6,8 @@ import { treeFacts } from './tree.mjs'
 import { gitFacts, SESSION_BASES, extractNext, laneRefsGit, laneOwner, LANES_PRIV } from './git.mjs'
 import { makeForge } from './forge.mjs'
 import { globToRe, issueOf, TRAILER_AGENT, nowUTC } from '../util.mjs'
-import { DEFAULT_LEASE_TTL, parseTtlMs } from '../derive/lanes.mjs'
-import { run } from '../probe.mjs'
+import { DEFAULT_LEASE_TTL, parseTtlMs, deriveLanes } from '../derive/lanes.mjs'
+import { run, probeForge } from '../probe.mjs'
 
 // Any #N in a string; and the GitHub closing-keyword references ("closes #N", "fixes #N", …).
 export const refs = (s) => s ? [...String(s).matchAll(/#(\d+)/g)].map(m => +m[1]) : []
@@ -83,6 +83,48 @@ export function gatherLaneFacts(repo, forge, namespace) {
     }
   }
   return got
+}
+
+// The LAZY lane-world for `check` (M5c — the plumbing the FLOW/DIV rules evaluate
+// through): probe + forge + lane gathering + lease derivation, computed ONCE on first
+// demand and only then — a single-lane repo, an off-posture run, or a rule set with
+// every lane rule gated off must never pay a gh spawn for it. Exit-stable offline:
+// everything degrades to labeled reasons the evaluators turn into SKIPs; nothing throws.
+// The SAME gathering + derivation orient and reclaim use — one answer, three surfaces.
+export function makeLaneWorld(repo, descriptor) {
+  let world = null
+  return () => {
+    if (world) return world
+    const posture = descriptor?.valid ? descriptor.data?.workflow : null
+    const pf = posture === 'multi-lane-local' ? null : probeForge(repo)
+    const forge = makeForge(repo, { available: !!pf?.available, nwo: pf?.repo || null, posture })
+    const ns = descriptor?.valid ? descriptor.data?.lanes?.namespace : null
+    const laneFacts = gatherLaneFacts(repo, forge, ns)
+    const ttl = (descriptor?.valid ? descriptor.data?.lanes?.lease_ttl : null) ?? DEFAULT_LEASE_TTL
+    const now = (nowUTC() ?? new Date()).toISOString()
+    // issue states for every lane anchor (DIV-01's input), resolved once, memoized in q()
+    const issueStates = {}
+    const issueState = n => {
+      if (n == null) return 'unknown'
+      if (!(n in issueStates)) {
+        const it = forge.issue(n)
+        issueStates[n] = it ? { state: String(it.state || '').toLowerCase() || 'unknown', title: it.title ?? null } : { state: 'unknown', title: null }
+      }
+      return issueStates[n].state
+    }
+    const lanes = ns ? (() => {
+      for (const l of laneFacts.lanes) { const n = issueOf(ns, l.ref); if (n != null) issueState(n) }
+      return deriveLanes({ lanes: laneFacts.lanes, ttlMs: parseTtlMs(ttl) ?? parseTtlMs(DEFAULT_LEASE_TTL), now, issueStates, namespace: ns })
+    })() : []
+    world = {
+      posture, forge, ns, ttl, now,
+      families: (descriptor?.valid ? descriptor.data?.lanes?.families : null) ?? [],
+      lanes, source: laneFacts.source, reason: laneFacts.reason,
+      issueState, issueStates,
+      prsOpen: () => forge.prsOpen(),
+    }
+    return world
+  }
 }
 
 export function gatherFacts(repo, { descriptor, capability }) {

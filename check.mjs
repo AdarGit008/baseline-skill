@@ -13,6 +13,7 @@ import { indexRepo } from './src/repo.mjs'
 import { laneOrNull } from './src/probe.mjs'
 import { resolveConfig } from './src/config.mjs'
 import { CHECK_KINDS, makeEvalCheck } from './src/evaluators.mjs'
+import { makeLaneWorld } from './src/facts/index.mjs'
 import { runRules } from './src/engine.mjs'
 import { makeColor, reportJson, reportHuman } from './src/report.mjs'
 import { runSelfCheck } from './src/selfcheck.mjs'
@@ -46,7 +47,12 @@ if (SELF_CHECK) process.exit(runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS,
 const BRANCH = laneOrNull(repo)
 const DEFAULT_BRANCH = (DESCRIPTOR.valid && DESCRIPTOR.data.ground_truth_boundary?.default_branch) || null
 
-const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH })
+// The lane world (M5c): the capability-probe + forge-facts plumbing the FLOW/DIV rules
+// evaluate through — LAZY (first rule that needs it pays; a single-lane or off-posture
+// run never spawns gh) and exit-stable offline (degradations become labeled SKIPs).
+const LANEWORLD = makeLaneWorld(repo, DESCRIPTOR)
+
+const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD })
 const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH })
 
 process.exit(JSON_OUT

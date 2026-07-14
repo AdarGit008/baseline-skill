@@ -32,6 +32,11 @@ const TODAY = new Date().toISOString().slice(0, 10)
 // pins machine-dependent. Applied to every git call AND the checker subprocess
 // (whose internal git calls inherit this env).
 const GIT_ENV = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+// A dev with the tool's OWN record/replay vars exported (time-travel, forge replay) must
+// not silently drift the pins the checker subprocess derives — or, under --capture, bless
+// wrong ones. Strip them from the inherited env; the harness re-injects BASELINE_FORGE_REPLAY
+// per-manifest exactly where a fixture wants it. (BASELINE_GOLDEN_CHECK stays a real knob.)
+for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT']) delete GIT_ENV[k]
 // Override the runner under test (e.g. point at a pristine V1 monolith to prove a
 // candidate runner reproduces the same pins): BASELINE_GOLDEN_CHECK=/path/check.mjs
 const CHECK_UNDER_TEST = process.env.BASELINE_GOLDEN_CHECK || CHECK
@@ -46,10 +51,12 @@ const SECRETS = {
   '{{SECRET_GHP}}': 'ghp_' + 'abcdefghijklmnopqrstuvwxyz0123456789',
   '{{SECRET_AKIA}}': 'AKIA' + 'IOSFODNN7REALKEY',
 }
-function copyTree(src, dst, { skipBranchDir = false } = {}) {
+function copyTree(src, dst, { skipMeta = false } = {}) {
   fs.mkdirSync(dst, { recursive: true })
   for (const e of fs.readdirSync(src, { withFileTypes: true })) {
-    if (skipBranchDir && e.name === '_branch') continue // committed later, on the fixture's lane branch
+    // _branch/ is committed later on the fixture's lane branch; _forge/ never enters the
+    // repo tree at all — it materializes OUTSIDE as the checker's replay dir (M5c)
+    if (skipMeta && (e.name === '_branch' || e.name === '_forge')) continue
     const s = path.join(src, e.name)
     const d = path.join(dst, e.name.endsWith('.golden') ? e.name.slice(0, -'.golden'.length) : e.name)
     if (e.isDirectory()) { copyTree(s, d); continue }
@@ -76,15 +83,32 @@ function normalizeDetail(s, tmp) {
     .replace(/baseline-golden-[a-z0-9-]+-[A-Za-z0-9]+/g, '<REPO>') // tmp-dir basename in the human header
     .replace(/\b[0-9a-f]{7,40}\b/g, '<sha>')
     .replace(/\b\d+(\.\d+)?d\b/g, '<N>d')                 // "437d old (>180)" -> "<N>d old (>180)"
+    .replace(/\b\d+h\b/g, '<N>h')                         // lease ages ("26h idle") — run-date volatile
     .replace(/\(\d+ commits? behind/g, '(<N> commits behind')
     .replace(/stamp \d+ commits behind/g, 'stamp <N> commits behind')
+    // The forge-probe cause is MACHINE-dependent (gh absent vs unauthed vs authed-no-repo)
+    // — check's lane SKIPs now name the specific cause honestly, but the PIN must collapse
+    // the variants to one token, exactly like a SHA. Real runs still show the true cause.
+    .replace(/gh not installed|gh not authenticated \(gh auth login\)|no forge repo resolves here \(or network\/API down\)/g, '<forge unreachable>')
 }
 
 function materialize(name) {
   const src = path.join(FIXTURES, name)
   const manifest = JSON.parse(fs.readFileSync(path.join(src, '_fixture.json'), 'utf8'))
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `baseline-golden-${name}-`))
-  copyTree(src, tmp, { skipBranchDir: true })
+  const extra = [] // side dirs (bare origin, replay dir) — cleaned with the repo
+  try {
+    return materializeInto(name, src, manifest, tmp, extra)
+  } catch (e) {
+    // a failure mid-materialize (git push, bare init, forge copy) must never leak a tree
+    // carrying materialized fake secrets — clean up everything created so far, then rethrow
+    for (const d of [tmp, ...extra]) { try { fs.rmSync(d, { recursive: true, force: true }) } catch {} }
+    throw e
+  }
+}
+
+function materializeInto(name, src, manifest, tmp, extra) {
+  copyTree(src, tmp, { skipMeta: true })
   fs.rmSync(path.join(tmp, '_fixture.json'))
   substitute(tmp, '{{TODAY}}', TODAY)
   git(tmp, 'init', '-q', '-b', 'main') // deterministic default-branch name — the M4c lane gates compare against it
@@ -111,28 +135,48 @@ function materialize(name) {
       git(tmp, 'commit', '-q', '-m', 'fixture: lane work')
     }
   }
-  return { tmp, args: manifest.args || [] }
+  // manifest.bare_origin (M5c): a LOCAL bare origin so origin-coupled rules (FLOW-05's
+  // push discipline, FLOW-07's git-plane lease fallback) evaluate — the push also lands
+  // the remote-tracking refs the evaluators read. Lives OUTSIDE the repo tree.
+  const env = {}
+  if (manifest.bare_origin) {
+    const bare = fs.mkdtempSync(path.join(os.tmpdir(), `baseline-golden-${name}-origin-`))
+    extra.push(bare)
+    execFileSync('git', ['init', '-q', '--bare', '-b', 'main', bare], { env: GIT_ENV })
+    git(tmp, 'remote', 'add', 'origin', bare)
+    git(tmp, 'push', '-q', 'origin', '--all')
+  }
+  // manifest.forge_replay (M5c): the fixture's _forge/ dir becomes the checker's
+  // BASELINE_FORGE_REPLAY — committed forge answers, zero network, deterministic verdicts.
+  if (manifest.forge_replay) {
+    const fsrc = path.join(src, manifest.forge_replay)
+    const fdst = fs.mkdtempSync(path.join(os.tmpdir(), `baseline-golden-${name}-forge-`))
+    extra.push(fdst)
+    copyTree(fsrc, fdst)
+    env.BASELINE_FORGE_REPLAY = fdst
+  }
+  return { tmp, args: manifest.args || [], env, extra }
 }
 
-function runChecker(tmp, args) {
+function runChecker(tmp, args, env = {}) {
   try {
-    return { stdout: execFileSync(process.execPath, [CHECK_UNDER_TEST, '--repo', tmp, ...args], { stdio: ['ignore', 'pipe', 'pipe'], env: GIT_ENV }).toString(), exitCode: 0 }
+    return { stdout: execFileSync(process.execPath, [CHECK_UNDER_TEST, '--repo', tmp, ...args], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...GIT_ENV, ...env } }).toString(), exitCode: 0 }
   } catch (e) {
     return { stdout: e.stdout ? e.stdout.toString() : '', exitCode: e.status ?? 1 }
   }
 }
 
 function score(name) {
-  const { tmp, args } = materialize(name)
+  const { tmp, args, env, extra } = materialize(name)
   try {
-    const { stdout, exitCode } = runChecker(tmp, ['--json', ...args])
+    const { stdout, exitCode } = runChecker(tmp, ['--json', ...args], env)
     let out
     try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: checker did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }
     const rules = {}
     for (const r of out.results) rules[r.id] = { tag: r.tag, detail: normalizeDetail(r.detail, tmp) }
     return { exitCode, project_type: out.project_type, profiles: out.profiles.sort(), summary: out.summary, rules }
   } finally {
-    fs.rmSync(tmp, { recursive: true, force: true }) // never leak a tree with materialized fake secrets
+    for (const d of [tmp, ...extra]) fs.rmSync(d, { recursive: true, force: true }) // never leak a tree with materialized fake secrets
   }
 }
 
@@ -140,12 +184,12 @@ function score(name) {
 // exit-code path live in src/report.mjs and are otherwise invisible to --json pins.
 // Non-TTY subprocess -> color() is a no-op, so the text is ANSI-free and stable.
 function scoreHuman(name) {
-  const { tmp, args } = materialize(name)
+  const { tmp, args, env, extra } = materialize(name)
   try {
-    const { stdout, exitCode } = runChecker(tmp, args)
+    const { stdout, exitCode } = runChecker(tmp, args, env)
     return { exitCode, text: normalizeDetail(stdout, tmp).split('\n') }
   } finally {
-    fs.rmSync(tmp, { recursive: true, force: true })
+    for (const d of [tmp, ...extra]) fs.rmSync(d, { recursive: true, force: true })
   }
 }
 

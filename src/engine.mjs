@@ -20,7 +20,11 @@ export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIP
     }
     if (r.workflow) {
       if (!DESCRIPTOR || !DESCRIPTOR.valid) { results.push({ r, tag: 'SKIP', detail: 'workflow contract off (no valid baseline.repo.json)' }); continue }
-      if (DESCRIPTOR.data.workflow !== r.workflow) { results.push({ r, tag: 'SKIP', detail: `workflow=${DESCRIPTOR.data.workflow} (rule needs ${r.workflow})` }); continue }
+      // string-or-array (M5c): a rule may serve a posture FAMILY — e.g. the lane rules
+      // run under multi-lane AND multi-lane-local, whose difference is forge access,
+      // not lane discipline; forge-dependent checks still degrade inside the evaluator
+      const wfs = Array.isArray(r.workflow) ? r.workflow : [r.workflow]
+      if (!wfs.includes(DESCRIPTOR.data.workflow)) { results.push({ r, tag: 'SKIP', detail: `workflow=${DESCRIPTOR.data.workflow} (rule needs ${wfs.join('|')})` }); continue }
     }
     if (r.branch_scope === 'lane') {
       if (!BRANCH) { results.push({ r, tag: 'SKIP', detail: 'no branch resolved (detached HEAD / CI checkout) — lane rules n/a' }); continue }
@@ -33,6 +37,11 @@ export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIP
     let tag
     if (res.ok === null) tag = 'SKIP'
     else if (res.ok === true) tag = 'PASS'
+    // M5c: a cross-tier contradiction is its own verdict, not a generic warn. DIVERGED
+    // sits BEFORE the blocker→FAIL branch, so today it can only carry severity warn (exit
+    // unchanged until M7) — a selfcheck law (category div ⇒ severity warn) keeps it that
+    // way; M7's promotion must make DIVERGED-at-blocker route to FAIL, not stay green.
+    else if (res.diverged) tag = 'DIVERGED'
     else if (res.signoff || r.check.kind === 'signoff') tag = 'SIGN-OFF'
     else if (res.soft) tag = 'WARN'
     else tag = r.severity === 'blocker' ? 'FAIL' : 'WARN'

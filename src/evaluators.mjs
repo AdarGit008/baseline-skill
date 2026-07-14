@@ -1,18 +1,22 @@
-// The ~28 declarative check kinds. makeEvalCheck(ctx) closes over the repo index,
+// The ~36 declarative check kinds. makeEvalCheck(ctx) closes over the repo index,
 // resolved config, and run flags; evalCheck(c, rule) -> {ok:true|false|null, detail, soft?, signoff?}.
 // ok:null means "not evaluable here" and always tags SKIP — one broken rule can't take down the run.
 import path from 'node:path'
 import fs from 'node:fs'
 import { execSync } from 'node:child_process'
-import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE, nowUTC, globToRe } from './util.mjs'
+import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE, nowUTC, globToRe, issueOf, refs as issueRefs, closes as issueCloses } from './util.mjs'
 import { DESCRIPTOR_FILE } from './descriptor.mjs'
 import { scan, loadAllowlist } from './scrub.mjs'
 import { loadClaims, CLAIM_RECORD_GLOB } from './claims.mjs'
+import { extractNext } from './facts/git.mjs'
+import { deriveDivergence } from './derive/divergence.mjs'
+
+const DIV_REF_CAP = 20 // a hostile next: line with dozens of #N must not fan out a forge query each
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'records-append-only', 'records-scrub', 'records-one-home', 'branch-session-record', 'branch-atomicity'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'records-append-only', 'records-scrub', 'records-one-home', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed'])
 
-export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null }) {
+export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null }) {
   const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile } = repo
   // The lane rules diff against where the branch diverged: the descriptor-declared
   // default branch, preferring whichever of local/origin twin is NEWER (a stale
@@ -25,12 +29,39 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
     if (local && remote) return gitIsAncestor(local, remote) === 0 ? remote : local
     return local || remote
   }
+  // The newest session record COMMITTED on this lane (added in base...HEAD, exactly
+  // FLOW-02's presence definition) — its committed-blob content, so an uncommitted draft
+  // in the worktree can't make FLOW-03/05/DIV-02 contradict FLOW-02 ("no record" +
+  // "empty next:" + "unpushed" for one file that isn't committed). ->
+  //   { rel, next } committed record found · null no committed record (FLOW-02's finding)
+  //   · { unprovable: reason } base unresolvable (all three then SKIP the same way).
+  function committedLog(branch) {
+    const base = baseRef()
+    if (!base) return { unprovable: `default branch '${DEFAULT_BRANCH}' not resolvable locally` }
+    const added = gitDiffNames(`${base}...HEAD`, `records/sessions/${branch}/`, { addedOnly: true })
+    if (added === null) return { unprovable: `diff ${base}...HEAD failed` }
+    const md = added.filter(f => f.endsWith('.md')).sort()
+    if (!md.length) return null
+    const rel = md.at(-1)
+    const raw = gitCatFile('HEAD', rel) ?? read(rel)
+    return { rel, next: extractNext(raw || '') }
+  }
   // one clock (util.nowUTC): the override is parsed + ISO-normalized so a
   // non-ISO-but-parseable BASELINE_LOG_NOW can't turn expiry comparisons into
   // lexicographic garbage; unparseable falls back to the wall clock — a scoring
   // run degrades to real time rather than crashing or silently lying
   const TODAY = (nowUTC() ?? new Date()).toISOString().slice(0, 10)
   function globsOf(c) { return c.globs_from_config ? cfg[c.globs_from_config] : (c.file_from_config ? cfg[c.file_from_config] : c.globs) }
+
+  // Lane-residency (M5c review): the per-lane discipline (FLOW-01/02/03/05) is for LANES —
+  // branches in the namespace. A declared-family branch (release/*, adopt/*) is a
+  // legitimate non-lane: FLOW-04 confirms its placement and NOTHING else applies, so it
+  // isn't wallpapered with anchor/record/push warns it can never satisfy. A stray outside
+  // every family is FLOW-04's single finding (placement), not four. Only fires the SKIP
+  // when a namespace IS declared and the branch is non-resident; no namespace → the M4c
+  // behavior (these rules already handle an absent namespace themselves).
+  const laneNs = DESCRIPTOR?.valid ? DESCRIPTOR.data?.lanes?.namespace : null
+  const nonResidentLane = () => BRANCH && laneNs && !globToRe(laneNs).test(BRANCH)
 
   function evalCheck(c, rule) {
     const k = c.kind
@@ -496,6 +527,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       // FLOW-02 (C14): work on a lane carries its own session record — the forensic
       // tier rides the same PR as the change it describes. Engine gates guarantee
       // this only runs on a non-default branch of a declared multi-lane repo.
+      if (nonResidentLane()) return { ok: null, detail: `'${BRANCH}' is a declared-family / non-namespace branch — lane record discipline n/a (placement is FLOW-04's)` }
       const base = baseRef()
       if (!base) return { ok: null, detail: `default branch '${DEFAULT_BRANCH}' not resolvable locally — lane coupling not provable` }
       const changed = gitDiffNames(`${base}...HEAD`, null)
@@ -533,6 +565,141 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       if (!d.valid) return { ok: false, detail: `${DESCRIPTOR_FILE} invalid: ${d.errors.slice(0, 2).join('; ')}${d.errors.length > 2 ? ` (+${d.errors.length - 2} more)` : ''}` }
       const x = d.data
       return { ok: true, detail: `type=${x.type} · ${x.lifecycle}/${x.maturity} · workflow=${x.workflow} · anchoring=${x.anchoring}` }
+    }
+
+    // ---- M5c lane/divergence kinds — every one reads through LANEWORLD (the SAME
+    // gathering + derivation orient and reclaim use; one answer, three surfaces), and
+    // every unreachable plane degrades to ok:null with the reason — exit-stable offline,
+    // with multi-lane-local runs carrying makeForge's posture label, never fake
+    // unreachability. A DIV finding sets res.diverged — the engine's DIVERGED tag. ----
+
+    if (k === 'lane-anchor') {
+      // FLOW-01: anchoring per the descriptor knob — existence + resolution ONLY
+      // (open-ness is DIV-01's alone; overlap would double-report one contradiction)
+      if (nonResidentLane()) return { ok: null, detail: `'${BRANCH}' is a declared-family / non-namespace branch — anchoring n/a (placement is FLOW-04's)` }
+      const knob = DESCRIPTOR?.valid ? DESCRIPTOR.data.anchoring : null
+      if (!knob || knob === 'off') return { ok: null, detail: 'anchoring off (descriptor anchoring: off)' }
+      const w = LANEWORLD()
+      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared — an anchor is underivable' }
+      const n = issueOf(w.ns, BRANCH)
+      if (n == null) return { ok: false, detail: `branch '${BRANCH}' carries no issue anchor under '${w.ns}' — claim lanes: baseline lane claim <issue>` }
+      if (knob === 'relaxed') return { ok: true, detail: `anchored to #${n} (relaxed: existence only)` }
+      if (!w.forge.available) return { ok: null, detail: `anchor #${n} unverifiable (${w.forge.reason}) — strict anchoring not provable` }
+      const st = w.issueState(n)
+      // unresolvable ≠ resolved-to-a-miss: a null from a transient query failure must
+      // SKIP (parity with DIV-01's "never guessed"), never brand a real anchor bogus.
+      // A resolved answer — open OR closed — proves the anchor exists (open-ness is DIV's).
+      return st === 'unknown'
+        ? { ok: null, detail: `anchor #${n} state unresolvable (missing issue or query failed) — strict anchoring not provable, never guessed` }
+        : { ok: true, detail: `anchored to #${n} (${st})` }
+    }
+
+    if (k === 'lane-next-filled') {
+      // FLOW-03: fires ONLY on a present record with an empty next: — absence of the
+      // record itself is FLOW-02's finding (no overlap, no double report)
+      if (nonResidentLane()) return { ok: null, detail: `'${BRANCH}' is a declared-family / non-namespace branch — lane record discipline n/a (placement is FLOW-04's)` }
+      const log = committedLog(BRANCH)
+      if (log?.unprovable) return { ok: null, detail: `lane coupling not provable — ${log.unprovable}` }
+      if (!log) return { ok: null, detail: `no committed session record on this lane yet (absence is FLOW-02's)` }
+      return log.next
+        ? { ok: true, detail: `next: recorded (${log.rel})` }
+        : { ok: false, detail: `${log.rel} has an empty next: — record the one next step (baseline log ... --next "...")` }
+    }
+
+    if (k === 'lane-namespace') {
+      // FLOW-04: branch placement against the declared inventory — lanes.namespace +
+      // lanes.families (the repo's REAL branch families, so legitimate release/adopt
+      // branches are declared, not wallpapered). THE placement rule — not residency-gated.
+      const w = LANEWORLD()
+      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
+      const pools = [w.ns, ...w.families]
+      const hit = pools.find(g => globToRe(g).test(BRANCH))
+      return hit
+        ? { ok: true, detail: `'${BRANCH}' sits in declared family '${hit}'` }
+        : { ok: false, detail: `branch '${BRANCH}' is outside every declared family (${pools.join(' · ')}) — claim a lane (baseline lane claim) or declare the family (lanes.families)` }
+    }
+
+    if (k === 'lane-record-pushed') {
+      // FLOW-05: the arbitrated threshold-free predicate — the newest COMMITTED session
+      // record exists locally but is absent at origin (session-boundary-aligned; zero
+      // tuning surface). Judged against the last-fetched origin state, and says so.
+      if (nonResidentLane()) return { ok: null, detail: `'${BRANCH}' is a declared-family / non-namespace branch — push discipline n/a (placement is FLOW-04's)` }
+      const log = committedLog(BRANCH)
+      if (log?.unprovable) return { ok: null, detail: `push discipline not provable — ${log.unprovable}` }
+      if (!log) return { ok: null, detail: 'no committed session record on this lane yet — nothing to push' }
+      if (!gitObjExists(`origin/${BRANCH}^{commit}`)) return { ok: null, detail: `origin/${BRANCH} unknown locally — push discipline not provable (push/fetch first)` }
+      return gitBlobAt(`origin/${BRANCH}`, log.rel) !== null
+        ? { ok: true, detail: `newest record ${log.rel} is at origin (as of the last fetch)` }
+        : { ok: false, detail: `newest session record ${log.rel} exists locally but is absent at origin/${BRANCH} (as of the last fetch) — push the lane before pausing` }
+    }
+
+    if (k === 'lane-lease') {
+      // FLOW-07: lease liveness — warns ONLY at derived ABANDONED (C31; STALE is
+      // orient's nudge, not a finding — the ruling forbids wallpaper)
+      const w = LANEWORLD()
+      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
+      const me = w.lanes.find(l => l.ref === BRANCH)
+      if (!me) return { ok: null, detail: w.source ? `'${BRANCH}' is not a claimed lane at origin — lease n/a (claim it: baseline lane claim)` : `lanes underived: ${w.reason}` }
+      if (me.state === null) return { ok: null, detail: me.labels.find(l => /underived/.test(l)) || 'lease underived' }
+      // the git-plane low-confidence provenance (committer clock, no PR corroboration)
+      // rides the detail — CONTRACT promises it "says so", and orient already shows it
+      const prov = me.source === 'git' ? ' · git plane, committer clock (low confidence)' : ''
+      if (me.state === 'ABANDONED') return { ok: false, detail: `lease ABANDONED (${Math.floor((me.age_ms ?? 0) / DAY)}d idle of ttl ${w.ttl})${prov} — renew (push work) or hand it over (baseline lane reclaim)` }
+      return { ok: true, detail: `lease ${me.state} (${Math.floor((me.age_ms ?? 0) / 3600000)}h idle of ttl ${w.ttl})${prov}` }
+    }
+
+    // ---- DIV kinds: all three route their classification through deriveDivergence (the
+    // ONE definition of a cross-tier contradiction) — the evaluator only gathers the
+    // scoped facts, resolves availability, and presents the fix. res.diverged → DIVERGED.
+
+    if (k === 'div-anchor-closed') {
+      // DIV-01: issue-closed-lane-active — the work surface says in-progress, the
+      // tracker says done; one of them lies.
+      const w = LANEWORLD()
+      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
+      const n = issueOf(w.ns, BRANCH)
+      if (n == null) return { ok: null, detail: `'${BRANCH}' carries no issue anchor — nothing to diverge from (FLOW-01's territory)` }
+      if (!w.forge.available) return { ok: null, detail: `anchor #${n} state unknown (${w.forge.reason}) — divergence not provable` }
+      const st = w.issueState(n)
+      if (st === 'unknown') return { ok: null, detail: `anchor #${n} state unresolvable — divergence not provable, never guessed` }
+      const hit = deriveDivergence({ lanes: [{ ref: BRANCH, anchor: { issue: n, state: st } }], issueStates: w.issueStates }).find(i => i.code === 'DIV-01')
+      return hit
+        ? { ok: false, diverged: true, detail: `${hit.text} — resolve first: merge/close the lane, or reopen #${n}` }
+        : { ok: true, detail: `anchor #${n} is open — lane and tracker agree` }
+    }
+
+    if (k === 'div-next-closed') {
+      // DIV-02: a recorded next: naming a closed issue — the plan on disk is stale
+      const w = LANEWORLD()
+      const log = committedLog(BRANCH)
+      if (log?.unprovable) return { ok: null, detail: `divergence not provable — ${log.unprovable}` }
+      if (!log?.next) return { ok: null, detail: `no committed next: on this lane (FLOW-02/03's territory)` }
+      const allRefs = issueRefs(log.next)
+      if (!allRefs.length) return { ok: true, detail: 'next: names no issues — nothing to contradict' }
+      if (!w.forge.available) return { ok: null, detail: `next: names #${allRefs.slice(0, DIV_REF_CAP).join(', #')} — states unknown (${w.forge.reason})` }
+      const capped = allRefs.length > DIV_REF_CAP
+      const scan = allRefs.slice(0, DIV_REF_CAP)
+      for (const n of scan) w.issueState(n) // resolve into w.issueStates (memoized, capped)
+      const hits = deriveDivergence({ thisLane: { branch: BRANCH, next: `#${scan.join(' #')}` }, issueStates: w.issueStates }).filter(i => i.code === 'DIV-02')
+      const capNote = capped ? ` (+${allRefs.length - DIV_REF_CAP} more refs not checked)` : ''
+      return hits.length
+        ? { ok: false, diverged: true, detail: `next: points at closed issue(s) #${hits.map(h => h.issue).join(', #')} — the recorded plan is stale; re-derive (baseline orient) and re-log${capNote}` }
+        : { ok: true, detail: `next:'s issue reference(s) #${scan.join(', #')} are open or unresolved — no contradiction proven${capNote}` }
+    }
+
+    if (k === 'div-closes-closed') {
+      // DIV-03: done-with-nothing-merged — an open PR closing an already-closed issue
+      const w = LANEWORLD()
+      if (!w.forge.available) return { ok: null, detail: `${w.forge.reason} — PR closures unreadable` }
+      const prs = w.prsOpenOrNull() // null-honest: a FAILED query must not read as "no PRs"
+      if (prs === null) return { ok: null, detail: 'PR listing failed at the forge — closures unreadable (not "no PRs")' }
+      if (!prs.length) return { ok: true, detail: 'no open PRs — nothing to diverge' }
+      const scoped = prs.map(pr => ({ number: pr.number, branch: pr.headRefName, closes: issueCloses(pr.body) }))
+      for (const pr of scoped) for (const n of pr.closes) w.issueState(n) // resolve, memoized
+      const hits = deriveDivergence({ prs: scoped, issueStates: w.issueStates }).filter(i => i.code === 'DIV-03')
+      return hits.length
+        ? { ok: false, diverged: true, detail: `${hits.slice(0, 3).map(h => h.text).join('; ')}${hits.length > 3 ? ` (+${hits.length - 3})` : ''} — done-with-nothing-merged; retarget the PR or close it` }
+        : { ok: true, detail: `${prs.length} open PR(s), none closes an already-closed issue` }
     }
 
     return { ok: null, detail: 'unknown check kind: ' + k }

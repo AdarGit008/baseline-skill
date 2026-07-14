@@ -73,5 +73,25 @@ const t7 = status3.lanes.find(l => l.ref === 'lane/7')
 ok(t7?.labels.some(l => /PR page truncated/.test(l)), 'a truncated PR sub-page labels the lane — freshness can only be understated, never silently')
 fs.rmSync(truncDir, { recursive: true, force: true })
 
+// ---- one-derivation parity: orient's divergence headline and the DIV rules' classifier
+// are the SAME deriveDivergence over the SAME facts — a change to "closed" can't move one
+// surface and not the other. Assert the two agree on a mixed world. ----
+const { deriveDivergence, isClosed } = await import('../../src/derive/divergence.mjs')
+ok(isClosed('closed') === true && isClosed('open') === false && isClosed('unknown') === false && isClosed(undefined) === false,
+  'isClosed: the ONE closed-predicate — closed yes, open/unknown/absent no')
+const parityFacts = {
+  lanes: [{ ref: 'lane/7', anchor: { issue: 7, state: 'closed' } }, { ref: 'lane/9', anchor: { issue: 9, state: 'open' } }],
+  prs: [{ number: 40, branch: 'lane/7', closes: [5], next: null }],
+  thisLane: { branch: 'lane/7', next: 'wrap #5' },
+  issueStates: { 5: { state: 'closed', title: 'done' }, 7: { state: 'closed', title: 'anchor' }, 9: { state: 'open', title: 'live' } },
+}
+const items = deriveDivergence(parityFacts)
+const codes = items.map(i => i.code).sort()
+ok(JSON.stringify(codes) === JSON.stringify(['DIV-01', 'DIV-02', 'DIV-03']),
+  `orient's headline classifier fires all three codes on a mixed world (got ${codes.join(',') || 'none'})`)
+// the check-side DIV evaluators filter this same output by code — so agreement is structural;
+// pin that the shared classifier is what both call (no second spelling of "closed")
+ok(items.every(i => isClosed(i.state)), 'every divergence item is over a closed issue — the shared predicate, one home')
+
 console.log(fails ? `\n✗ ${fails} facts check(s) failed\n` : '\n✓ facts/join/derive deterministic over replay\n')
 process.exit(fails ? 1 : 0)

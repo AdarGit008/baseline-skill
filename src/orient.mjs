@@ -5,7 +5,7 @@
 // derived (FS9 — never hard-refuses; only --strict turns forge-unreachability into exit 1).
 // Generalizes the ADR-0009 prototype tools/orient.mjs.
 import path from 'node:path'
-import { makeOpt } from './util.mjs'
+import { makeOpt, sanitizeTTY } from './util.mjs'
 import { indexRepo } from './repo.mjs'
 import { loadDescriptor } from './descriptor.mjs'
 import { capabilityProbe } from './probe.mjs'
@@ -118,6 +118,10 @@ export async function runOrient(argv) {
   else P.push(status.thisLane.next ? `    ↳ next: ${status.thisLane.next}  (${status.thisLane.rel})` : status.thisLane.rel ? `    ↳ (${status.thisLane.rel} has no filled-in next:)` : `    ↳ (no session log yet on this branch)`)
   P.push('')
 
-  console.log(P.join('\n'))
+  // orient prints plain markdown (no color/escapes of its own), so the ONLY control
+  // bytes in the output would be injected via repo-authored strings — issue/PR titles,
+  // record next:, agent trailers, lane labels. Strip them at the render boundary (tab +
+  // newline preserved); the --json branch above is untouched (JSON escapes control bytes).
+  console.log(sanitizeTTY(P.join('\n')))
   return exit
 }

@@ -14,6 +14,7 @@
 // reclaim refuses anything but a derived ABANDONED, so an unresolvable lane is not
 // reclaimable without a deviation judgment (the --jdg hatch is the ONLY way past it).
 import { issueOf } from '../util.mjs'
+import { isClosed } from './divergence.mjs'
 
 export const DEFAULT_LEASE_TTL = '7d' // D2: the descriptor default when lanes.lease_ttl is undeclared
 
@@ -66,7 +67,7 @@ export function deriveLanes({ lanes = [], ttlMs, now, issueStates = {}, namespac
     // closed anchor under a live lane is DIV-01's territory (the rule lands at M5c;
     // the derivation lives here so orient and the rule read ONE answer).
     const anchor = issue != null ? { issue, state: issueStates[issue]?.state ?? 'unknown' } : null
-    if (anchor && anchor.state !== 'open' && anchor.state !== 'unknown') labels.push(`anchor #${issue} is ${anchor.state}`)
+    if (anchor && isClosed(anchor.state)) labels.push(`anchor #${issue} is ${anchor.state}`)
     return {
       ref: l.ref, tip: l.tip ?? null, issue, agent: l.agent ?? null, agentSource: l.agentSource ?? null,
       source: l.source ?? null, pr: l.pr ?? null, freshness, basis, age_ms, state, anchor, labels,

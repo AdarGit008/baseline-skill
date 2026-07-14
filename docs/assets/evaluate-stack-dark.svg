@@ -4,17 +4,17 @@
 <text x="36" y="66" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="34" font-weight="bold" fill="#E7E9EE" text-anchor="start">How /baseline decides</text>
 <text x="36" y="98" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="17" font-weight="normal" fill="#A6ACB8" text-anchor="start">five layers turn a repository into an exit code — each layer knows less than the one above it</text>
 <rect x="844" y="36" width="560" height="40" rx="20" fill="none" stroke="#7B818C" stroke-width="2"/>
-<text x="1124" y="61" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">node check.mjs --repo &lt;path&gt;  →  78 rules  →  scorecard  →  exit code</text>
+<text x="1124" y="61" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">node check.mjs --repo &lt;path&gt;  →  86 rules  →  scorecard  →  exit code</text>
 <g transform="rotate(-90 20 520)"><text x="20" y="520" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#7B818C" text-anchor="middle">↓ questions go down · facts come up ↑</text></g>
 <rect x="36" y="136" width="850" height="112" rx="8" fill="#1C2044" stroke="#8F94F2" stroke-width="3"/>
 <circle cx="78" cy="192" r="21" fill="none" stroke="#8F94F2" stroke-width="2.8"/>
 <text x="78" y="199" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#C9CCFF" text-anchor="middle">L1</text>
 <text x="114" y="178" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#C9CCFF" text-anchor="start">THE CLI</text>
-<text x="114" y="202" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#C9CCFF" text-anchor="start" opacity="0.85">check.mjs · 54 lines</text>
+<text x="114" y="202" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#C9CCFF" text-anchor="start" opacity="0.85">check.mjs · 60 lines</text>
 <text x="114" y="224" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#C9CCFF" text-anchor="start" opacity="0.8">the only entry point</text>
 <text x="388" y="162" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#8F94F2" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="184" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">flags: --repo · --json · --no-exec</text>
-<text x="388" y="203.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">loads rules.json — the 78-rule</text>
+<text x="388" y="203.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">loads rules.json — the 86-rule</text>
 <text x="388" y="223" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">standard, as pure data</text>
 <rect x="674" y="150" width="196" height="84" rx="6" fill="#3B3417" stroke="#C7AA3A" stroke-width="2"/>
 <text x="688" y="174" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11.5" font-weight="bold" fill="#EFDF9C" text-anchor="start">never knows:</text>
@@ -26,7 +26,7 @@
 <circle cx="78" cy="350" r="21" fill="none" stroke="#C77DFF" stroke-width="2.8"/>
 <text x="78" y="357" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#E4CBFF" text-anchor="middle">L2</text>
 <text x="114" y="336" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#E4CBFF" text-anchor="start">THE JUDGE</text>
-<text x="114" y="360" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#E4CBFF" text-anchor="start" opacity="0.85">engine.mjs · 42 lines</text>
+<text x="114" y="360" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#E4CBFF" text-anchor="start" opacity="0.85">engine.mjs · 51 lines</text>
 <text x="114" y="382" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#E4CBFF" text-anchor="start" opacity="0.8">gate → evaluate → tag</text>
 <text x="388" y="320" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#C77DFF" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="342" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">5 gates: type? profile? opt-out?</text>
@@ -42,7 +42,7 @@
 <circle cx="78" cy="508" r="21" fill="none" stroke="#F0A32F" stroke-width="2.8"/>
 <text x="78" y="515" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#FFD98A" text-anchor="middle">L3</text>
 <text x="114" y="494" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#FFD98A" text-anchor="start">THE LAB</text>
-<text x="114" y="518" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.85">evaluators.mjs · 28 kinds</text>
+<text x="114" y="518" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.85">evaluators.mjs · 36 kinds</text>
 <text x="114" y="540" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.8">facts only</text>
 <text x="388" y="478" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#F0A32F" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="500" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">how to verify each claim: grep,</text>
@@ -159,7 +159,7 @@
 <rect x="36" y="1075" width="400" height="150" rx="6" fill="#3B3417" stroke="#C7AA3A" stroke-width="2"/>
 <text x="60" y="1109" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#EFDF9C" text-anchor="start">kept honest — this repo’s own CI</text>
 <text x="60" y="1137" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">--self-check → rules.json is internally valid</text>
-<text x="60" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">golden corpus → 9 fixture repos × 78 pinned</text>
+<text x="60" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">golden corpus → 10 fixture repos × 86 pinned</text>
 <text x="60" y="1181" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">     verdicts — ANY drift fails the build</text>
 <text x="60" y="1203" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">self-score → baseline scores its own repo</text>
 <rect x="470" y="1075" width="400" height="150" rx="6" fill="#122B3D" stroke="#4C9BD8" stroke-width="2"/>

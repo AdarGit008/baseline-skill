@@ -26,6 +26,11 @@ export function validateAgainst(value, schema, where, errors) {
   if (schema.enum && !schema.enum.includes(value)) errors.push(`${where} must be one of ${schema.enum.join('|')} (got ${describe(value)})`)
   if (schema.pattern && typeof value === 'string' && !new RegExp(schema.pattern).test(value)) errors.push(`${where} must match ${schema.pattern} (got ${describe(value)})`)
   if (schema.minLength != null && typeof value === 'string' && value.length < schema.minLength) errors.push(`${where} must be non-empty`)
+  // maxLength/maxItems: bound attacker-influenced strings/arrays (a lanes.families glob
+  // rides into globToRe — an unbounded one is ReDoS fuel; globToRe also collapses runs,
+  // so this is defense in depth). Messages stay input-free for stable golden pins.
+  if (schema.maxLength != null && typeof value === 'string' && value.length > schema.maxLength) errors.push(`${where} must be at most ${schema.maxLength} characters`)
+  if (schema.maxItems != null && Array.isArray(value) && value.length > schema.maxItems) errors.push(`${where} must have at most ${schema.maxItems} items`)
   if (schema.type === 'object' && matchesType(value, 'object')) {
     const props = schema.properties || {}
     for (const req of (schema.required || [])) if (!(req in value)) errors.push(`${where ? where + ': ' : ''}missing required field '${req}'`)

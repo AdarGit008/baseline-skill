@@ -6,6 +6,74 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M5c: FLOW/DIV rules, the DIVERGED verdict, check's lane-world plumbing (78 → 86 rules)
+- **`check` gains the capability-probe + forge-facts plumbing it lacked** (the M5 panel's
+  blocker): a LAZY lane world (`makeLaneWorld`) — probe + forge + lane gathering + lease
+  derivation, computed once on first demand and never for a single-lane/off-posture run —
+  the SAME gathering + derivation `orient` renders and `lane reclaim` gates on. One
+  answer, three surfaces. Exit-stable offline: every unreachable plane degrades to a
+  labeled SKIP; `multi-lane-local` runs carry "forge not consulted (multi-lane-local
+  posture)" — the posture named, never faked as unreachability.
+- **Five FLOW rules** (warn + promotion prose, no overlap, no wallpaper): **FLOW-01**
+  lane anchoring per the descriptor `anchoring` knob — existence + resolution ONLY
+  (`off` skips, `relaxed` wants a parseable anchor, `strict` also wants forge
+  resolution; open-ness is DIV-01's alone) — the knob's consumer, flipping `anchoring`
+  active in FIELD_CONSUMERS; **FLOW-03** filled-in `next:` (fires only on a PRESENT
+  record — absence stays FLOW-02's); **FLOW-04** branch placement against
+  `lanes.namespace` + the new additive **`lanes.families`** (the real branch inventory —
+  adopt/*, release/* — declares itself instead of warning forever); **FLOW-05** push
+  discipline as the arbitrated threshold-free predicate ("newest session record exists
+  locally but is absent at origin", judged against the last-fetched origin state and
+  saying so); **FLOW-07** lease liveness, warning ONLY at derived ABANDONED.
+- **`rules/div.json` — DIV-01..03 and the DIVERGED engine tag**: issue-closed-lane-active,
+  `next:`-at-closed-issue, done-with-nothing-merged. Extracted `derive/divergence` (pure)
+  holds the ONE classifier: orient's headline calls it, and the DIV rules re-run it
+  branch-scoped through check's lane world — both import its `isClosed`, `refs`, and
+  `closes`, so "closed" and "which #N counts" have a single definition that can't drift
+  between the two surfaces (a parity test pins the agreement). A firing DIV rule tags
+  **DIVERGED** — its own verdict in the scorecard, `summary.diverged` in `--json`,
+  category `div` — with certainty deterministic, severity warn, and the **exit code
+  unchanged until M7** (the `lanes-repo` pin proves it: exit 0 WITH a DIVERGED; a
+  `--self-check` law holds div ⇒ warn so the engine's DIVERGED-before-blocker ordering
+  can't silently swallow a future promotion). An `unknown` issue state is never divergence.
+- **Engine `workflow` is string-or-array** (the FLOW-02/06 family conversion rides this
+  re-pin: both now serve `["multi-lane", "multi-lane-local"]`), and `--self-check`
+  validates rule postures against the descriptor schema's enum itself — lockstep by
+  construction. Eight new check kinds (`lane-*`, `div-*`).
+- **Golden harness grows `_fixture.json` `forge_replay` + `bare_origin`** — a committed
+  `_forge/` dir becomes the checker's replay (zero network), and a local bare origin
+  materializes so push-discipline/lease paths pin. New **`lanes-repo`** fixture: claimed
+  `lane/7`, pushed record, CLOSED anchor issue in replay → FLOW-01..05 PASS, FLOW-07
+  ABANDONED WARN, **DIV-01 DIVERGED**, exit 0. The ONE M5 corpus re-pin (10 fixtures,
+  860 verdicts); lease ages (`Nh`/`Nd`) normalized in pins. **`test/flow/run.mjs`** — the
+  fire-direction matrix static fixtures can't reach (family-residency SKIP, stray →
+  FLOW-04-only, the uncommitted-draft non-contradiction, empty-`next:`/unpushed WARNs,
+  DIV-01/02/03 firing as DIVERGED with exit 0, multi-lane-local posture labels, the
+  ReDoS-glob refusal) against local bare origins + committed replay dirs.
+- **8-angle review hardening** (all confirmed findings fixed in-branch): the one-classifier
+  wiring above; the **lane-residency gate** — a declared-family branch (`release/*`) gets
+  FLOW-04 and NOTHING else, never four unsatisfiable warns (the wallpaper the families
+  mechanism exists to prevent); FLOW-03/05/DIV-02 share FLOW-02's **committed** presence
+  definition, so an uncommitted draft record can't make the report contradict itself;
+  `div-closes-closed` is null-honest (a FAILED PR query SKIPs, never a fabricated "no open
+  PRs"); FLOW-01 strict-unknown SKIPs (parity with DIV-01 — a transient query miss never
+  brands a real anchor bogus); check threads the **probe's specific cause** ("gh not
+  installed" / "not authenticated" / "no forge repo here"), not a generic label; FLOW-07
+  shows git-plane low-confidence provenance; the git-plane lane list is **capped at 100 +
+  labeled** (a hostile origin can't fan out thousands of git spawns) and check skips the
+  owner-enrichment fetch entirely (no rule reads it — kills a 60s black-hole stall);
+  `globToRe` collapses adjacent `.*` and the schema **bounds `lanes.families`** (≤64 chars,
+  ≤64 items — validator gains `maxLength`/`maxItems`), closing a ReDoS; repo-authored
+  strings are stripped of terminal control bytes at the render boundary (no cursor-move
+  spoofing a printed FAIL); `newestLocalLog` survives a hostile `*.md` directory (orient no
+  longer crashes — FS9); the DIVERGED scorecard row aligns (padEnd fix); the golden harness
+  strips the tool's own `BASELINE_LOG_NOW`/`FORGE_REPLAY` from the child env (a
+  time-traveling dev can't drift or bless pins) and cleans side-dirs on a throw.
+- Docs: REFERENCE (both new sections + kinds), SKILL (reclaim + lease teaching, 86),
+  CONTRACT (the lanes plain-git twin — claim/lease/reclaim/FLOW by hand; the claim recipe
+  uses `printf` so the trailers land as real newlines), GLOSSARY
+  (Lease, DIVERGED).
+
 ### Added — V2 M5b: derived leases, `baseline lane reclaim`, orient lane lines
 - **`src/derive/lanes.mjs`** — the PURE lease derivation (C31): LIVE | STALE | ABANDONED,
   nothing stored to go stale. Freshness is FS10 **as amended by the M5 ruling** (GitHub's

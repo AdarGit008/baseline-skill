@@ -33,14 +33,19 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     if (!sevOk.has(r.severity)) problems.push(`${curId}: invalid severity '${r.severity}'`)
     if (!catKeys.has(r.category)) problems.push(`${curId}: unknown category '${r.category}'`)
     if (r.requires !== undefined && !(r.requires in DEFAULTS)) problems.push(`${curId}: 'requires' names unknown config key '${r.requires}'`)
-    // M4c posture/branch gates are data: a rule may declare the workflow it needs and/or
-    // that it only runs on a lane (non-default) branch — values are closed sets, and
-    // branch_scope REQUIRES workflow: a lane rule without a posture gate would run on
-    // every non-default branch of every undeclared repo (the wallpaper-warn class the
+    // M4c posture/branch gates are data: a rule may declare the workflow(s) it needs
+    // and/or that it only runs on a lane (non-default) branch — values are closed sets,
+    // and branch_scope REQUIRES workflow: a lane rule without a posture gate would run
+    // on every non-default branch of every undeclared repo (the wallpaper-warn class the
     // M4 ruling forbids) — "no wallpaper warns is structural" is a law, not a habit.
-    // single values only until M5c's array (family) support; keep this list in lockstep
-    // with the descriptor schema's workflow enum (schema/repo.schema.json)
-    if (r.workflow !== undefined && !['multi-lane', 'single-lane', 'multi-lane-local'].includes(r.workflow)) problems.push(`${curId}: workflow must be 'multi-lane', 'single-lane', or 'multi-lane-local' (got '${r.workflow}')`)
+    // String-or-array since M5c (a rule may serve a posture FAMILY); the value set is
+    // read from the descriptor schema itself — lockstep by construction, not by habit.
+    if (r.workflow !== undefined) {
+      const wfEnum = DESCRIPTOR_SCHEMA.properties?.workflow?.enum || []
+      const wfs = Array.isArray(r.workflow) ? r.workflow : [r.workflow]
+      if (!wfs.length) problems.push(`${curId}: workflow must be a value or non-empty array from the descriptor schema enum`)
+      for (const w of wfs) if (!wfEnum.includes(w)) problems.push(`${curId}: workflow '${w}' is not in the descriptor schema enum {${wfEnum.join('|')}}`)
+    }
     if (r.branch_scope !== undefined && r.branch_scope !== 'lane') problems.push(`${curId}: branch_scope must be 'lane' (got '${r.branch_scope}')`)
     if (r.branch_scope !== undefined && r.workflow === undefined) problems.push(`${curId}: branch_scope requires a workflow declaration — a lane rule must be posture-gated (no wallpaper warns)`)
     // M4c review ruling: the CLAIM family is uniformly opt-in — a claims rule
@@ -80,6 +85,11 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     if (!Array.isArray(r.contexts) || !r.contexts.length || !r.contexts.every(c => CTXV.has(c))) problems.push(`${id}: contexts must be a non-empty subset of {${[...CTXV].join('|')}}`)
     if (!CERT.has(r.certainty)) problems.push(`${id}: certainty must be one of {${[...CERT].join('|')}}`)
     if (r.severity === 'blocker' && r.certainty !== 'deterministic') problems.push(`${id}: blocker must be deterministic (got '${r.certainty}') — a blocker can't rest on a heuristic/judgment`)
+    // M5c: the DIVERGED tag short-circuits before the blocker→FAIL branch (src/engine.mjs),
+    // so a div-category rule at severity blocker would tag DIVERGED yet count zero blockers
+    // — a silent green. Until M7 defines blocker-DIVERGED semantics, pin div ⇒ warn so the
+    // dead path can't ship, and M7's promotion is a conscious engine change, not a surprise.
+    if (r.category === 'div' && r.severity !== 'warn') problems.push(`${id}: div-category rules must be severity 'warn' until M7 defines blocker-DIVERGED in the engine (DIVERGED currently bypasses the blocker→FAIL path)`)
     if (r.severity === 'manual' && r.certainty !== 'judgment') problems.push(`${id}: sign-off (manual) must be certainty 'judgment' (got '${r.certainty}')`)
     if (r.certainty === 'judgment' && r.severity !== 'manual') problems.push(`${id}: certainty 'judgment' must route to a sign-off (severity 'manual', got '${r.severity}')`)
     if (Array.isArray(r.sources) && r.sources.includes('flow')) problems.push(`${id}: readiness rules may not consume 'flow' facts (layering invariant)`)

@@ -8,7 +8,7 @@ A **testable readiness standard** for new projects. Every lesson is a rule; a ze
 
 **v1** distilled 20 rules from three of the author's own repos. That sample was thin. **v2** pressure-tested v1 against the field's actual prior art — [OpenSSF Scorecard](GLOSSARY.md#openssf-scorecard), [SLSA](GLOSSARY.md#slsa), the [Twelve-Factor App](GLOSSARY.md#twelve-factor-app), Google's SRE books, [Diátaxis](GLOSSARY.md#diataxis), [Keep a Changelog](GLOSSARY.md#keep-a-changelog), [repolinter](GLOSSARY.md#repolinter), [Backstage/Cortex/OpsLevel](GLOSSARY.md#service-catalog), Stryker, and ~40 more sources — kept everything v1 had, and added what the field agreed v1 was missing. Each candidate was **adversarially verified** (is the source real? is it robot-checkable at rest? does it actually add over v1?) before it earned a place; 15 "looks-thorough-checks-nothing" candidates were dropped.
 
-**78 rules across 13 categories.** 14 blockers · 59 warnings · 5 sign-offs.
+**86 rules across 14 categories.** 14 blockers · 67 warnings · 5 sign-offs.
 
 ## Profiles — v2 stays sharp by only running what fits
 
@@ -58,10 +58,10 @@ These diagrams mirror the runner — they're its actual control flow, not a sket
 ```mermaid
 flowchart LR
   CFG["baseline.config.json — intent"] --> RES
-  RULES["rules/ — 78 rules (manifest: rules.json)"] --> EVAL
+  RULES["rules/ — 86 rules (manifest: rules.json)"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
-    IDX["file index + git helpers"] --> EVAL["~28 check evaluators"]
+    IDX["file index + git helpers"] --> EVAL["~36 check evaluators"]
     RES["config resolution"] --> EVAL
   end
   SO["signoff.json — human judgments"] --> EVAL
@@ -336,14 +336,29 @@ All CLAIM rules are opt-in (`makes_external_claims` / a register present) and ma
 
 REC-01/02/05 skip when no records are committed; REC-04 also cross-checks the ADR homes (`docs/decisions/`, `adr/`, `records/decisions/`), so it can fire on a true ADR-number duplication even without `records/`. REC-01/REC-02 are deterministic — M7's promotion per posture is a pure severity flip; REC-03 (record schema conformance as a rule) is reserved.
 
-### Lane workflow (2) — M4c
+### Lane workflow (7) — M4c/M5c
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
+| FLOW-01 | The lane anchors to a real issue (per the descriptor `anchoring` knob) | 🟡 warn → promoted at M7 | core |
 | FLOW-02 | A lane branch carries its own session record | 🟡 warn → promoted at M7 | core |
+| FLOW-03 | The lane's session record has a filled-in `next:` (fires only on a present record — absence is FLOW-02's) | 🟡 warn → promoted at M7 | core |
+| FLOW-04 | The branch sits in a declared family (`lanes.namespace` + additive `lanes.families`) | 🟡 warn → promoted at M7 | core |
+| FLOW-05 | The newest session record is pushed (exists locally, absent at origin — threshold-free) | 🟡 warn → promoted at M7 | core |
 | FLOW-06 | A gated subject changes with its record in the same PR (DESC-03 preview) | 🟡 warn (heuristic ceiling) | core |
+| FLOW-07 | The lane's lease is live (warns **only** at derived ABANDONED — STALE is orient's nudge) | 🟡 warn → promoted at M7 | core |
 
-Both run **only** on a non-default branch of a declared `multi-lane` repo — the engine's data-driven posture/branch gates (`workflow`, `branch_scope` rule fields) make them unrepresentable elsewhere. M5 extends this module with the lane-coupled set (anchoring per the C15 knob, the `next:` guard, push discipline, lease liveness).
+All run **only** on a non-default branch of a repo declaring the lane family (`workflow: multi-lane` or `multi-lane-local` — the rule-declared `workflow` field is string-or-array since M5c); the engine's data-driven posture/branch gates make them unrepresentable elsewhere — no wallpaper warns, structurally. Under `multi-lane-local`, forge-dependent checks SKIP saying **"forge not consulted (multi-lane-local posture)"** — the posture named, never faked as unreachability. FLOW-01 consumes the descriptor `anchoring` knob: `off` skips, `relaxed` wants a parseable issue anchor in the ref name, `strict` also wants the anchor to resolve at the forge — open-ness is deliberately NOT checked here (that contradiction is DIV-01's, once, not twice).
+
+### Divergence (3) — M5c
+
+| ID | Rule | Severity | Profile |
+|---|---|---|---|
+| DIV-01 | Issue closed, lane still active | 🔴 DIVERGED (severity warn) | core |
+| DIV-02 | Recorded `next:` points at a closed issue | 🔴 DIVERGED (severity warn) | core |
+| DIV-03 | An open PR closes an already-closed issue (done-with-nothing-merged) | 🔴 DIVERGED (severity warn) | core |
+
+Cross-tier contradictions (C36) a stateless worker must resolve **first** — the same `derive/divergence` answer `orient` headlines, evaluated as rules through check's lane-world plumbing (one derivation, two surfaces). A firing DIV rule tags **DIVERGED** — its own verdict in the scorecard and `summary.diverged` in `--json` — while the **exit code stays unchanged** (severity warn until M7's promotion): divergence demands a human resolution, not a red build. Deterministic by construction (the forge SAID the issue is closed); an `unknown` issue state is never divergence. All three derive from committed forge replay in fixtures (`_fixture.json` `forge_replay` + `bare_origin` — the golden harness materializes a local bare origin and a replay dir, so lane verdicts pin without a network).
 
 ### Repo descriptor (1)
 
@@ -355,7 +370,7 @@ Declared identity, not a guess: a schema-validated `baseline.repo.json` (`type`,
 
 ## Check kinds (how the runner verifies, with zero deps)
 
-`any-file` (glob presence; `mode:absent`, `tracked_only`, `allow`) · `grep` (regex present/absent/all over contents; `tracked_only`) · `file-contains` (file exists AND matches) · `json-field` (parse JSON, assert a dotted path) · `any-of` (pass if any alternative passes) · `command` (run the bootstrap; `repeat`) · `md-links` (relative markdown links resolve) · `doc-freshness` (frontmatter date within a window) · `adr-status` / `adr-forward-link` (decision-record status + resolvable supersede links) · `required-files` (a config list exists + non-empty) · `path-integrity` (backticked paths in docs resolve) · `version-consistency` (runtime major agrees across `.nvmrc`/CI/Dockerfile/`engines`) · `dockerfile-digest` (`FROM` pinned by `@sha256`) · `status-stamp` · `config-nonempty` · `claims-field` / `claims-citations` · `signoff` · `descriptor` (`baseline.repo.json` present + schema-valid).
+`any-file` (glob presence; `mode:absent`, `tracked_only`, `allow`) · `grep` (regex present/absent/all over contents; `tracked_only`) · `file-contains` (file exists AND matches) · `json-field` (parse JSON, assert a dotted path) · `any-of` (pass if any alternative passes) · `command` (run the bootstrap; `repeat`) · `md-links` (relative markdown links resolve) · `doc-freshness` (frontmatter date within a window) · `adr-status` / `adr-forward-link` (decision-record status + resolvable supersede links) · `required-files` (a config list exists + non-empty) · `path-integrity` (backticked paths in docs resolve) · `version-consistency` (runtime major agrees across `.nvmrc`/CI/Dockerfile/`engines`) · `dockerfile-digest` (`FROM` pinned by `@sha256`) · `status-stamp` · `config-nonempty` · `claims-field` / `claims-citations` · `signoff` · `descriptor` (`baseline.repo.json` present + schema-valid) · the M5c lane-world kinds — `lane-anchor` / `lane-next-filled` / `lane-namespace` / `lane-record-pushed` / `lane-lease` / `div-anchor-closed` / `div-next-closed` / `div-closes-closed` — which evaluate through ONE lazy gathering (the same derivation `orient` renders and `lane reclaim` gates on), degrade to labeled SKIPs offline, and never spawn `gh` unless a lane rule actually runs.
 
 A rule with a check the runner can't evaluate (bad regex, missing target) degrades to **skip**, never a crash — one broken rule can't take down the run.
 

@@ -13,13 +13,13 @@ import { gatherFacts } from './facts/index.mjs'
 import { join } from './join.mjs'
 import { deriveStatus } from './derive/status.mjs'
 
-const ageOf = (iso) => {
-  if (!iso) return ''
-  const ms = Date.now() - new Date(iso).getTime()
+const fmtAge = (ms) => {
+  if (ms == null) return '?'
   if (ms < 3600000) return 'just now'
   if (ms < 86400000) return `${Math.floor(ms / 3600000)}h ago`
   return `${Math.floor(ms / 86400000)}d ago`
 }
+const ageOf = (iso) => iso ? fmtAge(Date.now() - new Date(iso).getTime()) : ''
 
 export async function runOrient(argv) {
   if (argv[0] === '--help' || argv[0] === '-h') { console.log('baseline orient — derived-state survey for session start\n  usage: baseline orient [--repo DIR] [--json] [--strict]'); return 0 }
@@ -60,16 +60,37 @@ export async function runOrient(argv) {
     for (const x of status.divergence) P.push(`- ${x}`)
   }
 
-  P.push(`\n## Live lanes (open PRs)`)
-  if (!status.forgeAvailable) P.push(`_forge unreachable (${status.forgeReason || cap.forge.reason}) — by hand: \`gh pr list\`_`)
-  else if (!status.lanes.length) P.push(`_none_`)
-  else for (const l of status.lanes) {
+  // ---- lanes: the derived lease view (C31) when the descriptor declares a namespace;
+  // ---- the plain open-PR survey otherwise (single-lane repos keep their old section) ----
+  const meta = status.lanesMeta
+  const laneRefSet = new Set((status.lanes || []).map(l => l.ref))
+  const STATE_ICON = { LIVE: '●', STALE: '◐', ABANDONED: '✗' }
+  if (meta) {
+    P.push(`\n## Lanes (\`${meta.namespace}\` · ttl ${meta.ttl})`)
+    if (meta.truncated) P.push(`_⚠ lane list truncated at the forge's page size — older refs beyond 100 are not shown_`)
+    if (!status.lanes.length) P.push(meta.source ? `_none claimed_` : `_underived: ${meta.reason}_`)
+    else for (const l of status.lanes) {
+      const head = `- ${STATE_ICON[l.state] ?? '?'} \`${l.ref}\`${l.issue != null ? ` → #${l.issue}` : ''} — ${l.state ?? 'UNDERIVED'} · ${fmtAge(l.age_ms)} · agent ${l.agent ?? '?'}`
+      const pr = l.pr ? ` · PR #${l.pr.number}${l.pr.draft ? ' [draft]' : ''}` : ' · no PR yet'
+      P.push(head + pr)
+      for (const lab of l.labels) P.push(`    · ${lab}`)
+      if (l.state === 'ABANDONED') P.push(`    ↳ reclaimable:  baseline lane reclaim ${l.issue ?? l.ref}`)
+      if (l.pr) P.push(l.next ? `    ↳ next: ${l.next}` : l.hasLog ? `    ↳ (session log has no filled-in next:)` : `    ↳ (no session log on branch)`)
+    }
+  }
+
+  const prHead = meta ? `\n## Open PRs${laneRefSet.size ? ' (non-lane branches)' : ''}` : `\n## Live lanes (open PRs)`
+  const prList = (status.prs || []).filter(pr => !laneRefSet.has(pr.branch))
+  P.push(prHead)
+  if (!status.forgeAvailable) P.push(status.source === 'posture' ? `_${status.forgeReason}_` : `_forge unreachable (${status.forgeReason || cap.forge.reason}) — by hand: \`gh pr list\`_`)
+  else if (!prList.length) P.push(`_none_`)
+  else for (const l of prList) {
     P.push(`- #${l.number}${l.draft ? ' [draft]' : ''} ${l.title}  \`${l.branch}\`  (${ageOf(l.updatedAt)})${l.closes?.length ? `  → closes #${l.closes.join(', #')}` : ''}`)
     P.push(l.next ? `    ↳ next: ${l.next}` : l.hasLog ? `    ↳ (session log has no filled-in next:)` : `    ↳ (no session log on branch)`)
   }
 
   P.push(`\n## Backlog (open issues)`)
-  if (!status.forgeAvailable) P.push(`_forge unreachable — by hand: \`gh issue list\`_`)
+  if (!status.forgeAvailable) P.push(status.source === 'posture' ? `_${status.forgeReason}_` : `_forge unreachable — by hand: \`gh issue list\`_`)
   else if (!status.backlog.length) P.push(`_none_`)
   else {
     const byMs = new Map()

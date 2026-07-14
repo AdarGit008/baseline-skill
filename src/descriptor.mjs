@@ -27,7 +27,7 @@ export const FIELD_CONSUMERS = {
   workflow:              'M4c · engine posture gate — rules declaring `workflow` SKIP on other postures; M5 extends to lanes',
   anchoring:             'reserved:M5 · FLOW-01 anchoring severity',
   ground_truth_boundary: 'M4c · engine default-branch lane gate (branch_scope rules); probe/target-ref reads reserved:M6',
-  lanes:                 'M5a · lane claim branch namespace (lease_ttl consumed at M5b lease derivation)',
+  lanes:                 'M5a/M5b · lane claim branch namespace (M5a); lease_ttl consumed by the M5b lease derivation (derive/lanes, reclaim gate)',
   join_keys:             'M5a · lane claim trailer allowlist (C38 — claim machine-generates only declared keys)',
   engine_pin:            'reserved:M7 · pointer-install skew detection',
   staleness:             'reserved:M3 · orient staleness ceilings',

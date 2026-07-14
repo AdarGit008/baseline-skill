@@ -2,7 +2,12 @@
 // No I/O (gatherFacts already resolved every plane), so it replays deterministically from
 // committed forge fixtures. Divergence is surfaced first: cross-tier conflicts a stateless
 // worker must resolve before trusting the rest (a preview of the M5 DIV rules).
+// M5b: `lanes` is the derived LEASE view (claimed refs — LIVE|STALE|ABANDONED, C31);
+// the open-PR list that used to live under that key is `prs` now. A lane's open PR is
+// joined onto its line (headRefName ⇄ ref, a declared key), so a PR-less claim finally
+// APPEARS — the invisible-claim gap was the whole reason M5b re-homed this view.
 import { refs } from '../facts/index.mjs'
+import { deriveLanes } from './lanes.mjs'
 
 export function deriveStatus(facts, joined, capability) {
   const stateOf = (n) => facts.issueStates[n]?.state
@@ -20,9 +25,15 @@ export function deriveStatus(facts, joined, capability) {
   // DIV: a live PR closes an already-closed issue (closed-issue-live-branch).
   for (const pr of facts.prs) for (const n of pr.closes) if (isClosed(stateOf(n))) divergence.push(`#${pr.number} ${pr.branch}: closes #${n}, already ${stateOf(n)} — "${titleOf(n)}"`)
 
-  const lanes = facts.prs.map(pr => ({ number: pr.number, title: pr.title, branch: pr.branch, draft: pr.draft, updatedAt: pr.updatedAt, next: pr.next, hasLog: pr.hasLog, closes: pr.closes }))
+  const prs = facts.prs.map(pr => ({ number: pr.number, title: pr.title, branch: pr.branch, draft: pr.draft, updatedAt: pr.updatedAt, next: pr.next, hasLog: pr.hasLog, closes: pr.closes }))
   const backlog = facts.issues.map(i => ({ number: i.number, title: i.title, milestone: i.milestone?.title ?? null, labels: (i.labels || []).map(l => l.name), updatedAt: i.updatedAt }))
   const thisLane = { branch: facts.git.branch, next: facts.git.thisLaneLog?.next ?? null, rel: facts.git.thisLaneLog?.rel ?? null }
+
+  // the lease view (C31), with each lane's open PR joined on (the branch⇄ref key); a
+  // PR whose next:/hasLog facts were already fetched hands them to the lane line too
+  const meta = facts.lanesMeta
+  const lanes = meta ? deriveLanes({ lanes: facts.lanes ?? [], ttlMs: meta.ttlMs, now: facts.now, issueStates: facts.issueStates, namespace: meta.namespace })
+    .map(l => { const pr = prs.find(p => p.branch === l.ref); return pr ? { ...l, pr: { number: pr.number, title: pr.title, draft: pr.draft, updatedAt: pr.updatedAt }, next: pr.next, hasLog: pr.hasLog } : { ...l, next: null, hasLog: false } }) : []
 
   return {
     planes: capability,
@@ -32,6 +43,6 @@ export function deriveStatus(facts, joined, capability) {
     forgeReason: facts.forgeReason,
     divergence,
     findings: joined.findings,
-    lanes, backlog, thisLane,
+    lanes, lanesMeta: meta, prs, backlog, thisLane,
   }
 }

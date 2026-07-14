@@ -6,6 +6,63 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M5b: derived leases, `baseline lane reclaim`, orient lane lines
+- **`src/derive/lanes.mjs`** — the PURE lease derivation (C31): LIVE | STALE | ABANDONED,
+  nothing stored to go stale. Freshness is FS10 **as amended by the M5 ruling** (GitHub's
+  GraphQL schema no longer carries `Commit.pushedDate`): **max(tip committedDate, PR
+  updatedAt)** — the later signal wins, erring toward LIVE (a premature ABANDONED invites a
+  premature reclaim, the one direction that steals a live lane), provenance riding each lane
+  as a label. STALE begins at **ttl/2 — a named provisional constant** (`STALE_FRACTION`),
+  deliberately not a descriptor knob (M7 revisits on dogfood data). Clock skew clamps to age
+  0, labeled; a lane with no resolvable freshness derives state **null** — surfaced, never
+  guessed, and never reclaimable. A **fresh claim derives LIVE at age 0** (pinned). Inputs
+  are plain JSON-able data — the M6 `inputs_digest` seam.
+- **Forge lane-refs in ONE GraphQL `refs()` query** (`makeForge.laneRefs`) — every lane
+  tip's `committedDate` + associated-PR `updatedAt` in a single round trip,
+  record/replay-additive (the fixture is the raw GraphQL envelope; `Ref.name` arrives
+  RELATIVE to the refPrefix — verified live — so fixtures carry API-shaped names). The
+  **git plane is the fallback** when the forge is unreachable — and the normal mode under
+  `multi-lane-local` (CF5): tips via `ls-remote` (authoritative, never the clone's stale
+  tracking refs), objects via one glob fetch into `refs/baseline/lanes/*`; committer-clock
+  freshness is labeled **low confidence**. Lane owner = the **newest commit anchoring the
+  lane's issue** (`Baseline-Issue` grep), its `Baseline-Agent` trailer — a takeover
+  displaces a claim by being newer, and same-issue commits merged into the branch base
+  can't shadow it.
+- **`baseline lane reclaim <issue|ref>`** (`src/lane.mjs`) — takeover of a
+  **derived-ABANDONED lane only**, judged by the same gathering + derivation orient renders
+  (one answer, or the tool argues with itself). The takeover commit is an empty child of
+  the observed tip carrying the new agent's trailer, pushed **without force**: a lane that
+  moved mid-reclaim rejects non-fast-forward and the re-ask names the truth — the lane is
+  active, exit 3, never a stolen live lane (a rival takeover under this agent's own
+  identity is adopted from origin's tip, never our unpushed sha). The **dated takeover
+  record is machine-written through the existing `baseline log` writer** (scrub gate
+  included, no human ceremony); the **issue comment is best-effort** and posture-gated
+  (skips are labeled with their reason, replay never writes). **`--jdg <id>`** is the
+  live-takeover escape hatch: an **unexpired `kind: deviation` judgment naming the lane**
+  (whole-token match — `lane/70` does not cover `lane/7`) authorizes takeover of a
+  non-ABANDONED lane, so nobody routes around the tool. Reclaiming your own abandoned lane
+  renews the lease, named as such. Exit: 0 reclaimed · 2 usage/refusal · 3 lost race.
+- **Orient lane lines** — the `Lanes` section renders the derived lease view when the
+  descriptor declares `lanes.namespace`: state icon + ref + issue anchor + age + agent,
+  provenance labels riding each line, **ABANDONED/STALE sorted first**, the reclaim recipe
+  on abandoned lanes, and **claimed-but-PR-less lanes finally appear** (C31 — the invisible
+  claim was the gap). A truncated forge page (>100 refs) is labeled, never silent.
+  **JSON re-home**: `lanes` is now the derived lease view (+ `lanesMeta`); the open-PR
+  list that used to live there is **`prs`** — repos with no namespace keep the old
+  PR-survey section, and `multi-lane-local` sections name the posture instead of faking
+  unreachability (`gatherFacts` now hands the descriptor posture to `makeForge`, the one
+  closure home).
+- **`test/lane/run.mjs`** — derive-boundary pins (STALE exactly at ttl/2, ABANDONED exactly
+  at ttl, skew clamp, max() provenance both directions, sort order), reclaim e2e on local
+  bare origins (LIVE refusal moves nothing; takeover is an empty child commit; record +
+  trailer + checkout pins), the **two-rival concurrent reclaim race** (exactly one winner,
+  the loser told the truth), every `--jdg` refusal direction, `multi-lane-local`
+  forge-free reclaim, own-lane renewal. `test/orient/run.mjs` — git-plane lane lines,
+  time-traveled ABANDONED + reclaim recipe, posture labels, `--json` shape.
+  `test/facts/run.mjs` — the forge lane-refs replay path over a committed GraphQL fixture.
+  Lease time-travel rides `BASELINE_LOG_NOW` — the ONE clock shared with the record
+  tooling. Corpus untouched (no rule changes — M5c owns the one re-pin).
+
 ### Added — V2 M5a: `baseline lane claim` — atomic branch creation at origin
 - **`baseline lane claim <issue>`** (`src/lane.mjs`) — the M5 claim primitive (FS2/S3): the ref
   IS the claim. The branch name is the descriptor's `lanes.namespace` with the issue number

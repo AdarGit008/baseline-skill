@@ -3,17 +3,83 @@
 // PR "closes #N" references); join and derive are then PURE functions of the snapshot, so
 // they replay deterministically from committed forge fixtures.
 import { treeFacts } from './tree.mjs'
-import { gitFacts, SESSION_BASES, extractNext } from './git.mjs'
+import { gitFacts, SESSION_BASES, extractNext, laneRefsGit, laneOwner, LANES_PRIV } from './git.mjs'
 import { makeForge } from './forge.mjs'
+import { globToRe, issueOf, TRAILER_AGENT, nowUTC } from '../util.mjs'
+import { DEFAULT_LEASE_TTL, parseTtlMs } from '../derive/lanes.mjs'
+import { run } from '../probe.mjs'
 
 // Any #N in a string; and the GitHub closing-keyword references ("closes #N", "fixes #N", …).
 export const refs = (s) => s ? [...String(s).matchAll(/#(\d+)/g)].map(m => +m[1]) : []
 export const closes = (s) => s ? [...String(s).matchAll(/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi)].map(m => +m[1]) : []
 
+// The raw GraphQL refs() envelope -> plain lane facts. Ref.name arrives RELATIVE to the
+// query's refPrefix (verified live 2026-07-14: prefix refs/heads/v2/ answers names like
+// 'm5a-lane-claim') — the full ref is dir + name, then filtered by the one-star namespace
+// glob. No second spelling is guessed: an ambiguous fallback could misattribute a nested
+// ref (lane/lane/7) to its parent name. Replay fixtures therefore carry API-shaped
+// (relative) names. Freshness inputs: the tip's committedDate and the NEWEST updatedAt
+// across associated PRs (any PR activity is real activity — erring toward LIVE); the
+// displayed pr is the open one when there is one.
+function normalizeLaneRefs(raw, namespace) {
+  const refsNode = raw?.data?.repository?.refs
+  if (!Array.isArray(refsNode?.nodes)) return null
+  const dir = String(namespace).slice(0, String(namespace).lastIndexOf('/', String(namespace).indexOf('*')) + 1)
+  const re = globToRe(namespace)
+  const lanes = []
+  for (const n of refsNode.nodes) {
+    const ref = dir + String(n?.name ?? '')
+    if (!re.test(ref) || !n?.target) continue
+    const t = n.target
+    const prs = Array.isArray(t.associatedPullRequests?.nodes) ? t.associatedPullRequests.nodes.filter(Boolean) : []
+    const prUpdatedAt = prs.map(p => p.updatedAt).filter(Boolean).sort().at(-1) ?? null
+    const open = prs.find(p => String(p.state).toUpperCase() === 'OPEN') ?? null
+    const agent = (String(t.message || '').match(new RegExp(`^${TRAILER_AGENT}:[ \\t]*(.+)$`, 'm'))?.[1] || '').trim() || null
+    lanes.push({
+      ref, tip: t.oid ?? null, committedDate: t.committedDate ?? null, prUpdatedAt,
+      pr: open ? { number: open.number, title: open.title ?? null, draft: !!open.isDraft, updatedAt: open.updatedAt ?? null } : null,
+      agent, agentSource: agent ? 'tip-trailer' : null, source: 'forge',
+    })
+  }
+  return { lanes, truncated: !!refsNode.pageInfo?.hasNextPage }
+}
+
+// ONE lane-fact gathering for every consumer (orient's view and reclaim's gate read the
+// same answer or the tool argues with itself): forge query first (posture-gated inside
+// makeForge), git plane as fallback — and as the multi-lane-local posture's normal mode.
+// A worked lane's tip no longer carries the claim trailer, so missing owners are
+// enriched from git objects (one glob fetch for all lanes, newest-trailer walk each).
+export function gatherLaneFacts(repo, forge, namespace) {
+  if (!namespace) return { lanes: [], source: null, reason: 'no lanes.namespace declared', truncated: false }
+  const viaForge = normalizeLaneRefs(forge.laneRefs(namespace), namespace)
+  let got = viaForge ? { ...viaForge, source: 'forge', reason: null } : null
+  if (!got) {
+    const viaGit = laneRefsGit(repo.REPO, namespace)
+    got = viaGit
+      ? { ...viaGit, source: 'git', reason: forge.reason || 'forge unreachable — git plane answered' }
+      : { lanes: [], source: null, reason: `${forge.reason || 'forge unreachable'}; origin unreachable (ls-remote failed)`, truncated: false }
+  }
+  if (got.lanes.some(l => !l.agent) && got.source === 'forge') {
+    const pat = 'refs/heads/' + namespace
+    if (run('git', ['-C', repo.REPO, 'fetch', 'origin', `+${pat}:${LANES_PRIV}${namespace}`], { timeout: 60000 }) !== null) {
+      for (const l of got.lanes) {
+        if (l.agent) continue
+        l.agent = laneOwner(repo.REPO, LANES_PRIV + l.ref, issueOf(namespace, l.ref))
+        if (l.agent) l.agentSource = 'history-trailer'
+      }
+    }
+  }
+  return got
+}
+
 export function gatherFacts(repo, { descriptor, capability }) {
   const tree = treeFacts(repo, descriptor)
   const git = gitFacts(repo)
-  const forge = makeForge(repo, { available: capability.forge.available, nwo: capability.forge.repo })
+  // the descriptor's workflow posture rides into makeForge: multi-lane-local CLOSES the
+  // forge for the whole gather (CF5) — orient's sections then carry the posture label
+  // instead of faking unreachability, exactly like claim (one closure home, M5a)
+  const posture = descriptor?.valid ? descriptor.data?.workflow : null
+  const forge = makeForge(repo, { available: capability.forge.available, nwo: capability.forge.repo, posture })
 
   const issues = forge.issuesOpen()
   const openNums = new Set(issues.map(i => i.number))
@@ -27,9 +93,26 @@ export function gatherFacts(repo, { descriptor, capability }) {
   const referenced = new Set()
   for (const n of refs(git.thisLaneLog?.next)) if (!openNums.has(n)) referenced.add(n)
   for (const pr of prs) { for (const n of refs(pr.next)) if (!openNums.has(n)) referenced.add(n); for (const n of pr.closes) if (!openNums.has(n)) referenced.add(n) }
+  // lane refs + lease inputs (M5b) — gathered only when the descriptor declares lanes;
+  // resolve every lane anchor's issue state too (a closed anchor is DIV-01's signal)
+  const ns = descriptor?.valid ? descriptor.data?.lanes?.namespace : null
+  const laneFacts = gatherLaneFacts(repo, forge, ns)
+  for (const l of laneFacts.lanes) {
+    const n = issueOf(ns, l.ref)
+    if (n != null && !openNums.has(n)) referenced.add(n)
+  }
+
   const issueStates = {}
   for (const n of referenced) { const it = forge.issue(n); issueStates[n] = it ? { state: String(it.state || '').toLowerCase(), title: it.title } : { state: 'unknown', title: null } }
   for (const i of issues) issueStates[i.number] = { state: 'open', title: i.title }
 
-  return { source: forge.source, forgeAvailable: forge.available, forgeReason: forge.reason, tree, git, prs, issues, openIssueNumbers: [...openNums], issueStates }
+  const ttl = (descriptor?.valid ? descriptor.data?.lanes?.lease_ttl : null) ?? DEFAULT_LEASE_TTL
+  const lanesMeta = ns ? { namespace: ns, ttl, ttlMs: parseTtlMs(ttl) ?? parseTtlMs(DEFAULT_LEASE_TTL), source: laneFacts.source, reason: laneFacts.reason, truncated: laneFacts.truncated } : null
+
+  return {
+    source: forge.source, forgeAvailable: forge.available, forgeReason: forge.reason,
+    now: (nowUTC() ?? new Date()).toISOString(), // BASELINE_LOG_NOW rides in — the one clock, so lease derivation time-travels with the record tooling
+    tree, git, prs, issues, openIssueNumbers: [...openNums], issueStates,
+    lanes: laneFacts.lanes, lanesMeta,
+  }
 }

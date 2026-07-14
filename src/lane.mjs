@@ -50,16 +50,20 @@ import { deriveLanes, parseTtlMs, DEFAULT_LEASE_TTL } from './derive/lanes.mjs'
 import { loadJudgments } from './jdg.mjs'
 
 const LANE_USAGE = `usage: baseline lane claim <issue> [--agent A] [--repo DIR] [--json]
-       baseline lane reclaim <issue|ref> [--jdg JDG-ID] [--agent A] [--repo DIR] [--json]`
+         baseline lane reclaim <issue|ref> [--jdg JDG-ID] [--agent A] [--repo DIR] [--json]`
 const VALUE_FLAGS = ['--repo', '--agent', '--jdg']
-// private refs for race-free reads: the claim base, the existing-tip peek, the reclaim base
-const BASE_REF = 'refs/baseline/claim-base'
-const PEEK_REF = 'refs/baseline/claim-peek'
-const RECLAIM_REF = 'refs/baseline/reclaim-base'
+// private refs for race-free reads: the claim base, the existing-tip peek, the reclaim
+// base — pid-suffixed, because a fixed name is one shared cell two concurrent baseline
+// processes in the SAME clone would rewrite under each other (the FETCH_HEAD lesson,
+// applied to our own refs: a reclaim of lane/9 mid-flight must never re-point the ref a
+// reclaim of lane/7 is about to read its tree from)
+const BASE_REF = `refs/baseline/claim-base-${process.pid}`
+const PEEK_REF = `refs/baseline/claim-peek-${process.pid}`
+const RECLAIM_REF = `refs/baseline/reclaim-base-${process.pid}`
 
 export function runLane(argv) {
   if (argv[0] === '--help' || argv[0] === '-h') {
-    console.log(`baseline lane — claim and reclaim work lanes (atomic ref transactions at origin)\n  ${LANE_USAGE}\n  exit: 0 claimed/reclaimed (or the lane already stands under this agent's trailer) · 2 usage/refusal/environment · 3 claimed by another agent (lost race)`)
+    console.log(`baseline lane — claim and reclaim work lanes (atomic ref transactions at origin)\n  ${LANE_USAGE}\n  exit: 0 claimed/reclaimed (or the lane already stands under this agent's trailer) · 2 usage/refusal/environment · 3 lost race (claim: another agent claimed it · reclaim: the lane moved — it is active)`)
     return 0
   }
   if (argv[0] === 'claim') return runClaim(argv.slice(1))
@@ -100,7 +104,7 @@ function landLocal(G, ref, sha, note) {
   } else if (localTip) {
     // a pre-existing local branch with the lane's name is NOT the claim — leave it,
     // and print no checkout recipe that would land on the wrong tip
-    note(`a local branch ${ref} already existed here — left untouched: local ${ref} vs origin/${ref} (the claim) must be reconciled by hand before working`)
+    note(`a local branch ${ref} already existed here — left untouched: local ${ref} vs origin/${ref} (the lane at origin) must be reconciled by hand before working`)
   } else {
     branched = G('branch', ref, sha) !== null
     if (branched) {
@@ -119,6 +123,7 @@ function landLocal(G, ref, sha, note) {
 }
 
 function runClaim(argv) {
+  if (argv[0] === '--help' || argv[0] === '-h') { console.log(`baseline lane claim — claim a work lane: atomic branch creation at origin\n  ${LANE_USAGE}\n  exit: 0 claimed (or already this agent's) · 2 usage/refusal/environment · 3 claimed by another agent`); return 0 }
   const opt = makeOpt(argv)
   const usage = msg => { console.error(`baseline lane claim: ${msg}\n  ${LANE_USAGE}`); return 2 }
   for (const f of VALUE_FLAGS) if (opt(f, null) === true) return usage(`${f} needs a value`)
@@ -210,8 +215,9 @@ function runClaim(argv) {
 
   // ---- build the claim commit against origin's CURRENT tip, worktree untouched (DA-6) ----
   if (G('fetch', 'origin', `+refs/heads/${def}:${BASE_REF}`) === null) return usage(`cannot fetch origin ${def} — nothing claimed`)
-  const base = G('rev-parse', BASE_REF)
-  const tree = G('rev-parse', `${BASE_REF}^{tree}`)
+  // ONE read for commit+tree: two reads of the ref would be a window (pid-unique names
+  // already isolate rival processes; the single read removes the window entirely)
+  const [base, tree] = (G('log', '-1', '--format=%H %T', BASE_REF) || '').split(' ')
   G('update-ref', '-d', BASE_REF) // best-effort tidy; a leftover is harmless (force-updated next claim)
   if (!base || !tree) return usage('claim base did not resolve after fetch — nothing claimed')
   const msg = `claim ${ref}: issue #${issue}\n\n${TRAILER_ISSUE}: #${issue}\n${TRAILER_AGENT}: ${agent}`
@@ -234,6 +240,7 @@ function runClaim(argv) {
 }
 
 function runReclaim(argv) {
+  if (argv[0] === '--help' || argv[0] === '-h') { console.log(`baseline lane reclaim — take over a DERIVED-ABANDONED lane (dated takeover record; --jdg = the live-takeover escape hatch)\n  ${LANE_USAGE}\n  exit: 0 reclaimed (or the lane already stands under this agent's trailer) · 2 usage/refusal/environment · 3 lost race (the lane moved — it is active)`); return 0 }
   const opt = makeOpt(argv)
   const usage = msg => { console.error(`baseline lane reclaim: ${msg}\n  ${LANE_USAGE}`); return 2 }
   for (const f of VALUE_FLAGS) if (opt(f, null) === true) return usage(`${f} needs a value`)
@@ -265,6 +272,7 @@ function runReclaim(argv) {
     issue = issueOf(ns, target); ref = target
     if (issue == null) return usage(`'${target}' is neither an issue number nor an issue-anchored ref under lanes.namespace '${ns}' — reclaim stamps ${TRAILER_ISSUE} and refuses to invent one`)
   }
+  if (run('git', ['check-ref-format', `refs/heads/${ref}`]) === null) return usage(`'${ref}' is not a valid branch name (from lanes.namespace '${ns}')`)
   const agent = resolveAgent(opt('--agent', null), REPO)
   const now = nowUTC()
   if (!now) return usage('BASELINE_LOG_NOW is not a parseable instant')
@@ -286,8 +294,10 @@ function runReclaim(argv) {
     if (!probe.trim()) return usage(`no claim exists at origin for ${ref} — nothing to reclaim (claim it instead: baseline lane claim ${issue})`)
     return usage(`cannot fetch origin ${ref} — nothing reclaimed`)
   }
-  const tip = G('rev-parse', RECLAIM_REF)
-  if (!tip) return usage('reclaim base did not resolve after fetch — nothing reclaimed')
+  // ONE read for tip commit + tree — the pair the takeover is built from must be one
+  // consistent observation, never two reads with a window between them
+  const [tip, tree] = (G('log', '-1', '--format=%H %T', RECLAIM_REF) || '').split(' ')
+  if (!tip || !tree) return usage('reclaim base did not resolve after fetch — nothing reclaimed')
   const from = laneOwner(REPO, RECLAIM_REF, issue)
 
   // ---- ONE derivation (the same gathering orient renders) decides reclaimability ----
@@ -295,17 +305,78 @@ function runReclaim(argv) {
   const ttlMs = parseTtlMs(ttl) ?? parseTtlMs(DEFAULT_LEASE_TTL)
   const gathered = gatherLaneFacts(repo, forge, ns)
   let laneFact = gathered.lanes.find(l => l.ref === ref) || null
-  if (!laneFact) {
-    // the forge's refs page may lag or truncate — the fetched objects are ground truth
-    laneFact = { ref, tip, committedDate: G('log', '-1', '--format=%cI', RECLAIM_REF) || null, prUpdatedAt: null, pr: null, agent: from, agentSource: from ? 'history-trailer' : null, source: 'git' }
-    note('lane absent from the forge lane listing — freshness read from fetched git objects (low confidence)')
+  if (!laneFact || laneFact.tip !== tip) {
+    // the forge's refs page may lag, truncate, or (under replay) fossilize — a state
+    // derived from a DIFFERENT commit than the takeover's parent would let a stale
+    // answer steal a live lane, so on any tip mismatch the freshness is rebuilt from
+    // the fetched git objects. The forge's PR-activity signal is kept: it can only
+    // err toward LIVE, the safe direction.
+    const prUpdatedAt = laneFact?.prUpdatedAt ?? null
+    note(laneFact
+      ? `the ${gathered.source === 'forge' ? "forge's" : 'gathered'} lane answer names a different tip than the fetch (${String(laneFact.tip).slice(0, 8)} vs ${tip.slice(0, 8)}) — freshness rebuilt from fetched git objects`
+      : `lane absent from ${gathered.source === 'forge' ? "the forge's lane listing" : gathered.source === 'git' ? "origin's ref listing" : 'every lane listing'} — freshness read from fetched git objects (low confidence)`)
+    laneFact = { ref, tip, committedDate: G('log', '-1', '--format=%cI', RECLAIM_REF) || null, prUpdatedAt, pr: laneFact?.pr ?? null, agent: from, agentSource: from ? 'history-trailer' : null, source: 'git' }
   }
   const view = deriveLanes({ lanes: [laneFact], ttlMs, now: now.toISOString(), namespace: ns })[0]
   const idle = view.age_ms == null ? 'age unresolvable' : `${Math.floor(view.age_ms / 3600000) < 48 ? Math.floor(view.age_ms / 3600000) + 'h' : Math.floor(view.age_ms / 86400000) + 'd'} idle`
 
-  // ---- the gate: derived ABANDONED, or an unexpired deviation JDG naming this lane ----
   const jdgId = opt('--jdg', null)
   let jdgUsed = null
+
+  const lost = movedTip => {
+    if (JSON_OUT) { console.log(JSON.stringify({ reclaimed: false, ref, issue, agent, from, existing: movedTip, state: view.state, notes }, null, 2)); return 3 }
+    console.log(`✗ reclaim lost: ${ref} moved at origin while reclaiming (tip ${String(movedTip).slice(0, 8)}) — the lane is active; re-derive before trying again:  baseline orient`)
+    return 3
+  }
+  // landSha is what origin actually holds — our pushed takeover, or a rival takeover
+  // under this agent's own identity (adopted, never our unpushed sha)
+  const win = (landSha, pushed) => {
+    const { branched, checkout } = landLocal(G, ref, landSha, note)
+    // the dated takeover record, machine-written through the ONE record writer (scrub
+    // gate included) — spawned so its output (and --json envelope) stays its own.
+    // Written AFTER the landing attempt so a successful checkout puts it on the lane.
+    let record = null
+    const BASELINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'baseline.mjs')
+    const logMsg = `Reclaimed ${ref} (issue #${issue}) from ${from ?? 'an unknown agent (no trailer found)'}: derived ${view.state ?? 'UNDERIVED'}, ${idle} of ttl ${ttl}${jdgUsed ? `, live takeover under ${jdgUsed.id}` : ''}. Takeover commit ${landSha.slice(0, 8)} (observed tip ${tip.slice(0, 8)} at derivation).`
+    const rl = spawnSync(process.execPath, [BASELINE, 'log', '--json', '--repo', REPO, '--lane', ref, '--agent', agent, '-m', logMsg, '--next', `resume issue #${issue}: read this lane's prior session records, then continue the work`], { encoding: 'utf8' })
+    let logEnv = null
+    try { logEnv = JSON.parse(rl.stdout || '{}'); record = logEnv.written ?? null } catch { record = null }
+    if (!record) {
+      // a scrub block is NON-LOSSY (M4's pinned UX): relay the draft, the finding ids,
+      // and the exact rerun — never the envelope's opening brace as a "reason"
+      if (logEnv?.blocked?.length) {
+        note(`takeover record scrub-BLOCKED (${logEnv.blocked.map(b => b.name).join(', ')}) — draft kept: ${logEnv.draft ?? '(no draft reported)'}`)
+        note(`real secret? rotate it, edit the draft, rerun:  baseline log --from ${logEnv.draft}`)
+        note(`false positive? rerun with the dated judgment:  baseline log --from ${logEnv.draft}${logEnv.blocked.map(b => ` --allow ${b.id}`).join('')} --allow-reason "why this is not a secret" (ensure .baseline/cache/ is gitignored BEFORE committing)`)
+      } else {
+        const why = (rl.stderr || '').split('\n').find(l => l.trim())?.trim() || 'log failed'
+        note(`takeover record NOT written (${why}) — write it by hand: baseline log -m "takeover of ${ref}" --lane ${ref}`)
+      }
+    }
+    for (const w of logEnv?.warned ?? []) note(`record heuristic finding (written anyway): ${w.name} (${w.masked ?? ''}) — silence: --allow ${w.id} --allow-reason "..."`)
+    // best-effort issue comment — posture/reachability-gated, and honestly labeled when skipped
+    let comment = 'skipped'
+    if (forge.source === 'posture') comment = `skipped: ${forge.reason}`
+    else if (forge.source === 'replay') comment = 'skipped: forge replay (no writes)'
+    else if (!forge.available) comment = 'skipped: forge unreachable'
+    else comment = gh(['issue', 'comment', String(issue), '--body', `\`baseline lane reclaim\`: ${agent} took over \`${ref}\` (was ${from ?? 'unowned'}; derived ${view.state ?? 'UNDERIVED'}, ${idle} of ttl ${ttl}${jdgUsed ? `; live takeover under ${jdgUsed.id}` : ''}).`], { cwd: REPO }) !== null ? 'posted' : 'failed (best-effort — post by hand: gh issue comment)'
+    if (comment !== 'posted') note(`issue comment ${comment}`)
+    if (JSON_OUT) { console.log(JSON.stringify({ reclaimed: true, ref, issue, agent, from, sha: landSha, state: view.state, pushed, branched, checkout, record, comment, notes }, null, 2)); return 0 }
+    console.log(`✓ reclaimed ${ref} (issue #${issue}) as ${agent} — takeover ${landSha.slice(0, 8)} ${pushed ? 'pushed to origin' : 'already at origin'} (was ${from ?? 'unowned'}, derived ${view.state ?? 'UNDERIVED'} · ${idle} of ttl ${ttl})`)
+    if (record) console.log(`  record: ${record}`)
+    if (branched && !checkout) console.log(`  branch created locally but NOT checked out; switch when ready:  git checkout ${ref}`)
+    console.log(`  next act: read the lane's prior session records, then work it${checkout ? '' : ` ON THE LANE (a log written elsewhere lands on the wrong branch)`} —  baseline log -m "..." --next "..."`)
+    return 0
+  }
+
+  // ---- the gate: derived ABANDONED, or an unexpired deviation JDG naming this lane ----
+  // A lane already standing under this agent's own trailer is an idempotent completion,
+  // not a takeover to justify: a reclaimer that pushed and crashed before the record must
+  // not be told to mint a deviation judgment against its own lane (claim's rerun rule).
+  if (view.state !== 'ABANDONED' && from && from === agent) {
+    note(`the lane already stands under this agent's trailer — completing the takeover (idempotent, nothing pushed)`)
+    return win(tip, false)
+  }
   if (view.state !== 'ABANDONED') {
     if (typeof jdgId !== 'string') {
       return usage(`${ref} derives ${view.state ?? 'UNDERIVED'} (${idle} of ttl ${ttl}) — reclaim requires a derived ABANDONED. A live takeover needs a deviation judgment naming the lane:\n    baseline jdg new --kind deviation --subject "${ref}" --reason "..." --review-by YYYY-MM-DD\n    baseline lane reclaim ${issue} --jdg JDG-NNNN`)
@@ -322,54 +393,27 @@ function runReclaim(argv) {
     note(`renewing this agent's own abandoned lane (the takeover commit refreshes the lease)`)
   }
 
-  // ---- the takeover: a child of the observed tip, same tree, new trailer; push WITHOUT
-  // force — a moved lane rejects non-fast-forward and the re-ask names the truth ----
-  const tree = G('rev-parse', `${RECLAIM_REF}^{tree}`)
-  G('update-ref', '-d', RECLAIM_REF) // best-effort tidy; a leftover is harmless (force-updated next reclaim)
-  if (!tree) return usage('reclaim base tree did not resolve — nothing reclaimed')
+  // ---- the takeover: a child of the observed tip, SAME tree (read in the one shot
+  // above), new trailer. Pushed under an exact-value CAS (--force-with-lease=ref:tip):
+  // a plain push would silently RECREATE a lane deleted mid-flight (a merged PR's
+  // auto-delete targets exactly the stale lanes reclaim targets) and fast-forward over
+  // a force-rewound one — the lease pins origin to the very tip the state was derived
+  // from, so ANY move mid-flight rejects and the re-ask names the truth ----
+  G('update-ref', '-d', RECLAIM_REF) // best-effort tidy; a leftover is harmless (pid-unique + force-updated next reclaim)
   const msg = `reclaim ${ref}: issue #${issue} takeover\n\n${TRAILER_ISSUE}: #${issue}\n${TRAILER_AGENT}: ${agent}`
   const sha = G('commit-tree', tree, '-p', tip, '-m', msg)
   if (!sha) return usage('commit-tree failed — is a git identity configured? (git config user.name / user.email)')
 
-  const lost = movedTip => {
-    if (JSON_OUT) { console.log(JSON.stringify({ reclaimed: false, ref, issue, agent, from, existing: movedTip, state: view.state, notes }, null, 2)); return 3 }
-    console.log(`✗ reclaim lost: ${ref} moved at origin while reclaiming (tip ${String(movedTip).slice(0, 8)}) — the lane is active; re-derive before trying again:  baseline orient`)
-    return 3
-  }
-  // landSha is what origin actually holds — our pushed takeover, or a rival takeover
-  // under this agent's own identity (adopted, never our unpushed sha)
-  const win = (landSha, pushed) => {
-    landLocal(G, ref, landSha, note)
-    // the dated takeover record, machine-written through the ONE record writer (scrub
-    // gate included) — spawned so its output (and --json envelope) stays its own
-    let record = null
-    const BASELINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'baseline.mjs')
-    const logMsg = `Reclaimed ${ref} (issue #${issue}) from ${from ?? 'an unknown agent (no trailer found)'}: derived ${view.state ?? 'UNDERIVED'}, ${idle} of ttl ${ttl}${jdgUsed ? `, live takeover under ${jdgUsed.id}` : ''}. Takeover commit ${landSha.slice(0, 8)} (observed tip ${tip.slice(0, 8)} at derivation).`
-    const rl = spawnSync(process.execPath, [BASELINE, 'log', '--json', '--repo', REPO, '--lane', ref, '--agent', agent, '-m', logMsg, '--next', `resume issue #${issue}: read this lane's prior session records, then continue the work`], { encoding: 'utf8' })
-    try { record = JSON.parse(rl.stdout || '{}').written ?? null } catch { record = null }
-    if (!record) note(`takeover record NOT written (${(rl.stderr || rl.stdout || 'log failed').split('\n').find(l => l.trim())?.trim()}) — write it by hand: baseline log -m "takeover of ${ref}" --lane ${ref}`)
-    // best-effort issue comment — posture/reachability-gated, and honestly labeled when skipped
-    let comment = 'skipped'
-    if (forge.source === 'posture') comment = `skipped: ${forge.reason}`
-    else if (forge.source === 'replay') comment = 'skipped: forge replay (no writes)'
-    else if (!forge.available) comment = 'skipped: forge unreachable'
-    else comment = gh(['issue', 'comment', String(issue), '--body', `\`baseline lane reclaim\`: ${agent} took over \`${ref}\` (was ${from ?? 'unowned'}; derived ${view.state ?? 'UNDERIVED'}, ${idle} of ttl ${ttl}${jdgUsed ? `; live takeover under ${jdgUsed.id}` : ''}).`], { cwd: REPO }) !== null ? 'posted' : 'failed (best-effort — post by hand: gh issue comment)'
-    if (comment !== 'posted') note(`issue comment ${comment}`)
-    if (JSON_OUT) { console.log(JSON.stringify({ reclaimed: true, ref, issue, agent, from, sha: landSha, state: view.state, pushed, record, comment, notes }, null, 2)); return 0 }
-    console.log(`✓ reclaimed ${ref} (issue #${issue}) as ${agent} — takeover ${landSha.slice(0, 8)} ${pushed ? 'pushed to origin' : 'already at origin'} (was ${from ?? 'unowned'}, derived ${view.state ?? 'UNDERIVED'} · ${idle} of ttl ${ttl})`)
-    if (record) console.log(`  record: ${record}`)
-    console.log(`  next act: read the lane's prior session records, then work it —  baseline log -m "..." --next "..."`)
-    return 0
-  }
-
   try {
-    execFileSync('git', ['-C', REPO, 'push', 'origin', `${sha}:refs/heads/${ref}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 60000 })
+    execFileSync('git', ['-C', REPO, 'push', `--force-with-lease=refs/heads/${ref}:${tip}`, 'origin', `${sha}:refs/heads/${ref}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 60000 })
   } catch (e) {
-    // rejected (the lane moved — someone pushed work or a rival takeover) OR the
-    // transport died — ask origin what actually happened, exactly like claim
+    // rejected (the lane moved — someone pushed work or a rival takeover; or it vanished)
+    // OR the transport died — ask origin what actually happened, exactly like claim
     const nowLs = run('git', ['-C', REPO, 'ls-remote', 'origin', `refs/heads/${ref}`], { timeout: 30000 })
-    const seen = nowLs ? nowLs.split(/\s/)[0] : null
+    if (nowLs === null) return usage(`push did not report success AND origin is unreachable for the re-ask — the takeover state is UNKNOWN (it may have landed); re-run when origin returns: a rerun settles idempotently`)
+    const seen = nowLs.split(/\s+/)[0] || null
     if (seen === sha) { note('the push report was lost but origin holds this takeover — won (transport hiccup after the ref landed)'); return win(sha, true) }
+    if (!seen) return usage(`${ref} vanished at origin while reclaiming (deleted mid-flight — a merged PR's auto-delete?) — nothing reclaimed, nothing recreated; re-orient before retrying`)
     if (seen && seen !== tip) {
       // a rival takeover under this agent's OWN identity is a win we didn't push —
       // adopt origin's tip (never land our unpushed sha, which origin never saw)

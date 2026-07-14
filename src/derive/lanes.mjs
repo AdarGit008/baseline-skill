@@ -11,7 +11,8 @@
 // Clock skew (freshness ahead of now) clamps to age 0, labeled — a skewed clock must
 // read as maximally live, never as negative-age weirdness or a premature reclaim.
 // A lane with NO resolvable freshness derives state null — surfaced, never guessed;
-// reclaim refuses anything but a derived ABANDONED, so unresolvable is unreclaimable.
+// reclaim refuses anything but a derived ABANDONED, so an unresolvable lane is not
+// reclaimable without a deviation judgment (the --jdg hatch is the ONLY way past it).
 import { issueOf } from '../util.mjs'
 
 export const DEFAULT_LEASE_TTL = '7d' // D2: the descriptor default when lanes.lease_ttl is undeclared
@@ -20,10 +21,12 @@ export const DEFAULT_LEASE_TTL = '7d' // D2: the descriptor default when lanes.l
 // knob (M7 revisits on dogfood data; a knob now would fossilize a guess as an interface).
 export const STALE_FRACTION = 0.5
 
-// '7d' | '36h' -> milliseconds; null when unparseable (schema pattern-enforces the shape,
-// so null here means "undeclared or descriptor unread" and callers fall back to DEFAULT).
+// '7d' | '36h' -> milliseconds; null when unparseable — including a zero ttl ('0d' would
+// invert the lease semantics into nothing-ever-reclaimable; the schema pattern refuses it
+// too, and refusing it HERE means a zero can never ride in through any other door and
+// callers fall back to DEFAULT).
 export function parseTtlMs(ttl) {
-  const m = /^([0-9]+)([dh])$/.exec(String(ttl ?? ''))
+  const m = /^([1-9][0-9]*)([dh])$/.exec(String(ttl ?? ''))
   return m ? +m[1] * (m[2] === 'd' ? 86400000 : 3600000) : null
 }
 
@@ -49,8 +52,13 @@ export function deriveLanes({ lanes = [], ttlMs, now, issueStates = {}, namespac
       if (age_ms < 0) { age_ms = 0; labels.push('clock skew clamped to age 0 (freshness is ahead of now)') }
       state = age_ms < ttlMs * STALE_FRACTION ? 'LIVE' : age_ms < ttlMs ? 'STALE' : 'ABANDONED'
       labels.push(`freshness: ${basis === 'pr-update' ? 'PR activity' : 'tip commit'}${l.source === 'git' ? ' — git plane, committer clock (low confidence)' : ''}`)
+      if (l.prPageTruncated) labels.push('PR page truncated at the forge — newer PR activity may exist (freshness can only be understated)')
     } else {
-      labels.push('freshness unresolvable — state underived (not reclaimable)')
+      // name the ACTUAL missing input — "freshness unresolvable" on a lane whose
+      // freshness resolved fine (bad ttl/now) would be a mislabel, not a degradation
+      labels.push(freshness == null
+        ? 'freshness unresolvable — state underived (not reclaimable without a deviation judgment)'
+        : `lease inputs unresolvable (${!(ttlMs > 0) ? 'ttl' : 'now'}) — state underived (not reclaimable without a deviation judgment)`)
     }
     const issue = namespace ? issueOf(namespace, l.ref) : null
     if (namespace && issue == null) labels.push('no issue anchor (ref name is not an issue number)')

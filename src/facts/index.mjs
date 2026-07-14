@@ -34,10 +34,14 @@ function normalizeLaneRefs(raw, namespace) {
     const prs = Array.isArray(t.associatedPullRequests?.nodes) ? t.associatedPullRequests.nodes.filter(Boolean) : []
     const prUpdatedAt = prs.map(p => p.updatedAt).filter(Boolean).sort().at(-1) ?? null
     const open = prs.find(p => String(p.state).toUpperCase() === 'OPEN') ?? null
-    const agent = (String(t.message || '').match(new RegExp(`^${TRAILER_AGENT}:[ \\t]*(.+)$`, 'm'))?.[1] || '').trim() || null
+    // the LAST trailer-shaped line wins, mirroring git's trailer semantics — the trailer
+    // block is the message's final paragraph, so a body line quoting the key (a squash
+    // body concatenating old messages) must not shadow it; laneOwner reads the same way
+    const agent = ([...String(t.message || '').matchAll(new RegExp(`^${TRAILER_AGENT}:[ \\t]*(.+)$`, 'gm'))].at(-1)?.[1] || '').trim() || null
     lanes.push({
       ref, tip: t.oid ?? null, committedDate: t.committedDate ?? null, prUpdatedAt,
       pr: open ? { number: open.number, title: open.title ?? null, draft: !!open.isDraft, updatedAt: open.updatedAt ?? null } : null,
+      prPageTruncated: !!t.associatedPullRequests?.pageInfo?.hasNextPage,
       agent, agentSource: agent ? 'tip-trailer' : null, source: 'forge',
     })
   }
@@ -55,17 +59,26 @@ export function gatherLaneFacts(repo, forge, namespace) {
   let got = viaForge ? { ...viaForge, source: 'forge', reason: null } : null
   if (!got) {
     const viaGit = laneRefsGit(repo.REPO, namespace)
+    const why = forge.source === 'replay' ? 'no lane-refs replay fixture' : (forge.reason || 'forge lane query failed')
     got = viaGit
-      ? { ...viaGit, source: 'git', reason: forge.reason || 'forge unreachable — git plane answered' }
-      : { lanes: [], source: null, reason: `${forge.reason || 'forge unreachable'}; origin unreachable (ls-remote failed)`, truncated: false }
+      ? { ...viaGit, source: 'git', reason: `${why} — git plane answered` }
+      : { lanes: [], source: null, reason: `${why}; origin unreachable (ls-remote failed)`, truncated: false }
   }
+  // Owner enrichment (a worked lane's tip no longer carries the claim trailer) is a LIVE
+  // git fetch — forbidden under replay, where facts must come from fixtures alone
+  // (forge.mjs's contract: "read fixtures, no network, fully deterministic"). Fixture
+  // authors control agents via the tip message.
   if (got.lanes.some(l => !l.agent) && got.source === 'forge') {
-    const pat = 'refs/heads/' + namespace
-    if (run('git', ['-C', repo.REPO, 'fetch', 'origin', `+${pat}:${LANES_PRIV}${namespace}`], { timeout: 60000 }) !== null) {
-      for (const l of got.lanes) {
-        if (l.agent) continue
-        l.agent = laneOwner(repo.REPO, LANES_PRIV + l.ref, issueOf(namespace, l.ref))
-        if (l.agent) l.agentSource = 'history-trailer'
+    if (forge.source === 'replay') {
+      got.reason = got.reason ?? 'agent enrichment skipped (forge replay — no live fetches)'
+    } else {
+      const pat = 'refs/heads/' + namespace
+      if (run('git', ['-C', repo.REPO, 'fetch', 'origin', `+${pat}:${LANES_PRIV}${namespace}`], { timeout: 60000 }) !== null) {
+        for (const l of got.lanes) {
+          if (l.agent) continue
+          l.agent = laneOwner(repo.REPO, LANES_PRIV + l.ref, issueOf(namespace, l.ref))
+          if (l.agent) l.agentSource = 'history-trailer'
+        }
       }
     }
   }
@@ -103,15 +116,22 @@ export function gatherFacts(repo, { descriptor, capability }) {
   }
 
   const issueStates = {}
-  for (const n of referenced) { const it = forge.issue(n); issueStates[n] = it ? { state: String(it.state || '').toLowerCase(), title: it.title } : { state: 'unknown', title: null } }
+  // a stateless answer normalizes to 'unknown' — every layer reading this map (divergence
+  // scan, anchor labels) treats '' and 'unknown' differently, so only one may exist
+  for (const n of referenced) { const it = forge.issue(n); issueStates[n] = it ? { state: String(it.state || '').toLowerCase() || 'unknown', title: it.title } : { state: 'unknown', title: null } }
   for (const i of issues) issueStates[i.number] = { state: 'open', title: i.title }
 
   const ttl = (descriptor?.valid ? descriptor.data?.lanes?.lease_ttl : null) ?? DEFAULT_LEASE_TTL
   const lanesMeta = ns ? { namespace: ns, ttl, ttlMs: parseTtlMs(ttl) ?? parseTtlMs(DEFAULT_LEASE_TTL), source: laneFacts.source, reason: laneFacts.reason, truncated: laneFacts.truncated } : null
 
+  // BASELINE_LOG_NOW rides in — the one clock, so lease derivation time-travels with the
+  // record tooling; an UNPARSEABLE override falls back to the wall clock LABELED (the CLIs
+  // refuse it as usage, but orient never hard-refuses — FS9 — so it degrades, named)
+  const nowD = nowUTC()
   return {
     source: forge.source, forgeAvailable: forge.available, forgeReason: forge.reason,
-    now: (nowUTC() ?? new Date()).toISOString(), // BASELINE_LOG_NOW rides in — the one clock, so lease derivation time-travels with the record tooling
+    now: (nowD ?? new Date()).toISOString(),
+    nowFallback: nowD ? null : 'BASELINE_LOG_NOW is unparseable — ages derive from the wall clock',
     tree, git, prs, issues, openIssueNumbers: [...openNums], issueStates,
     lanes: laneFacts.lanes, lanesMeta,
   }

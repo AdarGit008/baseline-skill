@@ -61,7 +61,7 @@ export function makeForge(repo, { available = false, nwo = null, posture = null 
       if (!isAvail() || !namespace) return null
       const dir = String(namespace).slice(0, String(namespace).lastIndexOf('/', String(namespace).indexOf('*')) + 1)
       const prefix = 'refs/heads/' + dir
-      const QUERY = 'query($owner:String!,$name:String!,$prefix:String!){repository(owner:$owner,name:$name){refs(refPrefix:$prefix,first:100){pageInfo{hasNextPage}nodes{name target{... on Commit{oid committedDate message associatedPullRequests(first:5){nodes{number state isDraft title updatedAt}}}}}}}}'
+      const QUERY = 'query($owner:String!,$name:String!,$prefix:String!){repository(owner:$owner,name:$name){refs(refPrefix:$prefix,first:100){pageInfo{hasNextPage}nodes{name target{... on Commit{oid committedDate message associatedPullRequests(first:20){pageInfo{hasNextPage}nodes{number state isDraft title updatedAt}}}}}}}}'
       const [owner, name] = String(nwo || '/').split('/')
       return q(`lane-refs-${safeKey(prefix)}`, ['api', 'graphql', '-f', `query=${QUERY}`, '-f', `owner=${owner}`, '-f', `name=${name}`, '-f', `prefix=${prefix}`])
     },

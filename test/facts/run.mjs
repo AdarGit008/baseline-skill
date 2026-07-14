@@ -4,6 +4,8 @@
 // edge, a divergence (a PR closes an already-closed issue), and an unresolvable-join finding
 // (a PR closes a non-existent issue). This is also the record/replay contract downstream
 // lane/admit tests (M5/M6) will consume.
+import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gatherFacts } from '../../src/facts/index.mjs'
@@ -25,7 +27,7 @@ let fails = 0
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails++ }
 
 ok(status.source === 'replay', 'forge source = replay (deterministic, no network)')
-ok(status.prs.length === 3, `3 open PRs from fixtures (got ${status.prs.length})`)
+ok(status.prs.length === 4, `4 open PRs from fixtures (got ${status.prs.length})`)
 // M5b re-homed the keys: `lanes` is the derived lease view (needs a declared namespace —
 // none here, so it is honestly empty), `prs` is the open-PR list that used to sit there.
 ok(Array.isArray(status.lanes) && status.lanes.length === 0 && status.lanesMeta === null,
@@ -52,7 +54,24 @@ ok(l9?.ref === 'lane/9' && l9.state === 'ABANDONED' && l9.agent === 'bob', `lane
 ok(l7?.ref === 'lane/7' && l7.state === 'LIVE' && l7.agent === 'alice' && l7.agentSource === 'tip-trailer', `lane/7 derives LIVE under alice via the tip trailer (got ${l7?.ref} ${l7?.state})`)
 ok(l7?.basis === 'pr-update', `lane/7 freshness = max(committedDate, PR updatedAt) — the newer PR signal wins (got ${l7?.basis})`)
 ok(l7?.pr?.number === 40, 'the open associated PR rides the lane line')
+ok(l7?.hasLog === false && l7?.next === null, 'the joined PR hands its fetched log facts to the lane line (looked, found none — not a guess)')
+ok(l9?.hasLog === null, 'a lane whose PR facts were never fetched says hasLog null — unknown, never asserted')
 ok(l9?.issue === 9 && l9?.anchor?.state === 'unknown', 'anchor resolution: an issue the replay cannot see is UNKNOWN, never guessed')
+
+// ---- a truncated forge page must be labeled, never silent (both cut points) ----
+const truncDir = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-trunc-'))
+const envelope = JSON.parse(fs.readFileSync(path.resolve(HERE, '..', 'forge-fixtures', 'scenario', 'lane-refs-refs_heads_lane_.json'), 'utf8'))
+envelope.data.repository.refs.pageInfo.hasNextPage = true
+envelope.data.repository.refs.nodes[0].target.associatedPullRequests.pageInfo = { hasNextPage: true }
+fs.writeFileSync(path.join(truncDir, 'lane-refs-refs_heads_lane_.json'), JSON.stringify(envelope) + '\n')
+for (const f of ['prs-open.json', 'issues-open.json', 'issue-5.json']) fs.copyFileSync(path.resolve(HERE, '..', 'forge-fixtures', 'scenario', f), path.join(truncDir, f))
+process.env.BASELINE_FORGE_REPLAY = truncDir
+const facts3 = gatherFacts(repo2, { descriptor: loadDescriptor(repo2), capability: cap })
+const status3 = deriveStatus(facts3, join(facts3), cap)
+ok(status3.lanesMeta?.truncated === true, 'a truncated refs page rides lanesMeta (orient labels it)')
+const t7 = status3.lanes.find(l => l.ref === 'lane/7')
+ok(t7?.labels.some(l => /PR page truncated/.test(l)), 'a truncated PR sub-page labels the lane — freshness can only be understated, never silently')
+fs.rmSync(truncDir, { recursive: true, force: true })
 
 console.log(fails ? `\n✗ ${fails} facts check(s) failed\n` : '\n✓ facts/join/derive deterministic over replay\n')
 process.exit(fails ? 1 : 0)

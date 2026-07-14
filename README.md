@@ -57,7 +57,7 @@ node baseline.mjs scrub --pushed <sha>          # scan record content for secret
 |---|---|
 | `SKILL.md` | the skill definition (modes: orient / score / init / fix / explain) |
 | `CONTRACT.md` | the plain-git twin: what the workflow expects of a repo, no tool required |
-| `baseline.mjs` | the CLI entry point — `orient`, `check`, `log`, `jdg`, `gen`, `scrub`, `help` |
+| `baseline.mjs` | the CLI entry point — `orient`, `check`, `lane`, `log`, `jdg`, `gen`, `scrub`, `help` |
 | `check.mjs` | the checker (`baseline check` delegates here) |
 | `src/` | the runner's modules: repo · config · evaluators · engine · report · self-check · descriptor · probe · orient · rules · records · validate · scrub · log · jdg |
 | `test/` | golden corpus + orient/facts/records suites (`test/golden/run.mjs --verify`, `test/{orient,facts,records}/run.mjs`) — source repo only, not installed |

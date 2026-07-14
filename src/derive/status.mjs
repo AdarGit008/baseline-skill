@@ -29,11 +29,18 @@ export function deriveStatus(facts, joined, capability) {
   const backlog = facts.issues.map(i => ({ number: i.number, title: i.title, milestone: i.milestone?.title ?? null, labels: (i.labels || []).map(l => l.name), updatedAt: i.updatedAt }))
   const thisLane = { branch: facts.git.branch, next: facts.git.thisLaneLog?.next ?? null, rel: facts.git.thisLaneLog?.rel ?? null }
 
-  // the lease view (C31), with each lane's open PR joined on (the branch⇄ref key); a
-  // PR whose next:/hasLog facts were already fetched hands them to the lane line too
+  // the lease view (C31), with each lane's open PR joined on. The join key is the PR
+  // NUMBER when the lane's commit-anchored PR is known (a fork PR merely NAMED like the
+  // lane must not override the verified association) and the branch⇄ref key otherwise
+  // (git-plane lanes carry no PR). next/hasLog come from the fetched PR facts; a lane
+  // whose PR was never fetched says null — unknown, not "no log" (that would be a guess).
   const meta = facts.lanesMeta
   const lanes = meta ? deriveLanes({ lanes: facts.lanes ?? [], ttlMs: meta.ttlMs, now: facts.now, issueStates: facts.issueStates, namespace: meta.namespace })
-    .map(l => { const pr = prs.find(p => p.branch === l.ref); return pr ? { ...l, pr: { number: pr.number, title: pr.title, draft: pr.draft, updatedAt: pr.updatedAt }, next: pr.next, hasLog: pr.hasLog } : { ...l, next: null, hasLog: false } }) : []
+    .map(l => {
+      const pr = prs.find(p => l.pr ? p.number === l.pr.number : p.branch === l.ref)
+      return pr ? { ...l, pr: { number: pr.number, title: pr.title, draft: pr.draft, updatedAt: pr.updatedAt }, next: pr.next, hasLog: pr.hasLog }
+        : { ...l, next: null, hasLog: null }
+    }) : []
 
   return {
     planes: capability,
@@ -41,6 +48,8 @@ export function deriveStatus(facts, joined, capability) {
     source: facts.source,
     forgeAvailable: facts.forgeAvailable,
     forgeReason: facts.forgeReason,
+    now: facts.now, // the ONE clock the view was derived at — renderers age against this, never a second wall-clock read
+    nowFallback: facts.nowFallback ?? null,
     divergence,
     findings: joined.findings,
     lanes, lanesMeta: meta, prs, backlog, thisLane,

@@ -98,6 +98,22 @@ j = null; try { j = JSON.parse(r.out) } catch {}
 ok(!!j && Array.isArray(j.lanes) && j.lanes.length === 2 && j.lanes.every(l => l.state === 'ABANDONED') && j.lanesMeta?.namespace === 'lane/*', '--json: lanes view derived, meta named')
 ok(!!j && Array.isArray(j.prs), '--json: the open-PR list lives under prs now (M5b re-home)')
 
-for (const d of [BIN, bare, g, w.dir, w2.dir]) fs.rmSync(d, { recursive: true, force: true })
+// 9 — the middle state renders too: +4d of a 7d ttl is STALE (◐), not a binary live/dead
+r = orient([], w.clone, { BASELINE_LOG_NOW: '2026-07-18T09:00:00Z' })
+ok(/◐ `lane\/7` → #7 — STALE/.test(r.out), `+4d of ttl 7d renders the STALE icon/line (got: ${(r.out.match(/[◐●✗?] `lane\/7`.*/) || ['<missing>'])[0]})`)
+
+// 10 — lanes declared but BOTH planes down: the section says underived + why, exit stays 0
+const w3 = mkLaneWorld(LANE_DESC)
+execFileSync('git', ['-C', w3.clone, 'remote', 'set-url', 'origin', path.join(w3.dir, 'gone.git')])
+r = orient([], w3.clone)
+ok(r.code === 0 && /_underived: .*origin unreachable \(ls-remote failed\)/.test(r.out), 'both planes down → underived + both causes named, never a crash or a fake "none claimed"')
+
+// 11 — replay dedup: a lane's open PR rides its lane line and leaves the Open PRs section
+const SCENARIO = path.resolve(ROOT, 'test', 'forge-fixtures', 'scenario')
+r = orient([], w.clone, { BASELINE_FORGE_REPLAY: SCENARIO })
+ok(/· PR #40/.test(r.out), 'the lane line carries its open PR (#40 on lane/7, from the replay)')
+ok(/## Open PRs \(non-lane branches\)/.test(r.out) && !/^- #40 /m.test(r.out), 'PR #40 is NOT double-listed under Open PRs — the lane line owns it')
+
+for (const d of [BIN, bare, g, w.dir, w2.dir, w3.dir]) fs.rmSync(d, { recursive: true, force: true })
 console.log(fails ? `\n✗ ${fails} orient check(s) failed\n` : '\n✓ orient availability checks pass\n')
 process.exit(fails ? 1 : 0)

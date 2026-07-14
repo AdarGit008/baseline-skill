@@ -347,7 +347,7 @@
 
 **Claim.** Encode rules/policies as declarative data evaluated by a small generic engine, so the rule set evolves without engine changes and rules stay introspectable (rationale, fix, source as fields).
 
-**Origin.** baseline-skill (rules.json + ~28 check kinds)
+**Origin.** baseline-skill (rules.json + ~36 check kinds)
 
 **Verified online** (verified):
 
@@ -357,7 +357,7 @@
 - **[COMPLICATES]** [martinfowler.com — Rules Engine (bliki, 2009)](https://martinfowler.com/bliki/RulesEngine.html) — verified
   > "So I often hear that it was easy to set up a rules system, but very hard to maintain it because nobody can understand this implicit program flow. This is the dark side of leaving the imperative computational model."
 
-**Contested — honest counter-position.** Yes. The strongest counter-position is Martin Fowler's "Rules Engine" (https://martinfowler.com/bliki/RulesEngine.html): "there's a lot to be said for avoiding rules engine products" — declarative rules create implicit program flow that is easy to set up but hard to maintain, so rules should be few, non-chaining, and confined to a narrow domain-specific context. This contests general-purpose rules engines rather than the baseline-skill design specifically; a small fixed vocabulary of ~28 check kinds with flat, independent rules is close to Fowler's recommended mitigation.
+**Contested — honest counter-position.** Yes. The strongest counter-position is Martin Fowler's "Rules Engine" (https://martinfowler.com/bliki/RulesEngine.html): "there's a lot to be said for avoiding rules engine products" — declarative rules create implicit program flow that is easy to set up but hard to maintain, so rules should be few, non-chaining, and confined to a narrow domain-specific context. This contests general-purpose rules engines rather than the baseline-skill design specifically; a small fixed vocabulary of ~36 check kinds with flat, independent rules is close to Fowler's recommended mitigation.
 
 ### C19-self-validating-gates — The gate validates itself
 

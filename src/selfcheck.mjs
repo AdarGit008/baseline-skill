@@ -85,6 +85,11 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     if (!Array.isArray(r.contexts) || !r.contexts.length || !r.contexts.every(c => CTXV.has(c))) problems.push(`${id}: contexts must be a non-empty subset of {${[...CTXV].join('|')}}`)
     if (!CERT.has(r.certainty)) problems.push(`${id}: certainty must be one of {${[...CERT].join('|')}}`)
     if (r.severity === 'blocker' && r.certainty !== 'deterministic') problems.push(`${id}: blocker must be deterministic (got '${r.certainty}') — a blocker can't rest on a heuristic/judgment`)
+    // M5c: the DIVERGED tag short-circuits before the blocker→FAIL branch (src/engine.mjs),
+    // so a div-category rule at severity blocker would tag DIVERGED yet count zero blockers
+    // — a silent green. Until M7 defines blocker-DIVERGED semantics, pin div ⇒ warn so the
+    // dead path can't ship, and M7's promotion is a conscious engine change, not a surprise.
+    if (r.category === 'div' && r.severity !== 'warn') problems.push(`${id}: div-category rules must be severity 'warn' until M7 defines blocker-DIVERGED in the engine (DIVERGED currently bypasses the blocker→FAIL path)`)
     if (r.severity === 'manual' && r.certainty !== 'judgment') problems.push(`${id}: sign-off (manual) must be certainty 'judgment' (got '${r.certainty}')`)
     if (r.certainty === 'judgment' && r.severity !== 'manual') problems.push(`${id}: certainty 'judgment' must route to a sign-off (severity 'manual', got '${r.severity}')`)
     if (Array.isArray(r.sources) && r.sources.includes('flow')) problems.push(`${id}: readiness rules may not consume 'flow' facts (layering invariant)`)

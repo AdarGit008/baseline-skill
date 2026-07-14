@@ -37,7 +37,11 @@ export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIP
     let tag
     if (res.ok === null) tag = 'SKIP'
     else if (res.ok === true) tag = 'PASS'
-    else if (res.diverged) tag = 'DIVERGED' // M5c: a cross-tier contradiction is its own verdict, not a generic warn — severity stays warn (exit unchanged until M7)
+    // M5c: a cross-tier contradiction is its own verdict, not a generic warn. DIVERGED
+    // sits BEFORE the blocker→FAIL branch, so today it can only carry severity warn (exit
+    // unchanged until M7) — a selfcheck law (category div ⇒ severity warn) keeps it that
+    // way; M7's promotion must make DIVERGED-at-blocker route to FAIL, not stay green.
+    else if (res.diverged) tag = 'DIVERGED'
     else if (res.signoff || r.check.kind === 'signoff') tag = 'SIGN-OFF'
     else if (res.soft) tag = 'WARN'
     else tag = r.severity === 'blocker' ? 'FAIL' : 'WARN'

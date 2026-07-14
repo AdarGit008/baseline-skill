@@ -14,7 +14,7 @@
       "source": "https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue",
       "lesson": "ADR-0009 'no issue, no work' — the anchor is what lets leases, takeovers, and divergence derive; an anchor-less branch is invisible to all three",
       "rationale": "The ref IS the claim (FS2): a lane whose name parses to no issue can't be joined to intent, and under strict anchoring an anchor that doesn't resolve at the forge is a claim on nothing. Existence + resolution only — whether the issue is still OPEN is DIV-01's finding, not this rule's (no overlap). The descriptor `anchoring` knob governs: off SKIPs, relaxed wants a parseable anchor, strict also wants forge resolution. Lands warn; M7 promotes per posture.",
-      "fix": "Claim lanes through the tool — baseline lane claim <issue> — or set descriptor anchoring to 'relaxed'/'off' if this repo genuinely doesn't anchor.",
+      "fix": "Claim lanes through the tool — baseline lane claim <issue>. If this repo genuinely doesn't anchor, set descriptor anchoring to 'off' (relaxed still requires a parseable anchor).",
       "sources": [
         "tree",
         "history",

@@ -27,8 +27,9 @@ export function deriveStatus(facts, joined, capability) {
         : { ...l, next: null, hasLog: null }
     }) : []
 
-  // divergence: ONE derivation (derive/divergence) feeds both orient's headline and —
-  // through the check plumbing — the DIV rules; strings here, items for the rules
+  // divergence: derive/divergence classifies the cross-tier contradictions for orient's
+  // headline; the DIV rules re-run the SAME classifier (branch-scoped) through check's
+  // lane world — both import isClosed from that module, so "closed" has one definition.
   const divergenceItems = deriveDivergence({
     lanes, prs: facts.prs, issueStates: facts.issueStates,
     thisLane: facts.git.thisLaneLog ? { branch: facts.git.branch, next: facts.git.thisLaneLog.next } : null,
@@ -43,7 +44,6 @@ export function deriveStatus(facts, joined, capability) {
     now: facts.now, // the ONE clock the view was derived at — renderers age against this, never a second wall-clock read
     nowFallback: facts.nowFallback ?? null,
     divergence: divergenceItems.map(i => i.text),
-    divergenceItems,
     findings: joined.findings,
     lanes, lanesMeta: meta, prs, backlog, thisLane,
   }

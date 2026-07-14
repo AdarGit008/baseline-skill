@@ -11,9 +11,14 @@
 // Certainty is deterministic (the forge SAID the issue is closed); severity stays warn
 // and the engine tag is DIVERGED (exit unchanged until M7). An 'unknown' issue state is
 // NEVER divergence — unresolvable is surfaced by the join layer, not guessed here.
-import { refs } from '../facts/index.mjs'
+// refs comes from util (pure) so this derive module reads no I/O layer.
+import { refs } from '../util.mjs'
 
-const isClosed = s => s && s !== 'open' && s !== 'unknown'
+// The ONE definition of "closed" — orient's headline (this module), the DIV rules
+// (evaluators), and lanes' anchor label all import THIS, so a change to what closed
+// means (e.g. a future 'not_planned' handling) can never update one surface and not
+// the others. That single-source guarantee is the whole point of the extraction.
+export const isClosed = s => !!s && s !== 'open' && s !== 'unknown'
 
 // -> [{ code, where, issue, state, text }] — plain items; renderers make strings.
 export function deriveDivergence({ lanes = [], prs = [], issueStates = {}, thisLane = null }) {

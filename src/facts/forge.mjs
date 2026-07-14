@@ -11,7 +11,7 @@ import path from 'node:path'
 import { gh, ghJson } from '../probe.mjs'
 import { cacheWrite } from '../cache.mjs'
 
-export function makeForge(repo, { available = false, nwo = null, posture = null } = {}) {
+export function makeForge(repo, { available = false, nwo = null, posture = null, probeReason = null } = {}) {
   // CF5: a multi-lane-local posture CLOSES the forge — and replay must not reopen it,
   // or fixtures would derive from consultations the posture promises never happen.
   // One home for the closure + its reason string; every surface (claim now, leases/
@@ -47,8 +47,13 @@ export function makeForge(repo, { available = false, nwo = null, posture = null 
   return {
     available: isAvail(),
     source: CLOSED ? 'posture' : REPLAY ? 'replay' : 'forge',
-    reason: isAvail() ? null : CLOSED ? 'forge not consulted (multi-lane-local posture)' : 'forge unreachable',
+    // the probe's specific cause wins over the generic label when the caller threaded one
+    reason: isAvail() ? null : CLOSED ? 'forge not consulted (multi-lane-local posture)' : (probeReason || 'forge unreachable'),
     prsOpen() { return isAvail() ? (q('prs-open', ['pr', 'list', '--state', 'open', '--json', 'number,title,headRefName,isDraft,updatedAt,body', '--limit', '50']) || []) : [] },
+    // null-honest variant: a null (the gh query FAILED after the probe said available)
+    // must not coalesce to [] and let a rule assert "no open PRs" as fact — the caller
+    // SKIPs on null. [] only when the forge is genuinely closed/unreachable up front.
+    prsOpenOrNull() { return isAvail() ? q('prs-open', ['pr', 'list', '--state', 'open', '--json', 'number,title,headRefName,isDraft,updatedAt,body', '--limit', '50']) : [] },
     issuesOpen() { return isAvail() ? (q('issues-open', ['issue', 'list', '--state', 'open', '--json', 'number,title,labels,milestone,updatedAt', '--limit', '200']) || []) : [] },
     issue(n) { return isAvail() ? q(`issue-${safeKey(n)}`, ['issue', 'view', String(n), '--json', 'number,state,title']) : null },
     // M5b: every lane tip's committedDate + associated-PR updatedAt in ONE GraphQL refs()

@@ -4,14 +4,14 @@ The **`baseline`** skill for **Hermes** and **Claude Code** (and any agent that 
 `SKILL.md`): a zero-dependency project-readiness checker packaged as an installable skill. It scores a repository
 against **86 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
 operability, change governance, community, context/doc-drift, claims discipline,
-records & ledger, and lane workflow —
+records & ledger, lane workflow, and divergence —
 [blockers](GLOSSARY.md#blocker) fail CI, judgment calls resolve via a dated [sign-off ledger](GLOSSARY.md#sign-off-ledger).
 
 > The premise: *don't trust a written promise — make something check it.*
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/evaluate-stack-dark.svg">
-  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 86 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 28 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
+  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 86 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 36 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
 </picture>
 
 *How a repository becomes an exit code — the [full reference](REFERENCE.md) walks every layer.*

@@ -21,7 +21,9 @@ jobs:
         run: node test/facts/run.mjs
       - name: records — loader split, schemas, scrub, log write-gate
         run: node test/records/run.mjs
-      - name: lane claim — atomic ref creation, race, posture gates (local bare origin)
+      - name: lane claim/reclaim — atomic ref creation, race, leases (local bare origin)
         run: node test/lane/run.mjs
+      - name: FLOW/DIV rules — lane-world verdicts across the branch-state matrix
+        run: node test/flow/run.mjs
       - name: self-score (the standard checks itself)
         run: node check.mjs --repo . --no-exec

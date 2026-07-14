@@ -32,15 +32,22 @@ export function laneOwner(REPO, gitRef, issue) {
 // multi-lane-local posture (CF5: origin is the only rendezvous). Freshness here is
 // committedDate only — committer clock, no PR corroboration — which derive/lanes
 // labels low-confidence. -> { lanes, truncated } | null when origin is unreachable.
+export const LANE_PAGE = 100 // cap the git plane to match the forge's first:100 — a hostile
+// origin advertising thousands of lane refs must not fan out thousands of git spawns
 export function laneRefsGit(REPO, namespace) {
   const pat = 'refs/heads/' + namespace
   const ls = run('git', ['-C', REPO, 'ls-remote', 'origin', pat], { timeout: 30000 })
   if (ls === null) return null
   const re = globToRe(namespace)
-  const tips = ls.split('\n').filter(Boolean).map(l => l.split(/\s+/))
+  const all = ls.split('\n').filter(Boolean).map(l => l.split(/\s+/))
     .map(([sha, ref]) => ({ sha, ref: String(ref || '').replace(/^refs\/heads\//, '') }))
     .filter(t => t.sha && re.test(t.ref))
-  if (!tips.length) return { lanes: [], truncated: false }
+    .sort((a, b) => a.ref < b.ref ? -1 : a.ref > b.ref ? 1 : 0)
+  // cap BEFORE the per-ref fetch/rev-parse/log fan-out (the no-silent-caps law: truncated
+  // rides out so orient's existing label fires), matching the forge path's first:100
+  const truncated = all.length > LANE_PAGE
+  const tips = all.slice(0, LANE_PAGE)
+  if (!tips.length) return { lanes: [], truncated }
   const fetched = run('git', ['-C', REPO, 'fetch', 'origin', `+${pat}:${LANES_PRIV}${namespace}`], { timeout: 60000 }) !== null
   const lanes = tips.map(({ sha, ref }) => {
     const priv = LANES_PRIV + ref
@@ -51,7 +58,7 @@ export function laneRefsGit(REPO, namespace) {
     const agent = fetched ? laneOwner(REPO, priv, issueOf(namespace, ref)) : null
     return { ref, tip, committedDate, prUpdatedAt: null, pr: null, agent, agentSource: agent ? 'history-trailer' : null, source: 'git' }
   })
-  return { lanes, truncated: false }
+  return { lanes, truncated }
 }
 
 // The `## Left open` -> `next:` line of a session log (mirrors the session-log guard).
@@ -67,15 +74,20 @@ export function extractNext(md) {
   return null
 }
 
-// Newest local session log for a branch -> { rel, next } or null.
+// Newest local session log for a branch -> { rel, next } or null. Hostile-tree-safe: a
+// directory or dangling symlink named `*.md` must not throw (readdirSync withFileTypes
+// filters to real files; the read is guarded) — orient never crashes (FS9) and check's
+// FLOW/DIV kinds never launder the crash into a misleading "check errored".
 export function newestLocalLog(repo, branch) {
   for (const base of SESSION_BASES) {
     const dir = path.join(repo.REPO, base, branch)
-    let files
-    try { files = fs.readdirSync(dir).filter(f => f.endsWith('.md')).sort() } catch { continue }
+    let ents
+    try { ents = fs.readdirSync(dir, { withFileTypes: true }) } catch { continue }
+    const files = ents.filter(e => e.isFile() && e.name.endsWith('.md')).map(e => e.name).sort()
     if (!files.length) continue
     const file = files.at(-1)
-    return { rel: `${base}/${branch}/${file}`, next: extractNext(fs.readFileSync(path.join(dir, file), 'utf8')) }
+    let raw; try { raw = fs.readFileSync(path.join(dir, file), 'utf8') } catch { continue }
+    return { rel: `${base}/${branch}/${file}`, next: extractNext(raw) }
   }
   return null
 }

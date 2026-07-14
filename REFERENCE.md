@@ -61,7 +61,7 @@ flowchart LR
   RULES["rules/ — 86 rules (manifest: rules.json)"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
-    IDX["file index + git helpers"] --> EVAL["~28 check evaluators"]
+    IDX["file index + git helpers"] --> EVAL["~36 check evaluators"]
     RES["config resolution"] --> EVAL
   end
   SO["signoff.json — human judgments"] --> EVAL

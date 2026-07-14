@@ -32,6 +32,11 @@ const TODAY = new Date().toISOString().slice(0, 10)
 // pins machine-dependent. Applied to every git call AND the checker subprocess
 // (whose internal git calls inherit this env).
 const GIT_ENV = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+// A dev with the tool's OWN record/replay vars exported (time-travel, forge replay) must
+// not silently drift the pins the checker subprocess derives — or, under --capture, bless
+// wrong ones. Strip them from the inherited env; the harness re-injects BASELINE_FORGE_REPLAY
+// per-manifest exactly where a fixture wants it. (BASELINE_GOLDEN_CHECK stays a real knob.)
+for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT']) delete GIT_ENV[k]
 // Override the runner under test (e.g. point at a pristine V1 monolith to prove a
 // candidate runner reproduces the same pins): BASELINE_GOLDEN_CHECK=/path/check.mjs
 const CHECK_UNDER_TEST = process.env.BASELINE_GOLDEN_CHECK || CHECK
@@ -88,6 +93,17 @@ function materialize(name) {
   const manifest = JSON.parse(fs.readFileSync(path.join(src, '_fixture.json'), 'utf8'))
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `baseline-golden-${name}-`))
   const extra = [] // side dirs (bare origin, replay dir) — cleaned with the repo
+  try {
+    return materializeInto(name, src, manifest, tmp, extra)
+  } catch (e) {
+    // a failure mid-materialize (git push, bare init, forge copy) must never leak a tree
+    // carrying materialized fake secrets — clean up everything created so far, then rethrow
+    for (const d of [tmp, ...extra]) { try { fs.rmSync(d, { recursive: true, force: true }) } catch {} }
+    throw e
+  }
+}
+
+function materializeInto(name, src, manifest, tmp, extra) {
   copyTree(src, tmp, { skipMeta: true })
   fs.rmSync(path.join(tmp, '_fixture.json'))
   substitute(tmp, '{{TODAY}}', TODAY)

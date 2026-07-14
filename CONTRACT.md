@@ -131,20 +131,25 @@ M6's `admit`, the FLOW posture gate reads the *worktree* descriptor, so a branch
 that weakens posture can self-silence FLOW-06 — the base-ref read lands with
 admit (FS1).
 
-## Reserved (lands later, documented now)
-
 ## Lanes (M5) — the plain-git twin
 
 Everything `baseline lane` does is expressible in plain git; the tool adds the
 gates, the labels, and the honesty — never a private data model.
 
-- **Claim** = create the namespaced ref at origin, first push wins:
-  `git commit-tree <main-tree> -p <main-tip> -m "claim lane/N: issue #N\n\nBaseline-Issue: #N\nBaseline-Agent: <agent>"`
-  then `git push origin <sha>:refs/heads/lane/N`. The trailers are the declared
-  `join_keys` — hand-typed claims MUST carry both or every downstream join lies.
+- **Claim** = create the namespaced ref at origin, first push wins. The message
+  needs REAL newlines (bash does not expand `\n` inside double quotes, so a
+  literal-`\n` message mints a trailer-less lane — the exact thing the trailers
+  prevent), so build it with `printf`:
+  ```sh
+  msg=$(printf 'claim lane/N: issue #N\n\nBaseline-Issue: #N\nBaseline-Agent: <agent>')
+  sha=$(git commit-tree "$(git rev-parse origin/main^{tree})" -p "$(git rev-parse origin/main)" -m "$msg")
+  git push origin "$sha:refs/heads/lane/N"
+  ```
+  The trailers are the declared `join_keys` — hand-typed claims MUST carry both
+  or every downstream join lies.
 - **Lease** = derived, never stored: freshness = **max(tip committedDate, PR
-  updatedAt)** (FS10 as amended — GraphQL no longer carries `pushedAt`) vs
-  `lanes.lease_ttl`; LIVE < ttl/2 ≤ STALE < ttl ≤ ABANDONED. Git-plane-only
+  updatedAt)** (FS10 as amended — GraphQL no longer carries `Commit.pushedDate`)
+  vs `lanes.lease_ttl`; LIVE < ttl/2 ≤ STALE < ttl ≤ ABANDONED. Git-plane-only
   derivation (committer clock, no PR corroboration) is low-confidence and says so.
 - **Reclaim** = an empty child of the observed tip under the NEW agent's trailer,
   pushed with `--force-with-lease=refs/heads/lane/N:<observed-tip>` (an exact CAS:
@@ -154,10 +159,14 @@ gates, the labels, and the honesty — never a private data model.
   takeover record rides `records/sessions/<lane>/` like any session record.
 - **The FLOW discipline by hand:** anchor lanes to issues (FLOW-01), write the
   session record on the branch (FLOW-02) with a filled `next:` (FLOW-03), keep
-  branches in declared families (FLOW-04), push the newest record before pausing
-  (FLOW-05), don't squat dead lanes (FLOW-07). DIV findings (closed issue under
-  an active lane, `next:` at a dead issue, a PR closing a closed issue) are
-  contradictions to RESOLVE, not warnings to mute.
+  branches in declared families (FLOW-04 — `lanes.namespace` + `lanes.families`),
+  push the newest record before pausing (FLOW-05), don't squat dead lanes
+  (FLOW-07). Family branches (`release/*`) owe only placement, not lane records.
+  DIV findings (closed issue under an active lane, `next:` at a dead issue, a PR
+  closing a closed issue) are contradictions to RESOLVE, not warnings to mute.
+
+## Reserved (lands later, documented now)
+
 - **M6 — admit/reconcile:** merge-point re-derivation, fail-closed with
   break-glass relief; reconcile files findings as issues, read-only on main.
 - **M7 — contraction:** status-doc surfaces retired; `signoff.json` and the

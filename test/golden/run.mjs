@@ -86,6 +86,10 @@ function normalizeDetail(s, tmp) {
     .replace(/\b\d+h\b/g, '<N>h')                         // lease ages ("26h idle") — run-date volatile
     .replace(/\(\d+ commits? behind/g, '(<N> commits behind')
     .replace(/stamp \d+ commits behind/g, 'stamp <N> commits behind')
+    // The forge-probe cause is MACHINE-dependent (gh absent vs unauthed vs authed-no-repo)
+    // — check's lane SKIPs now name the specific cause honestly, but the PIN must collapse
+    // the variants to one token, exactly like a SHA. Real runs still show the true cause.
+    .replace(/gh not installed|gh not authenticated \(gh auth login\)|no forge repo resolves here \(or network\/API down\)/g, '<forge unreachable>')
 }
 
 function materialize(name) {

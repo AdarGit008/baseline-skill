@@ -2007,7 +2007,7 @@
       },
       "FLOW-07": {
         "tag": "SKIP",
-        "detail": "lanes underived: no forge repo resolves here (or network/API down); origin unreachable (ls-remote failed)"
+        "detail": "lanes underived: <forge unreachable>; origin unreachable (ls-remote failed)"
       },
       "DIV-01": {
         "tag": "SKIP",
@@ -2019,7 +2019,7 @@
       },
       "DIV-03": {
         "tag": "SKIP",
-        "detail": "no forge repo resolves here (or network/API down) — PR closures unreadable"
+        "detail": "<forge unreachable> — PR closures unreadable"
       },
       "DESC-01": {
         "tag": "PASS",

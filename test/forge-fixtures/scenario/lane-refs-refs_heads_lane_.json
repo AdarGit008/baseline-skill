@@ -1,0 +1,33 @@
+{
+  "data": {
+    "repository": {
+      "refs": {
+        "pageInfo": { "hasNextPage": false },
+        "nodes": [
+          {
+            "name": "7",
+            "target": {
+              "oid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "committedDate": "2026-07-13T12:00:00Z",
+              "message": "claim lane/7: issue #7\n\nBaseline-Issue: #7\nBaseline-Agent: alice",
+              "associatedPullRequests": {
+                "nodes": [
+                  { "number": 40, "state": "OPEN", "isDraft": false, "title": "Lane 7 work", "updatedAt": "2026-07-14T00:00:00Z" }
+                ]
+              }
+            }
+          },
+          {
+            "name": "9",
+            "target": {
+              "oid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "committedDate": "2026-07-01T00:00:00Z",
+              "message": "claim lane/9: issue #9\n\nBaseline-Issue: #9\nBaseline-Agent: bob",
+              "associatedPullRequests": { "nodes": [] }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -22,6 +22,18 @@ export const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-
 export const TRAILER_ISSUE = 'Baseline-Issue'
 export const TRAILER_AGENT = 'Baseline-Agent'
 
+// The inverse of claim's namespace substitution: 'lane/*' + 'lane/7' -> 7. One home for
+// both directions of the ref⇄issue anchor (claim writes ns.replace('*', issue); every
+// reader — derive/lanes, reclaim, the git-plane trailer walk — parses it back through
+// here). null when the ref doesn't match the namespace or the star isn't an issue number.
+export const escRe = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+export function issueOf(namespace, ref) {
+  const i = String(namespace).indexOf('*')
+  if (i < 0) return null
+  const m = new RegExp('^' + escRe(namespace.slice(0, i)) + '(.+)' + escRe(namespace.slice(i + 1)) + '$').exec(String(ref))
+  return m && /^[1-9][0-9]*$/.test(m[1]) ? +m[1] : null
+}
+
 // One clock for all record tooling (log / jdg / the signoff bridge): the
 // BASELINE_LOG_NOW override parsed + ISO-normalized, null when unparseable —
 // callers decide whether that's a usage error (CLIs) or a wall-clock fallback.

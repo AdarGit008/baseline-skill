@@ -1,5 +1,34 @@
 [
-  { "number": 10, "title": "Implement the open thing", "headRefName": "lane/a", "isDraft": false, "updatedAt": "2026-07-10T10:00:00Z", "body": "Closes #2." },
-  { "number": 11, "title": "Redo already-done work", "headRefName": "lane/b", "isDraft": false, "updatedAt": "2026-07-10T09:00:00Z", "body": "Fixes #5 again." },
-  { "number": 12, "title": "Reference a ghost", "headRefName": "lane/c", "isDraft": true, "updatedAt": "2026-07-10T08:00:00Z", "body": "Resolves #999 (which does not exist)." }
+  {
+    "number": 10,
+    "title": "Implement the open thing",
+    "headRefName": "lane/a",
+    "isDraft": false,
+    "updatedAt": "2026-07-10T10:00:00Z",
+    "body": "Closes #2."
+  },
+  {
+    "number": 11,
+    "title": "Redo already-done work",
+    "headRefName": "lane/b",
+    "isDraft": false,
+    "updatedAt": "2026-07-10T09:00:00Z",
+    "body": "Fixes #5 again."
+  },
+  {
+    "number": 12,
+    "title": "Reference a ghost",
+    "headRefName": "lane/c",
+    "isDraft": true,
+    "updatedAt": "2026-07-10T08:00:00Z",
+    "body": "Resolves #999 (which does not exist)."
+  },
+  {
+    "number": 40,
+    "title": "Lane 7 work",
+    "headRefName": "lane/7",
+    "isDraft": false,
+    "updatedAt": "2026-07-14T00:00:00Z",
+    "body": "Work toward #7."
+  }
 ]

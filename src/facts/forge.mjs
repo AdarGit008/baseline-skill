@@ -51,6 +51,20 @@ export function makeForge(repo, { available = false, nwo = null, posture = null 
     prsOpen() { return isAvail() ? (q('prs-open', ['pr', 'list', '--state', 'open', '--json', 'number,title,headRefName,isDraft,updatedAt,body', '--limit', '50']) || []) : [] },
     issuesOpen() { return isAvail() ? (q('issues-open', ['issue', 'list', '--state', 'open', '--json', 'number,title,labels,milestone,updatedAt', '--limit', '200']) || []) : [] },
     issue(n) { return isAvail() ? q(`issue-${safeKey(n)}`, ['issue', 'view', String(n), '--json', 'number,state,title']) : null },
+    // M5b: every lane tip's committedDate + associated-PR updatedAt in ONE GraphQL refs()
+    // query (FS10 as amended — pushedDate is gone from the schema; batching beyond this
+    // stays deferred until F2's fleet-scale trigger fires). Returns the RAW GraphQL
+    // envelope (that is what record/replay persists); facts/index normalizes downstream.
+    // refPrefix must be a '/'-terminated path, so the namespace's directory part goes in
+    // the query and the one-star glob is re-applied client-side by the normalizer.
+    laneRefs(namespace) {
+      if (!isAvail() || !namespace) return null
+      const dir = String(namespace).slice(0, String(namespace).lastIndexOf('/', String(namespace).indexOf('*')) + 1)
+      const prefix = 'refs/heads/' + dir
+      const QUERY = 'query($owner:String!,$name:String!,$prefix:String!){repository(owner:$owner,name:$name){refs(refPrefix:$prefix,first:100){pageInfo{hasNextPage}nodes{name target{... on Commit{oid committedDate message associatedPullRequests(first:20){pageInfo{hasNextPage}nodes{number state isDraft title updatedAt}}}}}}}}'
+      const [owner, name] = String(nwo || '/').split('/')
+      return q(`lane-refs-${safeKey(prefix)}`, ['api', 'graphql', '-f', `query=${QUERY}`, '-f', `owner=${owner}`, '-f', `name=${name}`, '-f', `prefix=${prefix}`])
+    },
     // Newest session log on a branch, read from origin at that ref via the contents API.
     branchLog(base, branch) {
       if (!isAvail()) return null

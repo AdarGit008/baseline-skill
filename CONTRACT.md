@@ -133,9 +133,14 @@ admit (FS1).
 
 ## Reserved (lands later, documented now)
 
-- **M5 — lanes:** lane claim = pushing the namespaced branch (first-wins at the
-  remote); `Baseline-Agent` / `Baseline-Issue` trailers as declared join keys;
-  leases derive from forge `pushedAt` vs the descriptor's `lease_ttl`.
+- **M5 — lanes** (claim shipped at M5a, leases + reclaim at M5b; rules land at
+  M5c): lane claim = pushing the namespaced branch (first-wins at the remote);
+  `Baseline-Agent` / `Baseline-Issue` trailers as declared join keys; leases
+  derive from **max(tip committedDate, PR updatedAt)** vs the descriptor's
+  `lease_ttl` (FS10 as amended — GitHub's GraphQL no longer carries `pushedAt`;
+  git-plane fallback is labeled low-confidence); reclaim takes over a
+  derived-ABANDONED lane only, or a live lane under an unexpired `deviation`
+  judgment naming it (`--jdg`).
 - **M6 — admit/reconcile:** merge-point re-derivation, fail-closed with
   break-glass relief; reconcile files findings as issues, read-only on main.
 - **M7 — contraction:** status-doc surfaces retired; `signoff.json` and the

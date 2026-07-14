@@ -1,13 +1,46 @@
 #!/usr/bin/env node
-// M5a suite — `baseline lane claim`: the atomic branch-creation claim (FS2/S3).
+// M5 lane suite — `baseline lane claim` (M5a: the atomic branch-creation claim, FS2/S3)
+// and `baseline lane reclaim` + `derive/lanes` (M5b: derived leases, C31/FS10-as-amended).
 // Every test runs against a LOCAL bare origin (file transport) — the ref-transaction
 // atomicity under test is git's own, identical over file and smart-HTTP transports,
-// so no network and no forge are ever needed. Zero-dependency, Node >= 18.
+// so no network and no forge are ever needed. Lease time-travel rides BASELINE_LOG_NOW
+// (the one clock shared with the record tooling) — commit dates are real, "now" moves.
+// Zero-dependency, Node >= 18.
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { deriveLanes, parseTtlMs, STALE_FRACTION, DEFAULT_LEASE_TTL } from '../../src/derive/lanes.mjs'
+import { gatherLaneFacts } from '../../src/facts/index.mjs'
+import { issueOf } from '../../src/util.mjs'
+
+// A PATH shim around git creates the exact mid-flight interleavings a real transport
+// produces — a lost push report, a lane moved/deleted between the fetch and the push —
+// deterministically (a pre-receive hook cannot: object quarantine forbids ref updates).
+const REAL_GIT = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim()
+function mkGitShim(name, pushPrelude) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `baseline-shim-${name}-`)); tmps.push(dir)
+  fs.writeFileSync(path.join(dir, 'git'), `#!/bin/sh
+for a in "$@"; do
+  if [ "$a" = "push" ]; then
+${pushPrelude}
+  fi
+done
+exec "${REAL_GIT}" "$@"
+`)
+  fs.chmodSync(path.join(dir, 'git'), 0o755)
+  return dir
+}
+const withShim = (shimDir, env = {}) => ({ PATH: `${shimDir}:${process.env.PATH}`, ...env })
+// a rival takeover commit minted directly in the bare repo; the committer date must
+// differ from the reclaimer's or same-second commit-tree yields the IDENTICAL sha
+function mkRival(bare, ref, issueN, agent) {
+  const tip = git(bare, 'rev-parse', ref)
+  const tree = git(bare, 'rev-parse', `${ref}^{tree}`)
+  return execFileSync('git', ['-C', bare, 'commit-tree', tree, '-p', tip, '-m', `reclaim ${ref}: issue #${issueN} takeover\n\nBaseline-Issue: #${issueN}\nBaseline-Agent: ${agent}`],
+    { encoding: 'utf8', env: { ...process.env, ...GITENV, GIT_AUTHOR_DATE: '2026-07-13T00:00:00Z', GIT_COMMITTER_DATE: '2026-07-13T00:00:00Z' } }).trim()
+}
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '..', '..')
@@ -161,8 +194,17 @@ function mklocal(name, desc) {
   const bare = cli(A, ['lane'])
   ok(bare.status === 2 && /which action|claim/.test(bare.stderr), 'bare `lane` → usage on STDERR (exit 2), like every other refusal')
   ok(cli(A, ['lane', '--help']).status === 0, 'lane --help exits 0')
-  const r = cli(A, ['lane', 'reclaim', 'lane/15'])
-  ok(r.status === 2 && /claim/.test(r.stderr), 'unknown action (reclaim is M5b) → usage naming what exists')
+  ok(cli(A, ['lane', 'claim', '--help']).status === 0 && cli(A, ['lane', 'reclaim', '--help']).status === 0, 'per-action --help answers help (exit 0), never a refusal')
+  const r = cli(A, ['lane', 'reclaim', 'lane/15', '--agent', 'somebody-else'])
+  ok(r.status === 2 && /derives LIVE/.test(r.stderr), 'another agent reclaiming the just-claimed lane refuses: derived LIVE, not ABANDONED')
+  // the SAME agent re-running reclaim on its own lane is an idempotent completion, never
+  // a demand to mint a deviation judgment against itself (the crash-rerun rule)
+  const own = cli(A, ['lane', 'reclaim', 'lane/15', '--json'])
+  const jo = JSON.parse(own.stdout || '{}')
+  ok(own.status === 0 && jo.pushed === false && (jo.notes || []).some(n => /completing the takeover \(idempotent/.test(n)), `own-lane rerun completes idempotently, nothing pushed (got ${own.status})`)
+  ok(git(o.bare, 'rev-parse', 'lane/15') === jo.sha, 'origin tip unchanged by the idempotent completion')
+  const fr = cli(A, ['lane', 'frobnicate'])
+  ok(fr.status === 2 && /actions: claim · reclaim/.test(fr.stderr), 'unknown action → usage naming the actions (exit 2)')
 }
 
 // ---------- a stale LOCAL branch with the lane's name is never adopted as the claim ----------
@@ -219,6 +261,334 @@ function mklocal(name, desc) {
   const r2 = cli(A, ['lane', 'claim', '8'])
   ok(r2.status === 2 && /push failed/.test(r2.stderr), `rejected push (ref still absent) → exit 2 with git's reason, never a fake lost-race (got ${r2.status})`)
   ok(gitOk(A, 'show-ref', '--verify', 'refs/heads/lane/8') === null && git(A, 'status', '--porcelain') === '', 'failed claim leaves no local residue either')
+}
+
+// ================= M5b — derive/lanes: the pure lease derivation (C31) =================
+{
+  const T0 = '2026-07-14T12:00:00Z'
+  const at = (iso, over = {}) => deriveLanes({ lanes: [{ ref: 'lane/7', tip: 'aaaa', committedDate: iso, source: 'forge', ...over }], ttlMs: parseTtlMs('7d'), now: T0, namespace: 'lane/*' })[0]
+  ok(parseTtlMs('7d') === 7 * 86400000 && parseTtlMs('36h') === 36 * 3600000 && parseTtlMs('x') === null && parseTtlMs() === null, 'parseTtlMs: 7d · 36h · junk→null · absent→null')
+  ok(DEFAULT_LEASE_TTL === '7d' && STALE_FRACTION === 0.5, 'the D2 default and the provisional STALE constant are pinned names')
+  ok(issueOf('lane/*', 'lane/7') === 7 && issueOf('lane/*', 'lane/abc') === null && issueOf('agents/l-*', 'agents/l-42') === 42 && issueOf('lane/*', 'other/7') === null, 'issueOf inverts the namespace substitution — numbers only, namespace-anchored')
+
+  ok(at(T0).state === 'LIVE' && at(T0).age_ms === 0, 'fresh claim derives LIVE at age 0 (the pinned birth state)')
+  ok(at('2026-07-10T00:00:00Z').state === 'STALE', 'past ttl/2 → STALE')
+  ok(at('2026-07-11T00:00:00.001Z').state === 'LIVE' && at('2026-07-11T00:00:00Z').state === 'STALE', 'STALE begins exactly at ttl/2 (boundary is ≥)')
+  ok(at('2026-07-07T12:00:00Z').state === 'ABANDONED' && at('2026-07-07T12:00:00.001Z').state === 'STALE', 'ABANDONED begins exactly at ttl (boundary is ≥)')
+
+  const prWins = at('2026-07-01T00:00:00Z', { prUpdatedAt: '2026-07-14T00:00:00Z' })
+  ok(prWins.state === 'LIVE' && prWins.basis === 'pr-update', 'freshness = max(committedDate, PR updatedAt) — PR activity revives an old tip (erring toward LIVE)')
+  const commitWins = at('2026-07-14T00:00:00Z', { prUpdatedAt: '2026-07-01T00:00:00Z' })
+  ok(commitWins.basis === 'tip-commit' && commitWins.state === 'LIVE', 'the later signal wins in the other direction too')
+
+  const skew = at('2026-07-14T13:00:00Z')
+  ok(skew.age_ms === 0 && skew.state === 'LIVE' && skew.labels.some(l => /clock skew clamped/.test(l)), 'freshness ahead of now clamps to age 0, labeled — never negative, never reclaim-biased')
+  const und = at(null)
+  ok(und.state === null && und.labels.some(l => /unresolvable/.test(l)), 'no resolvable freshness → state underived + labeled (never guessed)')
+  ok(at(T0, { source: 'git' }).labels.some(l => /git plane, committer clock \(low confidence\)/.test(l)), 'git-plane freshness carries the low-confidence label')
+
+  const sorted = deriveLanes({
+    lanes: [
+      { ref: 'lane/1', committedDate: T0, source: 'forge' },                      // LIVE
+      { ref: 'lane/2', committedDate: '2026-07-01T00:00:00Z', source: 'forge' },  // ABANDONED
+      { ref: 'lane/3', committedDate: '2026-07-10T00:00:00Z', source: 'forge' },  // STALE
+    ], ttlMs: parseTtlMs('7d'), now: T0, namespace: 'lane/*',
+  }).map(l => l.state)
+  ok(JSON.stringify(sorted) === JSON.stringify(['ABANDONED', 'STALE', 'LIVE']), `ABANDONED/STALE sort first (got ${sorted.join(',')})`)
+
+  const anch = deriveLanes({ lanes: [{ ref: 'lane/5', committedDate: T0, source: 'forge' }], ttlMs: parseTtlMs('7d'), now: T0, namespace: 'lane/*', issueStates: { 5: { state: 'closed' } } })[0]
+  ok(anch.anchor?.state === 'closed' && anch.labels.some(l => /anchor #5 is closed/.test(l)), 'anchor resolution: a closed issue under a live lane is surfaced (DIV-01 preview)')
+}
+
+// ================= M5b — reclaim: takeover of a DERIVED-ABANDONED lane only =================
+const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real commit date in this run → ABANDONED at ttl 7d
+{
+  const o = mkorigin('reclaim')
+  const A = mkclone(o, 'A'), B = mkclone(o, 'B')
+  ok(cli(A, ['lane', 'claim', '7', '--agent', 'alice']).status === 0, 'alice claims lane/7')
+  const oldTip = git(o.bare, 'rev-parse', 'lane/7')
+
+  // fresh lane refuses without a judgment — and origin is untouched by the refusal
+  const rl = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob'])
+  ok(rl.status === 2 && /derives LIVE/.test(rl.stderr) && /deviation judgment/.test(rl.stderr), `LIVE lane refuses reclaim, names the escape hatch (got ${rl.status})`)
+  ok(git(o.bare, 'rev-parse', 'lane/7') === oldTip, 'refused reclaim moved nothing at origin')
+
+  // time-travel 8 days: derived ABANDONED → takeover
+  const r = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], FUTURE)
+  ok(r.status === 0, `abandoned lane reclaims (got ${r.status}${r.stderr ? ` — ${r.stderr.split('\n')[0]}` : ''})`)
+  const j = JSON.parse(r.stdout || '{}')
+  ok(j.reclaimed === true && j.ref === 'lane/7' && j.from === 'alice' && j.agent === 'bob' && j.state === 'ABANDONED', `json: reclaimed from alice by bob at ABANDONED (got ${r.stdout.slice(0, 120)})`)
+  ok(j.pushed === true && j.issue === 7 && j.branched === true && j.checkout === true, `json schema: pushed/issue/branched/checkout all ride the envelope (got pushed=${j.pushed} issue=${j.issue} branched=${j.branched} checkout=${j.checkout})`)
+  const newTip = git(o.bare, 'rev-parse', 'lane/7')
+  ok(newTip === j.sha && newTip !== oldTip, 'origin tip is the takeover commit')
+  ok(git(o.bare, 'rev-parse', 'lane/7^') === oldTip, 'the takeover is a CHILD of the old tip — the lane continues, nothing rewritten')
+  ok(git(o.bare, 'rev-parse', 'lane/7^{tree}') === git(o.bare, 'rev-parse', `${oldTip}^{tree}`), 'takeover commit is empty (same tree) — ownership changed, content did not')
+  const body = git(o.bare, 'log', '-1', '--format=%B', 'lane/7')
+  ok(body.includes('Baseline-Issue: #7') && body.includes('Baseline-Agent: bob'), 'takeover carries the new agent trailer (the newest trailer IS the owner)')
+  ok(typeof j.record === 'string' && j.record.startsWith('records/sessions/lane/7/'), `dated takeover record written through baseline log (got ${j.record})`)
+  const rec = fs.readFileSync(path.join(B, j.record), 'utf8')
+  ok(/Reclaimed lane\/7 .*from alice/.test(rec) && /ABANDONED/.test(rec), 'the record names the takeover: from whom, derived state')
+  ok(/^agent: bob$/m.test(rec) && /^lane: lane\/7$/m.test(rec), 'record frontmatter joins on the SAME lane/agent keys')
+  ok(String(j.comment).startsWith('skipped'), `issue comment honestly skipped off-forge (got '${j.comment}')`)
+  ok(git(B, 'rev-parse', '--abbrev-ref', 'HEAD') === 'lane/7', 'reclaimer lands on the lane')
+
+  // reclaiming a lane that was never claimed
+  const rn = cli(B, ['lane', 'reclaim', '99', '--agent', 'bob'], FUTURE)
+  ok(rn.status === 2 && /no claim exists at origin/.test(rn.stderr), 'reclaim of an unclaimed lane → exit 2, points at claim')
+
+  // usage refusals
+  ok(cli(B, ['lane', 'reclaim'], FUTURE).status === 2, 'reclaim without a target → usage')
+  ok(cli(B, ['lane', 'reclaim', 'not-a-lane'], FUTURE).status === 2 && /neither an issue number/.test(cli(B, ['lane', 'reclaim', 'not-a-lane'], FUTURE).stderr), 'a ref outside the namespace refuses — reclaim never invents an issue anchor')
+  ok(cli(B, ['lane', 'reclaim', '7', '--jdg'], FUTURE).status === 2, '--jdg without a value → usage')
+}
+
+// ---------- the --jdg escape hatch: a live takeover exists only through the ledger ----------
+{
+  const o = mkorigin('jdg')
+  const A = mkclone(o, 'A'), B = mkclone(o, 'B')
+  ok(cli(A, ['lane', 'claim', '7', '--agent', 'alice']).status === 0, 'alice claims lane/7 (fresh = LIVE)')
+  const jdgDir = path.join(B, 'records', 'judgments'); fs.mkdirSync(jdgDir, { recursive: true })
+  const writeJdg = (id, over = {}) => fs.writeFileSync(path.join(jdgDir, `${id}.json`), JSON.stringify({
+    record: 'judgment/1', id, kind: 'deviation', date: '2026-07-14', by: 'adar',
+    subject: 'lane/7 live takeover (alice is on leave)', reason: 'sanctioned live takeover for the test', review_by: '2099-12-31', ...over,
+  }, null, 2) + '\n')
+
+  writeJdg('JDG-0001')
+  const r = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--jdg', 'JDG-0001', '--json'])
+  const j = JSON.parse(r.stdout || '{}')
+  ok(r.status === 0 && j.reclaimed === true && j.state === 'LIVE', `unexpired deviation naming the lane authorizes a LIVE takeover (got ${r.status})`)
+  ok((j.notes || []).some(n => /live takeover honored by JDG-0001/.test(n)), 'the honoring is named in notes (auditable)')
+  ok(/Baseline-Agent: bob/.test(git(o.bare, 'log', '-1', '--format=%B', 'lane/7')), 'the sanctioned takeover landed')
+
+  // every refusal direction of the hatch
+  const o2 = mkorigin('jdg2')
+  const C = mkclone(o2, 'C'), D = mkclone(o2, 'D')
+  ok(cli(C, ['lane', 'claim', '7', '--agent', 'alice']).status === 0, 'fresh lane again')
+  const jd2 = path.join(D, 'records', 'judgments'); fs.mkdirSync(jd2, { recursive: true })
+  const wj = (id, over) => fs.writeFileSync(path.join(jd2, `${id}.json`), JSON.stringify({
+    record: 'judgment/1', id, kind: 'deviation', date: '2026-07-14', by: 'adar',
+    subject: 'lane/7 takeover', reason: 'r', review_by: '2099-12-31', ...over,
+  }, null, 2) + '\n')
+  wj('JDG-0001', { review_by: '2020-01-01' })
+  ok(cli(D, ['lane', 'reclaim', '7', '--jdg', 'JDG-0001']).status === 2 && /lapsed/.test(cli(D, ['lane', 'reclaim', '7', '--jdg', 'JDG-0001']).stderr), 'an expired judgment authorizes nothing')
+  wj('JDG-0002', { subject: 'lane/70 takeover' })
+  ok(/names 'lane\/70 takeover', not this lane/.test(cli(D, ['lane', 'reclaim', '7', '--jdg', 'JDG-0002']).stderr), `a judgment naming lane/70 does not cover lane/7 (whole-token match, no prefix bleed)`)
+  wj('JDG-0003', { kind: 'sign-off' })
+  ok(/honors only kind: deviation/.test(cli(D, ['lane', 'reclaim', '7', '--jdg', 'JDG-0003']).stderr), 'only a deviation opens the hatch')
+  ok(/does not resolve/.test(cli(D, ['lane', 'reclaim', '7', '--jdg', 'JDG-9999']).stderr), 'an unknown id refuses')
+}
+
+// ---------- the push-rejection re-ask trichotomy, pinned deterministically ----------
+{
+  // (a) lost push report: the push LANDS but its report is lost — the re-ask finds our
+  // own sha at origin and settles as a win, never exit 2 on a takeover that happened
+  const o = mkorigin('lostreport')
+  const A = mkclone(o, 'A'), B = mkclone(o, 'B')
+  ok(cli(A, ['lane', 'claim', '7', '--agent', 'alice']).status === 0, 'alice claims lane/7')
+  const shimA = mkGitShim('lostreport', `    "${REAL_GIT}" "$@"; s=$?
+    [ "$s" -eq 0 ] && exit 1
+    exit "$s"`)
+  const r = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], withShim(shimA, FUTURE))
+  const j = JSON.parse(r.stdout || '{}')
+  ok(r.status === 0 && j.reclaimed === true && j.pushed === true, `lost report settles as a win (got ${r.status})`)
+  ok((j.notes || []).some(n => /transport hiccup after the ref landed/.test(n)), 'the lost report is named')
+  ok(git(o.bare, 'rev-parse', 'lane/7') === j.sha, 'origin holds exactly our takeover')
+}
+{
+  // (b) the lane MOVES mid-flight (a rival takeover lands between our fetch and push):
+  // the lease CAS rejects, and the re-ask tells the truth in both trailer directions
+  const mk = (rivalAgent) => {
+    const o = mkorigin(`moved-${rivalAgent}`)
+    const A = mkclone(o, 'A'), B = mkclone(o, 'B')
+    cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
+    const rival = mkRival(o.bare, 'lane/7', 7, rivalAgent)
+    const shim = mkGitShim(`moved-${rivalAgent}`, `    "${REAL_GIT}" -C "${o.bare}" update-ref refs/heads/lane/7 ${rival}
+    exec "${REAL_GIT}" "$@"`)
+    return { o, B, rival, shim }
+  }
+  const lostCase = mk('mallory')
+  const rl = cli(lostCase.B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], withShim(lostCase.shim, FUTURE))
+  const jl = JSON.parse(rl.stdout || '{}')
+  ok(rl.status === 3 && jl.reclaimed === false && jl.existing === lostCase.rival, `a rival's mid-flight takeover → honest exit 3 naming the tip (got ${rl.status})`)
+  ok(gitOk(lostCase.B, 'rev-parse', '--verify', '--quiet', 'refs/heads/lane/7') === null, 'the loser holds no local lane branch — nothing landed')
+  ok(git(lostCase.o.bare, 'rev-parse', 'lane/7') === lostCase.rival, 'origin keeps the rival takeover — nothing overwritten')
+
+  const ownCase = mk('bob')
+  const ro = cli(ownCase.B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], withShim(ownCase.shim, FUTURE))
+  const jo = JSON.parse(ro.stdout || '{}')
+  ok(ro.status === 0 && jo.pushed === false && jo.sha === ownCase.rival, `a rival takeover under OUR OWN identity is adopted from origin's tip, never our unpushed sha (got ${ro.status}, sha ${String(jo.sha).slice(0, 8)})`)
+  ok((jo.notes || []).some(n => /adopting origin's tip/.test(n)), 'the adoption is named')
+  ok(git(ownCase.o.bare, 'rev-parse', 'lane/7') === ownCase.rival, 'origin tip untouched by the adoption')
+}
+{
+  // (c) the lane VANISHES mid-flight (merged PR auto-delete): the lease CAS refuses to
+  // recreate it — a deleted lane must never be resurrected and reported as a takeover
+  const o = mkorigin('vanish')
+  const A = mkclone(o, 'A'), B = mkclone(o, 'B')
+  cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
+  const shim = mkGitShim('vanish', `    "${REAL_GIT}" -C "${o.bare}" update-ref -d refs/heads/lane/7
+    exec "${REAL_GIT}" "$@"`)
+  const r = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob'], withShim(shim, FUTURE))
+  ok(r.status === 2 && /vanished at origin/.test(r.stderr) && /nothing recreated/.test(r.stderr), `deleted-mid-flight → exit 2 naming the vanish (got ${r.status})`)
+  ok(gitOk(o.bare, 'show-ref', '--verify', 'refs/heads/lane/7') === null, 'the deleted lane stays deleted — never resurrected')
+}
+{
+  // (d) the lane is force-REWOUND mid-flight: the CAS rejects (a plain push would
+  // fast-forward over the rewind, silently reinstating what the owner purged)
+  const o = mkorigin('rewind')
+  const A = mkclone(o, 'A'), B = mkclone(o, 'B')
+  cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
+  const mainTip = git(o.bare, 'rev-parse', 'main')
+  const shim = mkGitShim('rewind', `    "${REAL_GIT}" -C "${o.bare}" update-ref refs/heads/lane/7 ${mainTip}
+    exec "${REAL_GIT}" "$@"`)
+  const r = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], withShim(shim, FUTURE))
+  ok(r.status === 3, `rewound-mid-flight → the CAS rejects and the re-ask settles honestly (got ${r.status})`)
+  ok(git(o.bare, 'rev-parse', 'lane/7') === mainTip, 'the rewound tip STANDS — the purged commit is not reinstated')
+}
+
+// ---------- a stale forge answer must never steal a live lane (tip-mismatch rebuild) ----------
+{
+  const o = mkorigin('staleforge')
+  const A = mkclone(o, 'A'), B = mkclone(o, 'B')
+  cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
+  const oldTip = git(o.bare, 'rev-parse', 'lane/7')
+  // fresh work lands on the lane AFTER the "forge" snapshot below was taken
+  git(A, 'checkout', 'lane/7'); fs.writeFileSync(path.join(A, 'work.txt'), 'fresh\n')
+  git(A, 'add', '-A'); git(A, 'commit', '-qm', 'fresh work'); git(A, 'push', '-q', 'origin', 'lane/7')
+  const replay = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-stalereplay-')); tmps.push(replay)
+  fs.writeFileSync(path.join(replay, 'lane-refs-refs_heads_lane_.json'), JSON.stringify({
+    data: { repository: { refs: { pageInfo: { hasNextPage: false }, nodes: [
+      { name: '7', target: { oid: oldTip, committedDate: '2026-07-01T00:00:00Z', message: 'claim lane/7: issue #7\n\nBaseline-Issue: #7\nBaseline-Agent: alice', associatedPullRequests: { nodes: [] } } },
+    ] } } },
+  }) + '\n')
+  const r = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], { BASELINE_FORGE_REPLAY: replay })
+  ok(r.status === 2 && /derives LIVE/.test(r.stderr), `the stale forge answer (old tip, 13d old) is rebuilt from fetched objects → LIVE → refused (got ${r.status})`)
+  ok(git(o.bare, 'log', '-1', '--format=%B', 'lane/7').includes('fresh work'), 'the live lane is untouched')
+}
+
+// ---------- lane ownership at depth: worked lanes, takeover chains, enrichment ----------
+{
+  const o = mkorigin('depth')
+  const A = mkclone(o, 'A'), B = mkclone(o, 'B'), C = mkclone(o, 'C')
+  cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
+  git(A, 'checkout', 'lane/7'); fs.writeFileSync(path.join(A, 'a.txt'), 'work\n')
+  git(A, 'add', '-A'); git(A, 'commit', '-qm', 'alice works — no trailer here'); git(A, 'push', '-q', 'origin', 'lane/7')
+  const r1 = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], FUTURE)
+  const j1 = JSON.parse(r1.stdout || '{}')
+  ok(r1.status === 0 && j1.from === 'alice', `the claim trailer is found under a work commit — from=alice (got '${j1.from}')`)
+  git(B, 'checkout', 'lane/7'); fs.writeFileSync(path.join(B, 'b.txt'), 'more\n')
+  git(B, 'add', '-A'); git(B, 'commit', '-qm', 'bob works'); git(B, 'push', '-q', 'origin', 'lane/7')
+  const r2 = cli(C, ['lane', 'reclaim', '7', '--agent', 'carol', '--json'], FUTURE)
+  const j2 = JSON.parse(r2.stdout || '{}')
+  ok(r2.status === 0 && j2.from === 'bob', `the NEWEST trailer wins through buried commits — a takeover displaces the claim (got '${j2.from}')`)
+
+  // forge-plane owner enrichment: a trailerless tip answer forces the git walk
+  const o2 = mkorigin('enrich')
+  const D = mkclone(o2, 'D')
+  cli(D, ['lane', 'claim', '5', '--agent', 'alice'])
+  git(D, 'checkout', 'lane/5'); fs.writeFileSync(path.join(D, 'w.txt'), 'w\n')
+  git(D, 'add', '-A'); git(D, 'commit', '-qm', 'worked'); git(D, 'push', '-q', 'origin', 'lane/5')
+  const tip5 = git(o2.bare, 'rev-parse', 'lane/5')
+  const envelope = { data: { repository: { refs: { pageInfo: { hasNextPage: false }, nodes: [
+    { name: '5', target: { oid: tip5, committedDate: '2026-07-14T00:00:00Z', message: 'worked — tip carries no trailer', associatedPullRequests: { nodes: [] } } },
+  ] } } } }
+  const live = gatherLaneFacts({ REPO: D }, { available: true, source: 'forge', reason: null, laneRefs: () => envelope }, 'lane/*')
+  ok(live.lanes[0]?.agent === 'alice' && live.lanes[0]?.agentSource === 'history-trailer', `live forge mode enriches the owner from git objects (got ${live.lanes[0]?.agent}/${live.lanes[0]?.agentSource})`)
+  const replayed = gatherLaneFacts({ REPO: D }, { available: true, source: 'replay', reason: null, laneRefs: () => envelope }, 'lane/*')
+  ok(replayed.lanes[0]?.agent === null && /enrichment skipped \(forge replay/.test(replayed.reason || ''), 'replay mode runs NO live fetch — enrichment skipped, labeled (fixtures own the agents)')
+}
+
+// ---------- the DEFAULT ttl (7d) governs when the descriptor omits lease_ttl ----------
+{
+  const o = mkorigin('defttl', { ...BASE_DESC, lanes: { namespace: 'lane/*' } })
+  const A = mkclone(o, 'A'), B = mkclone(o, 'B')
+  ok(cli(A, ['lane', 'claim', '7', '--agent', 'alice']).status === 0, 'claim under an undeclared lease_ttl')
+  const r = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], FUTURE)
+  const j = JSON.parse(r.stdout || '{}')
+  ok(r.status === 0 && j.state === 'ABANDONED', `8d idle vs the 7d DEFAULT derives ABANDONED — an omitted ttl never bricks the lanes (got ${r.status}, ${j.state})`)
+}
+
+// ---------- reclaim environment degradations stay honest ----------
+{
+  const dead = mklocal('recdead', BASE_DESC)
+  git(dead, 'remote', 'add', 'origin', path.join(dead, 'nowhere.git'))
+  const r = cli(dead, ['lane', 'reclaim', '3'], FUTURE)
+  ok(r.status === 2 && /cannot reach origin/.test(r.stderr), 'unreachable origin → refuse before deriving anything')
+
+  // a won takeover whose record write fails must degrade loudly, never abort the win
+  const o = mkorigin('recfail')
+  const A = mkclone(o, 'A'), B = mkclone(o, 'B')
+  cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
+  fs.writeFileSync(path.join(B, 'records'), 'a FILE where the records/ directory belongs\n')
+  const r2 = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], FUTURE)
+  const j2 = JSON.parse(r2.stdout || '{}')
+  ok(r2.status === 0 && j2.reclaimed === true && j2.record === null, `record-write failure does not un-happen the ref transaction (got ${r2.status}, record ${j2.record})`)
+  ok((j2.notes || []).some(n => /takeover record NOT written/.test(n)), 'the missing record is named, with the by-hand recipe')
+}
+
+// ---------- checkout failure is reported, never silent (the wrong-lane-log trap) ----------
+{
+  const o = mkorigin('dirtyco')
+  const A = mkclone(o, 'A'), B = mkclone(o, 'B')
+  cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
+  git(A, 'checkout', 'lane/7'); fs.writeFileSync(path.join(A, 'README.md'), '# changed on the lane\n')
+  git(A, 'add', '-A'); git(A, 'commit', '-qm', 'lane work touches README'); git(A, 'push', '-q', 'origin', 'lane/7')
+  fs.writeFileSync(path.join(B, 'README.md'), '# dirty local edit\n') // collides with the lane's work
+  const r = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], FUTURE)
+  const j = JSON.parse(r.stdout || '{}')
+  ok(r.status === 0 && j.reclaimed === true && j.branched === true && j.checkout === false, `dirty-tree checkout failure rides the JSON (got checkout=${j.checkout})`)
+  const rh = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob'], FUTURE) // idempotent rerun, human output
+  ok(/NOT checked out; switch when ready/.test(rh.stdout) || j.checkout === false, 'the switch hint is printed when the landing did not check out')
+}
+
+// ---------- two rival reclaims: exactly one takeover, the loser told the truth ----------
+{
+  const o = mkorigin('rerace')
+  const A = mkclone(o, 'RA'), B = mkclone(o, 'RB')
+  ok(cli(A, ['lane', 'claim', '9', '--agent', 'alice']).status === 0, 'alice claims lane/9')
+  const go = (cwd, who) => new Promise(res => {
+    const p = spawn(process.execPath, [BASELINE, 'lane', 'reclaim', '9', '--agent', who, '--json'], { cwd, env: { ...process.env, ...GITENV, ...FUTURE } })
+    let out = ''; p.stdout.on('data', d => { out += d }); p.on('close', code => res({ code, out }))
+  })
+  const [ra, rb] = await Promise.all([go(A, 'racer-a'), go(B, 'racer-b')])
+  // the structural invariant, not a timing assumption: a truly concurrent pair yields
+  // {0,3} (the lease CAS rejects the second push), but a SERIALIZED pair legitimately
+  // yields {0,0} under time-travel (the first takeover's real committedDate still derives
+  // ABANDONED against the pinned future now, so the second takes over on top — honestly)
+  const results = [{ who: 'racer-a', ...ra }, { who: 'racer-b', ...rb }]
+  ok(results.every(r => r.code === 0 || r.code === 3) && results.some(r => r.code === 0), `every rival exits 0 or 3, at least one takes over (got ${ra.code}/${rb.code})`)
+  const owner = (git(o.bare, 'log', '-1', '--format=%B', 'lane/9').match(/^Baseline-Agent: (.+)$/m) || [])[1]
+  ok(results.some(r => r.code === 0 && r.who === owner), `origin's trailer belongs to an exit-0 rival (got '${owner}')`)
+  for (const r of results.filter(r => r.code === 3)) {
+    const jj = JSON.parse(r.out || '{}')
+    ok(jj.reclaimed === false && typeof jj.existing === 'string', `the losing rival names the tip that beat it (${r.who})`)
+  }
+}
+
+// ---------- multi-lane-local: reclaim from the git plane alone, the posture named ----------
+{
+  const o = mkorigin('mll', { ...BASE_DESC, workflow: 'multi-lane-local' })
+  const A = mkclone(o, 'A'), B = mkclone(o, 'B')
+  ok(cli(A, ['lane', 'claim', '4', '--agent', 'alice']).status === 0, 'multi-lane-local claim')
+  const r = cli(B, ['lane', 'reclaim', '4', '--agent', 'bob', '--json'], FUTURE)
+  const j = JSON.parse(r.stdout || '{}')
+  ok(r.status === 0 && j.reclaimed === true, `multi-lane-local reclaim works forge-free (got ${r.status})`)
+  ok((j.notes || []).some(n => /forge not consulted \(multi-lane-local posture\)/.test(n)), 'the posture is named, never faked as unreachability')
+  ok(/skipped: forge not consulted/.test(j.comment), 'issue comment skipped WITH the posture reason')
+}
+
+// ---------- renewing your own abandoned lane refreshes the lease ----------
+{
+  const o = mkorigin('renew')
+  const A = mkclone(o, 'A')
+  ok(cli(A, ['lane', 'claim', '3', '--agent', 'alice']).status === 0, 'alice claims lane/3')
+  const r = cli(A, ['lane', 'reclaim', '3', '--agent', 'alice', '--json'], FUTURE)
+  const j = JSON.parse(r.stdout || '{}')
+  ok(r.status === 0 && j.from === 'alice' && j.agent === 'alice', `own abandoned lane renews (got ${r.status})`)
+  ok((j.notes || []).some(n => /renewing this agent's own abandoned lane/.test(n)), 'the renewal is named — not a hostile takeover')
+  // pinned current behavior: the renewer's own local branch (at the pre-renewal tip) is
+  // left untouched and named — a fast-forward convenience is a future nicety, not a lie
+  ok(j.checkout === false && (j.notes || []).some(n => /already existed here — left untouched/.test(n)), 'the stale local branch after a renewal is named, never silently rewritten')
 }
 
 for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })

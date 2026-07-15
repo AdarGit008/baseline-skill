@@ -1,0 +1,11 @@
+{
+  "record": "judgment/1",
+  "id": "JDG-0001",
+  "kind": "break-glass",
+  "date": "2026-07-15",
+  "by": "fixture",
+  "subject": "admit outage relief (fixture)",
+  "reason": "the forge is down; the change was reviewed by hand",
+  "review_by": "2099-12-31",
+  "gate": "admit"
+}

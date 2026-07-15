@@ -1,0 +1,6 @@
+{
+  "command": "admit",
+  "branch": "lane/8",
+  "bare_origin": true,
+  "branches": [{ "name": "lane/9", "file": "nine.txt", "message": "fixture: sister work" }]
+}

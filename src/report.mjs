@@ -3,7 +3,7 @@
 import path from 'node:path'
 import { sanitizeTTY } from './util.mjs'
 
-export const CATS = { build: 'Build & execution', quality: 'Code quality', test: 'Tests & invariants', security: 'Security & supply-chain', repro: 'Reproducibility', ops: 'Operability (service)', governance: 'Change governance', community: 'Community & onboarding', context: 'Context management', claims: 'Claims discipline', records: 'Records & ledger', flow: 'Lane workflow', div: 'Divergence (cross-tier)', desc: 'Repo descriptor' }
+export const CATS = { build: 'Build & execution', quality: 'Code quality', test: 'Tests & invariants', security: 'Security & supply-chain', repro: 'Reproducibility', ops: 'Operability (service)', governance: 'Change governance', community: 'Community & onboarding', context: 'Context management', claims: 'Claims discipline', records: 'Records & ledger', flow: 'Lane workflow', merge: 'Merge admission', div: 'Divergence (cross-tier)', desc: 'Repo descriptor' }
 
 export function makeColor(JSON_OUT) {
   return (c, s) => (process.stdout.isTTY && !JSON_OUT) ? `\x1b[${c}m${s}\x1b[0m` : s

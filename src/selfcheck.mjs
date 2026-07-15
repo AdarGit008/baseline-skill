@@ -69,6 +69,13 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
   const descProps = Object.keys(DESCRIPTOR_SCHEMA.properties || {})
   for (const f of descProps) if (!(f in FIELD_CONSUMERS)) problems.push(`descriptor field '${f}' has no declared consumer (add it to FIELD_CONSUMERS in src/descriptor.mjs)`)
   for (const f of Object.keys(FIELD_CONSUMERS)) if (!descProps.includes(f)) problems.push(`FIELD_CONSUMERS names '${f}', which is absent from the descriptor schema`)
+  // M6a: x-strictness (DESC-03's weakening ladder) is schema DATA — each order must be a
+  // total order over exactly its enum, or the classifier and the validator drift apart.
+  for (const [f, p] of Object.entries(DESCRIPTOR_SCHEMA.properties || {})) {
+    if (!p['x-strictness']) continue
+    const order = [...p['x-strictness']].sort().join('|'), en = [...(p.enum || [])].sort().join('|')
+    if (order !== en) problems.push(`schema property '${f}': x-strictness must be a total order over exactly the enum values (order {${p['x-strictness'].join(',')}} vs enum {${(p.enum || []).join(',')}})`)
+  }
 
   // M3c: rule-metadata invariants. Every rule declares which planes it reads (sources), what it does
   // when a source is unreachable (on_unreachable), the contexts it runs in, and its certainty — and
@@ -90,6 +97,10 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     // — a silent green. Until M7 defines blocker-DIVERGED semantics, pin div ⇒ warn so the
     // dead path can't ship, and M7's promotion is a conscious engine change, not a surprise.
     if (r.category === 'div' && r.severity !== 'warn') problems.push(`${id}: div-category rules must be severity 'warn' until M7 defines blocker-DIVERGED in the engine (DIVERGED currently bypasses the blocker→FAIL path)`)
+    // M6a: merge rules land warn until M7's promotion — refusal is the admit COMMAND's
+    // contract (staleness / blocker FAIL / gating-source loss), never a warn rule's; a
+    // merge blocker pre-M7 would change admit's exit semantics without the promotion review.
+    if (r.category === 'merge' && r.severity !== 'warn') problems.push(`${id}: merge-category rules must be severity 'warn' until M7's promotion (admit's refusal is a command contract, not a rule severity)`)
     if (r.severity === 'manual' && r.certainty !== 'judgment') problems.push(`${id}: sign-off (manual) must be certainty 'judgment' (got '${r.certainty}')`)
     if (r.certainty === 'judgment' && r.severity !== 'manual') problems.push(`${id}: certainty 'judgment' must route to a sign-off (severity 'manual', got '${r.severity}')`)
     if (Array.isArray(r.sources) && r.sources.includes('flow')) problems.push(`${id}: readiness rules may not consume 'flow' facts (layering invariant)`)

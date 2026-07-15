@@ -6,6 +6,13 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-07-15
+
+V2 milestones M4 (records + unified judgment ledger + scrub) and M5 (lanes — claim,
+leases, FLOW/DIV rules), 69 → 86 rules, all six slices below. Minor bump: additive
+rules, new CLI surfaces (`log`, `jdg`, `scrub`, `gen`, `lane claim|reclaim`), additive
+schema fields; no breaking changes.
+
 ### Added — V2 M5c: FLOW/DIV rules, the DIVERGED verdict, check's lane-world plumbing (78 → 86 rules)
 - **`check` gains the capability-probe + forge-facts plumbing it lacked** (the M5 panel's
   blocker): a LAZY lane world (`makeLaneWorld`) — probe + forge + lane gathering + lease

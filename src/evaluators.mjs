@@ -1,4 +1,4 @@
-// The ~36 declarative check kinds. makeEvalCheck(ctx) closes over the repo index,
+// The ~38 declarative check kinds. makeEvalCheck(ctx) closes over the repo index,
 // resolved config, and run flags; evalCheck(c, rule) -> {ok:true|false|null, detail, soft?, signoff?}.
 // ok:null means "not evaluable here" and always tags SKIP — one broken rule can't take down the run.
 import path from 'node:path'

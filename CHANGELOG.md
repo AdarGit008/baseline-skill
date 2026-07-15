@@ -6,6 +6,45 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M6a: `baseline admit`, DESC-03, MERGE-02, the context-gated engine (86 → 88 rules)
+- **`baseline admit`** — merge-point revalidation (C30/C35): *a verdict is valid only for
+  the state it evaluated*. Refusal is the COMMAND's contract (exit 1): (a) staleness —
+  the target tip is not an ancestor of HEAD (deterministic ancestry, judged before any
+  rule; a shallow/erroring ancestry is honestly SOURCE-LOSS, never a fake stale);
+  (b) an admit-context blocker FAIL; (c) gating-source loss. Warn rules SKIP labeled on
+  unreachable sources exactly as in `check` — advisory findings never acquire
+  blocker-grade denial power via unavailability (C33, scoped by the M6 ruling).
+- **FS1 enforced**: admit reads the governing descriptor from the TARGET ref
+  (`loadDescriptor`'s ref seam, finally threaded) — a PR cannot weaken the posture that
+  judges it. **FS5 enforced**: break-glass honored from the target ref only (new
+  `loadJudgmentsAt`), covering source-loss refusals alone; the **JDG-only admission
+  path** keeps the relief valve reachable during the outage it relieves (a pure
+  judgment-additions range with an unexpired `break-glass (gate: admit)` admits from
+  tree+history alone — `makeForge` grew the one-home `closedReason` so the closure
+  holds under replay, labeled honestly).
+- **DESC-03** (blocker, deterministic, admit-only): a descriptor change in the admitted
+  range needs a same-range judgment whose subject is exactly `baseline.repo.json` —
+  ONE spelling, now emitted identically by FLOW-06's fix text, CONTRACT.md, and the
+  rule itself. The weakening classification is **schema data** (`x-strictness` orders
+  on workflow/anchoring/maturity + gate-consumed set-rules, `src/derive/posture.mjs`)
+  and rides the finding text as M7's per-axis seam.
+- **MERGE-02** (warn, deterministic, admit-only; `rules/merge.json`): unmerged
+  sister-lane dependencies from the git plane alone; the `Baseline-Stacked-On` trailer
+  (whole-token) declares a stack and lifts the finding. MERGE-01 dissolved into the
+  admit command, MERGE-03 into reconcile (M6b) — per the panel ruling.
+- **Context-gated engine**: the first real consumer of rule `contexts` — a run at
+  context X excludes rules not declaring X (no wrong-context wallpaper rows). All
+  pre-M6 rules declare `check`, so check output is byte-identical at rest: the 10
+  existing golden fixtures re-pinned NOTHING. Selfcheck grew the merge⇒warn law and
+  the x-strictness⇄enum lockstep assert.
+- Golden harness: `command` dispatch (fixtures may pin `admit`'s envelope), ordered
+  `branches` (sister/stack shapes), `branch_message` (trailer-carrying commits),
+  `main_advance` (the C35 stale shape); four additive admit fixtures (stale ·
+  desc-weaken · sister-dep · jdg-only). New `test/admit/run.mjs` (35 asserts over
+  local bare origins, incl. real shallow clones via `file://`).
+- CI-shape ergonomics: detached-HEAD admit derives lane identity from
+  `GITHUB_HEAD_REF` (the forge's own env); `--target` accepts any ref/SHA.
+
 ## [2.3.0] — 2026-07-15
 
 V2 milestones M4 (records + unified judgment ledger + scrub) and M5 (lanes — claim,

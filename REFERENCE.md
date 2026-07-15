@@ -8,7 +8,7 @@ A **testable readiness standard** for new projects. Every lesson is a rule; a ze
 
 **v1** distilled 20 rules from three of the author's own repos. That sample was thin. **v2** pressure-tested v1 against the field's actual prior art — [OpenSSF Scorecard](GLOSSARY.md#openssf-scorecard), [SLSA](GLOSSARY.md#slsa), the [Twelve-Factor App](GLOSSARY.md#twelve-factor-app), Google's SRE books, [Diátaxis](GLOSSARY.md#diataxis), [Keep a Changelog](GLOSSARY.md#keep-a-changelog), [repolinter](GLOSSARY.md#repolinter), [Backstage/Cortex/OpsLevel](GLOSSARY.md#service-catalog), Stryker, and ~40 more sources — kept everything v1 had, and added what the field agreed v1 was missing. Each candidate was **adversarially verified** (is the source real? is it robot-checkable at rest? does it actually add over v1?) before it earned a place; 15 "looks-thorough-checks-nothing" candidates were dropped.
 
-**86 rules across 14 categories.** 14 blockers · 67 warnings · 5 sign-offs.
+**88 rules across 15 categories.** 15 blockers · 68 warnings · 5 sign-offs.
 
 ## Profiles — v2 stays sharp by only running what fits
 
@@ -58,10 +58,10 @@ These diagrams mirror the runner — they're its actual control flow, not a sket
 ```mermaid
 flowchart LR
   CFG["baseline.config.json — intent"] --> RES
-  RULES["rules/ — 86 rules (manifest: rules.json)"] --> EVAL
+  RULES["rules/ — 88 rules (manifest: rules.json)"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
-    IDX["file index + git helpers"] --> EVAL["~36 check evaluators"]
+    IDX["file index + git helpers"] --> EVAL["~38 check evaluators"]
     RES["config resolution"] --> EVAL
   end
   SO["signoff.json — human judgments"] --> EVAL
@@ -140,6 +140,20 @@ No install, no dependencies — needs only Node ≥ 18 and `git`.
       - run: node tools/baseline/check.mjs      # drop --no-exec so BUILD-05 runs the real Task 1
 ```
 Make `baseline` a required status check. Now the standard can't rot — it's enforced on every PR. (That's rule **BUILD-06**, checking itself.)
+
+## Admit — merge-point revalidation (V2 M6a)
+
+*A verdict is valid only for the state it evaluated.* A green check from Tuesday's branch tip says nothing about merging into Friday's main — `baseline admit` re-derives at the merge point:
+
+```
+baseline admit [--repo DIR] [--target REF] [--json]     # exit 0 admitted · 1 refused · 2 usage/environment
+```
+
+**Refusal is the command's contract, not a rule severity.** Admit exits 1 on exactly three legs: **(a) staleness** — the target tip is not an ancestor of HEAD (deterministic git ancestry, judged before any rule; re-derive by merging/rebasing the target — on GitHub, branch protection's *require branches up to date* is this refusal's forge-side twin); **(b) an admit-context blocker FAIL** — at M6a exactly **DESC-03**; **(c) gating-source loss** — the target unresolvable or ancestry unprovable (a shallow clone: use `fetch-depth: 0`). A warn rule's unreachable source SKIPs labeled, exactly as in `check` — advisory findings never block a merge via unavailability.
+
+**The target's posture judges (FS1).** The descriptor is read from the target ref (`origin/<default_branch>`), never the incoming branch — branch-local descriptor edits are advisory until merged, and changing the descriptor at all is DESC-03's business. The run's `contexts` gate means admit evaluates only rules declaring the `admit` context (FLOW/DIV/REC advisories + DESC-03 + MERGE-02); the exec-class crown (BUILD-05) never runs here — the required `check` re-runs at the merge-relevant SHA instead.
+
+**Relief that stays reachable.** On a gating-source loss, an unexpired `break-glass` JDG with `gate: admit` **on the target ref** admits with the finding on the record (FS5 — a break-glass riding the incoming branch relieves nothing). And the relief PR itself can always land: a range that is *nothing but* schema-valid judgment additions carrying such a break-glass takes the **JDG-only admission path** — judged from tree+history alone, the forge closed and labeled. Break-glass never relieves staleness (data-plane truth) or DESC-03 (whose relief is its own same-PR judgment). The binding ladder — merge queue · required check + up-to-date · advisory-with-detection — is CONTRACT.md's §Admit binding.
 
 ## Configuration
 
@@ -360,13 +374,22 @@ All run **only** on a non-default branch of a repo declaring the lane family (`w
 
 Cross-tier contradictions (C36) a stateless worker must resolve **first** — the same `derive/divergence` answer `orient` headlines, evaluated as rules through check's lane-world plumbing (one derivation, two surfaces). A firing DIV rule tags **DIVERGED** — its own verdict in the scorecard and `summary.diverged` in `--json` — while the **exit code stays unchanged** (severity warn until M7's promotion): divergence demands a human resolution, not a red build. Deterministic by construction (the forge SAID the issue is closed); an `unknown` issue state is never divergence. All three derive from committed forge replay in fixtures (`_fixture.json` `forge_replay` + `bare_origin` — the golden harness materializes a local bare origin and a replay dir, so lane verdicts pin without a network).
 
-### Repo descriptor (1)
+### Merge admission (1)
+
+| ID | Rule | Severity | Profile |
+|---|---|---|---|
+| MERGE-02 | No unmerged sister-lane dependencies (`Baseline-Stacked-On` declares a stack) | 🟡 warn → promoted at M7 | core |
+
+Admit-context only. Deterministic from the git plane alone: a sister lane whose shared history with HEAD reaches past the target tip has unmerged commits inside this admission (C32). The `Baseline-Stacked-On: lane/<N>` trailer (whole-token, anywhere in the admitted range) declares the stack and lifts the finding. MERGE-01 (admission re-derivation) is the `admit` command itself; MERGE-03 (post-merge revalidation) is reconcile's cron (M6b) — neither is a rule, by ruling.
+
+### Repo descriptor (2)
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
 | DESC-01 | Repo descriptor present and valid | 🟡 warn | core |
+| DESC-03 | A descriptor change carries its judgment in the same range | 🔴 blocker (admit only) | core |
 
-Declared identity, not a guess: a schema-validated `baseline.repo.json` (`type`, `lifecycle`, `maturity`, `owner`, `workflow`, `anchoring`) is the one stored intent every applicability/severity derivation consumes. Absent or invalid → warn + scaffold; the `type` supersedes filesystem auto-detection.
+Declared identity, not a guess: a schema-validated `baseline.repo.json` (`type`, `lifecycle`, `maturity`, `owner`, `workflow`, `anchoring`) is the one stored intent every applicability/severity derivation consumes. Absent or invalid → warn + scaffold; the `type` supersedes filesystem auto-detection. **DESC-03** (M6a, deterministic — blocker is lawful): `baseline.repo.json` in the admitted range's diff with no same-range judgment whose `subject` is exactly `baseline.repo.json` refuses admission; the posture-weakening classification (the schema's `x-strictness` ladders — workflow/anchoring/maturity — plus gate-consumed set-rules and `join_keys` shrink, `src/derive/posture.mjs`) rides the finding text as M7's per-axis policy seam. FLOW-06 keeps the same pair as a *check-context* advisory — disjoint contexts, one predicate judged once per run.
 
 ## Check kinds (how the runner verifies, with zero deps)
 

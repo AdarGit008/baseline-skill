@@ -92,21 +92,51 @@ A judgment is **dated, owned, scoped, reasoned, and it expires**:
 - Author with `baseline jdg new …`; evaluate with `baseline jdg check`
   (M6's reconcile runs the same evaluation on cron and files issues).
 
-### Descriptor changes (DESC-03, enforced at M6)
+### Descriptor changes (DESC-03, ENFORCED since M6a)
 
 A PR that touches `baseline.repo.json` carries a JDG **in the same PR** whose
 `subject` is exactly `baseline.repo.json` (the descriptor filename — the one
-constant the tool owns), snapshotting the new posture in
-`expected_state` with a tripwire on the load-bearing axis. Posture-*weakening*
-diffs become blocker-severity at admit (M6).
+constant the tool owns; FLOW-06's fix text and this page emit the same spelling,
+and `admit` matches nothing cleverer than the exact string). Snapshot the new
+posture in `expected_state` with a tripwire on the changed axis — that part is
+craft, not machine-enforced. At admit, ANY descriptor change without that
+same-range judgment is a **blocker refusal**; the *weakening* classification
+(the schema's declared `x-strictness` ladders + gate-consumed set-rules) rides
+the finding text — deterministic, and M7's per-axis policy seam. Tuning knobs
+(`lease_ttl`, `staleness`, `lanes.families`, `engine_pin`) are posture-neutral.
 
-### Break-glass (FS5, enforced at M6)
+### Break-glass (FS5, ENFORCED since M6a)
 
-A `break-glass` JDG is the **only** override of a fail-closed `admit`/`reconcile`
-gate. It names its `gate`, it expires fast, and it **lands on main via its own
-prior PR — it cannot ride inside the change it unblocks.** Solo-mode honesty:
-self-merge remains possible; the control is audit-visibility + expiry, not
-multi-party authorization.
+A `break-glass` JDG is the **only** tool-side override of a fail-closed
+`admit`/`reconcile` gate. It names its `gate`, it expires fast, and it **lands
+on main via its own prior PR — it cannot ride inside the change it unblocks**
+(admit honors it from the TARGET ref only; one riding the incoming branch
+relieves nothing). It relieves **gating-source loss alone** — never staleness
+(data-plane truth: re-derive) and never DESC-03 (whose relief is its own
+same-PR judgment). The relief PR itself is always landable: a range that is
+nothing but schema-valid judgment additions carrying an unexpired
+`break-glass (gate: admit)` takes the **JDG-only admission path** — judged from
+tree+history alone, the forge closed and labeled, so the valve never depends on
+the plane whose loss it relieves. Solo-mode honesty: self-merge remains
+possible; the control is audit-visibility + expiry, not multi-party
+authorization.
+
+**Layer 0, named:** a repo admin can always bypass branch protection — that
+valve exists whether documented or not, so the discipline is documented
+instead: bypassed or merged-while-red changes are detected by reconcile's
+post-merge revalidation (M6b), which files the issue demanding the
+retroactive break-glass JDG. The morning-after paperwork is the control.
+
+### Admit binding — the three rungs
+
+1. **Merge queue** (org-owned repos): admit on the merge ref with the inputs
+   digest — deferred to V3; no repo in this project's reach can host one.
+2. **Required check + "require branches up to date"** (public repos any plan;
+   private needs a paid plan): the real merge-point binding — the up-to-date
+   requirement forces re-derivation at the merge-relevant SHA.
+3. **Private repo, free plan: nothing is bindable.** Admit is advisory there,
+   and the honest guarantee is **detection, not prevention**: reconcile files
+   the merged-while-red issue. No rung pretends to be a stronger one.
 
 ## The scrub gate
 

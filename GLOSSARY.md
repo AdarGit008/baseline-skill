@@ -12,6 +12,21 @@ significant technical decision, its context, and its consequences. ADRs carry a
 `Status` (proposed / accepted / superseded); a superseded one links forward to
 the record that replaced it.
 
+## Admit
+The merge-point revalidation command (M6): *a verdict is valid only for the
+state it evaluated*, so `baseline admit` re-derives against the **target ref's**
+current tip and refuses when the branch is stale (the target tip is not an
+ancestor of HEAD), when an admit-context [blocker](#blocker) fails (DESC-03),
+or when a fact it genuinely gates on is unreadable — while advisory warns ride
+the verdict without ever blocking. The target ref's descriptor governs the run
+(FS1) — a PR cannot weaken the posture that judges it.
+
+## Baseline-Stacked-On
+A commit trailer (`Baseline-Stacked-On: lane/<N>`) declaring that this lane
+deliberately builds on another lane's unmerged commits. MERGE-02 flags
+undeclared sister-lane dependencies; the trailer (whole-token ref match,
+anywhere in the admitted range) turns the same fact into a declared stack.
+
 ## Blast radius
 How far a claim or change reaches if it's wrong. A claim graded by blast radius
 is scored by the damage a false version would do — a throwaway line versus a

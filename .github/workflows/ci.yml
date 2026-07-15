@@ -25,5 +25,7 @@ jobs:
         run: node test/lane/run.mjs
       - name: FLOW/DIV rules — lane-world verdicts across the branch-state matrix
         run: node test/flow/run.mjs
+      - name: admit — staleness contract, FS1/FS5, DESC-03, MERGE-02, JDG-only path (local bare origin)
+        run: node test/admit/run.mjs
       - name: self-score (the standard checks itself)
         run: node check.mjs --repo . --no-exec

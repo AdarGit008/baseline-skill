@@ -30,8 +30,8 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
 {
   const R = loadRules()
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'rules.json'), 'utf8'))
-  ok(R.rules.length === 86, `loader assembles 86 rules (got ${R.rules.length})`)
-  ok((manifest.modules || []).length === 14, `manifest lists 14 modules (got ${(manifest.modules || []).length})`)
+  ok(R.rules.length === 88, `loader assembles 88 rules (got ${R.rules.length})`)
+  ok((manifest.modules || []).length === 15, `manifest lists 15 modules (got ${(manifest.modules || []).length})`)
   ok(!('rules' in manifest), 'manifest itself carries no rules (they live in rules/)')
   ok(new Set(R.rules.map(r => r.id)).size === R.rules.length, 'rule ids unique across modules')
   ok(!!R.version && !!R.profiles && Array.isArray(R.project_types), 'identity fields (version/profiles/project_types) ride the manifest')
@@ -41,7 +41,7 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
     const mod = JSON.parse(fs.readFileSync(path.join(ROOT, m), 'utf8'))
     for (const r of mod.rules) {
       const prefix = r.id.split('-')[0].toLowerCase()
-      const want = { build: 'build', test: 'test', ctx: 'ctx', claim: 'claim', sec: 'sec', gov: 'gov', comm: 'comm', qual: 'qual', repro: 'repro', ops: 'ops', rec: 'rec', flow: 'flow', div: 'div', desc: 'desc' }[prefix]
+      const want = { build: 'build', test: 'test', ctx: 'ctx', claim: 'claim', sec: 'sec', gov: 'gov', comm: 'comm', qual: 'qual', repro: 'repro', ops: 'ops', rec: 'rec', flow: 'flow', merge: 'merge', div: 'div', desc: 'desc' }[prefix]
       if (want !== cat) { homed = false; console.log(`      ${r.id} lives in ${m}`) }
     }
   }
@@ -271,7 +271,7 @@ try {
   // ---- M4c: engine posture/branch/opt-out gates (pure, data-driven) ----
   {
     const gate = (rule, over = {}) => runRules({
-      rules: [{ id: 'X-01', severity: 'warn', applies_to: 'all', check: { kind: 'x' }, ...rule }],
+      rules: [{ id: 'X-01', severity: 'warn', applies_to: 'all', contexts: ['check'], check: { kind: 'x' }, ...rule }],
       cfg: { project_type: 'docs', ...(over.cfg || {}) }, ACTIVE: new Set(['core']),
       CLAIMS_ACTIVE: over.CLAIMS_ACTIVE ?? true, CLAIMS_REASON: over.CLAIMS_REASON ?? null,
       evalCheck: () => ({ ok: true, detail: 'ran' }),
@@ -292,6 +292,12 @@ try {
     ok(gate({ requires: 'status_file' }, { cfg: { status_file: false }, DESCRIPTOR: { valid: false, present: true } }).tag === 'PASS', 'engine: an invalid descriptor confers no opt-out')
     const cskip = gate({ requires: 'makes_external_claims' }, { CLAIMS_ACTIVE: false, CLAIMS_REASON: "maturity=prototype — CLAIM activates at 'claimed'" })
     ok(cskip.tag === 'SKIP' && /maturity=prototype/.test(cskip.detail), 'engine: the claims skip detail carries the maturity reason')
+    // M6a: the context gate EXCLUDES (no row) — a "wrong context" SKIP on every check
+    // run would be wallpaper; a rule with NO contexts runs nowhere (selfcheck is the
+    // loudness gate that keeps that unrepresentable in the real rule set)
+    ok(gate({ contexts: ['admit'] }) === undefined, 'engine: a rule outside the run context is EXCLUDED — no row, not a SKIP')
+    ok(gate({ contexts: undefined }) === undefined, 'engine: a rule with no contexts runs nowhere (selfcheck forbids it in the real set)')
+    ok(gate({ contexts: ['check', 'admit'] }).tag === 'PASS', 'engine: a shared-context rule runs in check (the default context)')
   }
 
   // ---- M4c: descriptor maturity gates CLAIM activation (C24, discrete tiers) ----

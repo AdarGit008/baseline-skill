@@ -1,0 +1,255 @@
+#!/usr/bin/env node
+// baseline admit — the M6a command contract, exercised against LOCAL bare origins
+// (no network, no forge; forge-dependent rules degrade to labeled SKIPs exactly as
+// designed). Covers: the C35 staleness refusal in both directions, FS1 target-ref
+// descriptor reads (a branch cannot weaken the posture that judges it), DESC-03's
+// same-range judgment contract (subject = the ONE spelling), the JDG-only admission
+// path, break-glass-from-main relief for ancestry-unprovable (shallow) runs,
+// MERGE-02 sister-lane dependencies + the Baseline-Stacked-On lift, and the context
+// gate (admit-only rules are invisible to check).
+import { execFileSync, spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const HERE = path.dirname(fileURLToPath(import.meta.url))
+const ROOT = path.resolve(HERE, '..', '..')
+const BASELINE = path.join(ROOT, 'baseline.mjs')
+
+let fails = 0
+const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails++ }
+const tmps = []
+
+const GITENV = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 'Admit Tester', GIT_AUTHOR_EMAIL: 'admit@test.invalid', GIT_COMMITTER_NAME: 'Admit Tester', GIT_COMMITTER_EMAIL: 'admit@test.invalid' }
+const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...GITENV } }).trim()
+const cli = (cwd, args, env = {}) => spawnSync(process.execPath, [BASELINE, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...GITENV, ...env } })
+const admitJson = (cwd, args = [], env = {}) => {
+  const r = cli(cwd, ['admit', '--json', ...args], env)
+  let j = null; try { j = JSON.parse(r.stdout) } catch {}
+  return { ...r, j }
+}
+
+const BASE_DESC = {
+  schema_version: 1, type: 'node', lifecycle: 'experimental', maturity: 'prototype', owner: 't',
+  workflow: 'multi-lane', anchoring: 'strict',
+  ground_truth_boundary: { default_branch: 'main' },
+  lanes: { namespace: 'lane/*', lease_ttl: '7d' },
+  join_keys: ['Baseline-Agent', 'Baseline-Issue'],
+}
+const JDG = (id, over = {}) => JSON.stringify({
+  record: 'judgment/1', id, kind: 'deviation', date: '2026-07-15', by: 'adar',
+  subject: 'baseline.repo.json', reason: 'test judgment', review_by: '2099-12-31', ...over,
+}, null, 2) + '\n'
+
+// seed a bare origin + a working clone with main carrying the descriptor
+function mkworld(name, desc = BASE_DESC) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `admit-${name}-`)); tmps.push(dir)
+  const bare = path.join(dir, 'origin.git')
+  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', bare], { env: { ...process.env, ...GITENV } })
+  const seed = path.join(dir, 'seed'); fs.mkdirSync(seed)
+  git(seed, 'init', '-q', '-b', 'main')
+  if (desc) fs.writeFileSync(path.join(seed, 'baseline.repo.json'), JSON.stringify(desc, null, 2) + '\n')
+  fs.writeFileSync(path.join(seed, 'README.md'), `# ${name}\n`)
+  git(seed, 'add', '-A'); git(seed, 'commit', '-qm', 'seed')
+  git(seed, 'remote', 'add', 'origin', bare)
+  git(seed, 'push', '-q', 'origin', 'main')
+  const clone = path.join(dir, 'clone')
+  execFileSync('git', ['clone', '-q', bare, clone], { env: { ...process.env, ...GITENV } })
+  git(clone, 'config', 'user.name', 'Admit Tester'); git(clone, 'config', 'user.email', 'admit@test.invalid')
+  return { dir, bare, seed, clone }
+}
+const commit = (cwd, rel, content, msg) => { fs.mkdirSync(path.dirname(path.join(cwd, rel)), { recursive: true }); fs.writeFileSync(path.join(cwd, rel), content); git(cwd, 'add', '-A'); git(cwd, 'commit', '-qm', msg) }
+const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n', 'main advances'); git(w.seed, 'push', '-q', 'origin', 'main') }
+
+// ---------- environment refusals (exit 2 — nothing evaluated) ----------
+{
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'admit-notrepo-')); tmps.push(bare)
+  ok(cli(bare, ['admit']).status === 2, 'not a git repo → exit 2')
+  const w = mkworld('noorigin')
+  git(w.clone, 'remote', 'remove', 'origin')
+  ok(cli(w.clone, ['admit']).status === 2, 'no origin and no --target → exit 2')
+  const w2 = mkworld('nodesc', null)
+  const r2 = cli(w2.clone, ['admit'])
+  ok(r2.status === 2 && /no baseline\.repo\.json at origin\/main/.test(r2.stderr), 'no descriptor at the TARGET → exit 2 naming FS1')
+  ok(cli(w2.clone, ['admit', '--target']).status === 2, '--target without a value → usage')
+}
+
+// ---------- staleness: the C35 command contract ----------
+{
+  const w = mkworld('stale')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7')
+  commit(w.clone, 'work.txt', 'w\n', 'lane work')
+  let r = admitJson(w.clone)
+  ok(r.status === 0 && r.j?.verdict === 'ADMITTED' && r.j?.staleness.ancestor === true, `fresh branch admits (got ${r.status})`)
+  ok(r.j?.target.ref === 'origin/main', `target derived as origin/main (got ${r.j?.target.ref})`)
+  advanceMainAtOrigin(w)
+  r = admitJson(w.clone)
+  ok(r.status === 1 && r.j?.verdict === 'REFUSED' && r.j?.staleness.stale === true, `advanced target refuses (got ${r.status})`)
+  ok(/re-derive at an up-to-date SHA/.test((r.j?.refusals || [])[0] || ''), 'the refusal names the re-derive recipe')
+  git(w.clone, 'fetch', '-q', 'origin'); git(w.clone, 'merge', '-q', '--no-edit', 'origin/main')
+  r = admitJson(w.clone)
+  ok(r.status === 0 && r.j?.staleness.ancestor === true, 're-derived (merged target) admits again')
+}
+
+// ---------- FS1 + DESC-03: the target's posture judges; changes carry their judgment ----------
+{
+  const w = mkworld('desc')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7')
+  const weak = { ...BASE_DESC, anchoring: 'off', workflow: 'single-lane' }
+  commit(w.clone, 'baseline.repo.json', JSON.stringify(weak, null, 2) + '\n', 'weaken posture on-branch')
+  let r = admitJson(w.clone)
+  ok(r.status === 1 && r.j?.verdict === 'REFUSED', `descriptor change without judgment refuses (got ${r.status})`)
+  const d3 = r.j?.results.find(x => x.id === 'DESC-03')
+  ok(d3?.tag === 'FAIL' && /no same-range judgment/.test(d3?.detail || ''), 'DESC-03 FAILs naming the missing judgment')
+  ok(/WEAKENING/.test(d3?.detail || '') && /anchoring: 'strict' → 'off'/.test(d3?.detail || '') && /workflow/.test(d3?.detail || ''), `the weakening ladder names both down-moves (got: ${d3?.detail?.slice(0, 140)})`)
+  // FS1: the RUN's posture came from the target — lane rules still evaluated (rows exist)
+  ok((r.j?.results || []).some(x => x.category === 'flow'), 'FS1: flow rules evaluated under the TARGET posture, not the branch\'s single-lane')
+
+  // wrong subject: the tool's OWN pinned spelling is the matcher
+  commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { subject: 'descriptor change' }), 'judgment, wrong subject')
+  r = admitJson(w.clone)
+  const d3b = r.j?.results.find(x => x.id === 'DESC-03')
+  ok(r.status === 1 && /subject is 'descriptor change', not 'baseline\.repo\.json'/.test(d3b?.detail || ''), 'a near-miss subject refuses WITH the exact-spelling hint')
+
+  // exact subject: admitted, judgment named
+  commit(w.clone, 'records/judgments/JDG-0002.json', JDG('JDG-0002'), 'judgment, exact subject')
+  r = admitJson(w.clone)
+  const d3c = r.j?.results.find(x => x.id === 'DESC-03')
+  ok(r.status === 0 && d3c?.tag === 'PASS' && /carries JDG-0002/.test(d3c?.detail || ''), `exact-subject judgment admits (got ${r.status}: ${d3c?.detail?.slice(0, 80)})`)
+
+  // an EXPIRED judgment is honestly not a judgment
+  const w2 = mkworld('descexp')
+  git(w2.clone, 'checkout', '-q', '-b', 'lane/7')
+  commit(w2.clone, 'baseline.repo.json', JSON.stringify({ ...BASE_DESC, anchoring: 'relaxed' }, null, 2) + '\n', 'tune anchoring')
+  commit(w2.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { review_by: '2020-01-01' }), 'lapsed judgment')
+  r = admitJson(w2.clone)
+  ok(r.status === 1 && /no same-range judgment/.test(r.j?.results.find(x => x.id === 'DESC-03')?.detail || ''), 'a lapsed judgment does not satisfy DESC-03')
+
+  // an INVALIDATED head descriptor is the ultimate weakening
+  const w3 = mkworld('descinv')
+  git(w3.clone, 'checkout', '-q', '-b', 'lane/7')
+  commit(w3.clone, 'baseline.repo.json', '{ not json', 'break the descriptor on-branch')
+  r = admitJson(w3.clone)
+  ok(r.status === 1 && /descriptor invalidated/.test(r.j?.results.find(x => x.id === 'DESC-03')?.detail || ''), 'invalidating the descriptor on-branch is classified as weakening and refused')
+}
+
+// ---------- the JDG-only admission path (the reachable relief valve) ----------
+{
+  const w = mkworld('jdgonly')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/9')
+  commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { kind: 'break-glass', gate: 'admit', subject: 'admit outage relief' }), 'relief record only')
+  const r = admitJson(w.clone)
+  ok(r.status === 0 && r.j?.jdgOnly === true, `a pure-judgment range admits via the JDG-only path (got ${r.status})`)
+  const f1 = r.j?.results.find(x => x.id === 'FLOW-01')
+  ok(/forge not consulted \(JDG-only admission path\)/.test(f1?.detail || ''), `the forge closure is labeled with the PATH, not fake unreachability (got: ${f1?.detail?.slice(0, 90)})`)
+
+  // one extra non-judgment file breaks the shape — the normal path judges it
+  commit(w.clone, 'src.txt', 'code\n', 'code rides along')
+  const r2 = admitJson(w.clone)
+  ok(r2.status === 0 && r2.j?.jdgOnly === false, 'a mixed range is NOT the JDG-only path')
+
+  // a judgment-only range WITHOUT a break-glass is just a normal (harmless) range
+  const w2 = mkworld('jdgplain')
+  git(w2.clone, 'checkout', '-q', '-b', 'lane/9')
+  commit(w2.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { subject: 'unrelated sign-off scope', kind: 'sign-off' }), 'plain judgment')
+  const r3 = admitJson(w2.clone)
+  ok(r3.status === 0 && r3.j?.jdgOnly === false, 'a judgment-only range without break-glass(gate:admit) is not the relief path')
+}
+
+// ---------- shallow ancestry: source-loss refusal + break-glass-from-MAIN relief ----------
+{
+  const w = mkworld('shallow')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7'); commit(w.clone, 'w.txt', 'w\n', 'work')
+  git(w.clone, 'push', '-q', 'origin', 'lane/7')
+  const sh = path.join(w.dir, 'shallow')
+  // file:// so --depth is honored (a plain local path silently ignores it), then the
+  // single-branch clone maps main into remote-tracking explicitly (the M5a refspec class)
+  execFileSync('git', ['clone', '-q', '--depth', '1', '--branch', 'lane/7', 'file://' + w.bare, sh], { env: { ...process.env, ...GITENV } })
+  git(sh, 'config', 'user.name', 'T'); git(sh, 'config', 'user.email', 't@t.t')
+  git(sh, 'fetch', '-q', '--depth', '1', 'origin', '+main:refs/remotes/origin/main')
+  let r = admitJson(sh)
+  ok(r.status === 1 && r.j?.staleness.indeterminate === true && /fetch-depth: 0/.test((r.j?.refusals || [])[0] || ''), `shallow clone refuses as source-loss naming the CI fix (got ${r.status})`)
+  // relief lands on MAIN (the target) — FS5: never honored from the incoming branch
+  commit(w.seed, 'records/judgments/JDG-0009.json', JDG('JDG-0009', { kind: 'break-glass', gate: 'admit', subject: 'shallow CI relief' }), 'break-glass on main')
+  git(w.seed, 'push', '-q', 'origin', 'main')
+  git(sh, 'fetch', '-q', '--depth', '1', 'origin', '+main:refs/remotes/origin/main')
+  r = admitJson(sh)
+  ok(r.status === 0 && r.j?.breakGlass?.id === 'JDG-0009', `an unexpired break-glass ON THE TARGET relieves the source-loss refusal (got ${r.status}, ${r.j?.breakGlass?.id})`)
+  ok(r.j?.verdict === 'ADMITTED' && r.j?.staleness.indeterminate === true, 'the relief admits WITHOUT faking the ancestry answer')
+}
+
+// ---------- FS5 direction: a break-glass on the BRANCH must not relieve ----------
+{
+  const w = mkworld('fs5dir')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7'); commit(w.clone, 'w.txt', 'w\n', 'work')
+  commit(w.clone, 'records/judgments/JDG-0005.json', JDG('JDG-0005', { kind: 'break-glass', gate: 'admit', subject: 'smuggled relief' }), 'branch-side break-glass + work')
+  git(w.clone, 'push', '-q', 'origin', 'lane/7')
+  const sh = path.join(w.dir, 'shallow2')
+  execFileSync('git', ['clone', '-q', '--depth', '1', '--branch', 'lane/7', 'file://' + w.bare, sh], { env: { ...process.env, ...GITENV } })
+  git(sh, 'config', 'user.name', 'T'); git(sh, 'config', 'user.email', 't@t.t')
+  git(sh, 'fetch', '-q', '--depth', '1', 'origin', '+main:refs/remotes/origin/main')
+  const r = admitJson(sh)
+  ok(r.status === 1 && !r.j?.breakGlass, 'a break-glass riding the INCOMING branch relieves nothing (FS5: main only) — and the mixed range is not JDG-only')
+}
+
+// ---------- MERGE-02: sister-lane dependencies + the declared stack ----------
+{
+  const w = mkworld('sister')
+  // lane/9 does work off main; lane/8 stacks ON lane/9
+  git(w.clone, 'checkout', '-q', '-b', 'lane/9'); commit(w.clone, 'nine.txt', '9\n', 'sister work')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/8'); commit(w.clone, 'eight.txt', '8\n', 'stacked work')
+  git(w.clone, 'push', '-q', 'origin', 'lane/9', 'lane/8')
+  const c2 = path.join(w.dir, 'c2')
+  execFileSync('git', ['clone', '-q', w.bare, c2], { env: { ...process.env, ...GITENV } })
+  git(c2, 'config', 'user.name', 'T'); git(c2, 'config', 'user.email', 't@t.t')
+  git(c2, 'checkout', '-q', 'lane/8')
+  let r = admitJson(c2)
+  const m2 = r.j?.results.find(x => x.id === 'MERGE-02')
+  ok(r.status === 0 && m2?.tag === 'WARN' && /unmerged commits from lane\/9/.test(m2?.detail || ''), `an undeclared stack WARNs naming the sister — and warn does not refuse (got ${r.status}, ${m2?.tag})`)
+  // declare the stack — the trailer lifts the finding
+  commit(c2, 'more.txt', 'm\n', 'more\n\nBaseline-Stacked-On: lane/9')
+  r = admitJson(c2)
+  const m2b = r.j?.results.find(x => x.id === 'MERGE-02')
+  ok(m2b?.tag === 'PASS' && /declared via Baseline-Stacked-On/.test(m2b?.detail || ''), `the whole-token trailer declares the stack (got ${m2b?.tag}: ${m2b?.detail?.slice(0, 80)})`)
+  // sister lands in main → the dependency dissolves
+  git(w.seed, 'fetch', '-q', 'origin', 'lane/9'); git(w.seed, 'merge', '-q', '--no-edit', 'FETCH_HEAD'); git(w.seed, 'push', '-q', 'origin', 'main')
+  git(c2, 'fetch', '-q', 'origin'); git(c2, 'merge', '-q', '--no-edit', 'origin/main')
+  r = admitJson(c2)
+  const m2c = r.j?.results.find(x => x.id === 'MERGE-02')
+  ok(m2c?.tag === 'PASS' && /no unmerged sister-lane dependencies/.test(m2c?.detail || ''), `a landed sister is no dependency (got ${m2c?.tag})`)
+}
+
+// ---------- the context gate: admit-only rules are invisible to check ----------
+{
+  const w = mkworld('ctxgate')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7'); commit(w.clone, 'w.txt', 'w\n', 'work')
+  const c = cli(w.clone, ['check', '--json', '--no-exec'])
+  let cj = null; try { cj = JSON.parse(c.stdout) } catch {}
+  const ids = new Set((cj?.results || []).map(x => x.id))
+  ok(cj && !ids.has('DESC-03') && !ids.has('MERGE-02'), 'DESC-03/MERGE-02 are EXCLUDED from check output (no wrong-context rows)')
+  ok(ids.has('FLOW-01') && ids.has('DESC-01'), 'the shared-context rules still run in check')
+  const a = admitJson(w.clone)
+  const aids = new Set((a.j?.results || []).map(x => x.id))
+  ok(aids.has('DESC-03') && aids.has('MERGE-02') && aids.has('FLOW-01') && !aids.has('BUILD-05'), 'admit runs the admit-context set (and never the exec crown)')
+}
+
+// ---------- --target explicit + detached-HEAD CI shape (GITHUB_HEAD_REF) ----------
+{
+  const w = mkworld('target')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7'); commit(w.clone, 'w.txt', 'w\n', 'work')
+  const sha = git(w.clone, 'rev-parse', 'origin/main')
+  const r = admitJson(w.clone, ['--target', sha])
+  ok(r.status === 0 && r.j?.target.sha === sha, '--target accepts an explicit SHA')
+  // detached HEAD (the CI checkout shape): branch identity honestly null without env...
+  git(w.clone, 'checkout', '-q', '--detach')
+  const r2 = admitJson(w.clone)
+  ok(r2.status === 0 && r2.j?.branch === null, 'detached HEAD: no branch identity invented')
+  // ...and derived from the forge's own env when present (GITHUB_HEAD_REF)
+  const r3 = admitJson(w.clone, [], { GITHUB_HEAD_REF: 'lane/7' })
+  ok(r3.status === 0 && r3.j?.branch === 'lane/7' && (r3.j?.results || []).some(x => x.id === 'MERGE-02'), 'GITHUB_HEAD_REF restores lane identity in CI (branch_scope rules evaluate)')
+}
+
+for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })
+console.log(fails ? `\n${fails} failing` : '\nall green')
+process.exit(fails ? 1 : 0)

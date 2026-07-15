@@ -72,9 +72,13 @@ function mkLaneWorld(desc) {
   return { dir, clone }
 }
 const w = mkLaneWorld(LANE_DESC)
-const claim = (n, agent) => execFileSync(NODE, [BASELINE, 'lane', 'claim', String(n), '--agent', agent], { cwd: w.clone, env: { ...NOFORGE, ...IDENT }, encoding: 'utf8' })
+// the claim clock is pinned and every age-sensitive 'now' below freezes against it —
+// lease states are arithmetic, not wall-clock luck (real-now claims vs the absolute
+// dates in checks 6/8/9 would drift a day further out of range every real day)
+const CLAIM_T0 = '2026-07-14T09:00:00Z'
+const claim = (n, agent) => execFileSync(NODE, [BASELINE, 'lane', 'claim', String(n), '--agent', agent], { cwd: w.clone, env: { ...NOFORGE, ...IDENT, GIT_AUTHOR_DATE: CLAIM_T0, GIT_COMMITTER_DATE: CLAIM_T0 }, encoding: 'utf8' })
 claim(7, 'alice'); claim(9, 'bob')
-r = orient([], w.clone)
+r = orient([], w.clone, { BASELINE_LOG_NOW: CLAIM_T0 })
 ok(r.code === 0, 'lanes(git plane): exit 0')
 ok(/## Lanes \(`lane\/\*` · ttl 7d\)/.test(r.out), 'lanes section headlines the namespace + ttl')
 ok(/● `lane\/7` → #7 — LIVE · just now · agent alice · no PR yet/.test(r.out), `fresh claim renders LIVE with agent, PR-less lane APPEARS (got: ${(r.out.match(/● .*lane\/7.*/) || ['<missing>'])[0]})`)

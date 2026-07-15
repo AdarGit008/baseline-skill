@@ -301,15 +301,24 @@ function mklocal(name, desc) {
 }
 
 // ================= M5b — reclaim: takeover of a DERIVED-ABANDONED lane only =================
-const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real commit date in this run → ABANDONED at ttl 7d
+// Lease states are date arithmetic — pin BOTH ends, or every FUTURE-derived block rots
+// as real days pass (a wall-clock claim shrinks below the 7d ttl within days of writing).
+// Claims (and lane work) that FUTURE later derives commit at CLAIM_T0; a derivation that
+// must see one of those lanes FRESH freezes 'now' at the identical instant (NOW_T0).
+const CLAIM_T0 = '2026-07-14T09:00:00Z'
+const AT_T0 = { GIT_AUTHOR_DATE: CLAIM_T0, GIT_COMMITTER_DATE: CLAIM_T0 }
+const NOW_T0 = { BASELINE_LOG_NOW: CLAIM_T0 }
+const gitT0 = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...GITENV, ...AT_T0 } }).trim()
+const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // CLAIM_T0 + 8d → ABANDONED at ttl 7d
 {
   const o = mkorigin('reclaim')
   const A = mkclone(o, 'A'), B = mkclone(o, 'B')
-  ok(cli(A, ['lane', 'claim', '7', '--agent', 'alice']).status === 0, 'alice claims lane/7')
+  ok(cli(A, ['lane', 'claim', '7', '--agent', 'alice'], AT_T0).status === 0, 'alice claims lane/7')
   const oldTip = git(o.bare, 'rev-parse', 'lane/7')
 
   // fresh lane refuses without a judgment — and origin is untouched by the refusal
-  const rl = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob'])
+  // ('now' freezes at the claim instant so this lane derives LIVE forever, not just today)
+  const rl = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob'], NOW_T0)
   ok(rl.status === 2 && /derives LIVE/.test(rl.stderr) && /deviation judgment/.test(rl.stderr), `LIVE lane refuses reclaim, names the escape hatch (got ${rl.status})`)
   ok(git(o.bare, 'rev-parse', 'lane/7') === oldTip, 'refused reclaim moved nothing at origin')
 
@@ -384,7 +393,7 @@ const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real
   // own sha at origin and settles as a win, never exit 2 on a takeover that happened
   const o = mkorigin('lostreport')
   const A = mkclone(o, 'A'), B = mkclone(o, 'B')
-  ok(cli(A, ['lane', 'claim', '7', '--agent', 'alice']).status === 0, 'alice claims lane/7')
+  ok(cli(A, ['lane', 'claim', '7', '--agent', 'alice'], AT_T0).status === 0, 'alice claims lane/7')
   const shimA = mkGitShim('lostreport', `    "${REAL_GIT}" "$@"; s=$?
     [ "$s" -eq 0 ] && exit 1
     exit "$s"`)
@@ -400,7 +409,7 @@ const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real
   const mk = (rivalAgent) => {
     const o = mkorigin(`moved-${rivalAgent}`)
     const A = mkclone(o, 'A'), B = mkclone(o, 'B')
-    cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
+    cli(A, ['lane', 'claim', '7', '--agent', 'alice'], AT_T0)
     const rival = mkRival(o.bare, 'lane/7', 7, rivalAgent)
     const shim = mkGitShim(`moved-${rivalAgent}`, `    "${REAL_GIT}" -C "${o.bare}" update-ref refs/heads/lane/7 ${rival}
     exec "${REAL_GIT}" "$@"`)
@@ -425,7 +434,7 @@ const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real
   // recreate it — a deleted lane must never be resurrected and reported as a takeover
   const o = mkorigin('vanish')
   const A = mkclone(o, 'A'), B = mkclone(o, 'B')
-  cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
+  cli(A, ['lane', 'claim', '7', '--agent', 'alice'], AT_T0)
   const shim = mkGitShim('vanish', `    "${REAL_GIT}" -C "${o.bare}" update-ref -d refs/heads/lane/7
     exec "${REAL_GIT}" "$@"`)
   const r = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob'], withShim(shim, FUTURE))
@@ -437,7 +446,7 @@ const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real
   // fast-forward over the rewind, silently reinstating what the owner purged)
   const o = mkorigin('rewind')
   const A = mkclone(o, 'A'), B = mkclone(o, 'B')
-  cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
+  cli(A, ['lane', 'claim', '7', '--agent', 'alice'], AT_T0)
   const mainTip = git(o.bare, 'rev-parse', 'main')
   const shim = mkGitShim('rewind', `    "${REAL_GIT}" -C "${o.bare}" update-ref refs/heads/lane/7 ${mainTip}
     exec "${REAL_GIT}" "$@"`)
@@ -472,12 +481,12 @@ const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real
   const A = mkclone(o, 'A'), B = mkclone(o, 'B'), C = mkclone(o, 'C')
   cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
   git(A, 'checkout', 'lane/7'); fs.writeFileSync(path.join(A, 'a.txt'), 'work\n')
-  git(A, 'add', '-A'); git(A, 'commit', '-qm', 'alice works — no trailer here'); git(A, 'push', '-q', 'origin', 'lane/7')
+  git(A, 'add', '-A'); gitT0(A, 'commit', '-qm', 'alice works — no trailer here'); git(A, 'push', '-q', 'origin', 'lane/7')
   const r1 = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], FUTURE)
   const j1 = JSON.parse(r1.stdout || '{}')
   ok(r1.status === 0 && j1.from === 'alice', `the claim trailer is found under a work commit — from=alice (got '${j1.from}')`)
   git(B, 'checkout', 'lane/7'); fs.writeFileSync(path.join(B, 'b.txt'), 'more\n')
-  git(B, 'add', '-A'); git(B, 'commit', '-qm', 'bob works'); git(B, 'push', '-q', 'origin', 'lane/7')
+  git(B, 'add', '-A'); gitT0(B, 'commit', '-qm', 'bob works'); git(B, 'push', '-q', 'origin', 'lane/7')
   const r2 = cli(C, ['lane', 'reclaim', '7', '--agent', 'carol', '--json'], FUTURE)
   const j2 = JSON.parse(r2.stdout || '{}')
   ok(r2.status === 0 && j2.from === 'bob', `the NEWEST trailer wins through buried commits — a takeover displaces the claim (got '${j2.from}')`)
@@ -502,7 +511,7 @@ const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real
 {
   const o = mkorigin('defttl', { ...BASE_DESC, lanes: { namespace: 'lane/*' } })
   const A = mkclone(o, 'A'), B = mkclone(o, 'B')
-  ok(cli(A, ['lane', 'claim', '7', '--agent', 'alice']).status === 0, 'claim under an undeclared lease_ttl')
+  ok(cli(A, ['lane', 'claim', '7', '--agent', 'alice'], AT_T0).status === 0, 'claim under an undeclared lease_ttl')
   const r = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], FUTURE)
   const j = JSON.parse(r.stdout || '{}')
   ok(r.status === 0 && j.state === 'ABANDONED', `8d idle vs the 7d DEFAULT derives ABANDONED — an omitted ttl never bricks the lanes (got ${r.status}, ${j.state})`)
@@ -518,7 +527,7 @@ const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real
   // a won takeover whose record write fails must degrade loudly, never abort the win
   const o = mkorigin('recfail')
   const A = mkclone(o, 'A'), B = mkclone(o, 'B')
-  cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
+  cli(A, ['lane', 'claim', '7', '--agent', 'alice'], AT_T0)
   fs.writeFileSync(path.join(B, 'records'), 'a FILE where the records/ directory belongs\n')
   const r2 = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], FUTURE)
   const j2 = JSON.parse(r2.stdout || '{}')
@@ -532,7 +541,7 @@ const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real
   const A = mkclone(o, 'A'), B = mkclone(o, 'B')
   cli(A, ['lane', 'claim', '7', '--agent', 'alice'])
   git(A, 'checkout', 'lane/7'); fs.writeFileSync(path.join(A, 'README.md'), '# changed on the lane\n')
-  git(A, 'add', '-A'); git(A, 'commit', '-qm', 'lane work touches README'); git(A, 'push', '-q', 'origin', 'lane/7')
+  git(A, 'add', '-A'); gitT0(A, 'commit', '-qm', 'lane work touches README'); git(A, 'push', '-q', 'origin', 'lane/7')
   fs.writeFileSync(path.join(B, 'README.md'), '# dirty local edit\n') // collides with the lane's work
   const r = cli(B, ['lane', 'reclaim', '7', '--agent', 'bob', '--json'], FUTURE)
   const j = JSON.parse(r.stdout || '{}')
@@ -545,16 +554,17 @@ const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real
 {
   const o = mkorigin('rerace')
   const A = mkclone(o, 'RA'), B = mkclone(o, 'RB')
-  ok(cli(A, ['lane', 'claim', '9', '--agent', 'alice']).status === 0, 'alice claims lane/9')
+  ok(cli(A, ['lane', 'claim', '9', '--agent', 'alice'], AT_T0).status === 0, 'alice claims lane/9')
   const go = (cwd, who) => new Promise(res => {
-    const p = spawn(process.execPath, [BASELINE, 'lane', 'reclaim', '9', '--agent', who, '--json'], { cwd, env: { ...process.env, ...GITENV, ...FUTURE } })
+    const p = spawn(process.execPath, [BASELINE, 'lane', 'reclaim', '9', '--agent', who, '--json'], { cwd, env: { ...process.env, ...GITENV, ...AT_T0, ...FUTURE } })
     let out = ''; p.stdout.on('data', d => { out += d }); p.on('close', code => res({ code, out }))
   })
   const [ra, rb] = await Promise.all([go(A, 'racer-a'), go(B, 'racer-b')])
   // the structural invariant, not a timing assumption: a truly concurrent pair yields
   // {0,3} (the lease CAS rejects the second push), but a SERIALIZED pair legitimately
-  // yields {0,0} under time-travel (the first takeover's real committedDate still derives
-  // ABANDONED against the pinned future now, so the second takes over on top — honestly)
+  // yields {0,0} under time-travel (the first takeover commits at CLAIM_T0 too, so it
+  // still derives ABANDONED against the pinned future now and the second takes over on
+  // top — honestly; the rivals' shas stay distinct through their agent trailers)
   const results = [{ who: 'racer-a', ...ra }, { who: 'racer-b', ...rb }]
   ok(results.every(r => r.code === 0 || r.code === 3) && results.some(r => r.code === 0), `every rival exits 0 or 3, at least one takes over (got ${ra.code}/${rb.code})`)
   const owner = (git(o.bare, 'log', '-1', '--format=%B', 'lane/9').match(/^Baseline-Agent: (.+)$/m) || [])[1]
@@ -569,7 +579,7 @@ const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real
 {
   const o = mkorigin('mll', { ...BASE_DESC, workflow: 'multi-lane-local' })
   const A = mkclone(o, 'A'), B = mkclone(o, 'B')
-  ok(cli(A, ['lane', 'claim', '4', '--agent', 'alice']).status === 0, 'multi-lane-local claim')
+  ok(cli(A, ['lane', 'claim', '4', '--agent', 'alice'], AT_T0).status === 0, 'multi-lane-local claim')
   const r = cli(B, ['lane', 'reclaim', '4', '--agent', 'bob', '--json'], FUTURE)
   const j = JSON.parse(r.stdout || '{}')
   ok(r.status === 0 && j.reclaimed === true, `multi-lane-local reclaim works forge-free (got ${r.status})`)
@@ -581,7 +591,7 @@ const FUTURE = { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' } // +8d past any real
 {
   const o = mkorigin('renew')
   const A = mkclone(o, 'A')
-  ok(cli(A, ['lane', 'claim', '3', '--agent', 'alice']).status === 0, 'alice claims lane/3')
+  ok(cli(A, ['lane', 'claim', '3', '--agent', 'alice'], AT_T0).status === 0, 'alice claims lane/3')
   const r = cli(A, ['lane', 'reclaim', '3', '--agent', 'alice', '--json'], FUTURE)
   const j = JSON.parse(r.stdout || '{}')
   ok(r.status === 0 && j.from === 'alice' && j.agent === 'alice', `own abandoned lane renews (got ${r.status})`)

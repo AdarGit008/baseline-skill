@@ -6,9 +6,10 @@
 //   (a) C35 staleness — the target tip is not an ancestor of the admitted HEAD
 //       (deterministic git ancestry, evaluated before any rule);
 //   (b) any admit-context BLOCKER FAIL — at M6a exactly DESC-03;
-//   (c) required-source loss on admit's GATING facts (target resolution, ancestry
-//       provability) — a warn rule's unreachable source SKIPs labeled, exactly as in
-//       check: advisory findings never acquire blocker-grade denial power via
+//   (c) required-source loss on admit's GATING facts (target resolution → exit 2,
+//       nothing evaluated; ancestry provability and DESC-03's range diff → refusal) —
+//       a warn rule's unreachable source SKIPs labeled, exactly as in check:
+//       advisory findings never acquire blocker-grade denial power via
 //       unavailability. Relief for (c) alone: an unexpired break-glass JDG with
 //       gate:admit read FROM THE TARGET REF (FS5 — never from the incoming branch).
 //       Staleness is data-plane truth and DESC-03's relief is its own same-PR JDG;
@@ -86,7 +87,10 @@ export function runAdmit(argv) {
   if (!targetTip) return usage(`--target '${targetRef}' does not resolve to a commit here — fetch it first`)
 
   // ---- the governing descriptor: read from the TARGET ref (FS1) ----
-  let cfgRes = resolveConfig(repo, { cliConfigPath: opt('--config', null), profileArgs: optAll('--profile'), descriptorRef: targetRef })
+  // Read AT THE RESOLVED TIP, not the mutable ref name: a concurrent fetch (editor
+  // autofetch, a parallel admit) moving origin/<db> between rev-parse and `git show`
+  // would split the verdict across two commits — it binds to the SHA it names.
+  let cfgRes = resolveConfig(repo, { cliConfigPath: opt('--config', null), profileArgs: optAll('--profile'), descriptorRef: targetTip })
   let DESCRIPTOR = cfgRes.DESCRIPTOR
   // when the target was DERIVED, the descriptor's own declared default_branch wins over
   // the origin/HEAD mirror config (stored intent > forge mirror) — switch and re-read
@@ -95,10 +99,10 @@ export function runAdmit(argv) {
     const t = resolveTip(`origin/${declared}`)
     if (t) {
       targetRef = `origin/${declared}`; targetTip = t
-      cfgRes = resolveConfig(repo, { cliConfigPath: opt('--config', null), profileArgs: optAll('--profile'), descriptorRef: targetRef })
+      cfgRes = resolveConfig(repo, { cliConfigPath: opt('--config', null), profileArgs: optAll('--profile'), descriptorRef: targetTip })
       DESCRIPTOR = cfgRes.DESCRIPTOR
     } else {
-      return usage(`the target descriptor declares default_branch '${declared}' but origin/${declared} does not resolve here — fetch it, or pass --target`)
+      return usage(`the target descriptor declares default_branch '${sanitizeTTY(declared)}' but origin/${sanitizeTTY(declared)} does not resolve here — fetch it, or pass --target`)
     }
   }
   if (!DESCRIPTOR.present) return usage(`no ${DESCRIPTOR_FILE} at ${targetRef} — admit judges by the target's declared posture (FS1); adopt a descriptor on the target branch first`)
@@ -113,26 +117,44 @@ export function runAdmit(argv) {
   const indeterminate = anc !== 0 && !stale
 
   // ---- break-glass relief, read FROM THE TARGET (FS5) — covers (c) only ----
-  const targetLedger = loadJudgmentsAt(REPO, targetRef)
+  const targetLedger = loadJudgmentsAt(REPO, targetTip)
   const relief = targetLedger.records
     .filter(j => j.kind === 'break-glass' && j.gate === 'admit' && j.review_by >= today)
     .sort((a, b) => (a.date === b.date ? (a.id < b.id ? 1 : -1) : (a.date < b.date ? 1 : -1)))[0] || null
 
   // ---- the admitted range + the JDG-only admission path ----
-  const changed = repo.gitDiffNames(`${targetTip}...HEAD`, null)
-  const added = repo.gitDiffNames(`${targetTip}...HEAD`, null, { addedOnly: true })
-  const addedJudgments = (added || []).filter(p => p.startsWith(JUDGMENTS_DIR + '/')).map(rel => {
+  // no-renames: rename detection would collapse `git mv baseline.repo.json away` into
+  // one post-image name and DESC-03 would read the descriptor as untouched (the review
+  // panel's rename-bypass). Admit's range is judged as honest deletes + adds.
+  const changed = repo.gitDiffNames(`${targetTip}...HEAD`, null, { noRenames: true })
+  const added = repo.gitDiffNames(`${targetTip}...HEAD`, null, { addedOnly: true, noRenames: true })
+  // parse cap: every other fan-out here is bounded (sisters 100, DIV refs 20) — a PR
+  // adding thousands of judgment files must not buy thousands of git spawns. Beyond the
+  // cap: DESC-03 stays fail-closed (an out-of-cap judgment doesn't satisfy it) and the
+  // JDG-only path is off (unvalidated riders never take the privileged path).
+  const JDG_PARSE_CAP = 500
+  const addedJdgPaths = (added || []).filter(p => p.startsWith(JUDGMENTS_DIR + '/'))
+  const jdgCapped = addedJdgPaths.length > JDG_PARSE_CAP
+  const addedJudgments = addedJdgPaths.slice(0, JDG_PARSE_CAP).map(rel => {
     let record = null, errors = []
     const raw = repo.gitCatFile('HEAD', rel)
     if (raw === null) errors = ['blob unreadable at HEAD']
     else {
       try { record = JSON.parse(raw) } catch { errors = ['not valid JSON'] }
-      if (record) { errors = validateRecord('judgment', record); if (errors.length) record = null }
+      if (record) {
+        errors = validateRecord('judgment', record)
+        // same discipline as the ledger loaders: the id IS the filename
+        if (!errors.length && record.id !== rel.split('/').pop().replace(/\.json$/, '')) errors = [`id '${record.id}' does not match filename`]
+        if (errors.length) record = null
+      }
     }
     return { rel, record, errors }
   })
+  // the ruling's shape is strict: NOTHING BUT additions under records/judgments/ that
+  // ALL schema-validate — one invalid rider and the range falls to the normal contract
+  // (a privileged path must never carry unvalidated content onto main's ledger)
   const jdgOnlyShape = changed !== null && changed.length > 0 && added !== null && added.length === changed.length && changed.every(p => p.startsWith(JUDGMENTS_DIR + '/'))
-  const jdgReliefs = jdgOnlyShape ? addedJudgments.filter(j => j.record && j.record.kind === 'break-glass' && j.record.gate === 'admit' && j.record.review_by >= today) : []
+  const jdgReliefs = (jdgOnlyShape && !jdgCapped && addedJudgments.every(j => j.record)) ? addedJudgments.filter(j => j.record.kind === 'break-glass' && j.record.gate === 'admit' && j.record.review_by >= today) : []
   const jdgOnly = jdgReliefs.length > 0
 
   // ---- the admit world the rules evaluate through ----
@@ -152,7 +174,9 @@ export function runAdmit(argv) {
       sisters.push({ ref, tip })
     }
   }
-  const trailerRaw = g('log', '--format=%B', `${targetTip}..HEAD`) || ''
+  // 64MB buffer: a big range's commit bodies overflowing run()'s 1MB default would
+  // silently drop every Baseline-Stacked-On declaration → false MERGE-02 warns
+  const trailerRaw = run('git', ['-C', REPO, 'log', '--format=%B', `${targetTip}..HEAD`], { maxBuffer: 64 * 1024 * 1024 }) || ''
   const stackedOn = [...trailerRaw.matchAll(/^Baseline-Stacked-On:[ \t]*(\S+)[ \t]*$/gm)].map(m => m[1])
   let headDescriptor = { present: false, valid: false, data: null, errors: [] }
   const headDescRaw = repo.gitCatFile('HEAD', DESCRIPTOR_FILE)
@@ -165,7 +189,7 @@ export function runAdmit(argv) {
     } catch { headDescriptor.errors = ['not valid JSON'] }
   }
   const ADMITWORLD = {
-    targetRef, targetTip, changed, added, addedJudgments, jdgOnly, sisters, sistersCapped, stackedOn, headDescriptor,
+    targetRef, targetTip, headSha: HEADSHA, changed, added, addedJudgments, jdgCapped, jdgOnly, sisters, sistersCapped, stackedOn, headDescriptor,
     mergeBase: (a, b) => g('merge-base', a, b),
   }
   const LANEWORLD = makeLaneWorld(repo, DESCRIPTOR, { forgeClosed: jdgOnly ? 'forge not consulted (JDG-only admission path)' : null })
@@ -179,12 +203,19 @@ export function runAdmit(argv) {
   // ---- verdict assembly: (a) staleness · (b) blocker FAIL · (c) gating-source loss ----
   const refusals = []
   let breakGlass = null
+  const ledgerNote = targetLedger.reachable ? '' : ` (the target ledger itself was unreadable at ${targetRef} — an existing break-glass could not be consulted)`
   if (stale) refusals.push(`stale: ${targetRef} @ ${targetTip.slice(0, 7)} is not an ancestor of HEAD — re-derive at an up-to-date SHA (merge/rebase the target, then rerun; the up-to-date branch-protection requirement is this refusal's forge-side twin)`)
-  if (indeterminate) {
-    const why = shallow ? `history truncated (shallow clone) — ancestry not provable; fetch full history (actions/checkout: fetch-depth: 0)` : `ancestry check failed (git exit ${anc}) — target/HEAD relation unreadable`
-    if (relief) breakGlass = { id: relief.id, review_by: relief.review_by, covered: why }
-    else refusals.push(`${why}; relief: an unexpired break-glass JDG (gate: admit) on ${targetRef} — see CONTRACT.md`)
+  const sourceLoss = (why) => {
+    if (relief) {
+      if (breakGlass) breakGlass.covered += `; ${why}`
+      else breakGlass = { id: relief.id, review_by: relief.review_by, covered: why }
+    } else refusals.push(`${why}; relief: an unexpired break-glass JDG (gate: admit) on ${targetRef} — see CONTRACT.md${ledgerNote}`)
   }
+  if (indeterminate) sourceLoss(shallow ? `history truncated (shallow clone) — ancestry not provable; fetch full history (actions/checkout: fetch-depth: 0)` : `ancestry check failed (git exit ${anc}) — target/HEAD relation unreadable`)
+  // DESC-03's range diff is a gating fact (ruling leg c): a blocker that cannot see its
+  // input must refuse, never silently SKIP into an admission (fail-open on the one
+  // ruled-fail-closed rule). Same relief as the ancestry leg.
+  if (!stale && !(indeterminate && !relief) && changed === null) sourceLoss(`the admitted range's diff (${targetRef}...HEAD) is unreadable — DESC-03's gating input is lost`)
   const blockerFails = results.filter(x => x.tag === 'FAIL' && x.r.severity === 'blocker')
   for (const x of blockerFails) refusals.push(`${x.r.id}: ${x.detail}`)
   const refused = refusals.length > 0
@@ -194,9 +225,9 @@ export function runAdmit(argv) {
   if (JSON_OUT) {
     console.log(JSON.stringify({
       command: 'admit', repo: REPO, head: HEADSHA, branch: BRANCH,
-      target: { ref: targetRef, sha: targetTip, source: fetchNote ? 'local-ref (fetch failed)' : 'fetched' },
+      target: { ref: targetRef, sha: targetTip, source: explicit ? 'local-ref (explicit --target)' : fetchNote ? 'local-ref (fetch failed)' : 'fetched' },
       staleness: { ancestor: anc === 0, stale, indeterminate, shallow },
-      jdgOnly, breakGlass, verdict: refused ? 'REFUSED' : 'ADMITTED', refusals,
+      jdgOnly, jdgRelief: jdgOnly ? jdgReliefs[0].record.id : null, breakGlass, verdict: refused ? 'REFUSED' : 'ADMITTED', refusals,
       results: results.map(x => ({ id: x.r.id, category: x.r.category, severity: x.r.severity, tag: x.tag, detail: x.detail })),
       summary, version: RULES.version, exit: refused ? 1 : 0,
     }, null, 2))
@@ -210,7 +241,7 @@ export function runAdmit(argv) {
   console.log(`\n  baseline admit v${RULES.version}  ·  ${path.basename(REPO)}  ·  HEAD ${HEADSHA.slice(0, 7)}${BRANCH ? ` (${S(BRANCH)})` : ''} → ${S(targetRef)} @ ${targetTip.slice(0, 7)}\n`)
   if (fetchNote) console.log(`  ⚠ ${fetchNote}\n`)
   if (jdgOnly) console.log(`  ◇ JDG-only admission path: the range is judgment records alone (${jdgReliefs[0].record.id}) — forge not consulted\n`)
-  console.log(anc === 0 ? `  ✓ up to date: ${S(targetRef)} is an ancestor of HEAD` : stale ? color(31, `  ✗ ${S(refusals[0])}`) : breakGlass ? color(33, `  ⚠ ancestry unprovable — admitted under break-glass ${breakGlass.id} from ${S(targetRef)} (review by ${breakGlass.review_by})`) : color(31, `  ✗ ${S(refusals[0])}`))
+  console.log(anc === 0 ? `  ✓ up to date: ${S(targetRef)} is an ancestor of HEAD` : breakGlass ? color(33, `  ⚠ admitted under break-glass ${breakGlass.id} from ${S(targetRef)} (review by ${breakGlass.review_by}) — ${S(breakGlass.covered)}`) : color(31, `  ✗ not admissible as-is (refusals below)`))
   console.log('')
   for (const cat of Object.keys(CATS)) {
     const rows = results.filter(x => x.r.category === cat); if (!rows.length) continue
@@ -218,9 +249,11 @@ export function runAdmit(argv) {
     for (const x of rows) console.log(`    ${tagCell(x.tag)} ${x.r.id.padEnd(9)} ${S(x.r.title)}\n            ${color(90, '↳ ' + S(x.detail))}`)
     console.log('')
   }
-  for (const r of refusals.slice(stale || (indeterminate && !breakGlass) ? 1 : 0)) console.log(color(31, `  ✗ ${S(r)}`))
+  // one terse recap per refusal at the BOTTOM — where the eye lands — never a verbatim
+  // duplicate of a FAIL row above (first clause, capped)
+  for (const r of refusals) { const first = r.split(' — ')[0]; console.log(color(31, `  ✗ ${S(first.length > 140 ? first.slice(0, 137) + '…' : first)}`)) }
   console.log(refused
-    ? color(31, `\n  ✗ REFUSED — ${refusals.length} refusal(s) · ${summary.warn} warn · ${summary.diverged} diverged\n`)
+    ? color(31, `\n  ✗ REFUSED — ${refusals.length} refusal(s) · ${summary.warn} warn · ${summary.diverged} diverged (details above)\n`)
     : color(32, `\n  ✓ ADMITTED — HEAD ${HEADSHA.slice(0, 7)} vs ${S(targetRef)} @ ${targetTip.slice(0, 7)} · ${summary.pass} pass · ${summary.warn} warn · ${summary.diverged} diverged · ${summary.skip} n/a\n`))
   return refused ? 1 : 0
 }

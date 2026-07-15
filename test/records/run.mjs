@@ -441,7 +441,7 @@ try {
     ok(res['FLOW-02'].tag === 'PASS', 'e2e: the session record riding the lane flips FLOW-02 to PASS')
     ok(res['FLOW-06'].tag === 'WARN' && /DESC-03 preview/.test(res['FLOW-06'].detail), 'e2e: a descriptor change with no judgment in range WARNs (same-PR atomicity)')
     fs.mkdirSync(path.join(t12, 'records/judgments'), { recursive: true })
-    fs.writeFileSync(path.join(t12, 'records/judgments/JDG-0001.json'), JSON.stringify({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-07-11', by: 'a', subject: 'descriptor change', reason: 'r', review_by: '2027-01-01' }))
+    fs.writeFileSync(path.join(t12, 'records/judgments/JDG-0001.json'), JSON.stringify({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-07-11', by: 'a', subject: 'baseline.repo.json', reason: 'r', review_by: '2027-01-01' }))
     sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'jdg'])
     res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
     ok(res['FLOW-06'].tag === 'PASS', 'e2e: the judgment record in the same range satisfies FLOW-06')

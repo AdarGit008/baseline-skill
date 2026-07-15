@@ -42,6 +42,7 @@ valid for Claude Code, so the one repo is native to both.
 ```bash
 node baseline.mjs --repo /path/to/repo          # score (the default command) — exit 1 on blockers
 node baseline.mjs --repo /path/to/repo --json   # machine output for CI
+node baseline.mjs admit --repo /path/to/repo    # merge-point revalidation — exit 1 = refused (stale / blocker)
 node baseline.mjs orient --repo /path/to/repo   # derived-state survey: lanes · backlog · divergence
 node baseline.mjs log -m "..." --next "..."     # write a scrubbed session record (the forensic tier)
 node baseline.mjs jdg check                     # evaluate the judgment ledger: tripwires · expiry · drift

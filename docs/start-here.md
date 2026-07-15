@@ -20,7 +20,7 @@ rule set's integrity and see the per-type coverage.
 - `REFERENCE.md` — full reference: rule table, categories, architecture & flow diagrams, CI wiring.
 - `GLOSSARY.md` — plain-language definitions of the DevOps/supply-chain terms.
 - `check.mjs` + `rules.json` + `rules/` + `src/` — the runner, the manifest, and the 88 rules (co-located; keep them together).
-- `baseline.mjs` — the unified CLI: check · orient · log · jdg · gen · scrub.
+- `baseline.mjs` — the unified CLI: check · admit · orient · lane · log · jdg · gen · scrub.
 - `templates/` — scaffolds (claim.json, session-log.md, start-here.md, signoff.json, adr.md, doc-with-freshness.md).
 - `hooks/` — SessionStart orient hook + the pre-push records scrub scaffold.
 - `install.sh` — installs the skill (Claude Code default, or `--hermes`).

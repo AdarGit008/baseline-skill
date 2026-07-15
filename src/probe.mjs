@@ -7,8 +7,8 @@ import { slug } from './util.mjs'
 
 // Short, no-shell runner: literal argv, bounded time, null on ANY failure (missing binary,
 // non-zero exit, timeout). cwd matters for gh — it resolves the repo from the directory.
-export function run(cmd, args, { cwd, timeout = 15000 } = {}) {
-  try { return execFileSync(cmd, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout }).trim() }
+export function run(cmd, args, { cwd, timeout = 15000, maxBuffer } = {}) {
+  try { return execFileSync(cmd, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout, ...(maxBuffer ? { maxBuffer } : {}) }).trim() }
   catch { return null }
 }
 export const gh = (args, opts) => run('gh', args, opts)

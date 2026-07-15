@@ -40,8 +40,22 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 - Golden harness: `command` dispatch (fixtures may pin `admit`'s envelope), ordered
   `branches` (sister/stack shapes), `branch_message` (trailer-carrying commits),
   `main_advance` (the C35 stale shape); four additive admit fixtures (stale ·
-  desc-weaken · sister-dep · jdg-only). New `test/admit/run.mjs` (35 asserts over
+  desc-weaken · sister-dep · jdg-only). New `test/admit/run.mjs` (41 asserts over
   local bare origins, incl. real shallow clones via `file://`).
+- Review hardening (4-reviewer / 8-angle panel, all confirmed findings fixed
+  in-branch): the DESC-03 **rename bypass** closed (admit's range diffs run
+  `--no-renames`, plus a descriptor-absent-at-HEAD belt); the **JDG-only path is
+  strict** (one invalid or misnamed rider and the range falls to the normal
+  contract) and capped (500 parsed judgment additions — beyond it, fail-closed);
+  DESC-03's diff loss is a **leg-(c) refusal**, never a fail-open SKIP; target
+  descriptor + relief ledger read **at the resolved tip**, not the mutable ref;
+  FLOW-06 back to check-context only (the ruling's disjoint-contexts clause —
+  DESC-03 owns admit); trailer scan buffered to 64MB (no silent stack-declaration
+  loss on big ranges); MERGE-02 skips the PR's own lane seen under its
+  remote-tracking name; test runners strip ambient `GITHUB_HEAD_REF`/`BASELINE_*`
+  (the pull_request-CI leak); `validate.mjs` uses hasOwn (a `__proto__`-named
+  field can't dodge additionalProperties); `default_branch` schema-bounded;
+  `--json` gains `jdgRelief` and honest `target.source` labels.
 - CI-shape ergonomics: detached-HEAD admit derives lane identity from
   `GITHUB_HEAD_REF` (the forge's own env); `--target` accepts any ref/SHA.
 

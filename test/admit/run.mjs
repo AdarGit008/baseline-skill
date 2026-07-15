@@ -22,8 +22,15 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
 const tmps = []
 
 const GITENV = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 'Admit Tester', GIT_AUTHOR_EMAIL: 'admit@test.invalid', GIT_COMMITTER_NAME: 'Admit Tester', GIT_COMMITTER_EMAIL: 'admit@test.invalid' }
-const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...GITENV } }).trim()
-const cli = (cwd, args, env = {}) => spawnSync(process.execPath, [BASELINE, ...args], { cwd, encoding: 'utf8', env: { ...process.env, ...GITENV, ...env } })
+// The ambient env must not steer the tool under test (the golden harness's lesson,
+// test/golden/run.mjs): a dev's exported BASELINE_LOG_NOW would time-travel the
+// review_by comparisons, and CI's pull_request events set GITHUB_HEAD_REF for every
+// step — which admit deliberately reads on detached HEAD, so the detached-HEAD assert
+// below would read the LEAKED branch. Strip them all; tests re-inject explicitly.
+const CLEAN_ENV = { ...process.env }
+for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'GITHUB_HEAD_REF']) delete CLEAN_ENV[k]
+const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...CLEAN_ENV, ...GITENV } }).trim()
+const cli = (cwd, args, env = {}) => spawnSync(process.execPath, [BASELINE, ...args], { cwd, encoding: 'utf8', env: { ...CLEAN_ENV, ...GITENV, ...env } })
 const admitJson = (cwd, args = [], env = {}) => {
   const r = cli(cwd, ['admit', '--json', ...args], env)
   let j = null; try { j = JSON.parse(r.stdout) } catch {}
@@ -140,7 +147,7 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   git(w.clone, 'checkout', '-q', '-b', 'lane/9')
   commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { kind: 'break-glass', gate: 'admit', subject: 'admit outage relief' }), 'relief record only')
   const r = admitJson(w.clone)
-  ok(r.status === 0 && r.j?.jdgOnly === true, `a pure-judgment range admits via the JDG-only path (got ${r.status})`)
+  ok(r.status === 0 && r.j?.jdgOnly === true && r.j?.jdgRelief === 'JDG-0001', `a pure-judgment range admits via the JDG-only path, naming its relief record (got ${r.status}, ${r.j?.jdgRelief})`)
   const f1 = r.j?.results.find(x => x.id === 'FLOW-01')
   ok(/forge not consulted \(JDG-only admission path\)/.test(f1?.detail || ''), `the forge closure is labeled with the PATH, not fake unreachability (got: ${f1?.detail?.slice(0, 90)})`)
 
@@ -218,6 +225,76 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   r = admitJson(c2)
   const m2c = r.j?.results.find(x => x.id === 'MERGE-02')
   ok(m2c?.tag === 'PASS' && /no unmerged sister-lane dependencies/.test(m2c?.detail || ''), `a landed sister is no dependency (got ${m2c?.tag})`)
+}
+
+// ---------- panel hardening: the rename bypass, invalid riders, expired relief, near-miss trailers ----------
+{
+  // DESC-03 must survive `git mv baseline.repo.json away` (rename detection would
+  // collapse the delete+add into one post-image name — the no-renames diff keeps it honest)
+  const w = mkworld('rename')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7')
+  git(w.clone, 'mv', 'baseline.repo.json', 'renamed-away.json')
+  git(w.clone, 'commit', '-qm', 'rename the descriptor away')
+  const r = admitJson(w.clone)
+  const d3 = r.j?.results.find(x => x.id === 'DESC-03')
+  ok(r.status === 1 && d3?.tag === 'FAIL' && /descriptor invalidated/.test(d3?.detail || ''), `renaming the descriptor away is a caught weakening, not "untouched" (got ${r.status}, ${d3?.tag})`)
+}
+{
+  // the JDG-only path is strict: ONE invalid rider and the range falls to the normal contract
+  const w = mkworld('jdgrider')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/9')
+  commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { kind: 'break-glass', gate: 'admit', subject: 'relief' }), 'valid relief')
+  commit(w.clone, 'records/judgments/JDG-0002.json', '{ not json\n', 'garbage rider')
+  const r = admitJson(w.clone)
+  ok(r.status === 0 && r.j?.jdgOnly === false && r.j?.jdgRelief === null, `an invalid rider disqualifies the privileged path (got jdgOnly=${r.j?.jdgOnly})`)
+  // a MISNAMED but valid judgment also disqualifies (id must be the filename, ledger discipline)
+  const w2 = mkworld('jdgmisname')
+  git(w2.clone, 'checkout', '-q', '-b', 'lane/9')
+  commit(w2.clone, 'records/judgments/JDG-0007.json', JDG('JDG-0001', { kind: 'break-glass', gate: 'admit', subject: 'relief' }), 'misnamed relief')
+  const r2 = admitJson(w2.clone)
+  ok(r2.j?.jdgOnly === false, 'an id/filename mismatch disqualifies the privileged path')
+}
+{
+  // an EXPIRED break-glass on the target relieves nothing — the valve must lapse
+  const w = mkworld('expiredbg')
+  commit(w.seed, 'records/judgments/JDG-0009.json', JDG('JDG-0009', { kind: 'break-glass', gate: 'admit', subject: 'stale relief', review_by: '2020-01-01' }), 'lapsed break-glass on main')
+  git(w.seed, 'push', '-q', 'origin', 'main')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7'); commit(w.clone, 'w.txt', 'w\n', 'work')
+  git(w.clone, 'push', '-q', 'origin', 'lane/7')
+  const sh = path.join(w.dir, 'shallow')
+  execFileSync('git', ['clone', '-q', '--depth', '1', '--branch', 'lane/7', 'file://' + w.bare, sh], { env: { ...CLEAN_ENV, ...GITENV } })
+  git(sh, 'config', 'user.name', 'T'); git(sh, 'config', 'user.email', 't@t.t')
+  git(sh, 'fetch', '-q', '--depth', '1', 'origin', '+main:refs/remotes/origin/main')
+  const r = admitJson(sh)
+  ok(r.status === 1 && !r.j?.breakGlass, `an expired break-glass does not relieve (got ${r.status}, breakGlass=${JSON.stringify(r.j?.breakGlass)})`)
+}
+{
+  // Baseline-Stacked-On is whole-token in BOTH directions: lane/99 never lifts lane/9
+  const w = mkworld('nearmiss')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/9'); commit(w.clone, 'nine.txt', '9\n', 'sister work')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/8'); commit(w.clone, 'eight.txt', '8\n', 'stacked\n\nBaseline-Stacked-On: lane/99')
+  git(w.clone, 'push', '-q', 'origin', 'lane/9', 'lane/8')
+  const c2 = path.join(w.dir, 'c2')
+  execFileSync('git', ['clone', '-q', w.bare, c2], { env: { ...CLEAN_ENV, ...GITENV } })
+  git(c2, 'config', 'user.name', 'T'); git(c2, 'config', 'user.email', 't@t.t')
+  git(c2, 'checkout', '-q', 'lane/8')
+  const r = admitJson(c2)
+  const m2 = r.j?.results.find(x => x.id === 'MERGE-02')
+  ok(m2?.tag === 'WARN' && /lane\/9\b/.test(m2?.detail || ''), `trailer 'lane/99' does not lift sister 'lane/9' (got ${m2?.tag})`)
+}
+{
+  // FS1 under explicit --target: a NON-default target ref's descriptor governs, and the
+  // declared-default switch must not fire
+  const w = mkworld('exptarget')
+  git(w.clone, 'checkout', '-q', '-b', 'release/next')
+  commit(w.clone, 'baseline.repo.json', JSON.stringify({ ...BASE_DESC, anchoring: 'relaxed', lanes: { namespace: 'lane/*', lease_ttl: '7d', families: ['release/*'] } }, null, 2) + '\n', 'release posture')
+  commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001'), 'its judgment')
+  git(w.clone, 'push', '-q', 'origin', 'release/next')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7'); commit(w.clone, 'w.txt', 'w\n', 'work off release')
+  const r = admitJson(w.clone, ['--target', 'origin/release/next'])
+  ok(r.status === 0 && r.j?.target.ref === 'origin/release/next' && r.j?.target.source === 'local-ref (explicit --target)', `an explicit non-default target governs, honestly labeled (got ${r.j?.target.source})`)
+  const f1 = r.j?.results.find(x => x.id === 'FLOW-01')
+  ok(/relaxed/.test(f1?.detail || '') || f1?.tag === 'PASS', `the TARGET ref's posture (anchoring relaxed) judged the run (got: ${f1?.detail?.slice(0, 60)})`)
 }
 
 // ---------- the context gate: admit-only rules are invisible to check ----------

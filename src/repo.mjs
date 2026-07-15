@@ -99,8 +99,12 @@ export function indexRepo(REPO) {
   // Files changed on this branch since it diverged (merge-base semantics), optionally
   // restricted to a path scope and to added-only. -> [paths] or null when the range
   // doesn't resolve (missing base ref, not a repo). -z: unquoted, NUL-separated.
-  function gitDiffNames(range, rel, { addedOnly = false } = {}) {
-    const args = ['diff', '--name-only', '-z', ...(addedOnly ? ['--diff-filter=A'] : []), range, '--', ...(rel ? [rel] : ['.'])]
+  // noRenames (M6a): rename detection collapses D+A into R and --name-only then prints
+  // only the post-image name — `git mv baseline.repo.json away.json` would read as
+  // "descriptor untouched" to DESC-03. Admit's range reads disable detection so a
+  // renamed-away gated file is honestly a delete + an add.
+  function gitDiffNames(range, rel, { addedOnly = false, noRenames = false } = {}) {
+    const args = ['diff', ...(noRenames ? ['--no-renames'] : []), '--name-only', '-z', ...(addedOnly ? ['--diff-filter=A'] : []), range, '--', ...(rel ? [rel] : ['.'])]
     try { return execFileSync('git', args, { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\0').filter(Boolean) } catch { return null }
   }
   // Blob id of a path at a ref -> sha string or null. Used by the append-only proof

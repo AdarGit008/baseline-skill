@@ -716,15 +716,18 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       // (x-strictness ladders + gate-consumed set-rules) rides the finding text — it is
       // M7's per-axis policy seam, not this verdict's fork.
       if (!ADMITWORLD) return { ok: null, detail: 'admit-context only (no target world assembled)' }
-      const { targetRef, changed, addedJudgments, headDescriptor } = ADMITWORLD
-      if (changed === null) return { ok: null, detail: `diff ${targetRef}...HEAD failed — change scope unreadable` }
-      if (!changed.includes(DESCRIPTOR_FILE)) return { ok: true, detail: `descriptor untouched in ${targetRef}...HEAD` }
+      const { targetRef, changed, addedJudgments, headDescriptor, jdgCapped } = ADMITWORLD
+      if (changed === null) return { ok: null, detail: `diff ${targetRef}...HEAD failed — change scope unreadable (admit refuses on this as gating-source loss)` }
+      // belt over the no-renames diff: a descriptor ABSENT at HEAD while the target has
+      // a valid one IS a change, however the diff spelled it
+      const touched = changed.includes(DESCRIPTOR_FILE) || !headDescriptor?.present
+      if (!touched) return { ok: true, detail: `descriptor untouched in ${targetRef}...HEAD` }
       const weak = classifyPostureDiff(DESCRIPTOR?.valid ? DESCRIPTOR.data : null, headDescriptor?.valid ? headDescriptor.data : null, DESCRIPTOR_SCHEMA)
       const weakNote = weak.length ? ` — WEAKENING: ${weak.slice(0, 3).join('; ')}${weak.length > 3 ? ` (+${weak.length - 3} more)` : ''}` : ' (no posture axis weakened)'
       const jdgs = addedJudgments.filter(j => j.record && j.record.subject === DESCRIPTOR_FILE && j.record.review_by >= TODAY)
       if (!jdgs.length) {
         const near = addedJudgments.filter(j => j.record && j.record.subject !== DESCRIPTOR_FILE)
-        const hint = near.length ? ` (a judgment rode this range but its subject is '${near[0].record.subject}', not '${DESCRIPTOR_FILE}' — the matcher is the exact filename)` : ''
+        const hint = near.length ? ` (a judgment rode this range but its subject is '${near[0].record.subject}', not '${DESCRIPTOR_FILE}' — the matcher is the exact filename)` : jdgCapped ? ` (judgment parsing capped at 500 added records — a qualifying one beyond the cap does not count; shrink the range)` : ''
         return { ok: false, detail: `${DESCRIPTOR_FILE} changed with no same-range judgment${weakNote}${hint} — baseline jdg new --kind deviation --subject "${DESCRIPTOR_FILE}" --reason "why the posture changed" --review-by <date>, in this PR` }
       }
       return { ok: true, detail: `descriptor change carries ${jdgs[0].record.id} (subject ${DESCRIPTOR_FILE}, review by ${jdgs[0].record.review_by})${weakNote}` }
@@ -737,12 +740,13 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       // the target tip. The Baseline-Stacked-On trailer (whole-token ref match in the
       // admitted range) declares the stack and lifts the finding. Lands warn; M7 promotes.
       if (!ADMITWORLD) return { ok: null, detail: 'admit-context only (no target world assembled)' }
-      const { targetTip, sisters, stackedOn, mergeBase, sistersCapped } = ADMITWORLD
+      const { targetTip, headSha, sisters, stackedOn, mergeBase, sistersCapped } = ADMITWORLD
       const w = LANEWORLD()
       if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared — sister lanes underivable' }
       if (!sisters.length) return { ok: true, detail: 'no sister lanes known locally (as of the last fetch)' }
       const deps = [], declared = []
       for (const s of sisters) {
+        if (s.tip === headSha) continue // this PR's own lane seen under its remote-tracking name (a local branch-name mismatch is not a dependency)
         const mb = mergeBase('HEAD', s.tip)
         if (!mb) continue // no common history — unrelated lane
         if (gitIsAncestor(mb, targetTip) === 0) continue // shared history is already in the target

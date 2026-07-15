@@ -227,6 +227,7 @@
       "shallow": false
     },
     "jdgOnly": false,
+    "jdgRelief": null,
     "breakGlass": null,
     "refusals": [
       "DESC-03: baseline.repo.json changed with no same-range judgment — WEAKENING: workflow: 'multi-lane' → 'single-lane' (down-ladder); anchoring: 'strict' → 'off' (down-ladder) — baseline jdg new --kind deviation --subject \"baseline.repo.json\" --reason \"why the posture changed\" --review-by <date>, in this PR"
@@ -238,11 +239,11 @@
       "refusals": 1,
       "blockers": 1,
       "pass": 3,
-      "warn": 2,
+      "warn": 1,
       "diverged": 0,
       "signoff": 0,
       "skip": 8,
-      "total": 14
+      "total": 13
     },
     "rules": {
       "REC-01": {
@@ -272,10 +273,6 @@
       "FLOW-05": {
         "tag": "SKIP",
         "detail": "no committed session record on this lane yet — nothing to push"
-      },
-      "FLOW-06": {
-        "tag": "WARN",
-        "detail": "baseline.repo.json changed with no judgment record in the same range (DESC-03 preview)"
       },
       "FLOW-07": {
         "tag": "PASS",
@@ -314,6 +311,7 @@
       "shallow": false
     },
     "jdgOnly": true,
+    "jdgRelief": "JDG-0001",
     "breakGlass": null,
     "refusals": [],
     "target": {
@@ -326,8 +324,8 @@
       "warn": 1,
       "diverged": 0,
       "signoff": 0,
-      "skip": 7,
-      "total": 14
+      "skip": 6,
+      "total": 13
     },
     "rules": {
       "REC-01": {
@@ -357,10 +355,6 @@
       "FLOW-05": {
         "tag": "SKIP",
         "detail": "no committed session record on this lane yet — nothing to push"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "no gated subject changed on this branch"
       },
       "FLOW-07": {
         "tag": "PASS",
@@ -399,6 +393,7 @@
       "shallow": false
     },
     "jdgOnly": false,
+    "jdgRelief": null,
     "breakGlass": null,
     "refusals": [],
     "target": {
@@ -411,8 +406,8 @@
       "warn": 2,
       "diverged": 0,
       "signoff": 0,
-      "skip": 9,
-      "total": 14
+      "skip": 8,
+      "total": 13
     },
     "rules": {
       "REC-01": {
@@ -442,10 +437,6 @@
       "FLOW-05": {
         "tag": "SKIP",
         "detail": "no committed session record on this lane yet — nothing to push"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "no gated subject changed on this branch"
       },
       "FLOW-07": {
         "tag": "PASS",
@@ -484,6 +475,7 @@
       "shallow": false
     },
     "jdgOnly": false,
+    "jdgRelief": null,
     "breakGlass": null,
     "refusals": [
       "stale: origin/main @ <sha> is not an ancestor of HEAD — re-derive at an up-to-date SHA (merge/rebase the target, then rerun; the up-to-date branch-protection requirement is this refusal's forge-side twin)"
@@ -498,8 +490,8 @@
       "warn": 1,
       "diverged": 0,
       "signoff": 0,
-      "skip": 9,
-      "total": 14
+      "skip": 8,
+      "total": 13
     },
     "rules": {
       "REC-01": {
@@ -529,10 +521,6 @@
       "FLOW-05": {
         "tag": "SKIP",
         "detail": "no committed session record on this lane yet — nothing to push"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "no gated subject changed on this branch"
       },
       "FLOW-07": {
         "tag": "PASS",

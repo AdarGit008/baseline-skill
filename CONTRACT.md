@@ -113,11 +113,12 @@ on main via its own prior PR — it cannot ride inside the change it unblocks**
 (admit honors it from the TARGET ref only; one riding the incoming branch
 relieves nothing). It relieves **gating-source loss alone** — never staleness
 (data-plane truth: re-derive) and never DESC-03 (whose relief is its own
-same-PR judgment). The relief PR itself is always landable: a range that is
-nothing but schema-valid judgment additions carrying an unexpired
-`break-glass (gate: admit)` takes the **JDG-only admission path** — judged from
-tree+history alone, the forge closed and labeled, so the valve never depends on
-the plane whose loss it relieves. Solo-mode honesty: self-merge remains
+same-PR judgment). The relief PR is landable whenever tree+history facts are
+intact: a range that is nothing but schema-valid judgment additions carrying an
+unexpired `break-glass (gate: admit)` takes the **JDG-only admission path** —
+judged from tree+history alone, the forge closed and labeled, so the valve
+never depends on the forge plane whose loss it typically relieves. (A git-plane
+outage — no target, no history — falls to layer 0 below.) Solo-mode honesty: self-merge remains
 possible; the control is audit-visibility + expiry, not multi-party
 authorization.
 

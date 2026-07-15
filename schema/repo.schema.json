@@ -51,7 +51,7 @@
       "description": "Which ground-truth planes are authoritative and reachable (C29). Consumed by the capability probe and the target-ref policy.",
       "properties": {
         "forge": { "type": "string", "enum": ["github", "none"], "description": "Forge driver. 'none' = offline/at-rest only." },
-        "default_branch": { "type": "string", "description": "The target ref enforcing contexts read the descriptor from (FS1)." }
+        "default_branch": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\\s~^:?*\\[\\\\]+$", "description": "The target ref enforcing contexts read the descriptor from (FS1). Bounded like the lane globs: the value rides into git argv (origin/<branch>)." }
       }
     },
     "lanes": {

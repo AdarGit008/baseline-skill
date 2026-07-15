@@ -35,7 +35,7 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 - Hermes: `~/.hermes/skills/software-development/baseline`
 - Claude Code: `~/.claude/skills/baseline`
 
-The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`orient`, `check`, `lane`, `log`, `jdg`, `gen`, `scrub`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
+The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`check`, `admit`, `orient`, `lane`, `log`, `jdg`, `gen`, `scrub`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
 Co-located files: `baseline.mjs` (CLI entry: check / admit / orient / lane / log / jdg / gen / scrub), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 88 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook + pre-push scrub hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
 
@@ -68,10 +68,19 @@ node "$SKILL_DIR/baseline.mjs" lane claim <issue> --repo <target>
 
 ```bash
 node "$SKILL_DIR/baseline.mjs" lane reclaim <issue> --repo <target>
-node "$SKILL_DIR/baseline.mjs" admit --repo <target>          # merge-point revalidation (exit 1 = refused)
 ```
 
 - The takeover is an empty child commit under your agent trailer, pushed under an exact-value CAS — a lane that moved mid-reclaim (someone pushed, rewound, or deleted it) rejects and the tool tells you the truth (exit 3: it's active). A dated takeover record is machine-written through `baseline log`, and the issue gets a best-effort comment. **Never bypass the gate with a plain `git push`** — a LIVE lane belongs to its agent; if a live takeover is genuinely sanctioned (agent on leave), record a `deviation` judgment naming the lane and pass `--jdg <id>`.
+
+## Admitting a lane — before it merges (M6a)
+
+A verdict is valid only for the state it evaluated: before merging a lane, re-derive at the merge point —
+
+```bash
+node "$SKILL_DIR/baseline.mjs" admit --repo <target>
+```
+
+- Exit 0 = admitted (advisory warns ride the output); **exit 1 = refused** — the branch is stale against the target (merge/rebase it, rerun), a blocker fired (a descriptor change without its same-PR judgment — DESC-03), or a fact admit genuinely gates on was unreadable; exit 2 = environment (no target, no descriptor at the target). The TARGET branch's descriptor governs the run — editing the descriptor on your own branch changes nothing until it merges, and doing so at all requires a same-PR judgment with subject exactly `baseline.repo.json`.
 
 ## Recording — the last act
 

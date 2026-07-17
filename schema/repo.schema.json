@@ -25,7 +25,8 @@
     "maturity": {
       "type": "string",
       "enum": ["prototype", "claimed", "released"],
-      "description": "Discrete maturity tier. Gates scrutiny that rises with maturity — e.g. the CLAIM category activates at 'claimed'."
+      "x-strictness": ["prototype", "claimed", "released"],
+      "description": "Discrete maturity tier. Gates scrutiny that rises with maturity — e.g. the CLAIM category activates at 'claimed'. x-strictness (ascending) is DESC-03's weakening ladder: a down-move is a posture weakening (M6)."
     },
     "owner": {
       "type": "string",
@@ -35,12 +36,14 @@
     "workflow": {
       "type": "string",
       "enum": ["multi-lane", "single-lane", "multi-lane-local"],
-      "description": "Agent-workflow posture. multi-lane is the V2 default (any solo dev gets lanes); single-lane is the V1-equivalent readiness-only posture; multi-lane-local (CF5) is the reduced git-plane mode — claim and leases work from origin alone, the forge is never consulted, and forge-dependent rules SKIP with the posture named."
+      "x-strictness": ["single-lane", "multi-lane-local", "multi-lane"],
+      "description": "Agent-workflow posture. multi-lane is the V2 default (any solo dev gets lanes); single-lane is the V1-equivalent readiness-only posture; multi-lane-local (CF5) is the reduced git-plane mode — claim and leases work from origin alone, the forge is never consulted, and forge-dependent rules SKIP with the posture named. x-strictness (ascending) is DESC-03's weakening ladder (M6)."
     },
     "anchoring": {
       "type": "string",
       "enum": ["strict", "relaxed", "off"],
-      "description": "Anchoring strictness knob (C15). Orthogonal to workflow — a single-lane repo may still anchor."
+      "x-strictness": ["off", "relaxed", "strict"],
+      "description": "Anchoring strictness knob (C15). Orthogonal to workflow — a single-lane repo may still anchor. x-strictness (ascending) is DESC-03's weakening ladder (M6)."
     },
     "ground_truth_boundary": {
       "type": "object",
@@ -48,7 +51,7 @@
       "description": "Which ground-truth planes are authoritative and reachable (C29). Consumed by the capability probe and the target-ref policy.",
       "properties": {
         "forge": { "type": "string", "enum": ["github", "none"], "description": "Forge driver. 'none' = offline/at-rest only." },
-        "default_branch": { "type": "string", "description": "The target ref enforcing contexts read the descriptor from (FS1)." }
+        "default_branch": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\\s~^:?*\\[\\\\]+$", "description": "The target ref enforcing contexts read the descriptor from (FS1). Bounded like the lane globs: the value rides into git argv (origin/<branch>)." }
       }
     },
     "lanes": {

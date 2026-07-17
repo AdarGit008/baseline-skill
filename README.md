@@ -2,7 +2,7 @@
 
 The **`baseline`** skill for **Hermes** and **Claude Code** (and any agent that loads
 `SKILL.md`): a zero-dependency project-readiness checker packaged as an installable skill. It scores a repository
-against **86 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
+against **88 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
 operability, change governance, community, context/doc-drift, claims discipline,
 records & ledger, lane workflow, and divergence —
 [blockers](GLOSSARY.md#blocker) fail CI, judgment calls resolve via a dated [sign-off ledger](GLOSSARY.md#sign-off-ledger).
@@ -11,7 +11,7 @@ records & ledger, lane workflow, and divergence —
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/evaluate-stack-dark.svg">
-  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 86 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 36 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
+  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 88 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 38 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
 </picture>
 
 *How a repository becomes an exit code — the [full reference](REFERENCE.md) walks every layer.*
@@ -42,6 +42,7 @@ valid for Claude Code, so the one repo is native to both.
 ```bash
 node baseline.mjs --repo /path/to/repo          # score (the default command) — exit 1 on blockers
 node baseline.mjs --repo /path/to/repo --json   # machine output for CI
+node baseline.mjs admit --repo /path/to/repo    # merge-point revalidation — exit 1 = refused (stale / blocker)
 node baseline.mjs orient --repo /path/to/repo   # derived-state survey: lanes · backlog · divergence
 node baseline.mjs log -m "..." --next "..."     # write a scrubbed session record (the forensic tier)
 node baseline.mjs jdg check                     # evaluate the judgment ledger: tripwires · expiry · drift
@@ -61,7 +62,7 @@ node baseline.mjs scrub --pushed <sha>          # scan record content for secret
 | `check.mjs` | the checker (`baseline check` delegates here) |
 | `src/` | the runner's modules: repo · config · evaluators · engine · report · self-check · descriptor · probe · orient · rules · records · validate · scrub · log · jdg |
 | `test/` | golden corpus + orient/facts/records suites (`test/golden/run.mjs --verify`, `test/{orient,facts,records}/run.mjs`) — source repo only, not installed |
-| `rules.json` | the rule-set manifest (version, profiles, module list) — the 86 rules live in `rules/` |
+| `rules.json` | the rule-set manifest (version, profiles, module list) — the 88 rules live in `rules/` |
 | `rules/` | the rules, one module per category (build, test, ctx, … desc); M5+ families land as new files |
 | `schema/` | `repo.schema.json` (the descriptor) + `record.{session,judgment,claim,adr}.schema.json` (the Ledger's shapes) |
 | `config.example.json` | per-repo config (copy to `baseline.config.json`) |

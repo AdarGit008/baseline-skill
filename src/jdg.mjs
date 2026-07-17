@@ -48,6 +48,30 @@ export function loadJudgments(REPO) {
   return { records, findings }
 }
 
+// The judgments ledger AT A GIT REF (M6a) — same validation loop as loadJudgments,
+// reading committed blobs instead of the worktree. FS5's consumer: admit honors a
+// break-glass only from the TARGET ref (main) — a judgment riding the incoming branch
+// must never relieve the gate that judges that branch. reachable:false = the ref
+// itself did not resolve (callers surface that, never fold it into "no judgments");
+// a resolvable ref with no records/judgments/ is an honestly empty ledger.
+export function loadJudgmentsAt(REPO, ref) {
+  const out = run('git', ['-C', REPO, 'ls-tree', '--name-only', ref, JUDGMENTS_DIR + '/'])
+  if (out === null) return { records: [], findings: [], reachable: false }
+  const names = out.split('\n').map(s => s.trim()).filter(f => f.endsWith('.json')).sort()
+  const records = [], findings = []
+  for (const rel of names) {
+    const f = rel.split('/').pop()
+    const raw = run('git', ['-C', REPO, 'show', `${ref}:${rel}`])
+    let data
+    try { data = JSON.parse(raw) } catch { findings.push({ file: rel, error: 'not valid JSON' }); continue }
+    const errors = validateRecord('judgment', data)
+    if (errors.length) { findings.push({ file: rel, error: errors.slice(0, 3).join('; ') }); continue }
+    if (data.id !== f.replace(/\.json$/, '')) { findings.push({ file: rel, error: `id '${data.id}' does not match filename` }); continue }
+    records.push(data)
+  }
+  return { records, findings, reachable: true }
+}
+
 // The bridge's selection rule, one home: schema-VALID sign-offs only (a malformed
 // review_by must never read as signed-forever), newest per subject — date desc,
 // id desc on ties. The newest governs even if lapsed: a re-judgment supersedes;

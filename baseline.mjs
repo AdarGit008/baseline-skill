@@ -31,6 +31,9 @@ function delegateToCheck() {
 
 if (cmd === 'check') {
   delegateToCheck()
+} else if (cmd === 'admit') {
+  const { runAdmit } = await import('./src/admit.mjs')
+  process.exit(runAdmit(rest))
 } else if (cmd === 'orient') {
   const { runOrient } = await import('./src/orient.mjs')
   process.exit(await runOrient(rest))
@@ -53,6 +56,9 @@ if (cmd === 'check') {
   console.log(`baseline <command> [options]
 
   check [--repo DIR] [--json] [--no-exec] [--profile P]   score a repo (default)
+  admit [--repo DIR] [--target REF] [--json]              merge-point revalidation — a verdict is
+                                                          valid only for the state it evaluated
+                                                          (exit 1 = refused: stale/blocker/source-loss)
   orient [--repo DIR] [--json] [--strict]                 derived-state survey for session start
   lane claim <issue> [--agent A]                          claim a work lane: atomic branch creation
                                                           at origin (exit 3 = already claimed)
@@ -71,6 +77,6 @@ if (cmd === 'check') {
   Run \`baseline\` with no command (or a leading --flag) to score, e.g. \`baseline --repo .\`.`)
   process.exit(0)
 } else {
-  console.error(`baseline: unknown command '${cmd}' (try: check, orient, lane, log, jdg, gen, scrub, help)`)
+  console.error(`baseline: unknown command '${cmd}' (try: check, admit, orient, lane, log, jdg, gen, scrub, help)`)
   process.exit(2)
 }

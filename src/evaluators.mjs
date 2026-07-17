@@ -1,11 +1,12 @@
-// The ~36 declarative check kinds. makeEvalCheck(ctx) closes over the repo index,
+// The ~38 declarative check kinds. makeEvalCheck(ctx) closes over the repo index,
 // resolved config, and run flags; evalCheck(c, rule) -> {ok:true|false|null, detail, soft?, signoff?}.
 // ok:null means "not evaluable here" and always tags SKIP — one broken rule can't take down the run.
 import path from 'node:path'
 import fs from 'node:fs'
 import { execSync } from 'node:child_process'
 import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE, nowUTC, globToRe, issueOf, refs as issueRefs, closes as issueCloses } from './util.mjs'
-import { DESCRIPTOR_FILE } from './descriptor.mjs'
+import { DESCRIPTOR_FILE, DESCRIPTOR_SCHEMA } from './descriptor.mjs'
+import { classifyPostureDiff } from './derive/posture.mjs'
 import { scan, loadAllowlist } from './scrub.mjs'
 import { loadClaims, CLAIM_RECORD_GLOB } from './claims.mjs'
 import { extractNext } from './facts/git.mjs'
@@ -14,9 +15,9 @@ import { deriveDivergence } from './derive/divergence.mjs'
 const DIV_REF_CAP = 20 // a hostile next: line with dozens of #N must not fan out a forge query each
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'records-append-only', 'records-scrub', 'records-one-home', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'records-append-only', 'records-scrub', 'records-one-home', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'descriptor-change', 'merge-sister-dep'])
 
-export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null }) {
+export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
   const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile } = repo
   // The lane rules diff against where the branch diverged: the descriptor-declared
   // default branch, preferring whichever of local/origin twin is NEWER (a stale
@@ -700,6 +701,61 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       return hits.length
         ? { ok: false, diverged: true, detail: `${hits.slice(0, 3).map(h => h.text).join('; ')}${hits.length > 3 ? ` (+${hits.length - 3})` : ''} — done-with-nothing-merged; retarget the PR or close it` }
         : { ok: true, detail: `${prs.length} open PR(s), none closes an already-closed issue` }
+    }
+
+    // ---- M6a admit-context kinds — both read through ADMITWORLD (the target-ref
+    // world `baseline admit` assembles: target tip, range diff, added judgments,
+    // sister lane refs). In any run without an ADMITWORLD they are unrepresentable
+    // (contexts gating excludes them from check), and the guard keeps that honest. ----
+
+    if (k === 'descriptor-change') {
+      // DESC-03: a descriptor change in the admitted range carries its judgment in the
+      // SAME range — subject exactly the descriptor filename (ONE spelling, the one
+      // constant the tool owns; CONTRACT.md, FLOW-06's fix, and the jdg hint all emit
+      // it). Deterministic: diff names + record subjects; the weakening classification
+      // (x-strictness ladders + gate-consumed set-rules) rides the finding text — it is
+      // M7's per-axis policy seam, not this verdict's fork.
+      if (!ADMITWORLD) return { ok: null, detail: 'admit-context only (no target world assembled)' }
+      const { targetRef, changed, addedJudgments, headDescriptor, jdgCapped } = ADMITWORLD
+      if (changed === null) return { ok: null, detail: `diff ${targetRef}...HEAD failed — change scope unreadable (admit refuses on this as gating-source loss)` }
+      // belt over the no-renames diff: a descriptor ABSENT at HEAD while the target has
+      // a valid one IS a change, however the diff spelled it
+      const touched = changed.includes(DESCRIPTOR_FILE) || !headDescriptor?.present
+      if (!touched) return { ok: true, detail: `descriptor untouched in ${targetRef}...HEAD` }
+      const weak = classifyPostureDiff(DESCRIPTOR?.valid ? DESCRIPTOR.data : null, headDescriptor?.valid ? headDescriptor.data : null, DESCRIPTOR_SCHEMA)
+      const weakNote = weak.length ? ` — WEAKENING: ${weak.slice(0, 3).join('; ')}${weak.length > 3 ? ` (+${weak.length - 3} more)` : ''}` : ' (no posture axis weakened)'
+      const jdgs = addedJudgments.filter(j => j.record && j.record.subject === DESCRIPTOR_FILE && j.record.review_by >= TODAY)
+      if (!jdgs.length) {
+        const near = addedJudgments.filter(j => j.record && j.record.subject !== DESCRIPTOR_FILE)
+        const hint = near.length ? ` (a judgment rode this range but its subject is '${near[0].record.subject}', not '${DESCRIPTOR_FILE}' — the matcher is the exact filename)` : jdgCapped ? ` (judgment parsing capped at 500 added records — a qualifying one beyond the cap does not count; shrink the range)` : ''
+        return { ok: false, detail: `${DESCRIPTOR_FILE} changed with no same-range judgment${weakNote}${hint} — baseline jdg new --kind deviation --subject "${DESCRIPTOR_FILE}" --reason "why the posture changed" --review-by <date>, in this PR` }
+      }
+      return { ok: true, detail: `descriptor change carries ${jdgs[0].record.id} (subject ${DESCRIPTOR_FILE}, review by ${jdgs[0].record.review_by})${weakNote}` }
+    }
+
+    if (k === 'merge-sister-dep') {
+      // MERGE-02: a lane admitted atop ANOTHER lane's unmerged commits depends on work
+      // that may never land (C32). Deterministic from the git plane alone: sister =
+      // a local remote-tracking lane ref whose shared history with HEAD reaches past
+      // the target tip. The Baseline-Stacked-On trailer (whole-token ref match in the
+      // admitted range) declares the stack and lifts the finding. Lands warn; M7 promotes.
+      if (!ADMITWORLD) return { ok: null, detail: 'admit-context only (no target world assembled)' }
+      const { targetTip, headSha, sisters, stackedOn, mergeBase, sistersCapped } = ADMITWORLD
+      const w = LANEWORLD()
+      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared — sister lanes underivable' }
+      if (!sisters.length) return { ok: true, detail: 'no sister lanes known locally (as of the last fetch)' }
+      const deps = [], declared = []
+      for (const s of sisters) {
+        if (s.tip === headSha) continue // this PR's own lane seen under its remote-tracking name (a local branch-name mismatch is not a dependency)
+        const mb = mergeBase('HEAD', s.tip)
+        if (!mb) continue // no common history — unrelated lane
+        if (gitIsAncestor(mb, targetTip) === 0) continue // shared history is already in the target
+        ;(stackedOn.includes(s.ref) ? declared : deps).push(s.ref)
+      }
+      const capNote = sistersCapped ? ' (sister list capped at 100)' : ''
+      if (deps.length) return { ok: false, detail: `HEAD contains unmerged commits from ${deps.join(', ')}${capNote} — land/rebase first, or declare the stack: trailer 'Baseline-Stacked-On: ${deps[0]}'` }
+      if (declared.length) return { ok: true, detail: `stacked on ${declared.join(', ')} — declared via Baseline-Stacked-On${capNote}` }
+      return { ok: true, detail: `no unmerged sister-lane dependencies (${sisters.length} sister(s) checked)${capNote}` }
     }
 
     return { ok: null, detail: 'unknown check kind: ' + k }

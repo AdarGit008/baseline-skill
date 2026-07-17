@@ -159,16 +159,15 @@
       "branch_scope": "lane",
       "source": "https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions",
       "lesson": "CF9 — C14 same-PR atomicity was enforced for sessions only; the descriptor is V2's largest stored intent (DESC-03's blocker enforcement lands at M6 admit)",
-      "rationale": "A descriptor change is a posture change — the judgment saying why belongs in the same range, not a follow-up promise. Heuristic (subject→record mapping is a convention), so warn is its ceiling (C07).",
-      "fix": "Add the corresponding record to this branch — for baseline.repo.json changes: baseline jdg new --kind deviation --subject \"descriptor change\" --reason \"...\" --review-by <date>.",
+      "rationale": "A descriptor change is a posture change — the judgment saying why belongs in the same range, not a follow-up promise. Heuristic (subject→record mapping is a convention), so warn is its ceiling (C07). Check-context only since M6a: DESC-03 owns the same predicate at admit (disjoint contexts — one predicate judged once per run).",
+      "fix": "Add the corresponding record to this branch — for baseline.repo.json changes: baseline jdg new --kind deviation --subject \"baseline.repo.json\" --reason \"...\" --review-by <date>.",
       "sources": [
         "tree",
         "history"
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check",
-        "admit"
+        "check"
       ],
       "certainty": "heuristic",
       "check": {

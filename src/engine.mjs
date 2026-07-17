@@ -5,9 +5,15 @@
 // declares `workflow` / `branch_scope`), so "no wallpaper warns" is structural:
 // a lane rule is unrepresentable as a finding on a single-lane repo or on the
 // default branch — it never runs there.
-export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIPTOR = null, BRANCH = null, DEFAULT_BRANCH = null, CLAIMS_REASON = null }) {
+export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIPTOR = null, BRANCH = null, DEFAULT_BRANCH = null, CLAIMS_REASON = null, context = 'check' }) {
   const results = []
   for (const r of rules) {
+    // M6a: context-gated execution — the first real consumer of rule `contexts`. A rule
+    // outside the run's context is EXCLUDED (no row), never a SKIP: a "wrong context" row
+    // on every check run would be the exact wallpaper class the other gates exist to kill.
+    // Every pre-M6 rule declares 'check' (selfcheck enforces non-empty contexts), so
+    // check-context output is byte-identical at rest — the gate re-pins nothing.
+    if (!Array.isArray(r.contexts) || !r.contexts.includes(context)) continue
     if (r.applies_to && r.applies_to !== 'all' && !r.applies_to.includes(cfg.project_type)) { results.push({ r, tag: 'SKIP', detail: `n/a for ${cfg.project_type}` }); continue }
     if (r.profile && !ACTIVE.has(r.profile)) { results.push({ r, tag: 'SKIP', detail: `profile '${r.profile}' off` }); continue }
     if (r.requires === 'makes_external_claims') { if (!CLAIMS_ACTIVE) { results.push({ r, tag: 'SKIP', detail: CLAIMS_REASON || 'claims opt-in (no register; set makes_external_claims:true to enable)' }); continue } }

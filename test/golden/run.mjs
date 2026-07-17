@@ -36,7 +36,7 @@ const GIT_ENV = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOS
 // not silently drift the pins the checker subprocess derives — or, under --capture, bless
 // wrong ones. Strip them from the inherited env; the harness re-injects BASELINE_FORGE_REPLAY
 // per-manifest exactly where a fixture wants it. (BASELINE_GOLDEN_CHECK stays a real knob.)
-for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT']) delete GIT_ENV[k]
+for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'GITHUB_HEAD_REF']) delete GIT_ENV[k]
 // Override the runner under test (e.g. point at a pristine V1 monolith to prove a
 // candidate runner reproduces the same pins): BASELINE_GOLDEN_CHECK=/path/check.mjs
 const CHECK_UNDER_TEST = process.env.BASELINE_GOLDEN_CHECK || CHECK
@@ -123,8 +123,18 @@ function materializeInto(name, src, manifest, tmp, extra) {
     git(tmp, 'add', '-A')
     git(tmp, 'commit', '-q', '-m', 'fixture: stamp advance')
   }
+  // manifest.branches (M6a): ORDERED branches created before the current one — each
+  // checks out from the PREVIOUS tip, so a later entry (or manifest.branch itself)
+  // stacks on an earlier sister (MERGE-02's shape).
+  for (const b of manifest.branches || []) {
+    git(tmp, 'checkout', '-q', '-b', b.name)
+    fs.writeFileSync(path.join(tmp, b.file || `${b.name.replace(/\W+/g, '-')}.txt`), b.content || `${b.name}\n`)
+    git(tmp, 'add', '-A')
+    git(tmp, 'commit', '-q', '-m', b.message || `fixture: ${b.name} work`)
+  }
   // manifest.branch: check out a lane branch and commit the fixture's _branch/ overlay
   // there — the FLOW/REC lane rules only evaluate off the default branch (M4c).
+  // branch_message (M6a) controls the commit message — trailers ride fixtures too.
   if (manifest.branch) {
     git(tmp, 'checkout', '-q', '-b', manifest.branch)
     const bsrc = path.join(src, '_branch')
@@ -132,8 +142,18 @@ function materializeInto(name, src, manifest, tmp, extra) {
       copyTree(bsrc, tmp)
       substitute(tmp, '{{TODAY}}', TODAY)
       git(tmp, 'add', '-A')
-      git(tmp, 'commit', '-q', '-m', 'fixture: lane work')
+      git(tmp, 'commit', '-q', '-m', manifest.branch_message || 'fixture: lane work')
     }
+  }
+  // manifest.main_advance (M6a): the target moves AFTER the branch diverged — the
+  // C35 staleness shape `baseline admit` refuses until re-derived.
+  if (manifest.main_advance) {
+    const back = manifest.branch || 'main'
+    git(tmp, 'checkout', '-q', 'main')
+    fs.writeFileSync(path.join(tmp, 'ADVANCED.md'), 'the target moved after this branch diverged\n')
+    git(tmp, 'add', '-A')
+    git(tmp, 'commit', '-q', '-m', 'fixture: main advances')
+    git(tmp, 'checkout', '-q', back)
   }
   // manifest.bare_origin (M5c): a LOCAL bare origin so origin-coupled rules (FLOW-05's
   // push discipline, FLOW-07's git-plane lease fallback) evaluate — the push also lands
@@ -155,7 +175,7 @@ function materializeInto(name, src, manifest, tmp, extra) {
     copyTree(fsrc, fdst)
     env.BASELINE_FORGE_REPLAY = fdst
   }
-  return { tmp, args: manifest.args || [], env, extra }
+  return { tmp, args: manifest.args || [], env, extra, manifest }
 }
 
 function runChecker(tmp, args, env = {}) {
@@ -166,9 +186,33 @@ function runChecker(tmp, args, env = {}) {
   }
 }
 
-function score(name) {
-  const { tmp, args, env, extra } = materialize(name)
+// M6a: fixtures may pin OTHER baseline commands (manifest.command: 'admit') — these run
+// through baseline.mjs, not check.mjs, so BASELINE_GOLDEN_CHECK stays a check-only knob.
+const BASELINE_CLI = path.join(REPO_ROOT, 'baseline.mjs')
+function runCommand(tmp, command, args, env = {}) {
   try {
+    return { stdout: execFileSync(process.execPath, [BASELINE_CLI, command, '--repo', tmp, '--json', ...args], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...GIT_ENV, ...env } }).toString(), exitCode: 0 }
+  } catch (e) {
+    return { stdout: e.stdout ? e.stdout.toString() : '', exitCode: e.status ?? 1 }
+  }
+}
+
+function score(name) {
+  const { tmp, args, env, extra, manifest } = materialize(name)
+  try {
+    if (manifest.command === 'admit') {
+      const { stdout, exitCode } = runCommand(tmp, 'admit', args, env)
+      let out
+      try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: admit did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }
+      const rules = {}
+      for (const r of out.results) rules[r.id] = { tag: r.tag, detail: normalizeDetail(r.detail, tmp) }
+      return {
+        exitCode, command: 'admit', verdict: out.verdict, staleness: out.staleness,
+        jdgOnly: out.jdgOnly, jdgRelief: out.jdgRelief ?? null, breakGlass: out.breakGlass ? { id: out.breakGlass.id } : null,
+        refusals: (out.refusals || []).map(s => normalizeDetail(s, tmp)),
+        target: { ref: out.target?.ref }, summary: out.summary, rules,
+      }
+    }
     const { stdout, exitCode } = runChecker(tmp, ['--json', ...args], env)
     let out
     try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: checker did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }

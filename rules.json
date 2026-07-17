@@ -27,6 +27,7 @@
     "rules/ops.json",
     "rules/rec.json",
     "rules/flow.json",
+    "rules/merge.json",
     "rules/div.json",
     "rules/desc.json"
   ]

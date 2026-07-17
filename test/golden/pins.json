@@ -216,6 +216,338 @@
       ""
     ]
   },
+  "admit-desc-weaken": {
+    "exitCode": 1,
+    "command": "admit",
+    "verdict": "REFUSED",
+    "staleness": {
+      "ancestor": true,
+      "stale": false,
+      "indeterminate": false,
+      "shallow": false
+    },
+    "jdgOnly": false,
+    "jdgRelief": null,
+    "breakGlass": null,
+    "refusals": [
+      "DESC-03: baseline.repo.json changed with no same-range judgment — WEAKENING: workflow: 'multi-lane' → 'single-lane' (down-ladder); anchoring: 'strict' → 'off' (down-ladder) — baseline jdg new --kind deviation --subject \"baseline.repo.json\" --reason \"why the posture changed\" --review-by <date>, in this PR"
+    ],
+    "target": {
+      "ref": "origin/main"
+    },
+    "summary": {
+      "refusals": 1,
+      "blockers": 1,
+      "pass": 3,
+      "warn": 1,
+      "diverged": 0,
+      "signoff": 0,
+      "skip": 8,
+      "total": 13
+    },
+    "rules": {
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "no committed records under records/ yet"
+      },
+      "REC-02": {
+        "tag": "SKIP",
+        "detail": "no committed records to scan"
+      },
+      "FLOW-01": {
+        "tag": "SKIP",
+        "detail": "anchor #7 unverifiable (<forge unreachable>) — strict anchoring not provable"
+      },
+      "FLOW-02": {
+        "tag": "WARN",
+        "detail": "no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\""
+      },
+      "FLOW-03": {
+        "tag": "SKIP",
+        "detail": "no committed session record on this lane yet (absence is FLOW-02's)"
+      },
+      "FLOW-04": {
+        "tag": "PASS",
+        "detail": "'lane/7' sits in declared family 'lane/*'"
+      },
+      "FLOW-05": {
+        "tag": "SKIP",
+        "detail": "no committed session record on this lane yet — nothing to push"
+      },
+      "FLOW-07": {
+        "tag": "PASS",
+        "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
+      },
+      "MERGE-02": {
+        "tag": "PASS",
+        "detail": "no sister lanes known locally (as of the last fetch)"
+      },
+      "DIV-01": {
+        "tag": "SKIP",
+        "detail": "anchor #7 state unknown (<forge unreachable>) — divergence not provable"
+      },
+      "DIV-02": {
+        "tag": "SKIP",
+        "detail": "no committed next: on this lane (FLOW-02/03's territory)"
+      },
+      "DIV-03": {
+        "tag": "SKIP",
+        "detail": "<forge unreachable> — PR closures unreadable"
+      },
+      "DESC-03": {
+        "tag": "FAIL",
+        "detail": "baseline.repo.json changed with no same-range judgment — WEAKENING: workflow: 'multi-lane' → 'single-lane' (down-ladder); anchoring: 'strict' → 'off' (down-ladder) — baseline jdg new --kind deviation --subject \"baseline.repo.json\" --reason \"why the posture changed\" --review-by <date>, in this PR"
+      }
+    }
+  },
+  "admit-jdg-only": {
+    "exitCode": 0,
+    "command": "admit",
+    "verdict": "ADMITTED",
+    "staleness": {
+      "ancestor": true,
+      "stale": false,
+      "indeterminate": false,
+      "shallow": false
+    },
+    "jdgOnly": true,
+    "jdgRelief": "JDG-0001",
+    "breakGlass": null,
+    "refusals": [],
+    "target": {
+      "ref": "origin/main"
+    },
+    "summary": {
+      "refusals": 0,
+      "blockers": 0,
+      "pass": 6,
+      "warn": 1,
+      "diverged": 0,
+      "signoff": 0,
+      "skip": 6,
+      "total": 13
+    },
+    "rules": {
+      "REC-01": {
+        "tag": "PASS",
+        "detail": "1 record(s), history append-only"
+      },
+      "REC-02": {
+        "tag": "PASS",
+        "detail": "1 record(s) scrub-clean at HEAD"
+      },
+      "FLOW-01": {
+        "tag": "SKIP",
+        "detail": "anchor #7 unverifiable (forge not consulted (JDG-only admission path)) — strict anchoring not provable"
+      },
+      "FLOW-02": {
+        "tag": "WARN",
+        "detail": "no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\""
+      },
+      "FLOW-03": {
+        "tag": "SKIP",
+        "detail": "no committed session record on this lane yet (absence is FLOW-02's)"
+      },
+      "FLOW-04": {
+        "tag": "PASS",
+        "detail": "'lane/7' sits in declared family 'lane/*'"
+      },
+      "FLOW-05": {
+        "tag": "SKIP",
+        "detail": "no committed session record on this lane yet — nothing to push"
+      },
+      "FLOW-07": {
+        "tag": "PASS",
+        "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
+      },
+      "MERGE-02": {
+        "tag": "PASS",
+        "detail": "no sister lanes known locally (as of the last fetch)"
+      },
+      "DIV-01": {
+        "tag": "SKIP",
+        "detail": "anchor #7 state unknown (forge not consulted (JDG-only admission path)) — divergence not provable"
+      },
+      "DIV-02": {
+        "tag": "SKIP",
+        "detail": "no committed next: on this lane (FLOW-02/03's territory)"
+      },
+      "DIV-03": {
+        "tag": "SKIP",
+        "detail": "forge not consulted (JDG-only admission path) — PR closures unreadable"
+      },
+      "DESC-03": {
+        "tag": "PASS",
+        "detail": "descriptor untouched in origin/main...HEAD"
+      }
+    }
+  },
+  "admit-sister-dep": {
+    "exitCode": 0,
+    "command": "admit",
+    "verdict": "ADMITTED",
+    "staleness": {
+      "ancestor": true,
+      "stale": false,
+      "indeterminate": false,
+      "shallow": false
+    },
+    "jdgOnly": false,
+    "jdgRelief": null,
+    "breakGlass": null,
+    "refusals": [],
+    "target": {
+      "ref": "origin/main"
+    },
+    "summary": {
+      "refusals": 0,
+      "blockers": 0,
+      "pass": 3,
+      "warn": 2,
+      "diverged": 0,
+      "signoff": 0,
+      "skip": 8,
+      "total": 13
+    },
+    "rules": {
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "no committed records under records/ yet"
+      },
+      "REC-02": {
+        "tag": "SKIP",
+        "detail": "no committed records to scan"
+      },
+      "FLOW-01": {
+        "tag": "SKIP",
+        "detail": "anchor #8 unverifiable (<forge unreachable>) — strict anchoring not provable"
+      },
+      "FLOW-02": {
+        "tag": "WARN",
+        "detail": "no session record for lane 'lane/8' — write one: baseline log -m \"...\" --next \"...\""
+      },
+      "FLOW-03": {
+        "tag": "SKIP",
+        "detail": "no committed session record on this lane yet (absence is FLOW-02's)"
+      },
+      "FLOW-04": {
+        "tag": "PASS",
+        "detail": "'lane/8' sits in declared family 'lane/*'"
+      },
+      "FLOW-05": {
+        "tag": "SKIP",
+        "detail": "no committed session record on this lane yet — nothing to push"
+      },
+      "FLOW-07": {
+        "tag": "PASS",
+        "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
+      },
+      "MERGE-02": {
+        "tag": "WARN",
+        "detail": "HEAD contains unmerged commits from lane/9 — land/rebase first, or declare the stack: trailer 'Baseline-Stacked-On: lane/9'"
+      },
+      "DIV-01": {
+        "tag": "SKIP",
+        "detail": "anchor #8 state unknown (<forge unreachable>) — divergence not provable"
+      },
+      "DIV-02": {
+        "tag": "SKIP",
+        "detail": "no committed next: on this lane (FLOW-02/03's territory)"
+      },
+      "DIV-03": {
+        "tag": "SKIP",
+        "detail": "<forge unreachable> — PR closures unreadable"
+      },
+      "DESC-03": {
+        "tag": "PASS",
+        "detail": "descriptor untouched in origin/main...HEAD"
+      }
+    }
+  },
+  "admit-stale": {
+    "exitCode": 1,
+    "command": "admit",
+    "verdict": "REFUSED",
+    "staleness": {
+      "ancestor": false,
+      "stale": true,
+      "indeterminate": false,
+      "shallow": false
+    },
+    "jdgOnly": false,
+    "jdgRelief": null,
+    "breakGlass": null,
+    "refusals": [
+      "stale: origin/main @ <sha> is not an ancestor of HEAD — re-derive at an up-to-date SHA (merge/rebase the target, then rerun; the up-to-date branch-protection requirement is this refusal's forge-side twin)"
+    ],
+    "target": {
+      "ref": "origin/main"
+    },
+    "summary": {
+      "refusals": 1,
+      "blockers": 0,
+      "pass": 4,
+      "warn": 1,
+      "diverged": 0,
+      "signoff": 0,
+      "skip": 8,
+      "total": 13
+    },
+    "rules": {
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "no committed records under records/ yet"
+      },
+      "REC-02": {
+        "tag": "SKIP",
+        "detail": "no committed records to scan"
+      },
+      "FLOW-01": {
+        "tag": "SKIP",
+        "detail": "anchor #7 unverifiable (<forge unreachable>) — strict anchoring not provable"
+      },
+      "FLOW-02": {
+        "tag": "WARN",
+        "detail": "no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\""
+      },
+      "FLOW-03": {
+        "tag": "SKIP",
+        "detail": "no committed session record on this lane yet (absence is FLOW-02's)"
+      },
+      "FLOW-04": {
+        "tag": "PASS",
+        "detail": "'lane/7' sits in declared family 'lane/*'"
+      },
+      "FLOW-05": {
+        "tag": "SKIP",
+        "detail": "no committed session record on this lane yet — nothing to push"
+      },
+      "FLOW-07": {
+        "tag": "PASS",
+        "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
+      },
+      "MERGE-02": {
+        "tag": "PASS",
+        "detail": "no sister lanes known locally (as of the last fetch)"
+      },
+      "DIV-01": {
+        "tag": "SKIP",
+        "detail": "anchor #7 state unknown (<forge unreachable>) — divergence not provable"
+      },
+      "DIV-02": {
+        "tag": "SKIP",
+        "detail": "no committed next: on this lane (FLOW-02/03's territory)"
+      },
+      "DIV-03": {
+        "tag": "SKIP",
+        "detail": "<forge unreachable> — PR closures unreadable"
+      },
+      "DESC-03": {
+        "tag": "PASS",
+        "detail": "descriptor untouched in origin/main...HEAD"
+      }
+    }
+  },
   "claims-repo": {
     "exitCode": 1,
     "project_type": "docs",

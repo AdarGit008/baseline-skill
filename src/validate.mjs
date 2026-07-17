@@ -4,6 +4,7 @@
 // pattern, minLength, required, additionalProperties:false, nested properties, array
 // items. Messages are input-derived only (no paths/dates) so golden pins stay stable.
 // Keys prefixed with _ are inline notes and are ignored (the config-file convention).
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k)
 function matchesType(v, t) {
   switch (t) {
     case 'object':  return v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -36,7 +37,9 @@ export function validateAgainst(value, schema, where, errors) {
     for (const req of (schema.required || [])) if (!(req in value)) errors.push(`${where ? where + ': ' : ''}missing required field '${req}'`)
     for (const k of Object.keys(value)) {
       if (k.startsWith('_')) continue // inline comment keys, ignored (matches the config-file convention)
-      if (!(k in props)) { if (schema.additionalProperties === false) errors.push(`'${childPath(where, k)}' is not a known field`); continue }
+      // hasOwn, not `in`: a field named __proto__/constructor/toString would match the
+      // prototype chain and read as "known", skipping the unknown-field error entirely
+      if (!hasOwn(props, k)) { if (schema.additionalProperties === false) errors.push(`'${childPath(where, k)}' is not a known field`); continue }
       validateAgainst(value[k], props[k], childPath(where, k), errors)
     }
   }

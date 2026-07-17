@@ -11,12 +11,15 @@ import path from 'node:path'
 import { gh, ghJson } from '../probe.mjs'
 import { cacheWrite } from '../cache.mjs'
 
-export function makeForge(repo, { available = false, nwo = null, posture = null, probeReason = null } = {}) {
+export function makeForge(repo, { available = false, nwo = null, posture = null, probeReason = null, closedReason = null } = {}) {
   // CF5: a multi-lane-local posture CLOSES the forge — and replay must not reopen it,
   // or fixtures would derive from consultations the posture promises never happen.
   // One home for the closure + its reason string; every surface (claim now, leases/
   // rules at M5b/M5c) inherits the same honest label instead of hand-rolling the gate.
-  const CLOSED = posture === 'multi-lane-local'
+  // M6a: closedReason is the same one-home closure for NON-posture closures — the
+  // JDG-only admission path promises the run depends on no forge plane, so replay
+  // must not reopen it either.
+  const CLOSED = closedReason != null || posture === 'multi-lane-local'
   const REPLAY = process.env.BASELINE_FORGE_REPLAY || null
   const RECORD = process.env.BASELINE_FORGE_RECORD || null
   const memo = new Map()
@@ -48,7 +51,7 @@ export function makeForge(repo, { available = false, nwo = null, posture = null,
     available: isAvail(),
     source: CLOSED ? 'posture' : REPLAY ? 'replay' : 'forge',
     // the probe's specific cause wins over the generic label when the caller threaded one
-    reason: isAvail() ? null : CLOSED ? 'forge not consulted (multi-lane-local posture)' : (probeReason || 'forge unreachable'),
+    reason: isAvail() ? null : CLOSED ? (closedReason || 'forge not consulted (multi-lane-local posture)') : (probeReason || 'forge unreachable'),
     prsOpen() { return isAvail() ? (q('prs-open', ['pr', 'list', '--state', 'open', '--json', 'number,title,headRefName,isDraft,updatedAt,body', '--limit', '50']) || []) : [] },
     // null-honest variant: a null (the gh query FAILED after the probe said available)
     // must not coalesce to [] and let a rule assert "no open PRs" as fact — the caller

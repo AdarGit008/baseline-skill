@@ -29,7 +29,7 @@ const tmps = []
 
 const GITENV = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 'Rec Tester', GIT_AUTHOR_EMAIL: 'rec@test.invalid', GIT_COMMITTER_NAME: 'Rec Tester', GIT_COMMITTER_EMAIL: 'rec@test.invalid' }
 const CLEAN_ENV = { ...process.env }
-for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'GITHUB_HEAD_REF']) delete CLEAN_ENV[k]
+for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'BASELINE_GOV_ADMIN', 'GITHUB_HEAD_REF']) delete CLEAN_ENV[k]
 const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...CLEAN_ENV, ...GITENV } }).trim()
 const cli = (cwd, args, env = {}) => spawnSync(process.execPath, [BASELINE, ...args], { cwd, encoding: 'utf8', env: { ...CLEAN_ENV, ...GITENV, ...env } })
 const recJson = (cwd, args = [], env = {}) => {
@@ -115,6 +115,18 @@ console.log('\n# reconcile — pure core\n')
   const fj = F('JDG-0009', 's', 'aaaaaaaaaaaa', true)
   ok(acts({ present: [fj], cleared: new Set(), issues: parseManaged([issue(1, 'closed', fj.key, 'aaaaaaaaaaaa')]) }).join() === `reopen:${fj.key}`, 'lifecycle: deterministic-integrity class reopens over a human close')
 
+  // a schema-valid subject with a lone surrogate must never crash the cron
+  let surKey = null
+  try { surKey = findingKey('JDG-0002', '\ud800 lone surrogate') } catch {}
+  ok(typeof surKey === 'string' && surKey === findingKey('JDG-0002', '\ud800 lone surrogate'), 'findingKey: total + stable over a lone surrogate')
+
+  // human REOPEN of a bot-closed issue: the clear must not re-close (no close-war)
+  ok(acts({ present: [], cleared: new Set([f1.key]), issues: parseManaged([issue(1, 'open', f1.key, 'aaaaaaaaaaaa', { botClosed: true })]) }).length === 0, 'lifecycle: human reopen (bot-closed stamp on an OPEN issue) → no close-war')
+
+  // rollup drains: overflow empty + open rollup → close
+  const rollKey = findingKey('rollup', 'main')
+  ok(acts({ present: [], cleared: new Set(), issues: parseManaged([issue(9, 'open', rollKey, 'abcdefabcdef')]) }).join() === `close:${rollKey}`, 'rollup: overflow drained → the rollup itself closes')
+
   // cap + rollup + truncation
   const many = Array.from({ length: 12 }, (_, i) => F('JDG-' + String(i).padStart(4, '0'), 's' + i, 'aaaaaaaaaaaa', true))
   const capped = deriveLifecycle({ present: many, cleared: new Set(), issues: [], branch: 'main', sha: 'deadbeefcafe' })
@@ -149,6 +161,15 @@ console.log('\n# mutation channel — replay assert-plan\n')
     ok(!r3.ok && r3.replayMismatch, 'replay: unrecorded extra write → mismatch')
     const fc = makeForge({ REPO: dir }, { available: true, nwo: 'o/r', posture: 'multi-lane-local' })
     ok(!fc.mutate({ action: 'file', key: 'k' }, ['api']).ok, 'closed forge: mutations refused in every mode')
+    // argv negative: SAME plan, different invocation → mismatch (the ghArgs guard is live)
+    fs.writeFileSync(path.join(replay, 'mut-000.json'), JSON.stringify({ plan: { action: 'file', key: 'k' }, ghArgs: ['api', 'x', 'body=at <sha>'], result: { number: 5 } }))
+    const f4 = makeForge({ REPO: dir }, { available: true, nwo: 'o/r' })
+    const r4 = f4.mutate({ action: 'file', key: 'k' }, ['api', 'DIFFERENT', 'body=at deadbee'])
+    ok(!r4.ok && r4.replayMismatch, 'replay: same plan, different argv → mismatch (invocation is asserted)')
+    // repo identity is ambient: recorded repos/<nwo> matches any live owner/repo
+    fs.writeFileSync(path.join(replay, 'mut-000.json'), JSON.stringify({ plan: { action: 'file', key: 'k' }, ghArgs: ['api', 'repos/<nwo>/issues', 'body=at <sha>'], result: { number: 5 } }))
+    const f5 = makeForge({ REPO: dir }, { available: true, nwo: 'o/r' })
+    ok(f5.mutate({ action: 'file', key: 'k' }, ['api', 'repos/real-owner/real-repo/issues', 'body=at deadbee']).ok, 'replay: repos/<owner>/<repo> collapses — identity is ambient, endpoint shape is intent')
   } finally { delete process.env.BASELINE_FORGE_REPLAY }
 }
 
@@ -201,7 +222,17 @@ console.log('\n# integration — sweep, lifecycle, exits (replay forge)\n')
   mut(w, 1, { plan: { action: 'file', key, title: `[baseline] JDG-0001: judgment expired: JDG-0001 (deviation)` }, result: { number: 101 } })
   const live = recJson(w.clone, [], ENV(w))
   ok(live.status === 0 && live.j.summary.delivered >= 1 && live.j.summary.failed === 0, 'replay-live: plan matches recordings → delivered, exit 0')
+  // update flow (comment → refp) against recordings, WITH NO file actions in the
+  // plan — proves ensure-label is skipped and seq numbering starts at the update
+  fix(w, 'issues-labeled-baseline', [...listingFor(probe.j, [key]), issue(70, 'open', key, 'aaaaaaaaaaaa')])
+  mut(w, 0, { plan: { action: 'comment', key, issue: 70 } })
+  mut(w, 1, { plan: { action: 'refp', key, issue: 70 } })
+  const upd = recJson(w.clone, [], ENV(w))
+  ok(upd.status === 0 && upd.j.actions.length === 1 && upd.j.actions[0].action === 'update' && upd.j.summary.delivered === 1 && upd.j.summary.failed === 0, 'update flow: comment+refp pair matches recordings, no ensure-label, exit 0')
+  fs.rmSync(path.join(w.replay, 'mut-000.json')); fs.rmSync(path.join(w.replay, 'mut-001.json'))
+  fix(w, 'issues-labeled-baseline', [])
   // tampered recording → mismatch → exit 1, and gate:reconcile relief must NOT apply
+  mut(w, 0, { plan: { action: 'ensure-label', key: 'baseline' } })
   mut(w, 1, { plan: { action: 'file', key, title: 'WRONG TITLE' } })
   const bad = recJson(w.clone, [], ENV(w))
   ok(bad.status === 1 && bad.j.deliveryFailure, 'replay mismatch → delivery failure, exit 1')
@@ -279,9 +310,51 @@ console.log('\n# integration — sweep, lifecycle, exits (replay forge)\n')
   fs.rmSync(path.join(w.replay, 'branch-rules-main.json'))
   const r2 = recJson(w.clone, ['--dry-run'], ENV(w))
   ok(!r2.j.findings.some(f => f.id === 'GOV-01' || f.id === 'GOV-02'), '403-class (rules denied, meta readable) → SKIP, nothing filed')
+  // …and a token downgrade must never bot-close a REAL protection issue (SKIP ≠ clear)
+  fix(w, 'issues-labeled-baseline', [issue(90, 'open', findingKey('GOV-01', 'main'), 'aaaaaaaaaaaa')])
+  const r2b = recJson(w.clone, ['--dry-run'], ENV(w))
+  ok(!(r2b.j.actions || []).some(a => a.action === 'close' && a.key === findingKey('GOV-01', 'main')), '403-class with an open GOV filing → never closed on token downgrade')
+  fix(w, 'issues-labeled-baseline', [])
   fix(w, 'branch-rules-main', [{ type: 'pull_request', parameters: { required_review_thread_resolution: true } }, { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true } }])
   const r3 = recJson(w.clone, ['--dry-run'], ENV(w))
   ok(!r3.j.findings.some(f => f.id === 'GOV-01' || f.id === 'GOV-02'), 'enforcing ruleset → both PASS (cleared, nothing filed)')
+  // a signatures-only ruleset is NOT merge protection — GOV-01 must still file
+  fix(w, 'branch-rules-main', [{ type: 'required_signatures', parameters: {} }])
+  const r4 = recJson(w.clone, ['--dry-run'], ENV(w))
+  ok(r4.j.findings.some(f => f.id === 'GOV-01' && f.detail.includes('none protects merges')), 'signatures-only ruleset → GOV-01 files (no merge-protective type)')
+  // layered rulesets: the bits live in DIFFERENT rules of the same type — union wins
+  fix(w, 'branch-rules-main', [{ type: 'pull_request', parameters: {} }, { type: 'pull_request', parameters: { required_review_thread_resolution: true } }, { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true } }])
+  const r5 = recJson(w.clone, ['--dry-run'], ENV(w))
+  ok(!r5.j.findings.some(f => f.id === 'GOV-02'), 'layered rulesets: a later rule of the same type carries the bit — union enforced, no false FAIL')
+}
+{
+  // reverse clears: a retired judgment and a rewritten secret close their filings
+  const w = mkworld('reverse')
+  commitSeed(w, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { review_by: '2020-01-01' }), 'expired judgment')
+  commitSeed(w, 'records/sessions/main/2026-01-01-1200-t.md', `note\ntoken AKIA${'IOSFODNN7REALKY'}A\n`, 'record with a planted secret shape')
+  pull(w)
+  fix(w, 'issues-labeled-baseline', [])
+  const probe = recJson(w.clone, ['--dry-run'], ENV(w))
+  const jdgKey = findingKey('JDG-0001', 'subject-JDG-0001')
+  const scrubF = probe.j.findings.find(f => f.id === 'scrub')
+  ok(!!scrubF && probe.j.findings.some(f => f.key === jdgKey), 'reverse world: secret + expired judgment both file')
+  // retire the judgment; rewrite the record clean — both keys must CLOSE
+  git(w.clone, 'rm', '-q', 'records/judgments/JDG-0001.json')
+  fs.writeFileSync(path.join(w.clone, 'records/sessions/main/2026-01-01-1200-t.md'), 'note\nrotated, clean now\n')
+  git(w.clone, 'add', '-A'); git(w.clone, 'commit', '-qm', 'retire + rotate'); git(w.clone, 'push', '-q', 'origin', 'main')
+  fix(w, 'issues-labeled-baseline', [issue(60, 'open', jdgKey, 'aaaaaaaaaaaa'), issue(61, 'open', scrubF.key, scrubF.fp)])
+  const r = recJson(w.clone, ['--dry-run'], ENV(w))
+  ok((r.j.actions || []).some(a => a.action === 'close' && a.key === jdgKey), 'reverse clear: a RETIRED judgment closes its filing')
+  ok((r.j.actions || []).some(a => a.action === 'close' && a.key === scrubF.key), 'reverse clear: a rotated/rewritten secret closes its filing (complete scan)')
+}
+{
+  // detached HEAD at the tip — the EXACT cron state (actions/checkout)
+  const w = mkworld('detached')
+  pull(w)
+  git(w.clone, 'checkout', '-q', '--detach')
+  fix(w, 'issues-labeled-baseline', [])
+  const r = recJson(w.clone, ['--dry-run'], ENV(w))
+  ok(r.status === 0 && r.j?.summary.mode === 'dry-run' && !r.j.reportOnly, 'detached HEAD at the tip → full run (the cron state works)')
 }
 {
   // dead-cron guard + gate:reconcile relief for LIVE outages (no replay: forge unreachable)

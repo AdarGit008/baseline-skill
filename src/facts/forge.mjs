@@ -65,18 +65,27 @@ export function makeForge(repo, { available = false, nwo = null, posture = null,
   // live plan deepEqs the Nth recorded plan — order is part of the promise, so
   // callers must plan in a deterministic order (reconcile sorts by dedup key).
   // A replay mismatch is a harness-contract violation, never a relievable outage.
+  // Seq discipline: a failed/mismatched mutation still consumes its seq (its paired
+  // follow-up is skipped), so later seqs shift against recordings and cascade as
+  // mismatches — fail-CLOSED by construction (exit 1, failed[0].reason names the
+  // root), and a partially-failed RECORD run is honestly unreplayable.
   let mutSeq = 0
   const mutLog = []
   const readMutFixture = (seq) => { try { return JSON.parse(fs.readFileSync(path.join(REPLAY, `mut-${String(seq).padStart(3, '0')}.json`), 'utf8')) } catch { return undefined } }
+  // repo identity is AMBIENT, not intent: replay runs have no probe (nwo null), so
+  // the recorded argv's real owner/repo could never match — collapse it on both
+  // sides and the assertion keeps endpoint shape + payloads, which ARE the intent.
+  const normArg = (a) => normalizeVolatile(String(a)).replace(/\brepos\/[^/\s]+\/[^/\s]+/g, 'repos/<nwo>')
   function mutate(plan, ghArgs) {
     const seq = mutSeq++
-    const normArgs = ghArgs.map(a => normalizeVolatile(String(a)))
+    const normArgs = ghArgs.map(normArg)
     if (mutations === 'dry') { mutLog.push({ seq, plan, mode: 'dry', ok: true }); return { ok: true, dry: true, result: null } }
     if (CLOSED) { mutLog.push({ seq, plan, mode: 'closed', ok: false }); return { ok: false, reason: closedReason || 'forge not consulted (multi-lane-local posture)' } }
     if (REPLAY) {
       const rec = readMutFixture(seq)
       if (rec === undefined) { mutLog.push({ seq, plan, mode: 'replay', ok: false }); return { ok: false, replayMismatch: true, reason: `mutation ${seq} has no recording (mut-${String(seq).padStart(3, '0')}.json) — the replayed run plans a write the recording never made` } }
-      if (!deepEq(rec.plan, plan) || (rec.ghArgs && !deepEq(rec.ghArgs, normArgs))) { mutLog.push({ seq, plan, mode: 'replay', ok: false }); return { ok: false, replayMismatch: true, reason: `mutation ${seq} diverges from its recording — planned ${JSON.stringify(plan)}, recorded ${JSON.stringify(rec.plan)}` } }
+      if (!deepEq(rec.plan, plan)) { mutLog.push({ seq, plan, mode: 'replay', ok: false }); return { ok: false, replayMismatch: true, reason: `mutation ${seq} diverges from its recording — planned ${JSON.stringify(plan)}, recorded ${JSON.stringify(rec.plan)}` } }
+      if (rec.ghArgs && !deepEq(rec.ghArgs, normArgs)) { mutLog.push({ seq, plan, mode: 'replay', ok: false }); return { ok: false, replayMismatch: true, reason: `mutation ${seq}: plan matches but the INVOCATION diverges — argv ${JSON.stringify(normArgs)}, recorded ${JSON.stringify(rec.ghArgs)}` } }
       mutLog.push({ seq, plan, mode: 'replay', ok: true })
       return { ok: true, result: rec.result ?? null }
     }
@@ -125,7 +134,9 @@ export function makeForge(repo, { available = false, nwo = null, posture = null,
     branchMeta(branch) { return isAvail() && branch ? q(`branch-meta-${safeKey(branch)}`, ['api', `repos/${nwo}/branches/${encodeURIComponent(branch)}`]) : null },
     branchProtection(branch) { return isAvail() && branch ? q(`branch-protection-${safeKey(branch)}`, ['api', `repos/${nwo}/branches/${encodeURIComponent(branch)}/protection`]) : null },
     // Check-run conclusions at a sha — merged-while-red's input now, the digest's
-    // (name, conclusion, head_sha) tuple source at M6c. One page, per_page=100.
+    // (name, conclusion, head_sha) tuple source at M6c. ONE page, per_page=100 —
+    // a red admit beyond page 1 is a silent miss (detection understated, never a
+    // false positive); pagination joins the M6c digest work if real heads exceed it.
     checkRuns(sha) { return isAvail() && sha ? q(`check-runs-${safeKey(sha)}`, ['api', `repos/${nwo}/commits/${sha}/check-runs?per_page=100`]) : null },
     // Recently-merged PRs into a base — merged-while-red's sweep window (a squash
     // merge's red admit lives on the PR HEAD sha, which never lands on the base, so

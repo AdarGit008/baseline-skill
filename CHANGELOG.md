@@ -9,7 +9,7 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 ### Added — V2 M6b: `baseline reconcile`, the forge mutation channel, GOV-01/02 live asserts
 - **`baseline reconcile`** — post-merge revalidation of the default branch (MERGE-03's
   dissolution: the cron against main IS post-merge revalidation, C37). Four finding
-  sources: the engine at context `reconcile` (63 repo-scoped rules declare it; lane
+  sources: the engine at context `reconcile` (75 repo-scoped rules declare it; lane
   rules are excluded structurally, exec rules stay check-only); the **JDG sweep** at
   the tip via `evaluateJudgment` (tripped/expired + invalid file; drifted/unresolvable
   ride the report — `review_by` is the backstop); the **landed-record re-scan** (scrub
@@ -44,16 +44,24 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   rules are unreadable) → the classic endpoint under `BASELINE_GOV_ADMIN=1`. A
   token-scoped denial is SKIP("protection unreadable with this token"), never
   source-loss; the committed-ruleset-file greps are gone (files prove nothing about
-  enforcement). **The ONE M6 corpus re-pin** (GOV detail strings, 24 rows, no
+  enforcement). GOV-01 passes only on merge-PROTECTIVE rule types (a signatures-only
+  ruleset is not merge protection); GOV-02 reads every layered rule (`.some`, not
+  first-of-type) and falls to the classic ladder instead of FAILing past it. Cost,
+  stated plainly: `check` on a repo with a declared default branch + forge access now
+  spawns gh for these two rules (one probe + two reads, memoized per run; labeled
+  SKIP offline — pre-M6b every forge rule was posture-gated). **The ONE M6 corpus
+  re-pin** (GOV detail strings: 20 rule rows + the human-scorecard lines, no
   tag/summary churn).
 - **Orient**: open baseline-filed issues headline as one line after divergence
   (label-filtered from the existing query; zero-case renders nothing), and a
   divergence row reconcile already filed carries `→ filed as #N` on the same line.
-- Tests: `test/reconcile/run.mjs` (37 asserts — lifecycle matrix, channel replay,
-  binding law, merged-while-red, GOV ladder, exits) + the `reconcile-repo` golden
-  fixture (dry-run plan pinned, organic cap+rollup). Slice-level design panel
-  (scope-cutter / friction skeptic / dependency auditor): all AMEND-THEN-GO, every
-  blocking amendment applied in-branch.
+- Tests: `test/reconcile/run.mjs` (lifecycle matrix, channel replay incl. argv
+  negative, binding law, merged-while-red, GOV ladder, reverse clears, exits) + the
+  `reconcile-repo` golden fixture (dry-run plan pinned, organic cap+rollup).
+  Slice-level design panel (scope-cutter / friction skeptic / dependency auditor):
+  all AMEND-THEN-GO; pre-merge 8-angle panel (correctness · lifecycle-adversarial ·
+  determinism/replay · security/injection · exit-contract · GOV-truth · docs-drift ·
+  coverage): every confirmed finding fixed in-branch.
 
 ### Added — V2 M6a: `baseline admit`, DESC-03, MERGE-02, the context-gated engine (86 → 88 rules)
 - **`baseline admit`** — merge-point revalidation (C30/C35): *a verdict is valid only for

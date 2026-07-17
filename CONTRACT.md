@@ -204,7 +204,10 @@ the whole write surface, and every filing is lifecycle-managed:
 
 - identity: an HTML marker `<!-- baseline:<id>:<subject> fp:<hash> -->` plus the
   **`baseline` label** (filter/mute it in your own inbox — that's the designed
-  affordance). Keep the marker line intact when editing a filed issue.
+  affordance). Keep BOTH intact when editing a filed issue: removing the label
+  drops the issue from the dedup scan (the next run files a duplicate), and
+  anyone who can apply the label can plant a marker that absorbs a key's
+  lifecycle — the label is a collaborator-trust surface, not a security boundary.
 - transitions: absent→file · changed→comment (the fingerprint collapses shas,
   ages, and dates — an aging finding never re-comments) · cleared→close naming
   the sha (**only on positive re-evaluation** — a rule that SKIPped cannot clear
@@ -243,17 +246,22 @@ that's exit 2, not an outage).
 **Demo/consumer wiring (specced, not discovered).** `baseline-reconcile.yml`:
 
     on:
-      schedule: [{ cron: '17 5 * * *' }]   # GitHub may delay/auto-disable after 60d inactivity — orient's headline is the backstop
+      schedule:
+        - cron: '17 5 * * *'   # GitHub may delay/auto-disable after 60d inactivity — orient's headline is the backstop
       workflow_dispatch:
-    permissions: { contents: read, issues: write }
+    permissions:
+      contents: read
+      issues: write
     jobs:
       reconcile:
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v4
-            with: { fetch-depth: 0 }        # full history: the sweep reads blobs at the tip
-          - env: { GH_TOKEN: ${{ github.token }} }  # unauthenticated gh rate-limits at 60/hr
-            run: node <skill>/baseline.mjs reconcile --repo .
+            with:
+              fetch-depth: 0              # full history: the sweep reads blobs at the tip
+          - run: node <skill>/baseline.mjs reconcile --repo .
+            env:
+              GH_TOKEN: ${{ github.token }}   # unauthenticated gh rate-limits at 60/hr
     # exit 0 with findings is CORRECT (the tracker is the alert surface);
     # exit 1 means the cron itself is broken — that's the red worth having.
 

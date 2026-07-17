@@ -64,7 +64,8 @@ if (cmd === 'check') {
                                                           (exit 1 = refused: stale/blocker/source-loss)
   reconcile [--repo DIR] [--json] [--dry-run]             post-merge revalidation of the default
       [--target REF]                                      branch; findings file as dedup'd issues
-                                                          (exit 1 = findings exist, tracker unreachable)
+                                                          (exit 1 = delivery failed: tracker unreachable
+                                                          or a write failed — even with zero findings)
   orient [--repo DIR] [--json] [--strict]                 derived-state survey for session start
   lane claim <issue> [--agent A]                          claim a work lane: atomic branch creation
                                                           at origin (exit 3 = already claimed)

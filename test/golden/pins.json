@@ -3869,7 +3869,7 @@
       {
         "key": "baseline:GOV-01:main",
         "id": "GOV-01",
-        "detail": "no active protection on main (rules: none; protected flag false) — anyone can force-push or merge red; create a ruleset requiring the baseline checks"
+        "detail": "no active merge protection on main (rules: none; protected flag false) — anyone can force-push or merge red; create a ruleset requiring the baseline checks"
       },
       {
         "key": "baseline:GOV-02:main",
@@ -3919,7 +3919,7 @@
       {
         "key": "baseline:JDG-0001:stale-accepted-thing",
         "id": "JDG-0001",
-        "detail": "review_by 2026-02-01 has passed — re-judge or retire — re-judge or retire it (subject: stale-accepted-thing)"
+        "detail": "review_by 2026-02-01 has passed — re-judge or retire (subject: stale-accepted-thing)"
       }
     ],
     "actions": [
@@ -4051,9 +4051,10 @@
       "rescan": {
         "files": 1,
         "unscanned": 0,
+        "skipped": null,
         "findings": 0
       },
-      "mergedWindow": null
+      "mergedWindow": "merged-PR window unreadable — merged-while-red NOT evaluated this run"
     }
   },
   "service-repo": {

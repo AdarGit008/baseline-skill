@@ -716,9 +716,11 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
     // PASS/FAIL is a live boolean read of enforcement, not a grep of intent. ----
 
     if (k === 'forge-protection') {
+      // subject guard BEFORE the world: LANEWORLD() forces the forge probe (3 gh
+      // spawns), pure waste when the SKIP is already decided by an undeclared branch
+      if (!DEFAULT_BRANCH) return { ok: null, detail: 'default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject' }
       const w = LANEWORLD ? LANEWORLD() : null
       if (!w) return { ok: null, detail: 'no lane world assembled — forge asserts n/a in this runner' }
-      if (!DEFAULT_BRANCH) return { ok: null, detail: 'default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject' }
       if (!w.forge.available) return { ok: null, detail: `protection unreadable (${w.forge.reason})` }
       const rules = w.forge.branchRules(DEFAULT_BRANCH)
       const meta = w.forge.branchMeta(DEFAULT_BRANCH)
@@ -730,39 +732,48 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
         }
         return { ok: null, detail: w.forge.source === 'replay' ? 'protection unreadable (no branch-rules replay fixture)' : `protection facts unreadable (${w.forge.reason || 'forge queries failed'})` }
       }
+      // Merge-PROTECTIVE rule types only: rulesets aggregate across layers (org+repo)
+      // and carry non-merge rules too — a signatures-only or deletion-only ruleset
+      // protects nothing GOV-01's title names, and a first-of-type .find would miss a
+      // later layer's parameters, so every bit is checked with .some over ALL rules.
+      const PROTECTIVE = new Set(['pull_request', 'required_status_checks', 'non_fast_forward', 'merge_queue'])
+      const protective = [...new Set(rules.map(r => r.type))].filter(t => PROTECTIVE.has(t)).sort()
       if (c.gov === 'protection') {
-        // GOV-01: is ANY merge protection actually active on the default branch?
-        if (rules.length) return { ok: true, detail: `active rules on ${DEFAULT_BRANCH}: ${[...new Set(rules.map(r => r.type))].sort().join(', ')}` }
-        if (meta?.protected === true) return { ok: true, detail: `classic branch protection active on ${DEFAULT_BRANCH} (no rulesets)` }
-        if (meta && meta.protected === false) return { ok: false, detail: `no active protection on ${DEFAULT_BRANCH} (rules: none; protected flag false) — anyone can force-push or merge red; create a ruleset requiring the baseline checks` }
-        return { ok: null, detail: `rules readable (none active) but ${DEFAULT_BRANCH} metadata is not — classic protection state unknowable with this token` }
+        // GOV-01: is MERGE protection actually active on the default branch?
+        if (protective.length) return { ok: true, detail: `active merge-protective rules on ${DEFAULT_BRANCH}: ${protective.join(', ')}` }
+        const other = [...new Set(rules.map(r => r.type))].sort()
+        const rulesNote = other.length ? `rules active (${other.join(', ')}) but none protects merges` : 'rules: none'
+        if (meta?.protected === true) return { ok: true, detail: `classic branch protection active on ${DEFAULT_BRANCH} (${rulesNote})` }
+        if (meta && meta.protected === false) return { ok: false, detail: `no active merge protection on ${DEFAULT_BRANCH} (${rulesNote}; protected flag false) — anyone can force-push or merge red; create a ruleset requiring the baseline checks` }
+        return { ok: null, detail: `rules readable (${rulesNote}) but ${DEFAULT_BRANCH} metadata is not — classic protection state unknowable with this token` }
       }
-      // GOV-02: strict up-to-date + conversation resolution, from ruleset parameters
-      const rsc = rules.find(r => r.type === 'required_status_checks')
-      const pr = rules.find(r => r.type === 'pull_request')
-      const strict = rsc?.parameters?.strict_required_status_checks_policy === true
-      const conv = pr?.parameters?.required_review_thread_resolution === true
+      // GOV-02: strict up-to-date + conversation resolution — .some across EVERY rule
+      // (layered rulesets enforce the union), classic ladder when rulesets lack the bits
+      const strict = rules.some(r => r.type === 'required_status_checks' && r.parameters?.strict_required_status_checks_policy === true)
+      const conv = rules.some(r => r.type === 'pull_request' && r.parameters?.required_review_thread_resolution === true)
       if (strict && conv) return { ok: true, detail: `ruleset on ${DEFAULT_BRANCH} enforces strict up-to-date checks and conversation resolution` }
-      if (rules.length) {
-        const missing = [!strict && 'strict up-to-date status checks (strict_required_status_checks_policy)', !conv && 'required conversation resolution (required_review_thread_resolution)'].filter(Boolean)
-        return { ok: false, detail: `ruleset on ${DEFAULT_BRANCH} does not enforce: ${missing.join(' + ')} — a stale branch can merge green` }
-      }
+      const missing = [!strict && 'strict up-to-date status checks (strict_required_status_checks_policy)', !conv && 'required conversation resolution (required_review_thread_resolution)'].filter(Boolean)
       if (meta?.protected === true) {
+        // classic protection may enforce what the rulesets don't — never FAIL past it
         if (process.env.BASELINE_GOV_ADMIN) {
           const p = w.forge.branchProtection(DEFAULT_BRANCH)
           if (p) {
-            const s = p.required_status_checks?.strict === true
-            const cv = p.required_conversation_resolution?.enabled === true
-            if (s && cv) return { ok: true, detail: `classic protection on ${DEFAULT_BRANCH} enforces strict up-to-date checks and conversation resolution (admin read)` }
-            const missing = [!s && 'strict up-to-date status checks', !cv && 'required conversation resolution'].filter(Boolean)
-            return { ok: false, detail: `classic protection on ${DEFAULT_BRANCH} does not enforce: ${missing.join(' + ')} (admin read)` }
+            const s = strict || p.required_status_checks?.strict === true
+            const cv = conv || p.required_conversation_resolution?.enabled === true
+            if (s && cv) return { ok: true, detail: `${DEFAULT_BRANCH} enforces strict up-to-date checks and conversation resolution (ruleset + classic, admin read)` }
+            const still = [!s && 'strict up-to-date status checks', !cv && 'required conversation resolution'].filter(Boolean)
+            return { ok: false, detail: `${DEFAULT_BRANCH} does not enforce: ${still.join(' + ')} (ruleset + classic read)` }
           }
-          return { ok: null, detail: `classic protection active but /protection denied even under BASELINE_GOV_ADMIN — the token is not admin on this repo` }
+          return { ok: null, detail: w.forge.source === 'replay' ? 'classic protection active but no branch-protection replay fixture' : `classic protection active but /protection denied even under BASELINE_GOV_ADMIN — the token is not admin on this repo` }
         }
-        return { ok: null, detail: `classic protection active on ${DEFAULT_BRANCH} but its settings need an admin token to read — opt in: BASELINE_GOV_ADMIN=1` }
+        return { ok: null, detail: `ruleset lacks ${missing.join(' + ')} but classic protection is active — its settings need an admin token to read; opt in: BASELINE_GOV_ADMIN=1` }
       }
-      if (meta && meta.protected === false) return { ok: false, detail: `no active protection on ${DEFAULT_BRANCH} — strict up-to-date and conversation resolution are unset` }
-      return { ok: null, detail: `rules readable (none active) but ${DEFAULT_BRANCH} metadata is not — classic protection state unknowable with this token` }
+      if (meta && meta.protected === false) {
+        return rules.length
+          ? { ok: false, detail: `ruleset on ${DEFAULT_BRANCH} does not enforce: ${missing.join(' + ')} — a stale branch can merge green` }
+          : { ok: false, detail: `no active protection on ${DEFAULT_BRANCH} — strict up-to-date and conversation resolution are unset` }
+      }
+      return { ok: null, detail: `rules readable but ${DEFAULT_BRANCH} metadata is not — classic protection state unknowable with this token` }
     }
 
     // ---- M6a admit-context kinds — both read through ADMITWORLD (the target-ref

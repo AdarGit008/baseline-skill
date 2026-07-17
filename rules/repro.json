@@ -20,7 +20,8 @@
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
       "certainty": "heuristic",
       "check": {
@@ -58,7 +59,8 @@
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
       "certainty": "heuristic",
       "check": {
@@ -146,7 +148,8 @@
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
       "certainty": "deterministic",
       "check": {

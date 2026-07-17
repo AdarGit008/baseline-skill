@@ -111,10 +111,10 @@
       "            ↳ n/a for node",
       "",
       "  Change governance",
-      "    SKIP      GOV-01    Merge protection is declared in-repo",
-      "            ↳ no matching file (skipped)",
-      "    SKIP      GOV-02    Strict/up-to-date merges and conversation resolution enabled",
-      "            ↳ no files to scan",
+      "    SKIP      GOV-01    Merge protection is active on the default branch",
+      "            ↳ default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject",
+      "    SKIP      GOV-02    Strict/up-to-date merges and conversation resolution enforced",
+      "            ↳ default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject",
       "    PASS      GOV-03    CODEOWNERS exists and names an owner",
       "            ↳ CODEOWNERS ok",
       "",
@@ -770,11 +770,11 @@
       },
       "GOV-01": {
         "tag": "SKIP",
-        "detail": "no matching file (skipped)"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-02": {
         "tag": "SKIP",
-        "detail": "no files to scan"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-03": {
         "tag": "WARN",
@@ -1132,11 +1132,11 @@
       },
       "GOV-01": {
         "tag": "SKIP",
-        "detail": "no matching file (skipped)"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-02": {
         "tag": "SKIP",
-        "detail": "no files to scan"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-03": {
         "tag": "WARN",
@@ -1494,11 +1494,11 @@
       },
       "GOV-01": {
         "tag": "SKIP",
-        "detail": "no matching file (skipped)"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-02": {
         "tag": "SKIP",
-        "detail": "no files to scan"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-03": {
         "tag": "WARN",
@@ -1857,11 +1857,11 @@
       },
       "GOV-01": {
         "tag": "SKIP",
-        "detail": "no matching file (skipped)"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-02": {
         "tag": "SKIP",
-        "detail": "no files to scan"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-03": {
         "tag": "WARN",
@@ -2219,11 +2219,11 @@
       },
       "GOV-01": {
         "tag": "SKIP",
-        "detail": "no matching file (skipped)"
+        "detail": "protection unreadable (<forge unreachable>)"
       },
       "GOV-02": {
         "tag": "SKIP",
-        "detail": "no files to scan"
+        "detail": "protection unreadable (<forge unreachable>)"
       },
       "GOV-03": {
         "tag": "WARN",
@@ -2581,11 +2581,11 @@
       },
       "GOV-01": {
         "tag": "SKIP",
-        "detail": "no matching file (skipped)"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-02": {
         "tag": "SKIP",
-        "detail": "no files to scan"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-03": {
         "tag": "WARN",
@@ -2943,11 +2943,11 @@
       },
       "GOV-01": {
         "tag": "SKIP",
-        "detail": "no matching file (skipped)"
+        "detail": "protection unreadable (no branch-rules replay fixture)"
       },
       "GOV-02": {
         "tag": "SKIP",
-        "detail": "no files to scan"
+        "detail": "protection unreadable (no branch-rules replay fixture)"
       },
       "GOV-03": {
         "tag": "WARN",
@@ -3305,11 +3305,11 @@
       },
       "GOV-01": {
         "tag": "SKIP",
-        "detail": "no matching file (skipped)"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-02": {
         "tag": "SKIP",
-        "detail": "no files to scan"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-03": {
         "tag": "WARN",
@@ -3668,11 +3668,11 @@
       },
       "GOV-01": {
         "tag": "SKIP",
-        "detail": "no matching file (skipped)"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-02": {
         "tag": "SKIP",
-        "detail": "no files to scan"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-03": {
         "tag": "PASS",
@@ -4031,11 +4031,11 @@
       },
       "GOV-01": {
         "tag": "SKIP",
-        "detail": "no matching file (skipped)"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-02": {
         "tag": "SKIP",
-        "detail": "no files to scan"
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
       },
       "GOV-03": {
         "tag": "WARN",

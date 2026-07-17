@@ -16,7 +16,8 @@
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
       "certainty": "deterministic",
       "check": {
@@ -63,7 +64,8 @@
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
       "certainty": "deterministic",
       "check": {
@@ -85,7 +87,8 @@
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
       "certainty": "judgment",
       "check": {
@@ -181,7 +184,8 @@
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
       "certainty": "heuristic",
       "check": {
@@ -206,7 +210,8 @@
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
       "certainty": "deterministic",
       "check": {
@@ -230,7 +235,8 @@
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
       "certainty": "heuristic",
       "check": {

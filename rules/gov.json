@@ -2,60 +2,50 @@
   "rules": [
     {
       "id": "GOV-01",
-      "title": "Merge protection is declared in-repo",
+      "title": "Merge protection is active on the default branch",
       "category": "governance",
       "severity": "warn",
       "applies_to": "all",
-      "source": "https://backstage.spotify.com/docs/soundcheck/",
+      "source": "https://docs.github.com/rest/repos/rules",
       "lesson": "change-control gate",
-      "rationale": "Green CI means nothing if anyone can force-push to main; protection-as-code makes the merge gate reviewable. Skips if you configure protection in the GitHub UI (nothing in-repo to check).",
-      "fix": "Commit a ruleset (.github/rulesets/*.json), a probot settings.yml, or a terraform github_branch_protection that requires reviews and disables force-push.",
+      "rationale": "Green CI means nothing if anyone can force-push or merge red to main. A committed ruleset FILE proves nothing about enforcement — this asserts the forge's live answer on the readable surface (rules-for-branch, then the classic protected flag). Offline it SKIPs honestly: enforcement is unknowable without asking.",
+      "fix": "Create a ruleset on the default branch requiring the baseline checks (strict up-to-date, checks {ci, admit}): gh api repos/{owner}/{repo}/rulesets --input <ruleset.json> — see CONTRACT.md's binding ladder.",
       "sources": [
-        "tree"
+        "forge"
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
       "certainty": "deterministic",
       "check": {
-        "kind": "file-contains",
-        "globs": [
-          ".github/rulesets/*.json",
-          ".github/settings.yml",
-          ".github/settings.yaml"
-        ],
-        "pattern": "required_pull_request_reviews|required_approving_review_count|require_pull_request|pull_request:\\s*(true|required)|dismiss_stale",
-        "null_if_absent": true
+        "kind": "forge-protection",
+        "gov": "protection"
       }
     },
     {
       "id": "GOV-02",
-      "title": "Strict/up-to-date merges and conversation resolution enabled",
+      "title": "Strict/up-to-date merges and conversation resolution enforced",
       "category": "governance",
       "severity": "warn",
       "applies_to": "all",
       "source": "https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository",
       "lesson": "stale-branch-merges-green failure mode",
-      "rationale": "Without strict status checks a stale branch can merge green; without conversation-resolution, unresolved review comments merge silently.",
-      "fix": "In the committed ruleset set strict status checks and required_conversation_resolution to true.",
+      "rationale": "Without strict status checks a stale branch can merge green; without conversation resolution, unresolved review threads merge silently. Read live from ruleset parameters (classic protection settings need an admin token — opt in: BASELINE_GOV_ADMIN=1).",
+      "fix": "In the active ruleset set strict_required_status_checks_policy and required_review_thread_resolution to true.",
       "sources": [
-        "tree"
+        "forge"
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
-      "certainty": "heuristic",
+      "certainty": "deterministic",
       "check": {
-        "kind": "grep",
-        "globs": [
-          ".github/rulesets/*.json",
-          ".github/settings.yml",
-          ".github/settings.yaml"
-        ],
-        "pattern": "strict\"?\\s*[:=]\\s*true|required[_-]?conversation[_-]?resolution\"?\\s*[:=]\\s*true|require[_-]?conversation[_-]?resolution\"?\\s*[:=]\\s*true",
-        "mode": "present"
+        "kind": "forge-protection",
+        "gov": "settings"
       }
     },
     {
@@ -73,7 +63,8 @@
       ],
       "on_unreachable": "skip",
       "contexts": [
-        "check"
+        "check",
+        "reconcile"
       ],
       "certainty": "deterministic",
       "check": {

@@ -147,6 +147,22 @@ A file that pins the exact resolved version of every dependency
 (`package-lock.json`, `yarn.lock`, `poetry.lock`). Committing it makes installs
 reproducible across machines and time.
 
+## Merged-while-red
+**Merged-while-red** — a PR that landed on the default branch while its admit
+check had conclusion `failure`: the layer-0 (admin/bypass) valve was used.
+Reconcile detects it at the merged PR's *head* sha (a squash merge's red check
+never appears on the tip) and files the demand for the retroactive break-glass
+judgment whose `subject` names the short merge sha. The demand clears on that
+judgment's existence — the morning-after paperwork is the control, not the
+prevention.
+
+## Mutation channel
+**Mutation channel** — the forge layer's ONLY write path (`makeForge().mutate`),
+used exclusively by reconcile's issue lifecycle. Mode-honest end to end: live
+executes the write; replay asserts the run's ordered plan against committed
+recordings (`mut-NNN.json`) instead of touching the network; `--dry-run` prints
+the plan. A posture-closed forge refuses writes in every mode.
+
 ## Mutation testing
 A technique that deliberately introduces small faults ("mutants") into your code
 to check whether the test suite catches them — a measure of test quality beyond
@@ -187,6 +203,16 @@ opt-in. Rules outside the active profile **skip** and never count against you.
 Verifiable evidence of where an artifact came from and how it was built — for
 releases, a signed record linking a published artifact to the exact source and
 build that produced it.
+
+## Reconcile
+**Reconcile** — `baseline reconcile`, post-merge revalidation of the default
+branch (MERGE-03's dissolution: the cron against main IS the revalidation).
+Read-only toward the repo; its write surface is the issue tracker, where findings
+live as `baseline`-labeled issues under a complete dedup lifecycle keyed
+`baseline:<id>:<subject>` (file → comment on change → close when positively
+re-evaluated ok → reopen on recurrence of a bot-closed issue; a human close of an
+advisory filing is a judgment and stays closed). Findings never redden the cron;
+a cron that cannot deliver does.
 
 ## repolinter
 An open-source tool (originally from GitHub) that checks a repository against

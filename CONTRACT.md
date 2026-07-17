@@ -196,9 +196,68 @@ gates, the labels, and the honesty — never a private data model.
   DIV findings (closed issue under an active lane, `next:` at a dead issue, a PR
   closing a closed issue) are contradictions to RESOLVE, not warnings to mute.
 
+## Reconcile — the morning-after loop (M6b)
+
+`baseline reconcile` revalidates the default branch on cron and files what it
+finds as issues. **No writes to the repo or main, ever** — the issue tracker is
+the whole write surface, and every filing is lifecycle-managed:
+
+- identity: an HTML marker `<!-- baseline:<id>:<subject> fp:<hash> -->` plus the
+  **`baseline` label** (filter/mute it in your own inbox — that's the designed
+  affordance). Keep the marker line intact when editing a filed issue.
+- transitions: absent→file · changed→comment (the fingerprint collapses shas,
+  ages, and dates — an aging finding never re-comments) · cleared→close naming
+  the sha (**only on positive re-evaluation** — a rule that SKIPped cannot clear
+  its issue) · recurred→reopen the SAME issue when the close was reconcile's own
+  (the marker carries a `bot-closed` stamp).
+- **a human close is a judgment.** Close an advisory (engine-row) filing yourself
+  and it stays closed — recurrence earns at most one comment on new content. The
+  deterministic-integrity classes reopen over any close: an expired/tripped
+  judgment, a landed secret, a merged-while-red demand.
+- bounds: 10 creations+reopens per run; overflow rides ONE rollup issue that
+  self-drains over subsequent runs. A truncated issue scan suppresses creates.
+
+**Merged-while-red** (the layer-0 bypass's paperwork): reconcile sweeps the
+newest merged PRs and reads their **head** shas' check runs — a check named
+`*admit*` with conclusion `failure` on a merged PR files the demand for the
+retroactive judgment. The convention is exact: the judgment's `subject` names
+the **short (7) merge sha** —
+
+    baseline jdg new --kind break-glass --gate admit --subject "<short-sha>" \
+      --reason "why it merged red" --review-by <date>
+
+The demand clears on the judgment's **existence** at the tip (a lapsed one does
+not zombie-reopen the incident — its expiry is the sweep's own finding), and is
+never auto-closed by the tip moving on.
+
+**The binding law.** Findings bind to the sha they evaluated, so filings require
+the working tree to BE the fetched tip, clean. Behind-but-on-the-line or dirty
+degrades to a labeled report-only run (nothing filed, recipe printed); a HEAD off
+the target line refuses. Exit 1 means **delivery failed** — including a clean run
+that could not read the tracker (a dead cron must not stay green). Relief: an
+unexpired `break-glass (gate: reconcile)` on the default branch — gate:reconcile's
+one consumer — covers live outages only, never a replay-plan mismatch, and never
+the `multi-lane-local` posture (which closes the write surface by declaration:
+that's exit 2, not an outage).
+
+**Demo/consumer wiring (specced, not discovered).** `baseline-reconcile.yml`:
+
+    on:
+      schedule: [{ cron: '17 5 * * *' }]   # GitHub may delay/auto-disable after 60d inactivity — orient's headline is the backstop
+      workflow_dispatch:
+    permissions: { contents: read, issues: write }
+    jobs:
+      reconcile:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+            with: { fetch-depth: 0 }        # full history: the sweep reads blobs at the tip
+          - env: { GH_TOKEN: ${{ github.token }} }  # unauthenticated gh rate-limits at 60/hr
+            run: node <skill>/baseline.mjs reconcile --repo .
+    # exit 0 with findings is CORRECT (the tracker is the alert surface);
+    # exit 1 means the cron itself is broken — that's the red worth having.
+
 ## Reserved (lands later, documented now)
 
-- **M6 — admit/reconcile:** merge-point re-derivation, fail-closed with
-  break-glass relief; reconcile files findings as issues, read-only on main.
 - **M7 — contraction:** status-doc surfaces retired; `signoff.json` and the
   legacy `CLAIMS.json` dual-reads end; pointer install + lock.

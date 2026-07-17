@@ -35,9 +35,9 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 - Hermes: `~/.hermes/skills/software-development/baseline`
 - Claude Code: `~/.claude/skills/baseline`
 
-The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`check`, `admit`, `orient`, `lane`, `log`, `jdg`, `gen`, `scrub`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
+The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`check`, `admit`, `reconcile`, `orient`, `lane`, `log`, `jdg`, `gen`, `scrub`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
-Co-located files: `baseline.mjs` (CLI entry: check / admit / orient / lane / log / jdg / gen / scrub), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 88 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook + pre-push scrub hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
+Co-located files: `baseline.mjs` (CLI entry: check / admit / reconcile / orient / lane / log / jdg / gen / scrub), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 88 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook + pre-push scrub hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
 
 ## Orientation — the first act
 
@@ -81,6 +81,8 @@ node "$SKILL_DIR/baseline.mjs" admit --repo <target>
 ```
 
 - Exit 0 = admitted (advisory warns ride the output); **exit 1 = refused** — the branch is stale against the target (merge/rebase it, rerun), a blocker fired (a descriptor change without its same-PR judgment — DESC-03), or a fact admit genuinely gates on was unreadable; exit 2 = environment (no target, no descriptor at the target). The TARGET branch's descriptor governs the run — editing the descriptor on your own branch changes nothing until it merges, and doing so at all requires a same-PR judgment with subject exactly `baseline.repo.json`.
+
+On the DEFAULT branch (usually cron, not by hand), **`baseline reconcile`** is the morning-after twin — it re-derives main's standing and files findings as `baseline`-labeled, lifecycle-managed issues (dedup'd, closed when cleared, reopened on recurrence; a human close of an advisory filing is final). `--dry-run` prints the plan without writing. Exit 0 even with findings (the tracker is the alert surface — orient headlines them); exit 1 means delivery itself failed. It refuses (exit 2) off the default branch's clean tip — it is not a lane command.
 
 ## Recording — the last act
 

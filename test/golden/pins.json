@@ -3808,6 +3808,254 @@
       }
     }
   },
+  "reconcile-repo": {
+    "exitCode": 0,
+    "command": "reconcile",
+    "mode": "dry-run",
+    "reportOnly": null,
+    "deliveryFailure": null,
+    "relief": null,
+    "findings": [
+      {
+        "key": "baseline:BUILD-01:main",
+        "id": "BUILD-01",
+        "detail": "none of: package.json, pyproject.toml, go.mod, Cargo.toml, build.gradle*"
+      },
+      {
+        "key": "baseline:BUILD-02:main",
+        "id": "BUILD-02",
+        "detail": "none of: pnpm-lock.yaml, package-lock.json, yarn.lock, poetry.lock, uv.lock"
+      },
+      {
+        "key": "baseline:BUILD-03:main",
+        "id": "BUILD-03",
+        "detail": "none of: .github/workflows/*.yml, .github/workflows/*.yaml, .gitlab-ci.yml, .circleci/config.yml, azure-pipelines.yml"
+      },
+      {
+        "key": "baseline:BUILD-04:main",
+        "id": "BUILD-04",
+        "detail": "none of: .env.example, .env.sample, .env.template, env.example"
+      },
+      {
+        "key": "baseline:BUILD-07:main",
+        "id": "BUILD-07",
+        "detail": "none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml"
+      },
+      {
+        "key": "baseline:TEST-01:main",
+        "id": "TEST-01",
+        "detail": "none of: **/*.test.*, **/*.spec.*, **/*_test.py, **/*_test.go, **/*Test.java"
+      },
+      {
+        "key": "baseline:CTX-01:main",
+        "id": "CTX-01",
+        "detail": "no 'last-verified:' stamp in README.md"
+      },
+      {
+        "key": "baseline:CTX-03:main",
+        "id": "CTX-03",
+        "detail": "config.sources_of_truth empty"
+      },
+      {
+        "key": "baseline:SEC-05:main",
+        "id": "SEC-05",
+        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
+      },
+      {
+        "key": "baseline:SEC-06:main",
+        "id": "SEC-06",
+        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
+      },
+      {
+        "key": "baseline:GOV-01:main",
+        "id": "GOV-01",
+        "detail": "no active protection on main (rules: none; protected flag false) — anyone can force-push or merge red; create a ruleset requiring the baseline checks"
+      },
+      {
+        "key": "baseline:GOV-02:main",
+        "id": "GOV-02",
+        "detail": "no active protection on main — strict up-to-date and conversation resolution are unset"
+      },
+      {
+        "key": "baseline:GOV-03:main",
+        "id": "GOV-03",
+        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
+      },
+      {
+        "key": "baseline:COMM-01:main",
+        "id": "COMM-01",
+        "detail": "none of: LICENSE, LICENSE.*, LICENCE, LICENCE.*, COPYING"
+      },
+      {
+        "key": "baseline:COMM-02:main",
+        "id": "COMM-02",
+        "detail": "README.md too short (<400 chars)"
+      },
+      {
+        "key": "baseline:COMM-03:main",
+        "id": "COMM-03",
+        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
+      },
+      {
+        "key": "baseline:QUAL-01:main",
+        "id": "QUAL-01",
+        "detail": "none of: eslint.config.js, eslint.config.mjs, eslint.config.cjs, .eslintrc, .eslintrc.*"
+      },
+      {
+        "key": "baseline:QUAL-02:main",
+        "id": "QUAL-02",
+        "detail": "none of: .prettierrc, .prettierrc.*, prettier.config.*, rustfmt.toml, .rustfmt.toml"
+      },
+      {
+        "key": "baseline:REPRO-02:main",
+        "id": "REPRO-02",
+        "detail": "none of: .tool-versions, .nvmrc, .node-version, .python-version, mise.toml"
+      },
+      {
+        "key": "baseline:REC-05:main",
+        "id": "REC-05",
+        "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+      },
+      {
+        "key": "baseline:JDG-0001:stale-accepted-thing",
+        "id": "JDG-0001",
+        "detail": "review_by 2026-02-01 has passed — re-judge or retire — re-judge or retire it (subject: stale-accepted-thing)"
+      }
+    ],
+    "actions": [
+      {
+        "action": "file",
+        "key": "baseline:BUILD-01:main"
+      },
+      {
+        "action": "file",
+        "key": "baseline:BUILD-02:main"
+      },
+      {
+        "action": "file",
+        "key": "baseline:BUILD-03:main"
+      },
+      {
+        "action": "file",
+        "key": "baseline:BUILD-04:main"
+      },
+      {
+        "action": "file",
+        "key": "baseline:BUILD-07:main"
+      },
+      {
+        "action": "file",
+        "key": "baseline:COMM-01:main"
+      },
+      {
+        "action": "file",
+        "key": "baseline:COMM-02:main"
+      },
+      {
+        "action": "file",
+        "key": "baseline:COMM-03:main"
+      },
+      {
+        "action": "file",
+        "key": "baseline:CTX-01:main"
+      },
+      {
+        "action": "file",
+        "key": "baseline:CTX-03:main"
+      },
+      {
+        "action": "file",
+        "key": "baseline:rollup:main"
+      }
+    ],
+    "mutations": [
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "ensure-label"
+      },
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "file"
+      },
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "file"
+      },
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "file"
+      },
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "file"
+      },
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "file"
+      },
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "file"
+      },
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "file"
+      },
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "file"
+      },
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "file"
+      },
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "file"
+      },
+      {
+        "mode": "dry",
+        "ok": true,
+        "action": "file"
+      }
+    ],
+    "summary": {
+      "mode": "dry-run",
+      "findings": 21,
+      "actions": 11,
+      "delivered": 11,
+      "failed": 0,
+      "pass": 9,
+      "warn": 15,
+      "fail": 5,
+      "diverged": 0,
+      "signoff": 3,
+      "skip": 43,
+      "rules": 75,
+      "jdg": {
+        "records": 1,
+        "filed": 1,
+        "invalid": 0
+      },
+      "rescan": {
+        "files": 1,
+        "unscanned": 0,
+        "findings": 0
+      },
+      "mergedWindow": null
+    }
+  },
   "service-repo": {
     "exitCode": 1,
     "project_type": "service",

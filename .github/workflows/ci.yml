@@ -27,5 +27,7 @@ jobs:
         run: node test/flow/run.mjs
       - name: admit — staleness contract, FS1/FS5, DESC-03, MERGE-02, JDG-only path (local bare origin)
         run: node test/admit/run.mjs
+      - name: reconcile — lifecycle, mutation channel, merged-while-red, binding law (local bare origin + replay)
+        run: node test/reconcile/run.mjs
       - name: self-score (the standard checks itself)
         run: node check.mjs --repo . --no-exec

@@ -213,6 +213,22 @@ function score(name) {
         target: { ref: out.target?.ref }, summary: out.summary, rules,
       }
     }
+    // M6b: reconcile pins — findings and the dry-run plan as ORDERED ARRAYS (the sha
+    // normalizer collapses fp/short-sha distinctions, so a key-indexed map would merge
+    // entries; order is part of the lifecycle's own promise anyway).
+    if (manifest.command === 'reconcile') {
+      const { stdout, exitCode } = runCommand(tmp, 'reconcile', args, env)
+      let out
+      try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: reconcile did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }
+      return {
+        exitCode, command: 'reconcile', mode: out.summary?.mode, reportOnly: out.reportOnly ? normalizeDetail(out.reportOnly, tmp) : null,
+        deliveryFailure: out.deliveryFailure ? normalizeDetail(out.deliveryFailure, tmp) : null, relief: out.relief ?? null,
+        findings: (out.findings || []).map(f => ({ key: normalizeDetail(f.key, tmp), id: f.id, detail: normalizeDetail(f.detail, tmp) })),
+        actions: (out.actions || []).map(a => ({ action: a.action, key: normalizeDetail(a.key, tmp) })),
+        mutations: (out.mutations || []).map(m => ({ mode: m.mode, ok: m.ok, action: m.plan?.action ?? null })),
+        summary: out.summary,
+      }
+    }
     const { stdout, exitCode } = runChecker(tmp, ['--json', ...args], env)
     let out
     try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: checker did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }
@@ -276,6 +292,12 @@ for (const n of names) {
   cmp(`${n}.project_type`, p.project_type, c.project_type)
   cmp(`${n}.profiles`, p.profiles, c.profiles)
   cmp(`${n}.summary`, p.summary, c.summary)
+  // command pins without a per-rule map (reconcile: ordered findings/actions arrays)
+  // diff field-by-field so a drift names the field, not one giant JSON blob
+  if (!p.rules || !c.rules) {
+    for (const k of new Set([...Object.keys(p), ...Object.keys(c)])) if (!['exitCode', 'project_type', 'profiles', 'summary'].includes(k)) cmp(`${n}.${k}`, p[k], c[k])
+    continue
+  }
   const ids = new Set([...Object.keys(p.rules), ...Object.keys(c.rules)])
   for (const id of ids) {
     if (!p.rules[id]) { diffs.push(`${n}.${id}: new rule not in pins`); continue }

@@ -76,6 +76,9 @@ if (cmd === 'check') {
   jdg new --kind K --subject S --reason "..."             record a judgment (sign-off ·
       --review-by DATE [--expect p=v] [--tripwire "..."]  deviation · risk-acceptance · break-glass)
   jdg check [--repo DIR] [--json] [--facts FILE]          evaluate the ledger: tripwires · expiry · drift
+  gen index [--repo DIR] [--out PATH]                     write a deterministic, marker-headed index
+  gen --check [--repo DIR]                                view (default docs/INDEX.md); --check is the
+                                                          CI drift guard (zero views = trivially green)
   gen migrate-claims [--repo DIR]                         explode docs/CLAIMS.json into records/claims/
   scrub <file...> | --pushed SHA [--since SHA]            scan records for secret shapes (the pre-push
       [--allow ID --allow-reason "..."]                   hook's engine; one scan API with log/REC-02)

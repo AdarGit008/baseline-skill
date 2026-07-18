@@ -96,6 +96,14 @@ Installing dependencies in a locked, reproducible mode that fails if the
 [lockfile](#lockfile) is out of date (`npm ci`, `pip install --require-hashes`,
 `yarn --frozen-lockfile`) — as opposed to a loose install that can silently drift.
 
+## Generated view
+**Generated view** — a tracked markdown file whose first line is the
+`baseline:generated <kind>` marker: machine-derived from the records, never
+hand-edited. `baseline gen index` writes one (deterministic — sorted content,
+filename dates, no timestamps); `baseline gen --check` regenerates every marked
+view and byte-compares, the advisory CI drift guard. Zero marked views is
+trivially green — adoption is opt-in per repo.
+
 ## Graceful shutdown
 When a service catches a termination signal ([SIGTERM](#sigterm)) and finishes
 in-flight work, closes connections, and exits cleanly instead of dropping

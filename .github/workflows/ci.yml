@@ -29,5 +29,7 @@ jobs:
         run: node test/admit/run.mjs
       - name: reconcile — lifecycle, mutation channel, merged-while-red, binding law (local bare origin + replay)
         run: node test/reconcile/run.mjs
+      - name: gen — generated-view contract + inputs_digest stability (no gen --check step — this repo has zero views; green-by-construction is theater)
+        run: node test/gen/run.mjs
       - name: self-score (the standard checks itself)
         run: node check.mjs --repo . --no-exec

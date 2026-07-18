@@ -6,6 +6,42 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M6c: `baseline gen index` + `gen --check`, `inputs_digest` provenance
+- **The generated-view contract** (C05 as amended — in-PR views only; the snapshot
+  ceremony and its hash/as_of headers stay cut): a view is a tracked markdown file
+  whose first line is the static marker `<!-- baseline:generated <kind> — do not
+  edit by hand; regenerate: baseline gen <kind> -->`. `gen index` writes a
+  DETERMINISTIC index (judgments/claims ledgers, per-lane session counts with
+  filename-derived dates, docs map with first-heading titles) — everything sorted,
+  links relative to the out file's dir (CTX-05's resolver semantics; a root-form
+  link would redden the consumer's own check), refuses to overwrite a marker-less
+  hand-written file (uncapped probe — a >512KB hand file is not "absent").
+- **`gen --check`** — the CI drift guard: discovery over the tracked∪walked pool
+  with uncapped reads (no silent green over a big drifted view), regenerate +
+  byte-compare. Zero marked views → exit 0 (the ruled pre-adoption state); drift →
+  exit 1 with a VERBATIM-RUNNABLE remedy derived from the invocation's own argv
+  (vendored consumers have no `baseline` binary) + the predates-this-PR and
+  vendor-bump clauses; unknown kinds and unreadable views fail named, never
+  skipped. Advisory CI means a visibly red job OUTSIDE the required set — never
+  `continue-on-error`.
+- **`inputs_digest`** (`src/digest.mjs`, pure): sha256 over the six ruled inputs —
+  head SHA · target SHA · descriptor blob OID at target (`gitBlobAt`, the ruled
+  content-addressed hash) · rules version · check-run (name, conclusion, head_sha)
+  tuples (FULL-tuple sort — GitHub re-runs mint same-name ties) · anchored-issue
+  state. Absence is a VALUE ('not-consulted' / none): runs that consulted
+  different planes digest differently. `baseline admit` prints the one provenance
+  line and mirrors its fields in `--json` (`provenance`), REFUSAL-INERT by
+  contract; `checkRuns(HEAD)` is admit's one marginal forge read, degraded by the
+  same one-home closure (posture / JDG-only) as everything else.
+- Tests: `test/gen/run.mjs` (digest canonicalization incl. tie-break permutation;
+  marker round-trip; determinism; union-pool discovery; drift remedy text;
+  refusals; BOM/CRLF loudness; >512KB honesty) + admit provenance asserts.
+  Re-pins: **0** (verified — the golden projections never see the new field).
+  Slice panel (scope-cutter / friction skeptic / dependency auditor): all
+  AMEND-THEN-GO; every amendment applied (marker human clause, argv-derived
+  remedy, advisory≠continue-on-error, full-tuple sort, JSON line-mirror,
+  link-form law, uncapped reads, anchor-none mapping, explicit sorts).
+
 ### Added — V2 M6b: `baseline reconcile`, the forge mutation channel, GOV-01/02 live asserts
 - **`baseline reconcile`** — post-merge revalidation of the default branch (MERGE-03's
   dissolution: the cron against main IS post-merge revalidation, C37). Four finding

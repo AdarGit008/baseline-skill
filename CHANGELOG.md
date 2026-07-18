@@ -12,7 +12,7 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   multi-lane-local`), so the promotion is rule DATA plus two conscious law changes,
   no new mechanism. REC-01/02 stay warn (the only ungated candidates; a
   severity-by-posture seam has no consumer — revive on real demand for
-  REC-02-at-admit). Pre-flight diff, published before capture: **6 fixtures, 8 row
+  REC-02-at-admit). Pre-flight diff, published before capture: **6 fixtures, 7 row
   re-tags WARN→FAIL, 3 exit flips, 1 detail reword** (+ the two M6a backfill
   fixtures below) = re-pin 1 of the ruled 3.
 - **Blocker-DIVERGED refuses without losing its verdict**: the engine keeps the
@@ -39,6 +39,8 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 - Ruled explicitly (CONTRACT): promoted blockers keep `on_unreachable: skip` —
   gating power exists only where facts are readable; the fail-closed floor stays
   admit's command legs + reconcile detection.
+- **Gate to M7b** (per the ruling): one clean demo lane cycle at blocker
+  severity — claim → work → log → push → admit green → merge, on baseline-demo.
 
 ## [2.4.0] — 2026-07-18
 

@@ -821,7 +821,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       // that may never land (C32). Deterministic from the git plane alone: sister =
       // a local remote-tracking lane ref whose shared history with HEAD reaches past
       // the target tip. The Baseline-Stacked-On trailer (whole-token ref match in the
-      // admitted range) declares the stack and lifts the finding. Lands warn; M7 promotes.
+      // admitted range) declares the stack and lifts the finding. Blocker since M7a.
       if (!ADMITWORLD) return { ok: null, detail: 'admit-context only (no target world assembled)' }
       const { targetTip, headSha, sisters, stackedOn, mergeBase, sistersCapped } = ADMITWORLD
       const w = LANEWORLD()

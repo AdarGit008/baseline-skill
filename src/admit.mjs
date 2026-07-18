@@ -1,11 +1,13 @@
 // baseline admit — merge-point revalidation (M6a; C30/C35, FS1, FS5, C33 as amended
 // by the M6 ruling, PLAN §8). "A verdict is valid only for the state it evaluated."
 //
-// Refusal is THIS COMMAND's contract, not a rule severity (no blocker declares admit
-// context until M7's promotion). Admit exits nonzero on exactly:
+// Refusal is THIS COMMAND's contract, joined since M7a by the promoted blockers.
+// Admit exits nonzero on exactly:
 //   (a) C35 staleness — the target tip is not an ancestor of the admitted HEAD
 //       (deterministic git ancestry, evaluated before any rule);
-//   (b) any admit-context BLOCKER FAIL — at M6a exactly DESC-03;
+//   (b) any admit-context blocker-severity FAIL or DIVERGED (isBlocking — DESC-03
+//       plus the M7a-promoted FLOW/DIV/MERGE set; EXCLUDED under the JDG-only
+//       admission path, whose ruled shape precludes lane records);
 //   (c) required-source loss on admit's GATING facts (target resolution → exit 2,
 //       nothing evaluated; ancestry provability and DESC-03's range diff → refusal) —
 //       a warn rule's unreachable source SKIPs labeled, exactly as in check:

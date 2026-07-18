@@ -107,6 +107,10 @@ contradiction). Ruled explicitly: promoted blockers keep `on_unreachable: skip`
 floor remains admit's command legs (staleness · DESC-03 · gating-source loss)
 plus reconcile's detection. An unreachable forge never silently blocks a merge,
 and never silently green-lights the facts it could not read — it SKIPs, labeled.
+One carve-out, keeping M6a's promise: under the **JDG-only admission path** the
+promoted blockers ride as findings but refuse nothing — the path's ruled shape
+(judgment additions alone) precludes a session record, so a promoted FLOW
+blocker there would re-close the relief valve. Staleness still refuses.
 
 ### Descriptor changes (DESC-03, ENFORCED since M6a)
 
@@ -170,7 +174,8 @@ a dated judgment in `.baseline/scrub-allowlist.json` via `--allow <finding-id>
 stores a content-derived hash, never the value.
 Never bypass a block by hand-writing the file; rotate the secret or record the
 judgment. Hand-written records get the same scan from the pre-push hook (once
-installed) and REC-02 re-scans everything that landed (warn until M7's promotion).
+installed) and REC-02 re-scans everything that landed (still warn — REC promotion
+deferred by the M7 ruling; the write/push tooling gates block).
 
 **Documented residual risk (C34):** the `--pushed` scan reads the allowlist from
 the worktree, which may itself be uncommitted — the judgment doesn't necessarily

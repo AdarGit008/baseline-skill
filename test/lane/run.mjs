@@ -184,6 +184,20 @@ function mklocal(name, desc) {
   ok(gitOk(o2.bare, 'show-ref', '--verify', 'refs/heads/lane/13') !== null, 'multi-lane-local claim landed at origin (git plane alone suffices — CF5)')
 }
 
+// ---------- M7a: reclaim refuses a COMPLETED lane (merged work is not reclaimable) ----------
+{
+  const o = mkorigin('completed')
+  const A = mkclone(o, 'A')
+  cli(A, ['lane', 'claim', '21'])
+  git(A, 'checkout', 'lane/21')
+  fs.writeFileSync(path.join(A, 'done.txt'), 'done\n'); git(A, 'add', '-A'); git(A, 'commit', '-qm', 'lane work')
+  git(A, 'push', '-q', 'origin', 'lane/21')
+  git(A, 'checkout', '-q', 'main'); git(A, 'merge', '-q', '--no-ff', '--no-edit', 'lane/21'); git(A, 'push', '-q', 'origin', 'main')
+  // even with a stone-age clock (any age), merged work must never derive ABANDONED
+  const r = cli(A, ['lane', 'reclaim', '21', '--agent', 'somebody-else'], { BASELINE_LOG_NOW: '2099-01-01T00:00:00Z' })
+  ok(r.status === 2 && /derives COMPLETED/.test(r.stderr) && /nothing to reclaim/.test(r.stderr), `reclaim refuses a COMPLETED (merged) lane — un-completing finished work is the hostage the exemption kills (got ${r.status}: ${r.stderr.slice(0, 80)})`)
+}
+
 // ---------- argument forms + surface ----------
 {
   const o = mkorigin('args')

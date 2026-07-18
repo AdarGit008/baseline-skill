@@ -146,6 +146,41 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   ok(r.status === 1 && /descriptor invalidated/.test(r.j?.results.find(x => x.id === 'DESC-03')?.detail || ''), 'invalidating the descriptor on-branch is classified as weakening and refused')
 }
 
+// ---------- M7a: DESC-03 kind pin — break-glass never approves a descriptor change ----------
+{
+  const w = mkworld('desckind')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7')
+  logLane(w.clone, 'lane/7')
+  const weak = { ...BASE_DESC, anchoring: 'relaxed' }
+  commit(w.clone, 'baseline.repo.json', JSON.stringify(weak, null, 2) + '\n', 'descriptor change')
+  commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { kind: 'break-glass', gate: 'admit' }), 'break-glass, right subject')
+  const r = admitJson(w.clone)
+  const d3 = r.j?.results.find(x => x.id === 'DESC-03')
+  ok(r.status === 1 && d3?.tag === 'FAIL', `a right-subject BREAK-GLASS does not satisfy DESC-03 (kinds pinned at M7a) (got ${r.status}, ${d3?.tag})`)
+  ok(/never descriptor-change approval/.test(d3?.detail || '') && /sign-off\|deviation\|risk-acceptance/.test(d3?.detail || ''), 'the refusal names the kind pin and the satisfying kinds')
+  commit(w.clone, 'records/judgments/JDG-0002.json', JDG('JDG-0002', { kind: 'risk-acceptance' }), 'risk-acceptance, right subject')
+  const r2 = admitJson(w.clone)
+  ok(r2.status === 0 && r2.j?.results.find(x => x.id === 'DESC-03')?.tag === 'PASS', 'risk-acceptance (a pinned kind) satisfies')
+}
+
+// ---------- M7a: blocker-DIVERGED refuses AT ADMIT, verdict preserved ----------
+{
+  const w = mkworld('divrefuse')
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7')
+  commit(w.clone, 'work.txt', 'w\n', 'lane work')
+  logLane(w.clone, 'lane/7')
+  git(w.clone, 'push', '-q', 'origin', 'lane/7')
+  const tip = git(w.clone, 'rev-parse', 'lane/7')
+  const replay = path.join(w.dir, 'replay'); fs.mkdirSync(replay)
+  fs.writeFileSync(path.join(replay, 'lane-refs-refs_heads_lane_.json'), JSON.stringify({ data: { repository: { refs: { pageInfo: { hasNextPage: false }, nodes: [{ name: '7', target: { oid: tip, committedDate: new Date().toISOString(), message: 'claim lane/7: issue #7\n\nBaseline-Issue: #7\nBaseline-Agent: t', associatedPullRequests: { nodes: [] } } }] } } } }) + '\n')
+  fs.writeFileSync(path.join(replay, 'issue-7.json'), JSON.stringify({ number: 7, state: 'closed', title: 'closed under the live lane' }) + '\n')
+  const r = admitJson(w.clone, [], { BASELINE_FORGE_REPLAY: replay })
+  const d1 = r.j?.results.find(x => x.id === 'DIV-01')
+  ok(r.status === 1 && r.j?.verdict === 'REFUSED' && d1?.tag === 'DIVERGED', `blocker-DIVERGED refuses at admit with the verdict class preserved (got ${r.status}, ${d1?.tag})`)
+  ok((r.j?.refusals || []).some(x => /DIV-01 \(DIVERGED\)/.test(x)), 'the refusal line carries the (DIVERGED) marker')
+  ok(/reopen #7|resolution path/.test(d1?.detail || ''), 'the refusal detail carries the resolution recipe')
+}
+
 // ---------- the JDG-only admission path (the reachable relief valve) ----------
 {
   const w = mkworld('jdgonly')
@@ -155,6 +190,12 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   ok(r.status === 0 && r.j?.jdgOnly === true && r.j?.jdgRelief === 'JDG-0001', `a pure-judgment range admits via the JDG-only path, naming its relief record (got ${r.status}, ${r.j?.jdgRelief})`)
   const f1 = r.j?.results.find(x => x.id === 'FLOW-01')
   ok(/forge not consulted \(JDG-only admission path\)/.test(f1?.detail || ''), `the forge closure is labeled with the PATH, not fake unreachability (got: ${f1?.detail?.slice(0, 90)})`)
+
+  // staleness is data-plane truth — it refuses even on the privileged path (M7a pin)
+  advanceMainAtOrigin(w)
+  const rs = admitJson(w.clone)
+  ok(rs.status === 1 && rs.j?.jdgOnly === true && (rs.j?.refusals || []).some(x => /stale:/.test(x)), 'a STALE jdg-only range still refuses on staleness (the carve-out empties only leg (b))')
+  git(w.clone, 'fetch', '-q', 'origin'); git(w.clone, 'merge', '-q', '--no-edit', 'origin/main')
 
   // one extra non-judgment file breaks the shape — the normal path judges it
   commit(w.clone, 'src.txt', 'code\n', 'code rides along')

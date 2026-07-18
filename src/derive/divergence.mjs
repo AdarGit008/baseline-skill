@@ -8,8 +8,8 @@
 //   DIV-02  next:-points-at-closed  — a recorded next step naming a closed issue
 //   DIV-03  done-with-nothing-merged — an open PR "closes #N" where #N is already closed
 //
-// Certainty is deterministic (the forge SAID the issue is closed); severity stays warn
-// and the engine tag is DIVERGED (exit unchanged until M7). An 'unknown' issue state is
+// Certainty is deterministic (the forge SAID the issue is closed); blocker since
+// M7a — the engine tag stays DIVERGED and the counting seams fail the run. An 'unknown' issue state is
 // NEVER divergence — unresolvable is surfaced by the join layer, not guessed here.
 // refs comes from util (pure) so this derive module reads no I/O layer.
 import { refs } from '../util.mjs'

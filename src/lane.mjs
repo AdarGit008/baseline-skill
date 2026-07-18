@@ -303,7 +303,7 @@ function runReclaim(argv) {
   // ---- ONE derivation (the same gathering orient renders) decides reclaimability ----
   const ttl = d.data.lanes?.lease_ttl ?? DEFAULT_LEASE_TTL
   const ttlMs = parseTtlMs(ttl) ?? parseTtlMs(DEFAULT_LEASE_TTL)
-  const gathered = gatherLaneFacts(repo, forge, ns)
+  const gathered = gatherLaneFacts(repo, forge, ns, { defaultBranch: d.data.ground_truth_boundary?.default_branch ?? null })
   let laneFact = gathered.lanes.find(l => l.ref === ref) || null
   if (!laneFact || laneFact.tip !== tip) {
     // the forge's refs page may lag, truncate, or (under replay) fossilize — a state
@@ -315,7 +315,11 @@ function runReclaim(argv) {
     note(laneFact
       ? `the ${gathered.source === 'forge' ? "forge's" : 'gathered'} lane answer names a different tip than the fetch (${String(laneFact.tip).slice(0, 8)} vs ${tip.slice(0, 8)}) — freshness rebuilt from fetched git objects`
       : `lane absent from ${gathered.source === 'forge' ? "the forge's lane listing" : gathered.source === 'git' ? "origin's ref listing" : 'every lane listing'} — freshness read from fetched git objects (low confidence)`)
-    laneFact = { ref, tip, committedDate: G('log', '-1', '--format=%cI', RECLAIM_REF) || null, prUpdatedAt, pr: laneFact?.pr ?? null, agent: from, agentSource: from ? 'history-trailer' : null, source: 'git' }
+    // the rebuilt fact keeps the COMPLETED exemption honest: recompute merged for
+    // THIS tip, or a reclaim on stale forge data would un-complete finished work
+    const db = d.data.ground_truth_boundary?.default_branch ?? null
+    const mergedBase = db ? (['origin/' + db, db].find(r => G('rev-parse', '--verify', '-q', r + '^{commit}') !== null) || null) : null
+    laneFact = { ref, tip, committedDate: G('log', '-1', '--format=%cI', RECLAIM_REF) || null, prUpdatedAt, pr: laneFact?.pr ?? null, agent: from, agentSource: from ? 'history-trailer' : null, source: 'git', merged: !!(mergedBase && G('merge-base', '--is-ancestor', tip, mergedBase) !== null) }
   }
   const view = deriveLanes({ lanes: [laneFact], ttlMs, now: now.toISOString(), namespace: ns })[0]
   const idle = view.age_ms == null ? 'age unresolvable' : `${Math.floor(view.age_ms / 3600000) < 48 ? Math.floor(view.age_ms / 3600000) + 'h' : Math.floor(view.age_ms / 86400000) + 'd'} idle`
@@ -379,6 +383,7 @@ function runReclaim(argv) {
   }
   if (view.state !== 'ABANDONED') {
     if (typeof jdgId !== 'string') {
+      if (view.state === 'COMPLETED') return usage(`${ref} derives COMPLETED — its tip is already merged into the default branch; there is nothing to reclaim. Prune it (git push origin --delete ${ref}) and claim fresh work.`)
       return usage(`${ref} derives ${view.state ?? 'UNDERIVED'} (${idle} of ttl ${ttl}) — reclaim requires a derived ABANDONED. A live takeover needs a deviation judgment naming the lane:\n    baseline jdg new --kind deviation --subject "${ref}" --reason "..." --review-by YYYY-MM-DD\n    baseline lane reclaim ${issue} --jdg JDG-NNNN`)
     }
     const { records } = loadJudgments(REPO)

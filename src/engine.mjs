@@ -49,6 +49,9 @@ export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIP
     // failing. The verdict class is never erased into a generic FAIL.
     else if (res.diverged) tag = 'DIVERGED'
     else if (res.signoff || r.check.kind === 'signoff') tag = 'SIGN-OFF'
+    // res.soft downgrades to WARN — an invariant rides here: no PROMOTED (blocker)
+    // kind returns soft today, and none may (a soft return on a blocker would slip
+    // past isBlocking); the pre-merge panel pinned this as the rule for future kinds
     else if (res.soft) tag = 'WARN'
     else tag = r.severity === 'blocker' ? 'FAIL' : 'WARN'
     results.push({ r, tag, detail: res.detail })

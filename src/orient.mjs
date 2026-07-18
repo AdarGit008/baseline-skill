@@ -80,7 +80,7 @@ export async function runOrient(argv) {
   // ---- the plain open-PR survey otherwise (single-lane repos keep their old section) ----
   const meta = status.lanesMeta
   const laneRefSet = new Set((status.lanes || []).map(l => l.ref))
-  const STATE_ICON = { LIVE: '●', STALE: '◐', ABANDONED: '✗' }
+  const STATE_ICON = { LIVE: '●', STALE: '◐', ABANDONED: '✗', COMPLETED: '✔' }
   if (meta) {
     P.push(`\n## Lanes (\`${meta.namespace}\` · ttl ${meta.ttl})`)
     if (meta.truncated) P.push(`_⚠ lane list truncated — refs beyond the forge's first page (100) are not shown_`)

@@ -175,6 +175,21 @@ function materializeInto(name, src, manifest, tmp, extra) {
     copyTree(fsrc, fdst)
     env.BASELINE_FORGE_REPLAY = fdst
   }
+  // manifest.shallow (M7a): score a --depth 1 clone of the bare origin instead of the
+  // built repo — the ancestry-unprovable world admit's break-glass relief covers
+  // (M6a's relieved-envelope shape, finally golden-pinnable). --no-single-branch so
+  // origin/main still resolves as the target from a lane checkout.
+  if (manifest.shallow) {
+    if (!manifest.bare_origin) throw new Error(`${name}: shallow requires bare_origin`)
+    const sc = fs.mkdtempSync(path.join(os.tmpdir(), `baseline-golden-${name}-shallow-`))
+    extra.push(sc)
+    const bare = path.join(tmp, '..') // not used — the bare dir is in extra; re-derive from the remote
+    const origin = git(tmp, 'remote', 'get-url', 'origin')
+    execFileSync('git', ['clone', '-q', '--depth', '1', '--no-single-branch', '--branch', manifest.branch || 'main', 'file://' + origin, sc], { env: GIT_ENV })
+    git(sc, 'config', 'user.email', 'golden@fixture.local')
+    git(sc, 'config', 'user.name', 'Golden Fixture')
+    return { tmp: sc, args: manifest.args || [], env, extra: [...extra, tmp], manifest }
+  }
   return { tmp, args: manifest.args || [], env, extra, manifest }
 }
 

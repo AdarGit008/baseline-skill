@@ -64,7 +64,7 @@ node "$SKILL_DIR/baseline.mjs" lane claim <issue> --repo <target>
 
 ## Taking over a dead lane (M5b)
 
-`orient`'s Lanes section derives every claimed lane's lease — **LIVE | STALE | ABANDONED** (freshness = the later of tip commit and PR activity vs the descriptor's `lease_ttl`, default 7d). Only a lane that **derives ABANDONED** is reclaimable:
+`orient`'s Lanes section derives every claimed lane's lease — **LIVE | STALE | ABANDONED | COMPLETED** (freshness = the later of tip commit and PR activity vs the descriptor's `lease_ttl`, default 7d; COMPLETED = the tip is already merged into the default branch — done, exempt from divergence/lease findings, prune it). Only a lane that **derives ABANDONED** is reclaimable:
 
 ```bash
 node "$SKILL_DIR/baseline.mjs" lane reclaim <issue> --repo <target>

@@ -4,7 +4,7 @@
       "id": "FLOW-01",
       "title": "The lane anchors to a real issue",
       "category": "flow",
-      "severity": "warn",
+      "severity": "blocker",
       "applies_to": "all",
       "workflow": [
         "multi-lane",
@@ -12,9 +12,9 @@
       ],
       "branch_scope": "lane",
       "source": "https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue",
-      "lesson": "ADR-0009 'no issue, no work' — the anchor is what lets leases, takeovers, and divergence derive; an anchor-less branch is invisible to all three",
-      "rationale": "The ref IS the claim (FS2): a lane whose name parses to no issue can't be joined to intent, and under strict anchoring an anchor that doesn't resolve at the forge is a claim on nothing. Existence + resolution only — whether the issue is still OPEN is DIV-01's finding, not this rule's (no overlap). The descriptor `anchoring` knob governs: off SKIPs, relaxed wants a parseable anchor, strict also wants forge resolution. Lands warn; M7 promotes per posture.",
-      "fix": "Claim lanes through the tool — baseline lane claim <issue>. If this repo genuinely doesn't anchor, set descriptor anchoring to 'off' (relaxed still requires a parseable anchor).",
+      "lesson": "ADR-0009 'no issue, no work' \u2014 the anchor is what lets leases, takeovers, and divergence derive; an anchor-less branch is invisible to all three",
+      "rationale": "The ref IS the claim (FS2): a lane whose name parses to no issue can't be joined to intent, and under strict anchoring an anchor that doesn't resolve at the forge is a claim on nothing. Existence + resolution only \u2014 whether the issue is still OPEN is DIV-01's finding, not this rule's (no overlap). The descriptor `anchoring` knob governs: off SKIPs, relaxed wants a parseable anchor, strict also wants forge resolution. Lands warn; M7 promotes per posture.",
+      "fix": "Claim lanes through the tool \u2014 baseline lane claim <issue>. If this repo genuinely doesn't anchor, set descriptor anchoring to 'off' (relaxed still requires a parseable anchor).",
       "sources": [
         "tree",
         "history",
@@ -34,7 +34,7 @@
       "id": "FLOW-02",
       "title": "A lane branch carries its own session record",
       "category": "flow",
-      "severity": "warn",
+      "severity": "blocker",
       "applies_to": "all",
       "workflow": [
         "multi-lane",
@@ -42,8 +42,8 @@
       ],
       "branch_scope": "lane",
       "source": "https://about.gitlab.com/blog/2018/07/03/solving-gitlabs-changelog-conflict-crisis/",
-      "lesson": "C14/C12 — records ride the branch to main (ADR-0009 Rule 3): the forensic tier lands atomically with the change it describes",
-      "rationale": "A lane that merges without its session record leaves the next orient blind to why the change happened and what was left open. The record travels in the same PR — the 'update the status' PR class must not exist.",
+      "lesson": "C14/C12 \u2014 records ride the branch to main (ADR-0009 Rule 3): the forensic tier lands atomically with the change it describes",
+      "rationale": "A lane that merges without its session record leaves the next orient blind to why the change happened and what was left open. The record travels in the same PR \u2014 the 'update the status' PR class must not exist.",
       "fix": "Write the record on this branch: baseline log -m \"what happened\" --next \"the one next step\". Lands warn; M7 promotes per posture.",
       "sources": [
         "tree",
@@ -63,7 +63,7 @@
       "id": "FLOW-03",
       "title": "The lane's session record has a filled-in next:",
       "category": "flow",
-      "severity": "warn",
+      "severity": "blocker",
       "applies_to": "all",
       "workflow": [
         "multi-lane",
@@ -71,8 +71,8 @@
       ],
       "branch_scope": "lane",
       "source": "https://www.swyx.io/networking-essay",
-      "lesson": "C06/ADR-0009 — next: is the pause-state a stateless successor resumes from; an empty next: is a record that stops one sentence short of being useful",
-      "rationale": "Fires ONLY on a present record whose next: is empty — a missing record entirely is FLOW-02's finding (no overlap, no double report). The generalized session-log guard from the ADR-0009 prototype's check-session-log.mjs. Lands warn; M7 promotes per posture.",
+      "lesson": "C06/ADR-0009 \u2014 next: is the pause-state a stateless successor resumes from; an empty next: is a record that stops one sentence short of being useful",
+      "rationale": "Fires ONLY on a present record whose next: is empty \u2014 a missing record entirely is FLOW-02's finding (no overlap, no double report). The generalized session-log guard from the ADR-0009 prototype's check-session-log.mjs. Lands warn; M7 promotes per posture.",
       "fix": "Re-log with the one next step: baseline log -m \"...\" --next \"the one next step\" (the newest record governs).",
       "sources": [
         "tree",
@@ -92,7 +92,7 @@
       "id": "FLOW-04",
       "title": "The branch sits in a declared family",
       "category": "flow",
-      "severity": "warn",
+      "severity": "blocker",
       "applies_to": "all",
       "workflow": [
         "multi-lane",
@@ -100,7 +100,7 @@
       ],
       "branch_scope": "lane",
       "source": "https://trunkbaseddevelopment.com/branch-for-release/",
-      "lesson": "CF-scope (M5 panel, capped first-to-drop) — a namespace only means something if the repo's REAL branch inventory is declared; otherwise every legitimate release/* branch is wallpaper",
+      "lesson": "CF-scope (M5 panel, capped first-to-drop) \u2014 a namespace only means something if the repo's REAL branch inventory is declared; otherwise every legitimate release/* branch is wallpaper",
       "rationale": "Placement against lanes.namespace + lanes.families (additive): the demo's real inventory (adopt/*, release/*) declares itself instead of warning forever. A branch outside every declared family is either an undeclared family (declare it) or a stray (claim a lane). Lands warn; M7 promotes per posture.",
       "fix": "Claim a lane (baseline lane claim <issue>) or declare the family in the descriptor: \"lanes\": { \"families\": [\"release/*\"] }.",
       "sources": [
@@ -121,7 +121,7 @@
       "id": "FLOW-05",
       "title": "The newest session record is pushed",
       "category": "flow",
-      "severity": "warn",
+      "severity": "blocker",
       "applies_to": "all",
       "workflow": [
         "multi-lane",
@@ -129,9 +129,9 @@
       ],
       "branch_scope": "lane",
       "source": "https://martinfowler.com/articles/branching-patterns.html#push-to-mainline",
-      "lesson": "ADR-0009 Rule 5 — origin is the rendezvous; a record only the local disk knows is invisible to every other lane and to reclaim's lease derivation",
-      "rationale": "The arbitrated threshold-free predicate (M5 ruling): the NEWEST session record exists locally but is absent at origin — session-boundary-aligned, zero invented tuning surface (no age windows, no counts). Judged against the last-fetched origin state and says so. Lands warn; M7 promotes per posture.",
-      "fix": "Push the lane: git push (the record rides the branch — ADR-0009 Rule 3).",
+      "lesson": "ADR-0009 Rule 5 \u2014 origin is the rendezvous; a record only the local disk knows is invisible to every other lane and to reclaim's lease derivation",
+      "rationale": "The arbitrated threshold-free predicate (M5 ruling): the NEWEST session record exists locally but is absent at origin \u2014 session-boundary-aligned, zero invented tuning surface (no age windows, no counts). Judged against the last-fetched origin state and says so. Lands warn; M7 promotes per posture.",
+      "fix": "Push the lane: git push (the record rides the branch \u2014 ADR-0009 Rule 3).",
       "sources": [
         "tree",
         "history"
@@ -158,9 +158,9 @@
       ],
       "branch_scope": "lane",
       "source": "https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions",
-      "lesson": "CF9 — C14 same-PR atomicity was enforced for sessions only; the descriptor is V2's largest stored intent (DESC-03's blocker enforcement lands at M6 admit)",
-      "rationale": "A descriptor change is a posture change — the judgment saying why belongs in the same range, not a follow-up promise. Heuristic (subject→record mapping is a convention), so warn is its ceiling (C07). Check-context only since M6a: DESC-03 owns the same predicate at admit (disjoint contexts — one predicate judged once per run).",
-      "fix": "Add the corresponding record to this branch — for baseline.repo.json changes: baseline jdg new --kind deviation --subject \"baseline.repo.json\" --reason \"...\" --review-by <date>.",
+      "lesson": "CF9 \u2014 C14 same-PR atomicity was enforced for sessions only; the descriptor is V2's largest stored intent (DESC-03's blocker enforcement lands at M6 admit)",
+      "rationale": "A descriptor change is a posture change \u2014 the judgment saying why belongs in the same range, not a follow-up promise. Heuristic (subject\u2192record mapping is a convention), so warn is its ceiling (C07). Check-context only since M6a: DESC-03 owns the same predicate at admit (disjoint contexts \u2014 one predicate judged once per run).",
+      "fix": "Add the corresponding record to this branch \u2014 for baseline.repo.json changes: baseline jdg new --kind deviation --subject \"baseline.repo.json\" --reason \"...\" --review-by <date>.",
       "sources": [
         "tree",
         "history"
@@ -189,7 +189,7 @@
       "id": "FLOW-07",
       "title": "The lane's lease is live",
       "category": "flow",
-      "severity": "warn",
+      "severity": "blocker",
       "applies_to": "all",
       "workflow": [
         "multi-lane",
@@ -197,8 +197,8 @@
       ],
       "branch_scope": "lane",
       "source": "https://sre.google/sre-book/distributed-periodic-scheduling/",
-      "lesson": "C31 — leases are fully derived (max of tip committedDate and PR updatedAt vs lease_ttl); a dead agent must never wedge a namespace",
-      "rationale": "Warns ONLY at derived ABANDONED (the ruling: STALE is orient's nudge, not a finding — wallpaper is forbidden). The same derive/lanes answer orient renders and reclaim gates on: one derivation, three surfaces. Lands warn; M7 promotes per posture.",
+      "lesson": "C31 \u2014 leases are fully derived (max of tip committedDate and PR updatedAt vs lease_ttl); a dead agent must never wedge a namespace",
+      "rationale": "Warns ONLY at derived ABANDONED (the ruling: STALE is orient's nudge, not a finding \u2014 wallpaper is forbidden). The same derive/lanes answer orient renders and reclaim gates on: one derivation, three surfaces. Lands warn; M7 promotes per posture.",
       "fix": "Renew the lease by pushing work, or hand the lane over: baseline lane reclaim <issue> (from the taking-over agent).",
       "sources": [
         "history",

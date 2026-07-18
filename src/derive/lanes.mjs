@@ -31,7 +31,7 @@ export function parseTtlMs(ttl) {
   return m ? +m[1] * (m[2] === 'd' ? 86400000 : 3600000) : null
 }
 
-const RANK = { ABANDONED: 0, STALE: 1, LIVE: 3 } // underived (null) ranks 2: attention-worthy, not reclaimable
+const RANK = { ABANDONED: 0, STALE: 1, LIVE: 3, COMPLETED: 4 } // underived (null) ranks 2: attention-worthy, not reclaimable; COMPLETED sorts last (done is not attention)
 
 // lanes: [{ ref, tip, committedDate, prUpdatedAt, pr, agent, agentSource, source }] — the
 // normalized facts (src/facts/*). -> the derived view, ABANDONED/STALE sorted first (the
@@ -48,7 +48,15 @@ export function deriveLanes({ lanes = [], ttlMs, now, issueStates = {}, namespac
       freshness = new Date(Math.max(isNaN(commit) ? -Infinity : commit, isNaN(pr) ? -Infinity : pr)).toISOString()
     }
     let age_ms = null, state = null
-    if (freshness != null && !isNaN(nowMs) && ttlMs > 0) {
+    // M7a: a lane whose tip is ALREADY an ancestor of the default branch is finished
+    // work — COMPLETED, exempt from the lease clock and from DIV-01 (its closed
+    // anchor is agreement with the tracker, not a contradiction). The fact is
+    // provable-only (gathered upstream via git ancestry); absent proof, the lane
+    // derives on the normal clock — not-exempt is the honest default.
+    if (l.merged) {
+      state = 'COMPLETED'
+      labels.push('tip merged into the default branch — lane complete; prune the branch (git push origin --delete <ref>)')
+    } else if (freshness != null && !isNaN(nowMs) && ttlMs > 0) {
       age_ms = nowMs - Date.parse(freshness)
       if (age_ms < 0) { age_ms = 0; labels.push('clock skew clamped to age 0 (freshness is ahead of now)') }
       state = age_ms < ttlMs * STALE_FRACTION ? 'LIVE' : age_ms < ttlMs ? 'STALE' : 'ABANDONED'

@@ -75,7 +75,7 @@ function logRecord(w, lane, next) {
   const { w } = world('stray')
   git(w, 'checkout', '-q', '-b', 'wip/experiment'); fs.appendFileSync(path.join(w, 'README.md'), 'x\n'); git(w, 'commit', '-qam', 'wip')
   const out = checkJson(w)
-  ok(tag(out, 'FLOW-04').tag === 'WARN' && /outside every declared family/.test(tag(out, 'FLOW-04').detail), 'FLOW-04 WARN: a stray branch is outside every family')
+  ok(tag(out, 'FLOW-04').tag === 'FAIL' && /outside every declared family/.test(tag(out, 'FLOW-04').detail), 'FLOW-04 FAILs (blocker since M7a): a stray branch is outside every family')
   ok(['FLOW-01', 'FLOW-02', 'FLOW-03', 'FLOW-05'].every(id => tag(out, id).tag === 'SKIP'), 'a stray gets FLOW-04 as its ONE placement finding, not four warns')
 }
 
@@ -86,7 +86,7 @@ function logRecord(w, lane, next) {
   const dir = path.join(w, 'records', 'sessions', 'lane', '7'); fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, 'draft.md'), REC('').replace(/LANE/g, 'lane/7')) // written, NOT committed
   const out = checkJson(w)
-  ok(tag(out, 'FLOW-02').tag === 'WARN', 'FLOW-02 warns: no COMMITTED record rides the lane')
+  ok(tag(out, 'FLOW-02').tag === 'FAIL', 'FLOW-02 FAILs (blocker since M7a): no COMMITTED record rides the lane')
   ok(['FLOW-03', 'FLOW-05', 'DIV-02'].every(id => tag(out, id).tag === 'SKIP' && /committed/.test(tag(out, id).detail)),
     'FLOW-03/05/DIV-02 SKIP on the uncommitted draft — one predicate, no self-contradiction')
 }
@@ -96,7 +96,7 @@ function logRecord(w, lane, next) {
   const { w } = world('emptynext')
   git(w, 'checkout', '-q', '-b', 'lane/7'); logRecord(w, 'lane/7', '')
   const out = checkJson(w)
-  ok(tag(out, 'FLOW-03').tag === 'WARN' && /empty next:/.test(tag(out, 'FLOW-03').detail), 'FLOW-03 WARN: a committed record with an empty next:')
+  ok(tag(out, 'FLOW-03').tag === 'FAIL' && /empty next:/.test(tag(out, 'FLOW-03').detail), 'FLOW-03 FAILs (blocker since M7a): a committed record with an empty next:')
 }
 
 // ---------- FLOW-05 WARN: origin has the lane but NOT the newest record (the real gap) ----------
@@ -106,7 +106,7 @@ function logRecord(w, lane, next) {
   git(w, 'push', '-q', 'origin', 'lane/7')          // origin/lane/7 exists...
   logRecord(w, 'lane/7', 'the next thing')          // ...but the newest record is committed AFTER, not pushed
   const out = checkJson(w)
-  ok(tag(out, 'FLOW-05').tag === 'WARN' && /absent at origin/.test(tag(out, 'FLOW-05').detail), 'FLOW-05 WARN: newest record exists locally, absent at origin (the strongest violation, now pinnable)')
+  ok(tag(out, 'FLOW-05').tag === 'FAIL' && /absent at origin/.test(tag(out, 'FLOW-05').detail), 'FLOW-05 FAILs (blocker since M7a): newest record exists locally, absent at origin')
 }
 
 // ---------- FLOW-05 PASS once the record is pushed ----------
@@ -132,7 +132,7 @@ function logRecord(w, lane, next) {
   ok(tag(out, 'DIV-01').tag === 'PASS', 'DIV-01 PASS: the anchor is open — no divergence')
   ok(tag(out, 'DIV-02').tag === 'DIVERGED' && /#5/.test(tag(out, 'DIV-02').detail), 'DIV-02 DIVERGED: next: names closed #5')
   ok(tag(out, 'DIV-03').tag === 'DIVERGED' && /#5/.test(tag(out, 'DIV-03').detail), 'DIV-03 DIVERGED: open PR #40 closes closed #5')
-  ok(out.summary.diverged === 2 && out.exitCode === 0, 'two DIVERGED, exit still 0 (severity warn until M7)')
+  ok(out.summary.diverged === 2 && out.exitCode === 1 && out.summary.blockers === 2, 'two blocker-DIVERGED: verdict class preserved, EXIT 1, counted as blockers (M7a)')
 }
 
 // ---------- DIV-01 fires when the anchor issue is closed under an active lane ----------
@@ -159,6 +159,31 @@ function logRecord(w, lane, next) {
   const { w } = world('redos', { desc: { lanes: { families: ['*'.repeat(80)] } } })
   const out = checkJson(w)
   ok(tag(out, 'DESC-01').tag === 'WARN' && /at most 64 characters/.test(tag(out, 'DESC-01').detail), 'an over-long families glob is refused at the schema (bounded before globToRe)')
+}
+
+// ---------- M7a: the merged-lane COMPLETED exemption (the promotion's hostage guard) ----------
+{
+  // a lane whose tip is merged into main, anchor CLOSED at the forge: without the
+  // exemption this is a blocker-DIVERGED hostage on every post-merge checkout
+  const { w, replayDir } = world('completed', {
+    replay: {
+      'lane-refs-refs_heads_lane_.json': { data: { repository: { refs: { pageInfo: { hasNextPage: false }, nodes: [{ name: '7', target: { oid: 'SELFTIP', committedDate: '2026-07-01T00:00:00Z', message: 'claim lane/7: issue #7\n\nBaseline-Issue: #7\nBaseline-Agent: t', associatedPullRequests: { nodes: [] } } }] } } } },
+      'issue-7.json': { number: 7, state: 'closed', title: 'done thing' },
+    },
+  })
+  git(w, 'checkout', '-q', '-b', 'lane/7')
+  logRecord(w, 'lane/7', 'push')
+  git(w, 'push', '-q', 'origin', 'lane/7')
+  // merge the lane into main and push — the tip is now an ancestor of origin/main
+  git(w, 'checkout', '-q', 'main'); git(w, 'merge', '-q', '--no-ff', '--no-edit', 'lane/7'); git(w, 'push', '-q', 'origin', 'main')
+  git(w, 'checkout', '-q', 'lane/7')
+  const tip = git(w, 'rev-parse', 'lane/7')
+  const raw = fs.readFileSync(path.join(replayDir, 'lane-refs-refs_heads_lane_.json'), 'utf8').replace('SELFTIP', tip)
+  fs.writeFileSync(path.join(replayDir, 'lane-refs-refs_heads_lane_.json'), raw)
+  const out = checkJson(w, { replayDir })
+  ok(tag(out, 'DIV-01').tag === 'PASS' && /lane complete/.test(tag(out, 'DIV-01').detail), `COMPLETED lane + closed anchor = agreement, never divergence (got ${tag(out, 'DIV-01').tag}: ${tag(out, 'DIV-01').detail?.slice(0, 60)})`)
+  ok(tag(out, 'FLOW-07').tag === 'SKIP' && /lane complete/.test(tag(out, 'FLOW-07').detail), 'FLOW-07: a completed lane has no lease to police')
+  ok(out.exitCode === 0, 'the merged lane checkout exits 0 — no promotion hostage')
 }
 
 for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })

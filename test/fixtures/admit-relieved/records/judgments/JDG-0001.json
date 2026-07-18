@@ -1,0 +1,11 @@
+{
+  "record": "judgment/1",
+  "id": "JDG-0001",
+  "kind": "break-glass",
+  "date": "2026-01-01",
+  "by": "golden",
+  "subject": "admit gating-source outage",
+  "reason": "fixture: the relief valve on the target ref",
+  "review_by": "2099-12-31",
+  "gate": "admit"
+}

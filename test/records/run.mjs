@@ -430,7 +430,7 @@ try {
     fs.writeFileSync(path.join(t12, 'work.md'), 'lane work\n')
     sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'work'])
     res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
-    ok(res['FLOW-02'].tag === 'WARN' && /baseline log/.test(res['FLOW-02'].detail), 'e2e: a lane with work but no session record WARNs with the fix')
+    ok(res['FLOW-02'].tag === 'FAIL' && /baseline log/.test(res['FLOW-02'].detail), 'e2e: a lane with work but no session record FAILs (blocker since M7a) with the fix')
     ok(res['FLOW-06'].tag === 'SKIP' && /no gated subject/.test(res['FLOW-06'].detail), 'e2e: FLOW-06 SKIPs when nothing gated changed')
     const lrec = 'records/sessions/lane/t/2026-07-11-120000-a.md'
     fs.mkdirSync(path.join(t12, path.dirname(lrec)), { recursive: true })

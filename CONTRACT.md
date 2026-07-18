@@ -92,12 +92,31 @@ A judgment is **dated, owned, scoped, reasoned, and it expires**:
 - Author with `baseline jdg new …`; evaluate with `baseline jdg check`
   (M6's reconcile runs the same evaluation on cron and files issues).
 
+### Promotion (M7a): what blocks, and what unavailability does
+
+Since M7a the deterministic lane/divergence/merge rules (FLOW-01..05, FLOW-07 ·
+DIV-01..03 · MERGE-02) run at **blocker** under the multi-lane postures — a
+blocker-severity DIVERGED row **keeps its DIVERGED verdict** and fails the run
+(check's exit, admit's refusal leg (b)) without being flattened into a generic
+FAIL. Their resolution paths ride the finding text: for a divergence, **reopen
+the issue if the work is genuinely unfinished, or merge/close-and-prune the lane
+if it is done** — a lane whose tip is already merged into the default branch
+derives **COMPLETED** and is exempt (its closed anchor is agreement, not
+contradiction). Ruled explicitly: promoted blockers keep `on_unreachable: skip`
+— their gating power exists only where their facts are readable; the fail-closed
+floor remains admit's command legs (staleness · DESC-03 · gating-source loss)
+plus reconcile's detection. An unreachable forge never silently blocks a merge,
+and never silently green-lights the facts it could not read — it SKIPs, labeled.
+
 ### Descriptor changes (DESC-03, ENFORCED since M6a)
 
 A PR that touches `baseline.repo.json` carries a JDG **in the same PR** whose
 `subject` is exactly `baseline.repo.json` (the descriptor filename — the one
 constant the tool owns; FLOW-06's fix text and this page emit the same spelling,
-and `admit` matches nothing cleverer than the exact string). Snapshot the new
+and `admit` matches nothing cleverer than the exact string) and whose `kind` is
+one of **sign-off · deviation · risk-acceptance** (pinned at M7a: break-glass is
+outage relief with its own gate semantics — it never doubles as descriptor-change
+approval; the two valves stay separate). Snapshot the new
 posture in `expected_state` with a tripwire on the changed axis — that part is
 craft, not machine-enforced. At admit, ANY descriptor change without that
 same-range judgment is a **blocker refusal**; the *weakening* classification

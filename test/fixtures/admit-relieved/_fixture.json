@@ -1,0 +1,6 @@
+{
+  "command": "admit",
+  "branch": "lane/7",
+  "bare_origin": true,
+  "shallow": true
+}

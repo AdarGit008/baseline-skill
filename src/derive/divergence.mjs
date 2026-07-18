@@ -28,7 +28,11 @@ export function deriveDivergence({ lanes = [], prs = [], issueStates = {}, thisL
 
   // DIV-01: a lane still claimed/active whose anchor issue is closed — the work
   // surface says "in progress", the issue tracker says "done"; one of them lies.
+  // A COMPLETED lane (tip merged into the default branch, M7a) is EXEMPT: its
+  // closed anchor is agreement with the tracker — finished work, not contradiction
+  // (the promotion's live-hostage guard; the lane line still says "prune").
   for (const l of lanes) {
+    if (l.state === 'COMPLETED') continue
     if (l.anchor && isClosed(l.anchor.state)) {
       items.push({ code: 'DIV-01', where: l.ref, issue: l.anchor.issue, state: l.anchor.state, text: `lane ${l.ref} is claimed but its anchor #${l.anchor.issue} is ${l.anchor.state} — "${titleOf(l.anchor.issue)}"` })
     }

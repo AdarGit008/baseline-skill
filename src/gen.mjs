@@ -29,7 +29,7 @@
 //     clobber). The refusal probe uses the same uncapped read.
 import fs from 'node:fs'
 import path from 'node:path'
-import { makeOpt } from './util.mjs'
+import { makeOpt, sanitizeTTY } from './util.mjs'
 import { indexRepo } from './repo.mjs'
 import { resolveConfig } from './config.mjs'
 import { validateRecord, recordSchema } from './records.mjs'
@@ -41,7 +41,7 @@ import { SESSION_BASES } from './facts/git.mjs'
 export const MARKER_OF = (kind) => `<!-- baseline:generated ${kind} — do not edit by hand; regenerate: baseline gen ${kind} -->`
 // Detection tolerates a BOM and CRLF on line 1 (they still byte-compare as drift
 // — loud, correct); the marker's identity is the `baseline:generated <kind>` prefix.
-export const MARKER_DETECT_RE = /^﻿?<!--\s*baseline:generated\s+(\S+)[^>]*-->\r?$/
+export const MARKER_DETECT_RE = /^\uFEFF?<!--\s*baseline:generated\s+(\S+)[^>]*-->\r?$/
 export const GEN_KINDS = new Set(['index'])
 
 // The verbatim-runnable remedy: derived from THIS invocation's argv, repo-relative
@@ -50,12 +50,22 @@ export const GEN_KINDS = new Set(['index'])
 export function remedyCommand(REPO, kind, outRel) {
   const self = path.resolve(process.argv[1] || 'baseline.mjs')
   const inRepo = self.startsWith(REPO + path.sep)
+  // VERBATIM-runnable is the contract — a space-bearing path must survive the
+  // reader's shell, so anything beyond the safe charset gets single-quoted
+  const q = s => /^[A-Za-z0-9._/-]+$/.test(s) ? s : `'${String(s).replace(/'/g, `'\\''`)}'`
   return inRepo
-    ? `node ${path.relative(REPO, self).split(path.sep).join('/')} gen ${kind} --out ${outRel} --repo .`
-    : `node ${self} gen ${kind} --out ${outRel} --repo ${REPO}`
+    ? `node ${q(path.relative(REPO, self).split(path.sep).join('/'))} gen ${kind} --out ${q(outRel)} --repo .`
+    : `node ${q(self)} gen ${kind} --out ${q(outRel)} --repo ${q(REPO)}`
 }
 
 const firstHeading = (md) => md.match(/^#\s+(.+?)\s*$/m)?.[1] ?? null
+// Markdown-cell/link hygiene for repo-authored strings: a '|' or newline in a
+// judgment subject must not split the table; '[' ']' in a title must not break
+// the link (escaping ']' does NOT survive CTX-05's naive link regex — strip);
+// a destination with spaces/parens rides in <...> (CommonMark; CTX-05 skips it).
+const cell = s => String(s).replace(/\r?\n/g, ' ').replace(/\|/g, '∣')
+const linkTitle = s => String(s).replace(/\r?\n/g, ' ').replace(/[[\]]/g, '')
+const linkDest = s => /[\s()]/.test(s) ? `<${s}>` : s
 
 // Deterministic index content over the repo's committed-shape surfaces. Pure of
 // clock and machine: every list sorted code-unit, dates from filenames, titles
@@ -75,7 +85,7 @@ export function generateIndex(repo, outRel) {
   else {
     P.push('| id | kind | subject | review by |')
     P.push('|---|---|---|---|')
-    for (const j of [...jdgs].sort((a, b) => a.id < b.id ? -1 : 1)) P.push(`| ${j.id} | ${j.kind} | ${j.subject} | ${j.review_by} |`)
+    for (const j of [...jdgs].sort((a, b) => a.id < b.id ? -1 : 1)) P.push(`| ${j.id} | ${j.kind} | ${cell(j.subject)} | ${j.review_by} |`)
   }
   P.push('')
   // claims ledger
@@ -86,7 +96,10 @@ export function generateIndex(repo, outRel) {
   else {
     P.push('| id | slug |')
     P.push('|---|---|')
-    for (const c of [...claims.claims].sort((a, b) => String(a.id) < String(b.id) ? -1 : 1)) P.push(`| ${c.id} | ${c.slug ?? ''} |`)
+    // _file tiebreak: claim ids are NOT filename-enforced (judgments are), so a
+    // duplicate id must not leave row order to the fs walk — that would make the
+    // committed view green on one machine and "drifted" on another
+    for (const c of [...claims.claims].sort((a, b) => String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : String(a._file) < String(b._file) ? -1 : 1)) P.push(`| ${cell(c.id)} | ${cell(c.slug ?? '')} |`)
   }
   P.push('')
   // session records by lane — count + newest DATE from the filename (the same
@@ -96,8 +109,10 @@ export function generateIndex(repo, outRel) {
   for (const f of sessions) {
     const rest = f.slice('records/sessions/'.length)
     const cut = rest.lastIndexOf('/')
-    if (cut < 1) continue
-    const lane = rest.slice(0, cut), file = rest.slice(cut + 1)
+    // a record parked directly under records/sessions/ has no lane dir — it still
+    // counts, honestly grouped, or the header total and the bullets would disagree
+    const lane = cut < 1 ? '(unlaned)' : rest.slice(0, cut)
+    const file = cut < 1 ? rest : rest.slice(cut + 1)
     const e = byLane.get(lane) || { n: 0, newest: '' }
     e.n++
     const d = file.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] || ''
@@ -122,7 +137,7 @@ export function generateIndex(repo, outRel) {
   if (!docs.length) P.push('_none_')
   else for (const f of docs) {
     const title = firstHeading(repo.read(f) || '') || path.posix.basename(f)
-    P.push(`- [${title}](${path.posix.relative(outDir, f)})`)
+    P.push(`- [${linkTitle(title)}](${linkDest(path.posix.relative(outDir, f))})`)
   }
   P.push('')
   return P.join('\n')
@@ -163,8 +178,8 @@ export function runGen(argv) {
     // --out is repo-relative, posix, and stays INSIDE the repo — a generator that
     // can write outside its repo is a footgun, not a knob
     const rawOut = String(opt('--out', 'docs/INDEX.md'))
-    const outRel = path.posix.normalize(rawOut.split(path.sep).join('/'))
-    if (path.posix.isAbsolute(outRel) || outRel.startsWith('..')) return usage(`--out must be a repo-relative path inside the repo (got '${rawOut}')`)
+    const outRel = path.posix.normalize(rawOut.split(/[\\/]/).join('/'))
+    if (path.posix.isAbsolute(outRel) || outRel === '..' || outRel.startsWith('../')) return usage(`--out must be a repo-relative path inside the repo (got '${rawOut}')`)
     return runGenIndex(REPO, outRel)
   }
 
@@ -245,11 +260,18 @@ function runGenIndex(REPO, outRel) {
   const repo = indexRepo(REPO)
   const content = generateIndex(repo, outRel)
   const abs = path.join(REPO, outRel)
+  // a symlinked out-path defeats the stay-inside-the-repo law through the string
+  // guard (writes follow the link; a dangling one CREATES the outside file)
+  try { if (fs.lstatSync(abs).isSymbolicLink()) { console.error(`gen index: refusing ${outRel} — it is a symlink (a generated view is a plain file inside the repo)`); return 2 } }
+  catch {}
   // the overwrite law rides an UNCAPPED read: a size-capped probe would read a
   // big hand-written file as "absent" and clobber it
   let existing = null
   try { existing = fs.readFileSync(abs, 'utf8') }
-  catch (e) { if (e.code !== 'ENOENT') { console.error(`gen index: cannot read ${outRel} — ${e.message}`); return 2 } }
+  catch (e) {
+    if (e.code === 'EISDIR' || e.code === 'ENOTDIR') { console.error(`gen index: cannot write ${outRel} — ${e.code === 'EISDIR' ? 'it is a directory' : 'a file exists where a directory belongs on its path'}`); return 2 }
+    if (e.code !== 'ENOENT') { console.error(`gen index: cannot read ${outRel} — ${e.message}`); return 2 }
+  }
   if (existing !== null && !MARKER_DETECT_RE.test(existing.split('\n', 1)[0])) {
     console.error(`gen index: refusing to overwrite ${outRel} — it exists without the generated marker (a hand-written file). Move it aside, or pass a different --out.`)
     return 2
@@ -279,7 +301,16 @@ function runGenCheck(REPO) {
     // drifted view — the exact silent-green hole --check exists to close
     let raw = null
     try { raw = fs.readFileSync(path.join(REPO, f), 'utf8') }
-    catch { broken.push({ f, why: 'tracked but unreadable — the view (if it is one) is unscannable; fix the file or its permissions' }); continue }
+    catch (e) {
+      if (e.code === 'ENOENT') {
+        // deleted-but-tracked: only a red flag if the STAGED content is a view —
+        // a deleted ordinary doc is git's business, not a drift finding
+        const staged = repo.gitCatFile(':0', f)
+        if (staged !== null && MARKER_DETECT_RE.test(staged.split('\n', 1)[0])) broken.push({ f, why: 'generated view deleted from the worktree but still tracked — restore it (regenerate) or git rm it' })
+        continue
+      }
+      broken.push({ f, why: 'tracked but unreadable — the view (if it is one) is unscannable; fix the file or its permissions' }); continue
+    }
     const m = raw.split('\n', 1)[0].match(MARKER_DETECT_RE)
     if (!m) continue
     views++
@@ -292,12 +323,17 @@ function runGenCheck(REPO) {
     if (fresh !== raw) drifted.push(f)
   }
   if (!views && !broken.length) { console.log('gen --check: no generated views (marker absent) — trivially green'); return 0 }
+  // repo-authored bytes (filenames, marker kind tokens) reach the terminal here —
+  // the anti-tamper guard's own output must not be spoofable by the content it
+  // scans (an ESC-bearing kind could overwrite a finding as green). Same sanitize
+  // discipline as every other human surface.
+  const S = sanitizeTTY
   for (const f of drifted) {
-    console.error(`✗ ${f} drifted from its inputs`)
-    console.error(`    regenerate and commit: ${remedyCommand(REPO, 'index', f)}`)
-    console.error(`    (the drift may predate this PR — regenerating here clears it for everyone; if the vendored skill just bumped, the generator's shape changed with it — regenerate with the NEW version and commit the view alongside the bump)`)
+    console.error(`✗ ${S(f)} drifted from its inputs`)
+    console.error(`    regenerate and commit: ${S(remedyCommand(REPO, 'index', f))}`)
+    console.error(`    (the drift may predate this PR — regenerating here clears it for everyone; if the vendored skill just bumped, the generator's shape changed with it — regenerate with the NEW version and commit the view alongside the bump; if this file was never generated at all, someone pasted the marker — delete the marker line instead)`)
   }
-  for (const b of broken) console.error(`✗ ${b.f}: ${b.why}`)
+  for (const b of broken) console.error(`✗ ${S(b.f)}: ${S(b.why)}`)
   if (drifted.length || broken.length) { console.error(`\ngen --check: ${drifted.length} drifted · ${broken.length} broken of ${views} view(s)`); return 1 }
   console.log(`gen --check: ${views} generated view(s) in sync`)
   return 0

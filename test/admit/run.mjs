@@ -334,6 +334,13 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   const p = r.j?.provenance
   ok(!!p && /^[0-9a-f]{12}$/.test(p.digest), 'provenance: JSON carries a 12-hex inputs_digest')
   ok(p && p.checks === 'not-consulted' && /^[0-9a-f]{40}$/.test(p.descriptor_oid || ''), 'provenance: no-forge world digests checks as not-consulted; descriptor oid is the blob OID')
+  // the {check_runs} unwrap path end-to-end: a replay fixture at HEAD's sha
+  // flips checks from 'not-consulted' to a counted consult with a new digest
+  const headSha = git(w.clone, 'rev-parse', 'HEAD')
+  const replay = path.join(w.dir, 'replay'); fs.mkdirSync(replay)
+  fs.writeFileSync(path.join(replay, `check-runs-${headSha}.json`), JSON.stringify({ check_runs: [{ name: 'ci', status: 'completed', conclusion: 'success', head_sha: headSha }, { name: 'admit', status: 'completed', conclusion: 'success', head_sha: headSha }] }))
+  const rr = admitJson(w.clone, [], { BASELINE_FORGE_REPLAY: replay })
+  ok(rr.j?.provenance?.checks === 2 && rr.j.provenance.digest !== p.digest, 'a consulted forge digests differently: checks counted, hash moved')
   // refusal-inert: the same world REFUSED (stale) must still carry provenance untouched
   advanceMainAtOrigin(w)
   const r2 = admitJson(w.clone)

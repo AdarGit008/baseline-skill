@@ -32,7 +32,11 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   different planes digest differently. `baseline admit` prints the one provenance
   line and mirrors its fields in `--json` (`provenance`), REFUSAL-INERT by
   contract; `checkRuns(HEAD)` is admit's one marginal forge read, degraded by the
-  same one-home closure (posture / JDG-only) as everything else.
+  same one-home closure (posture / JDG-only) as everything else. Cost, stated
+  plainly: on a SINGLE-LANE repo, admit previously never built the lane world
+  (every lane rule gates off) — provenance now probes the forge there too (2–4 gh
+  spawns per admit; a merge-time command, and the tuples are a ruled input with
+  no posture carve-out — a single-lane repo's check runs are exactly as real).
 - Tests: `test/gen/run.mjs` (digest canonicalization incl. tie-break permutation;
   marker round-trip; determinism; union-pool discovery; drift remedy text;
   refusals; BOM/CRLF loudness; >512KB honesty) + admit provenance asserts.

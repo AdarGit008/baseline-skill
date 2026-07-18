@@ -15,7 +15,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { inputsDigest, provenanceLine } from '../../src/digest.mjs'
-import { MARKER_OF, MARKER_DETECT_RE, generateIndex } from '../../src/gen.mjs'
+import { MARKER_OF, MARKER_DETECT_RE, generateIndex, remedyCommand } from '../../src/gen.mjs'
 import { indexRepo } from '../../src/repo.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -128,6 +128,86 @@ console.log('\n# gen --check — discovery honesty\n')
   fs.writeFileSync(path.join(dir, 'docs/INDEX.md'), clean.replace('# Index', '# Index\n' + 'x'.repeat(600 * 1024)))
   const c3 = cli(dir, ['--check'])
   ok(c3.status === 1 && c3.stderr.includes('drifted'), 'a >512KB drifted view is still seen (uncapped read — no silent green)')
+  // the guard's own output is not spoofable by the content it scans
+  fs.writeFileSync(path.join(dir, 'docs/INDEX.md'), clean)
+  fs.writeFileSync(path.join(dir, 'docs/evil.md'), '<!-- baseline:generated [31mHACK — x -->\nstuff\n')
+  const c4 = cli(dir, ['--check'])
+  ok(c4.status === 1 && !c4.stderr.includes('') && !c4.stderr.includes(''), 'ANSI/BEL in a marker kind never reaches the terminal (sanitized)')
+  fs.rmSync(path.join(dir, 'docs/evil.md'))
+  // unscannable: a tracked-but-unreadable file fails NAMED, never skipped
+  if (typeof process.getuid !== 'function' || process.getuid() !== 0) {
+    fs.writeFileSync(path.join(dir, 'docs/locked.md'), 'x\n')
+    git(dir, 'add', 'docs/locked.md')
+    fs.chmodSync(path.join(dir, 'docs/locked.md'), 0o000)
+    const c5 = cli(dir, ['--check'])
+    ok(c5.status === 1 && c5.stderr.includes('unscannable'), 'tracked-but-unreadable → exit 1 unscannable (never a silent skip)')
+    fs.chmodSync(path.join(dir, 'docs/locked.md'), 0o644)
+  }
+}
+
+console.log('\n# hostile content + fs edges (panel regressions)\n')
+{
+  const dir = mkrepo('hostile')
+  // space-bearing filename + bracket-bearing title + pipe/newline subject
+  fs.writeFileSync(path.join(dir, 'docs/a file.md'), '# A [weird] (title)\nx\n')
+  fs.writeFileSync(path.join(dir, 'records/judgments/JDG-0002.json'), JSON.stringify({ record: 'judgment/1', id: 'JDG-0002', kind: 'deviation', date: '2026-01-01', by: 't', subject: 'pipe | and\nnewline', reason: 'r', review_by: '2099-01-01' }, null, 2) + '\n')
+  git(dir, 'add', '-A'); git(dir, 'commit', '-qm', 'hostile')
+  ok(cli(dir, ['index']).status === 0, 'hostile content generates')
+  const out = fs.readFileSync(path.join(dir, 'docs/INDEX.md'), 'utf8')
+  ok(out.includes('](<a file.md>)'), 'space-bearing destination rides in <...>')
+  ok(out.includes('[A weird (title)]'), 'brackets stripped from link titles')
+  ok(out.includes('pipe ∣ and newline'), 'table cells: pipes neutralized, newlines flattened')
+  git(dir, 'add', '-A'); git(dir, 'commit', '-qm', 'view')
+  // the promise itself: the generated view must not redden the consumer's own check
+  const CHECK = path.join(ROOT, 'check.mjs')
+  const chk = spawnSync(process.execPath, [CHECK, '--repo', dir, '--json', '--no-exec'], { encoding: 'utf8', env: { ...process.env, ...GITENV } })
+  const rows = JSON.parse(chk.stdout).results
+  const ctx05 = rows.find(r => r.id === 'CTX-05')
+  ok(ctx05 && ctx05.tag !== 'FAIL', `the view passes the consumer's own md-links blocker (CTX-05 ${ctx05?.tag}: ${String(ctx05?.detail).slice(0, 60)})`)
+  // claims duplicate ids: row order pinned by _file tiebreak, not walk order
+  const CLM = slug => JSON.stringify({ record: 'claim/1', id: 'CLM-0001', slug, statement: 's', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }) + '\n'
+  fs.mkdirSync(path.join(dir, 'records/claims'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'records/claims/CLM-0001.json'), CLM('alpha'))
+  fs.writeFileSync(path.join(dir, 'records/claims/CLM-0001b.json'), CLM('beta'))
+  const g1 = generateIndex(indexRepo(dir), 'docs/INDEX.md')
+  ok(g1.indexOf('alpha') > 0 && g1.indexOf('alpha') < g1.indexOf('beta') && g1 === generateIndex(indexRepo(dir), 'docs/INDEX.md'), 'duplicate claim ids: deterministic row order (_file tiebreak)')
+}
+{
+  const dir = mkrepo('fsedge')
+  // deleted-but-tracked ORDINARY md: not a view, not a red
+  fs.writeFileSync(path.join(dir, 'docs/gone.md'), '# Gone\n')
+  git(dir, 'add', '-A'); git(dir, 'commit', '-qm', 'add gone')
+  fs.rmSync(path.join(dir, 'docs/gone.md'))
+  ok(cli(dir, ['--check']).status === 0, 'deleted-but-tracked ordinary md → no false red (staged content consulted)')
+  // symlinked out-path refused (write path only; never committed — --check reads are fine)
+  const outside = path.join(os.tmpdir(), `gen-outside-${path.basename(dir)}.md`); tmps.push(outside)
+  fs.writeFileSync(outside, 'plain outside file\n')
+  fs.symlinkSync(outside, path.join(dir, 'docs/LINKED.md'))
+  const r = cli(dir, ['index', '--out', 'docs/LINKED.md'])
+  ok(r.status === 2 && r.stderr.includes('symlink'), 'symlinked --out refused (stay-inside-the-repo is a real law, not a string check)')
+  fs.rmSync(path.join(dir, 'docs/LINKED.md'))
+  // deleted-but-tracked VIEW: named red
+  cli(dir, ['index'])
+  git(dir, 'add', '-A'); git(dir, 'commit', '-qm', 'adopt')
+  fs.rmSync(path.join(dir, 'docs/INDEX.md'))
+  const r2 = cli(dir, ['--check'])
+  ok(r2.status === 1 && r2.stderr.includes('deleted from the worktree'), 'deleted view → named red (restore or git rm)')
+  // ..-prefixed but legal name is not refused
+  ok(cli(dir, ['index', '--out', '..weird.md']).status === 0, "'..weird.md' is a legal filename, not an escape")
+}
+
+console.log('\n# remedy — the vendored-consumer (in-repo) form\n')
+{
+  // remedyCommand derives from process.argv[1]; fake the vendored layout by
+  // pointing argv[1] inside the repo for the duration of the call
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gen-remedy-')); tmps.push(dir)
+  const orig = process.argv[1]
+  try {
+    process.argv[1] = path.join(dir, 'tools/baseline/baseline.mjs')
+    ok(remedyCommand(dir, 'index', 'docs/INDEX.md') === 'node tools/baseline/baseline.mjs gen index --out docs/INDEX.md --repo .', 'in-repo runner → repo-relative verbatim command')
+    process.argv[1] = '/somewhere/else/baseline.mjs'
+    ok(remedyCommand(dir, 'index', 'docs/INDEX.md') === `node /somewhere/else/baseline.mjs gen index --out docs/INDEX.md --repo ${dir}`, 'out-of-repo runner → absolute verbatim command')
+  } finally { process.argv[1] = orig }
 }
 
 console.log('')

@@ -6,7 +6,7 @@
     "exitCode": 1,
     "text": [
       "",
-      "  project-baseline v2.3.0  ·  <REPO>  ·  type=node  ·  profiles=[core,advanced]  ·  HEAD=<sha>",
+      "  project-baseline v2.4.0  ·  <REPO>  ·  type=node  ·  profiles=[core,advanced]  ·  HEAD=<sha>",
       "",
       "  Build & execution",
       "    PASS      BUILD-01  Dependency manifest present",

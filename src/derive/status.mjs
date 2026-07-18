@@ -44,6 +44,12 @@ export function deriveStatus(facts, joined, capability) {
     now: facts.now, // the ONE clock the view was derived at — renderers age against this, never a second wall-clock read
     nowFallback: facts.nowFallback ?? null,
     divergence: divergenceItems.map(i => i.text),
+    // parallel codes (additive, M6b): the renderer cross-refs a divergence line to its
+    // reconcile-filed issue without reshaping the pinned text array
+    divergenceCodes: divergenceItems.map(i => i.code),
+    // reconcile's open filings (the `baseline` label IS the contract — no body fetch,
+    // no second query; the headline renders ONLY when nonzero, never as wallpaper)
+    filed: backlog.filter(i => i.labels.includes('baseline')).map(i => ({ number: i.number, title: i.title })),
     findings: joined.findings,
     lanes, lanesMeta: meta, prs, backlog, thisLane,
   }

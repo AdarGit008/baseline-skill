@@ -72,6 +72,16 @@ export function loadJudgmentsAt(REPO, ref) {
   return { records, findings, reachable: true }
 }
 
+// Break-glass selection, one home (M6b extraction of admit's inline filter): the
+// newest unexpired break-glass for a gate — date desc, id desc on ties. admit
+// consults gate:'admit' from the TARGET ledger (FS5); reconcile consults
+// gate:'reconcile' for delivery relief. One filter, or the two gates drift.
+export function selectBreakGlass(records, gate, today) {
+  return records
+    .filter(j => j.kind === 'break-glass' && j.gate === gate && j.review_by >= today)
+    .sort((a, b) => (a.date === b.date ? (a.id < b.id ? 1 : -1) : (a.date < b.date ? 1 : -1)))[0] || null
+}
+
 // The bridge's selection rule, one home: schema-VALID sign-offs only (a malformed
 // review_by must never read as signed-forever), newest per subject — date desc,
 // id desc on ties. The newest governs even if lapsed: a re-judgment supersedes;

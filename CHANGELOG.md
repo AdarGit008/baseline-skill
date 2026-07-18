@@ -6,6 +6,63 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M6b: `baseline reconcile`, the forge mutation channel, GOV-01/02 live asserts
+- **`baseline reconcile`** — post-merge revalidation of the default branch (MERGE-03's
+  dissolution: the cron against main IS post-merge revalidation, C37). Four finding
+  sources: the engine at context `reconcile` (75 repo-scoped rules declare it; lane
+  rules are excluded structurally, exec rules stay check-only); the **JDG sweep** at
+  the tip via `evaluateJudgment` (tripped/expired + invalid file; drifted/unresolvable
+  ride the report — `review_by` is the backstop); the **landed-record re-scan** (scrub
+  over `records/**` blobs at the tip, allowlist read at the tip, deterministic tier
+  only); **merged-while-red** over the merged-PR window (admit-named check runs with
+  conclusion `failure` at merged HEAD shas — a squash merge's red admit never lands on
+  the tip; subject = the short merge sha, cleared by the EXISTENCE of a covering
+  judgment, never by time).
+- **The dedup lifecycle** — `baseline:<id>:<subject>` in an HTML marker + the
+  `baseline` label: file → comment-on-change (fingerprint over the ONE volatility
+  spec, `util.normalizeVolatile` — aging findings never re-comment) → close naming
+  the sha (positive re-evaluation only; a SKIP is never a clear) → reopen on
+  recurrence when the close was reconcile's own (`bot-closed` marker stamp). **A human
+  close is a judgment**: advisory rows stay closed (one comment max on new content);
+  judgment/scrub/merged-while-red reopen over any close. Cap 10 creations+reopens,
+  overflow in one self-draining rollup; truncated scans suppress creates.
+- **The forge mutation channel** (`makeForge().mutate`) — live=write ·
+  replay=assert-the-ordered-plan (plan AND normalized argv; a mismatch is a harness
+  violation, never relieved) · `--dry-run` prints the plan. Posture/JDG closures
+  refuse writes in every mode; recordings ride `BASELINE_FORGE_RECORD` as
+  `mut-NNN.json`.
+- **The binding law**: mutations require the evaluated tree == the fetched tip,
+  clean; behind-on-the-line or dirty degrades to labeled **report-only** (exit 0,
+  recipe included); off the line is exit 2. Exit 1 = *delivery* failed — including a
+  clean run that cannot read the tracker (a dead cron must not stay green);
+  `break-glass (gate: reconcile)` at the tip relieves live outages only (its first
+  real consumer, selection shared with admit via `selectBreakGlass`).
+  `multi-lane-local` is exit 2 up front — the posture closes the write surface.
+- **GOV-01/02 flipped to live asserts** on the readable surface (new
+  `forge-protection` kind, 38 → 39; certainty → deterministic): rules-for-branch
+  (plain read) → the `protected` flag (classic only — never asserts absence while
+  rules are unreadable) → the classic endpoint under `BASELINE_GOV_ADMIN=1`. A
+  token-scoped denial is SKIP("protection unreadable with this token"), never
+  source-loss; the committed-ruleset-file greps are gone (files prove nothing about
+  enforcement). GOV-01 passes only on merge-PROTECTIVE rule types (a signatures-only
+  ruleset is not merge protection); GOV-02 reads every layered rule (`.some`, not
+  first-of-type) and falls to the classic ladder instead of FAILing past it. Cost,
+  stated plainly: `check` on a repo with a declared default branch + forge access now
+  spawns gh for these two rules (one probe + two reads, memoized per run; labeled
+  SKIP offline — pre-M6b every forge rule was posture-gated). **The ONE M6 corpus
+  re-pin** (GOV detail strings: 20 rule rows + the human-scorecard lines, no
+  tag/summary churn).
+- **Orient**: open baseline-filed issues headline as one line after divergence
+  (label-filtered from the existing query; zero-case renders nothing), and a
+  divergence row reconcile already filed carries `→ filed as #N` on the same line.
+- Tests: `test/reconcile/run.mjs` (lifecycle matrix, channel replay incl. argv
+  negative, binding law, merged-while-red, GOV ladder, reverse clears, exits) + the
+  `reconcile-repo` golden fixture (dry-run plan pinned, organic cap+rollup).
+  Slice-level design panel (scope-cutter / friction skeptic / dependency auditor):
+  all AMEND-THEN-GO; pre-merge 8-angle panel (correctness · lifecycle-adversarial ·
+  determinism/replay · security/injection · exit-contract · GOV-truth · docs-drift ·
+  coverage): every confirmed finding fixed in-branch.
+
 ### Added — V2 M6a: `baseline admit`, DESC-03, MERGE-02, the context-gated engine (86 → 88 rules)
 - **`baseline admit`** — merge-point revalidation (C30/C35): *a verdict is valid only for
   the state it evaluated*. Refusal is the COMMAND's contract (exit 1): (a) staleness —

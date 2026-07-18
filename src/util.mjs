@@ -54,6 +54,19 @@ export function deepEq(a, b) {
 }
 export const asArr = v => v == null ? [] : Array.isArray(v) ? v : [v]
 export const parseDate = s => { const d = new Date(s); return isNaN(d) ? null : d }
+// The ONE volatility spec (M6b): collapse the content that legitimately changes run
+// to run — shas, day/hour ages, commits-behind counts, ISO dates — so a finding's
+// fingerprint (reconcile's changed→comment trigger), the mutation channel's replay
+// equality, and the golden corpus normalizer (which layers machine-cause collapsing
+// on top) all agree on what "the same finding" means. Fingerprinting these raw
+// would turn every aging finding into daily comment spam.
+export const normalizeVolatile = s => String(s)
+  .replace(/\b[0-9a-f]{7,40}\b/g, '<sha>')
+  .replace(/\b\d+(\.\d+)?d\b/g, '<N>d')
+  .replace(/\b\d+h\b/g, '<N>h')
+  .replace(/\(\d+ commits? behind/g, '(<N> commits behind')
+  .replace(/stamp \d+ commits behind/g, 'stamp <N> commits behind')
+  .replace(/\b\d{4}-\d{2}-\d{2}\b/g, '<date>')
 export const daysAgo = d => (Date.now() - d.getTime()) / DAY
 export function getPath(obj, dotted) { return dotted.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj) }
 export function reOf(pattern, flags) { try { return new RegExp(pattern, flags || 'im') } catch { return null } }

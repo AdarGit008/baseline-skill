@@ -95,15 +95,16 @@ export function gatherLaneFacts(repo, forge, namespace, { enrich = true } = {}) 
 // every lane rule gated off must never pay a gh spawn for it. Exit-stable offline:
 // everything degrades to labeled reasons the evaluators turn into SKIPs; nothing throws.
 // The SAME gathering + derivation orient and reclaim use — one answer, three surfaces.
-export function makeLaneWorld(repo, descriptor, { forgeClosed = null } = {}) {
+export function makeLaneWorld(repo, descriptor, { forgeClosed = null, probe = undefined } = {}) {
   let world = null
   return () => {
     if (world) return world
     const posture = descriptor?.valid ? descriptor.data?.workflow : null
     // no probe under replay (its 3 gh spawns are discarded — forge.mjs forces available;
     // the replay contract is no-network), under the forge-closed posture, or under an
-    // explicit closure (M6a's JDG-only admission path — the run PROMISES no forge reads)
-    const pf = (forgeClosed || posture === 'multi-lane-local' || process.env.BASELINE_FORGE_REPLAY) ? null : probeForge(repo)
+    // explicit closure (M6a's JDG-only admission path — the run PROMISES no forge reads).
+    // A caller that already probed (reconcile) threads its result — one probe per run.
+    const pf = (forgeClosed || posture === 'multi-lane-local' || process.env.BASELINE_FORGE_REPLAY) ? null : (probe !== undefined ? probe : probeForge(repo))
     // thread the PROBE's specific cause into the forge, so a check SKIP names "gh not
     // installed" / "gh not authenticated" / "no forge repo resolves here" — not the
     // generic "forge unreachable" that would shadow it (orient.mjs's own anti-pattern)

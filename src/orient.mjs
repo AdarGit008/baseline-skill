@@ -61,7 +61,19 @@ export async function runOrient(argv) {
   }
   if (status.divergence.length) {
     P.push(`\n## ⚠ Divergence (resolve first)`)
-    for (const x of status.divergence) P.push(`- ${x}`)
+    status.divergence.forEach((x, i) => {
+      // cross-ref: a divergence reconcile already filed carries its issue on the SAME
+      // line (a second full entry below would train skimming — the pre-defect)
+      const code = status.divergenceCodes?.[i]
+      const filedIssue = code && (status.filed || []).find(f => f.title.includes(`] ${code}:`))
+      P.push(`- ${x}${filedIssue ? `  → filed as #${filedIssue.number}` : ''}`)
+    })
+  }
+  // reconcile's open filings, ONE line (M6b): the act-now section stays first; the
+  // zero case renders nothing (no wallpaper). The label is the mute affordance.
+  if ((status.filed || []).length) {
+    const top = status.filed.slice(0, 3).map(f => `#${f.number} ${f.title}`).join(' · ')
+    P.push(`\n⚠ ${status.filed.length} baseline-filed issue(s) open — ${top}${status.filed.length > 3 ? ` (+${status.filed.length - 3} more)` : ''}  \`gh issue list --label baseline\``)
   }
 
   // ---- lanes: the derived lease view (C31) when the descriptor declares a namespace;

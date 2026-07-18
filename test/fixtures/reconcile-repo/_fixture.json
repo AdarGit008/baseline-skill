@@ -1,0 +1,6 @@
+{
+  "command": "reconcile",
+  "args": ["--dry-run"],
+  "bare_origin": true,
+  "forge_replay": "_forge"
+}

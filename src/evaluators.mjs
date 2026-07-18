@@ -15,7 +15,7 @@ import { deriveDivergence } from './derive/divergence.mjs'
 const DIV_REF_CAP = 20 // a hostile next: line with dozens of #N must not fan out a forge query each
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'records-append-only', 'records-scrub', 'records-one-home', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'descriptor-change', 'merge-sister-dep'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'records-append-only', 'records-scrub', 'records-one-home', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'descriptor-change', 'merge-sister-dep', 'forge-protection'])
 
 export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
   const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile } = repo
@@ -701,6 +701,79 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       return hits.length
         ? { ok: false, diverged: true, detail: `${hits.slice(0, 3).map(h => h.text).join('; ')}${hits.length > 3 ? ` (+${hits.length - 3})` : ''} — done-with-nothing-merged; retarget the PR or close it` }
         : { ok: true, detail: `${prs.length} open PR(s), none closes an already-closed issue` }
+    }
+
+    // ---- M6b: GOV-01/02 live asserts on the READABLE surface (the ruled ladder:
+    // rules-for-branch is a plain read; the branch `protected` flag is plain; the
+    // classic /protection endpoint needs admin and is consulted only under the
+    // explicit BASELINE_GOV_ADMIN=1 opt-in). run() nulls every failure identically,
+    // so 403-vs-down derives honestly: rules null while the branch's metadata
+    // answers = unreadable WITH THIS TOKEN (SKIP, never source-loss); both null =
+    // the forge plane degraded (the probe/posture reason rides the SKIP). The
+    // `protected` flag reflects CLASSIC protection only — with the rules endpoint
+    // unreadable, protected:false can NEVER assert "no protection" (a ruleset may
+    // exist unseen), so that leg SKIPs rather than guessing. Deterministic: every
+    // PASS/FAIL is a live boolean read of enforcement, not a grep of intent. ----
+
+    if (k === 'forge-protection') {
+      // subject guard BEFORE the world: LANEWORLD() forces the forge probe (3 gh
+      // spawns), pure waste when the SKIP is already decided by an undeclared branch
+      if (!DEFAULT_BRANCH) return { ok: null, detail: 'default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject' }
+      const w = LANEWORLD ? LANEWORLD() : null
+      if (!w) return { ok: null, detail: 'no lane world assembled — forge asserts n/a in this runner' }
+      if (!w.forge.available) return { ok: null, detail: `protection unreadable (${w.forge.reason})` }
+      const rules = w.forge.branchRules(DEFAULT_BRANCH)
+      const meta = w.forge.branchMeta(DEFAULT_BRANCH)
+      if (!Array.isArray(rules)) {
+        // rules endpoint gave nothing — distinguish token-scoped denial from a dead plane
+        if (meta) {
+          if (c.gov === 'protection' && meta.protected === true) return { ok: true, detail: `classic branch protection active on ${DEFAULT_BRANCH} (rules endpoint unreadable with this token)` }
+          return { ok: null, detail: `protection unreadable with this token (rules endpoint denied; ${DEFAULT_BRANCH} metadata readable${meta.protected === false ? ', protected flag false — but the flag cannot see rulesets, so absence is not provable' : ''})` }
+        }
+        return { ok: null, detail: w.forge.source === 'replay' ? 'protection unreadable (no branch-rules replay fixture)' : `protection facts unreadable (${w.forge.reason || 'forge queries failed'})` }
+      }
+      // Merge-PROTECTIVE rule types only: rulesets aggregate across layers (org+repo)
+      // and carry non-merge rules too — a signatures-only or deletion-only ruleset
+      // protects nothing GOV-01's title names, and a first-of-type .find would miss a
+      // later layer's parameters, so every bit is checked with .some over ALL rules.
+      const PROTECTIVE = new Set(['pull_request', 'required_status_checks', 'non_fast_forward', 'merge_queue'])
+      const protective = [...new Set(rules.map(r => r.type))].filter(t => PROTECTIVE.has(t)).sort()
+      if (c.gov === 'protection') {
+        // GOV-01: is MERGE protection actually active on the default branch?
+        if (protective.length) return { ok: true, detail: `active merge-protective rules on ${DEFAULT_BRANCH}: ${protective.join(', ')}` }
+        const other = [...new Set(rules.map(r => r.type))].sort()
+        const rulesNote = other.length ? `rules active (${other.join(', ')}) but none protects merges` : 'rules: none'
+        if (meta?.protected === true) return { ok: true, detail: `classic branch protection active on ${DEFAULT_BRANCH} (${rulesNote})` }
+        if (meta && meta.protected === false) return { ok: false, detail: `no active merge protection on ${DEFAULT_BRANCH} (${rulesNote}; protected flag false) — anyone can force-push or merge red; create a ruleset requiring the baseline checks` }
+        return { ok: null, detail: `rules readable (${rulesNote}) but ${DEFAULT_BRANCH} metadata is not — classic protection state unknowable with this token` }
+      }
+      // GOV-02: strict up-to-date + conversation resolution — .some across EVERY rule
+      // (layered rulesets enforce the union), classic ladder when rulesets lack the bits
+      const strict = rules.some(r => r.type === 'required_status_checks' && r.parameters?.strict_required_status_checks_policy === true)
+      const conv = rules.some(r => r.type === 'pull_request' && r.parameters?.required_review_thread_resolution === true)
+      if (strict && conv) return { ok: true, detail: `ruleset on ${DEFAULT_BRANCH} enforces strict up-to-date checks and conversation resolution` }
+      const missing = [!strict && 'strict up-to-date status checks (strict_required_status_checks_policy)', !conv && 'required conversation resolution (required_review_thread_resolution)'].filter(Boolean)
+      if (meta?.protected === true) {
+        // classic protection may enforce what the rulesets don't — never FAIL past it
+        if (process.env.BASELINE_GOV_ADMIN) {
+          const p = w.forge.branchProtection(DEFAULT_BRANCH)
+          if (p) {
+            const s = strict || p.required_status_checks?.strict === true
+            const cv = conv || p.required_conversation_resolution?.enabled === true
+            if (s && cv) return { ok: true, detail: `${DEFAULT_BRANCH} enforces strict up-to-date checks and conversation resolution (ruleset + classic, admin read)` }
+            const still = [!s && 'strict up-to-date status checks', !cv && 'required conversation resolution'].filter(Boolean)
+            return { ok: false, detail: `${DEFAULT_BRANCH} does not enforce: ${still.join(' + ')} (ruleset + classic read)` }
+          }
+          return { ok: null, detail: w.forge.source === 'replay' ? 'classic protection active but no branch-protection replay fixture' : `classic protection active but /protection denied even under BASELINE_GOV_ADMIN — the token is not admin on this repo` }
+        }
+        return { ok: null, detail: `ruleset lacks ${missing.join(' + ')} but classic protection is active — its settings need an admin token to read; opt in: BASELINE_GOV_ADMIN=1` }
+      }
+      if (meta && meta.protected === false) {
+        return rules.length
+          ? { ok: false, detail: `ruleset on ${DEFAULT_BRANCH} does not enforce: ${missing.join(' + ')} — a stale branch can merge green` }
+          : { ok: false, detail: `no active protection on ${DEFAULT_BRANCH} — strict up-to-date and conversation resolution are unset` }
+      }
+      return { ok: null, detail: `rules readable but ${DEFAULT_BRANCH} metadata is not — classic protection state unknowable with this token` }
     }
 
     // ---- M6a admit-context kinds — both read through ADMITWORLD (the target-ref

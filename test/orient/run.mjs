@@ -117,7 +117,19 @@ const SCENARIO = path.resolve(ROOT, 'test', 'forge-fixtures', 'scenario')
 r = orient([], w.clone, { BASELINE_FORGE_REPLAY: SCENARIO })
 ok(/· PR #40/.test(r.out), 'the lane line carries its open PR (#40 on lane/7, from the replay)')
 ok(/## Open PRs \(non-lane branches\)/.test(r.out) && !/^- #40 /m.test(r.out), 'PR #40 is NOT double-listed under Open PRs — the lane line owns it')
+ok(!/baseline-filed issue/.test(r.out), 'M6b headline: zero baseline-filed issues renders NOTHING (no wallpaper)')
 
-for (const d of [BIN, bare, g, w.dir, w2.dir, w3.dir]) fs.rmSync(d, { recursive: true, force: true })
+// 12 — M6b: the reconcile-filed headline renders from the `baseline` label alone (one
+// line, top-3 titles, runnable filter recipe) — the label⇄headline contract end-to-end
+const FILED = fs.mkdtempSync(path.join(os.tmpdir(), 'orient-filed-'))
+for (const f of fs.readdirSync(SCENARIO)) fs.copyFileSync(path.join(SCENARIO, f), path.join(FILED, f))
+fs.writeFileSync(path.join(FILED, 'issues-open.json'), JSON.stringify([
+  { number: 2, title: 'The open thing', labels: [{ name: 'enhancement' }], milestone: { title: 'MVP' }, updatedAt: '2026-07-10T07:00:00Z' },
+  { number: 77, title: '[baseline] GOV-01: Merge protection is active on the default branch', labels: [{ name: 'baseline' }], milestone: null, updatedAt: '2026-07-11T07:00:00Z' },
+]))
+r = orient([], w.clone, { BASELINE_FORGE_REPLAY: FILED })
+ok(/⚠ 1 baseline-filed issue\(s\) open — #77 \[baseline\] GOV-01/.test(r.out) && /gh issue list --label baseline/.test(r.out), 'M6b headline: labeled filing renders one line with the filter recipe')
+
+for (const d of [BIN, bare, g, w.dir, w2.dir, w3.dir, FILED]) fs.rmSync(d, { recursive: true, force: true })
 console.log(fails ? `\n✗ ${fails} orient check(s) failed\n` : '\n✓ orient availability checks pass\n')
 process.exit(fails ? 1 : 0)

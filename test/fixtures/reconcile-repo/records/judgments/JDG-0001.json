@@ -1,0 +1,10 @@
+{
+  "record": "judgment/1",
+  "id": "JDG-0001",
+  "kind": "deviation",
+  "date": "2026-01-01",
+  "by": "golden",
+  "subject": "stale-accepted-thing",
+  "reason": "fixture: an expired judgment the sweep must file",
+  "review_by": "2026-02-01"
+}

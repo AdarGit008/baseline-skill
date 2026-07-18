@@ -38,7 +38,7 @@ import { runRules } from './engine.mjs'
 import { CATS, makeColor } from './report.mjs'
 import { DESCRIPTOR_FILE, DESCRIPTOR_SCHEMA } from './descriptor.mjs'
 import { validateAgainst } from './validate.mjs'
-import { loadJudgmentsAt, JUDGMENTS_DIR } from './jdg.mjs'
+import { loadJudgmentsAt, selectBreakGlass, JUDGMENTS_DIR } from './jdg.mjs'
 import { validateRecord } from './records.mjs'
 
 const USAGE = `usage: baseline admit [--repo DIR] [--target REF] [--json] [--profile P] [--config FILE]`
@@ -118,9 +118,7 @@ export function runAdmit(argv) {
 
   // ---- break-glass relief, read FROM THE TARGET (FS5) — covers (c) only ----
   const targetLedger = loadJudgmentsAt(REPO, targetTip)
-  const relief = targetLedger.records
-    .filter(j => j.kind === 'break-glass' && j.gate === 'admit' && j.review_by >= today)
-    .sort((a, b) => (a.date === b.date ? (a.id < b.id ? 1 : -1) : (a.date < b.date ? 1 : -1)))[0] || null
+  const relief = selectBreakGlass(targetLedger.records, 'admit', today)
 
   // ---- the admitted range + the JDG-only admission path ----
   // no-renames: rename detection would collapse `git mv baseline.repo.json away` into

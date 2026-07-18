@@ -61,7 +61,7 @@ flowchart LR
   RULES["rules/ — 88 rules (manifest: rules.json)"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
-    IDX["file index + git helpers"] --> EVAL["~38 check evaluators"]
+    IDX["file index + git helpers"] --> EVAL["~39 check evaluators"]
     RES["config resolution"] --> EVAL
   end
   SO["signoff.json — human judgments"] --> EVAL
@@ -154,6 +154,20 @@ baseline admit [--repo DIR] [--target REF] [--json]     # exit 0 admitted · 1 r
 **The target's posture judges (FS1).** The descriptor is read from the target ref (`origin/<default_branch>`), never the incoming branch — branch-local descriptor edits are advisory until merged, and changing the descriptor at all is DESC-03's business. The run's `contexts` gate means admit evaluates only rules declaring the `admit` context (FLOW/DIV/REC advisories + DESC-03 + MERGE-02); the exec-class crown (BUILD-05) never runs here — the required `check` re-runs at the merge-relevant SHA instead.
 
 **Relief that stays reachable.** On a gating-source loss, an unexpired `break-glass` JDG with `gate: admit` **on the target ref** admits with the finding on the record (FS5 — a break-glass riding the incoming branch relieves nothing). And the relief PR lands whenever tree+history facts are intact: a range that is *nothing but* schema-valid judgment additions carrying such a break-glass takes the **JDG-only admission path** — judged from tree+history alone, the forge closed and labeled (a git-plane outage falls to the layer-0 admin bypass, documented in CONTRACT.md). Break-glass never relieves staleness (data-plane truth) or DESC-03 (whose relief is its own same-PR judgment). The binding ladder — merge queue · required check + up-to-date · advisory-with-detection — is CONTRACT.md's §Admit binding.
+
+## Reconcile — post-merge revalidation (V2 M6b)
+
+*The cron against main IS post-merge revalidation* (MERGE-03 dissolved into this command). `baseline reconcile` re-derives the default branch's standing and files what it finds as **lifecycle-managed issues** — no writes to the repo or main, ever; the issue tracker is the whole write surface:
+
+```
+baseline reconcile [--repo DIR] [--json] [--dry-run] [--target REF]   # exit 0 delivered · 1 delivery failed · 2 usage/environment
+```
+
+**Four finding sources**: the engine at context `reconcile` (repo-scoped rules; lane rules are excluded structurally — this runs ON the default branch); the **JDG sweep** at the tip (`evaluateJudgment` over the whole ledger: tripped/expired file, invalid records file, drifted/unresolvable ride the report — `review_by` is the backstop); the **landed-record re-scan** (scrub over `records/**` blobs at the tip, allowlist read at the tip, deterministic tier only — a landed secret is live until rotated); and **merged-while-red** over the recent merged-PR window (20) — an admit-named check run with conclusion `failure` at a merged PR's *head* sha files the morning-after issue demanding the retroactive judgment (subject = the short merge sha; cleared by the *existence* of a schema-valid judgment at the tip naming that sha — expiry policing belongs to the sweep; never auto-closed by time).
+
+**The dedup lifecycle** rides an HTML marker (`<!-- baseline:<id>:<subject> fp:<hash> -->`) plus the **`baseline` label** (the operator's filter/mute affordance and the scan's bound): absent→file · changed→comment + fp re-stamp · cleared→close naming the sha (**positive re-evaluation only — a SKIP is never a clear**) · recurred→reopen the same thread when the close was reconcile's own (`bot-closed` stamp); **a human close is a judgment** — advisory engine rows stay closed (at most one comment on new content), while the deterministic-integrity classes (judgments, landed secrets, merged-while-red) reopen over any close. Cap: 10 creations+reopens per run, overflow in ONE self-draining rollup; a truncated scan suppresses creates entirely.
+
+**The binding law.** Findings bind to the sha they were derived at, so mutations require the evaluated tree to BE the fetched tip, clean. Behind-but-on-the-line or dirty degrades to a labeled **report-only** run (findings printed, nothing filed, catch-up recipe included, exit 0); a HEAD off the target line is exit 2. Exit 1 means *delivery* failed — including a clean run that could not read the tracker (a dead cron must not stay green); an unexpired `break-glass (gate: reconcile)` at the tip relieves a **live** outage, labeled — never a replay-plan mismatch, and a posture-closed forge (`multi-lane-local`) is exit 2 up front, not a relievable outage. Findings alone never redden the cron: the tracker is the alert surface, and `orient` headlines open baseline-filed issues every session.
 
 ## Configuration
 
@@ -293,10 +307,12 @@ Every rule also declares **`sources`** (which ground-truth planes it reads: tree
 
 ### Change governance (3)
 
+GOV-01/02 are **live asserts on the readable surface** since M6b (`forge-protection` kind, deterministic): `GET /repos/:nwo/rules/branches/:b` first (a plain read), the branch `protected` flag second (classic protection only — with the rules endpoint unreadable, `protected: false` can never assert "no protection"), the classic `/protection` endpoint only under the explicit `BASELINE_GOV_ADMIN=1` opt-in (it needs an admin token). A token-scoped denial is **SKIP("protection unreadable with this token")**, never source-loss; offline/at-rest they SKIP honestly — a committed ruleset *file* proves nothing about enforcement, so the old file greps are gone.
+
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
-| GOV-01 | Merge protection is declared in-repo | 🟡 warn | core |
-| GOV-02 | Strict/up-to-date merges and conversation resolution enabled | 🟡 warn | core |
+| GOV-01 | Merge protection is active on the default branch | 🟡 warn | core |
+| GOV-02 | Strict/up-to-date merges and conversation resolution enforced | 🟡 warn | core |
 | GOV-03 | CODEOWNERS exists and names an owner | 🟡 warn | core |
 
 ### Community & onboarding (3)
@@ -393,7 +409,7 @@ Declared identity, not a guess: a schema-validated `baseline.repo.json` (`type`,
 
 ## Check kinds (how the runner verifies, with zero deps)
 
-`any-file` (glob presence; `mode:absent`, `tracked_only`, `allow`) · `grep` (regex present/absent/all over contents; `tracked_only`) · `file-contains` (file exists AND matches) · `json-field` (parse JSON, assert a dotted path) · `any-of` (pass if any alternative passes) · `command` (run the bootstrap; `repeat`) · `md-links` (relative markdown links resolve) · `doc-freshness` (frontmatter date within a window) · `adr-status` / `adr-forward-link` (decision-record status + resolvable supersede links) · `required-files` (a config list exists + non-empty) · `path-integrity` (backticked paths in docs resolve) · `version-consistency` (runtime major agrees across `.nvmrc`/CI/Dockerfile/`engines`) · `dockerfile-digest` (`FROM` pinned by `@sha256`) · `status-stamp` · `config-nonempty` · `claims-field` / `claims-citations` · `signoff` · `descriptor` (`baseline.repo.json` present + schema-valid) · the M5c lane-world kinds — `lane-anchor` / `lane-next-filled` / `lane-namespace` / `lane-record-pushed` / `lane-lease` / `div-anchor-closed` / `div-next-closed` / `div-closes-closed` — which evaluate through ONE lazy gathering (the same derivation `orient` renders and `lane reclaim` gates on), degrade to labeled SKIPs offline, and never spawn `gh` unless a lane rule actually runs.
+`any-file` (glob presence; `mode:absent`, `tracked_only`, `allow`) · `grep` (regex present/absent/all over contents; `tracked_only`) · `file-contains` (file exists AND matches) · `json-field` (parse JSON, assert a dotted path) · `any-of` (pass if any alternative passes) · `command` (run the bootstrap; `repeat`) · `md-links` (relative markdown links resolve) · `doc-freshness` (frontmatter date within a window) · `adr-status` / `adr-forward-link` (decision-record status + resolvable supersede links) · `required-files` (a config list exists + non-empty) · `path-integrity` (backticked paths in docs resolve) · `version-consistency` (runtime major agrees across `.nvmrc`/CI/Dockerfile/`engines`) · `dockerfile-digest` (`FROM` pinned by `@sha256`) · `status-stamp` · `config-nonempty` · `claims-field` / `claims-citations` · `signoff` · `descriptor` (`baseline.repo.json` present + schema-valid) · the M5c lane-world kinds — `lane-anchor` / `lane-next-filled` / `lane-namespace` / `lane-record-pushed` / `lane-lease` / `div-anchor-closed` / `div-next-closed` / `div-closes-closed` — which evaluate through ONE lazy gathering (the same derivation `orient` renders and `lane reclaim` gates on) and degrade to labeled SKIPs offline · `forge-protection` (M6b — the GOV readable-surface ladder: rules-for-branch, the `protected` flag, the admin-only classic endpoint under `BASELINE_GOV_ADMIN=1`; token-denial SKIPs labeled). Since M6b the lane world is no longer lane-only: GOV-01/02 consult it on every check run of a repo with a declared default branch — one probe + two reads, memoized per run, honestly SKIPped offline.
 
 A rule with a check the runner can't evaluate (bad regex, missing target) degrades to **skip**, never a crash — one broken rule can't take down the run.
 

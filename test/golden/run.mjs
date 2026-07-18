@@ -36,7 +36,7 @@ const GIT_ENV = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOS
 // not silently drift the pins the checker subprocess derives — or, under --capture, bless
 // wrong ones. Strip them from the inherited env; the harness re-injects BASELINE_FORGE_REPLAY
 // per-manifest exactly where a fixture wants it. (BASELINE_GOLDEN_CHECK stays a real knob.)
-for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'GITHUB_HEAD_REF']) delete GIT_ENV[k]
+for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'BASELINE_GOV_ADMIN', 'GITHUB_HEAD_REF']) delete GIT_ENV[k]
 // Override the runner under test (e.g. point at a pristine V1 monolith to prove a
 // candidate runner reproduces the same pins): BASELINE_GOLDEN_CHECK=/path/check.mjs
 const CHECK_UNDER_TEST = process.env.BASELINE_GOLDEN_CHECK || CHECK
@@ -213,6 +213,22 @@ function score(name) {
         target: { ref: out.target?.ref }, summary: out.summary, rules,
       }
     }
+    // M6b: reconcile pins — findings and the dry-run plan as ORDERED ARRAYS (the sha
+    // normalizer collapses fp/short-sha distinctions, so a key-indexed map would merge
+    // entries; order is part of the lifecycle's own promise anyway).
+    if (manifest.command === 'reconcile') {
+      const { stdout, exitCode } = runCommand(tmp, 'reconcile', args, env)
+      let out
+      try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: reconcile did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }
+      return {
+        exitCode, command: 'reconcile', mode: out.summary?.mode, reportOnly: out.reportOnly ? normalizeDetail(out.reportOnly, tmp) : null,
+        deliveryFailure: out.deliveryFailure ? normalizeDetail(out.deliveryFailure, tmp) : null, relief: out.relief ?? null,
+        findings: (out.findings || []).map(f => ({ key: normalizeDetail(f.key, tmp), id: f.id, detail: normalizeDetail(f.detail, tmp) })),
+        actions: (out.actions || []).map(a => ({ action: a.action, key: normalizeDetail(a.key, tmp) })),
+        mutations: (out.mutations || []).map(m => ({ mode: m.mode, ok: m.ok, action: m.plan?.action ?? null })),
+        summary: out.summary,
+      }
+    }
     const { stdout, exitCode } = runChecker(tmp, ['--json', ...args], env)
     let out
     try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: checker did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }
@@ -253,7 +269,7 @@ for (const n of names) {
 
 if (MODE === 'capture') {
   fs.writeFileSync(PINS, JSON.stringify(current, null, 2) + '\n')
-  const total = names.reduce((a, n) => a + Object.keys(current[n].rules).length, 0)
+  const total = names.reduce((a, n) => a + Object.keys(current[n].rules || current[n].findings || {}).length, 0)
   console.log(`✓ captured ${names.length} fixtures, ${total} rule verdicts -> ${path.relative(REPO_ROOT, PINS)}`)
   process.exit(0)
 }
@@ -276,6 +292,12 @@ for (const n of names) {
   cmp(`${n}.project_type`, p.project_type, c.project_type)
   cmp(`${n}.profiles`, p.profiles, c.profiles)
   cmp(`${n}.summary`, p.summary, c.summary)
+  // command pins without a per-rule map (reconcile: ordered findings/actions arrays)
+  // diff field-by-field so a drift names the field, not one giant JSON blob
+  if (!p.rules || !c.rules) {
+    for (const k of new Set([...Object.keys(p), ...Object.keys(c)])) if (!['exitCode', 'project_type', 'profiles', 'summary'].includes(k)) cmp(`${n}.${k}`, p[k], c[k])
+    continue
+  }
   const ids = new Set([...Object.keys(p.rules), ...Object.keys(c.rules)])
   for (const id of ids) {
     if (!p.rules[id]) { diffs.push(`${n}.${id}: new rule not in pins`); continue }

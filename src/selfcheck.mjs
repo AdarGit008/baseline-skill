@@ -101,6 +101,11 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     // contract (staleness / blocker FAIL / gating-source loss), never a warn rule's; a
     // merge blocker pre-M7 would change admit's exit semantics without the promotion review.
     if (r.category === 'merge' && r.severity !== 'warn') problems.push(`${id}: merge-category rules must be severity 'warn' until M7's promotion (admit's refusal is a command contract, not a rule severity)`)
+    // M6b: reconcile runs ON the default branch — a lane-scoped rule there is
+    // unrepresentable (the branch gate would SKIP it on every single run, the exact
+    // wallpaper class the context gate exists to kill). Exclusion is structural:
+    // declaring both is an integrity error, not a permanent SKIP row.
+    if (r.branch_scope === 'lane' && Array.isArray(r.contexts) && r.contexts.includes('reconcile')) problems.push(`${id}: branch_scope 'lane' cannot declare context 'reconcile' — reconcile runs on the default branch, where lane rules are unrepresentable (exclusion, not a wallpaper SKIP)`)
     if (r.severity === 'manual' && r.certainty !== 'judgment') problems.push(`${id}: sign-off (manual) must be certainty 'judgment' (got '${r.certainty}')`)
     if (r.certainty === 'judgment' && r.severity !== 'manual') problems.push(`${id}: certainty 'judgment' must route to a sign-off (severity 'manual', got '${r.severity}')`)
     if (Array.isArray(r.sources) && r.sources.includes('flow')) problems.push(`${id}: readiness rules may not consume 'flow' facts (layering invariant)`)

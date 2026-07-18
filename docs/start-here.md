@@ -1,10 +1,10 @@
 # baseline-skill — status
 
-last-verified: 90a797c 2026-07-15
+last-verified: 4561a5d 2026-07-18
 
 **What this is.** The installable `/baseline` skill — the *project-baseline* readiness
 standard packaged for Claude Code and compatible agents. The canonical toolkit is
-`check.mjs` (runner) + `rules.json` manifest + `rules/` (88 rules, v2.3.0 line).
+`check.mjs` (runner) + `rules.json` manifest + `rules/` (88 rules, v2.4.0 line).
 
 **Current state.** Stable. This repo ships the standard rather than being a buildable
 app, so it scores itself in **distribution mode** via `baseline.config.json`

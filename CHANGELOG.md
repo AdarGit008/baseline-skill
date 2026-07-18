@@ -4,7 +4,7 @@ All notable changes to the `/baseline` skill are documented here. The format loo
 follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned in
 `rules.json` and `SKILL.md`.
 
-## [Unreleased]
+## [2.4.0] — 2026-07-18
 
 ### Added — V2 M6c: `baseline gen index` + `gen --check`, `inputs_digest` provenance
 - **The generated-view contract** (C05 as amended — in-PR views only; the snapshot

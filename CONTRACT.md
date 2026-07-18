@@ -265,6 +265,30 @@ that's exit 2, not an outage).
     # exit 0 with findings is CORRECT (the tracker is the alert surface);
     # exit 1 means the cron itself is broken — that's the red worth having.
 
+## Generated views (M6c)
+
+A file whose first line is `<!-- baseline:generated <kind> — do not edit by
+hand; regenerate: baseline gen <kind> -->` is machine-derived: **edit the
+records it derives from, never the file** — the next regeneration replaces your
+edit, and `gen --check` reds the CI until someone regenerates. `gen index`
+never overwrites a file WITHOUT that marker (move it aside or pick a different
+`--out`; do not paste the marker onto a hand-written file — that authorizes the
+clobber the refusal exists to prevent). Wire `gen --check` as an **advisory CI
+job**: visibly red, outside the required set, and never `continue-on-error:
+true` — a green job with a buried failure pays the friction and destroys the
+signal. On a vendor bump, regenerate views with the NEW vendored skill and
+commit them alongside the bump.
+
+## Admit provenance (M6c)
+
+Every admit verdict carries its receipt: `provenance: inputs_digest <hash> ·
+head → target · descriptor <blob-oid> · rules <version> · checks · anchor`.
+Two runs with the same digest derived from the same world; any consulted input
+moving — including a plane's availability — changes the hash ('not consulted'
+is a digested VALUE, not a hole). Provenance never refuses, never warns, never
+counts: it is the receipt, not a gate. V3's merge-ref binding is its intended
+consumer; today it is the paste-into-the-PR-thread proof of what was judged.
+
 ## Reserved (lands later, documented now)
 
 - **M7 — contraction:** status-doc surfaces retired; `signoff.json` and the

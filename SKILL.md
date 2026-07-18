@@ -82,6 +82,10 @@ node "$SKILL_DIR/baseline.mjs" admit --repo <target>
 
 - Exit 0 = admitted (advisory warns ride the output); **exit 1 = refused** — the branch is stale against the target (merge/rebase it, rerun), a blocker fired (a descriptor change without its same-PR judgment — DESC-03), or a fact admit genuinely gates on was unreadable; exit 2 = environment (no target, no descriptor at the target). The TARGET branch's descriptor governs the run — editing the descriptor on your own branch changes nothing until it merges, and doing so at all requires a same-PR judgment with subject exactly `baseline.repo.json`.
 
+Every admit verdict carries a `provenance: inputs_digest …` receipt line (and JSON field) naming exactly what it was derived from — head/target shas, the target descriptor's blob OID, rules version, check runs, anchor state; unreachable planes read `not consulted`, never vanish. Paste it into the PR thread when the verdict matters.
+
+For repos that adopt a generated index (`baseline gen index`, default `docs/INDEX.md`): the file's first line is a `baseline:generated` marker — **edit the records, not the file**; `baseline gen --check` in CI reds on drift with the exact regenerate command (zero marked views is trivially green, so un-adopted repos never see it).
+
 On the DEFAULT branch (usually cron, not by hand), **`baseline reconcile`** is the morning-after twin — it re-derives main's standing and files findings as `baseline`-labeled, lifecycle-managed issues (dedup'd, closed when cleared, reopened on recurrence; a human close of an advisory filing is final). `--dry-run` prints the plan without writing. Exit 0 even with findings (the tracker is the alert surface — orient headlines them); exit 1 means delivery itself failed — even with zero findings (a dead cron must not stay green). A behind-or-dirty checkout of the default branch degrades to a labeled report-only run (exit 0, nothing filed); only a HEAD off the default branch's line refuses (exit 2) — it is not a lane command.
 
 ## Recording — the last act

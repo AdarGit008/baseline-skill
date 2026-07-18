@@ -27,7 +27,7 @@
 // Exit: 0 admitted (warn/diverged findings ride the output) · 1 refused (stale /
 // blocker FAIL / gating-source loss) · 2 usage or environment (nothing evaluated).
 import path from 'node:path'
-import { makeOpt, makeOptAll, nowUTC, sanitizeTTY, globToRe } from './util.mjs'
+import { makeOpt, makeOptAll, nowUTC, sanitizeTTY, globToRe, issueOf } from './util.mjs'
 import { loadRules } from './rules.mjs'
 import { indexRepo } from './repo.mjs'
 import { laneOrNull, run } from './probe.mjs'
@@ -39,6 +39,7 @@ import { CATS, makeColor } from './report.mjs'
 import { DESCRIPTOR_FILE, DESCRIPTOR_SCHEMA } from './descriptor.mjs'
 import { validateAgainst } from './validate.mjs'
 import { loadJudgmentsAt, selectBreakGlass, JUDGMENTS_DIR } from './jdg.mjs'
+import { inputsDigest, provenanceLine, provenanceJson } from './digest.mjs'
 import { validateRecord } from './records.mjs'
 
 const USAGE = `usage: baseline admit [--repo DIR] [--target REF] [--json] [--profile P] [--config FILE]`
@@ -198,6 +199,20 @@ export function runAdmit(argv) {
   const RULES = loadRules()
   const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, context: 'admit' })
 
+  // ---- provenance (M6c): the inputs_digest receipt — REFUSAL-INERT by contract.
+  // Assembly never touches refusals/results/summary; every lost source digests as
+  // a labeled VALUE ('not consulted' / 'none'), never a refusal and never a hole.
+  // checkRuns(HEAD) is admit's one marginal forge read (F8's fold) — the same
+  // one-home closure that gates the lane world degrades it under posture/JDG-only.
+  const provWorld = LANEWORLD()
+  const provRunsRaw = provWorld.forge.checkRuns(HEADSHA)
+  const provTuples = Array.isArray(provRunsRaw?.check_runs) ? provRunsRaw.check_runs.map(r => ({ name: r.name, conclusion: r.conclusion, head_sha: r.head_sha })) : null
+  // no anchor is 'none', never issueState(null) — the world has no no-anchor value
+  const provAnchorNum = (ns && BRANCH) ? issueOf(ns, BRANCH) : null
+  const provAnchor = provAnchorNum == null ? null : { issue: provAnchorNum, state: provWorld.issueState(provAnchorNum) }
+  const provInputs = { head: HEADSHA, target: targetTip, descriptorOid: repo.gitBlobAt(targetTip, DESCRIPTOR_FILE), rulesVersion: RULES.version, checkRuns: provTuples, anchor: provAnchor }
+  const provenance = provenanceJson({ digest: inputsDigest(provInputs), ...provInputs })
+
   // ---- verdict assembly: (a) staleness · (b) blocker FAIL · (c) gating-source loss ----
   const refusals = []
   let breakGlass = null
@@ -225,7 +240,7 @@ export function runAdmit(argv) {
       command: 'admit', repo: REPO, head: HEADSHA, branch: BRANCH,
       target: { ref: targetRef, sha: targetTip, source: explicit ? 'local-ref (explicit --target)' : fetchNote ? 'local-ref (fetch failed)' : 'fetched' },
       staleness: { ancestor: anc === 0, stale, indeterminate, shallow },
-      jdgOnly, jdgRelief: jdgOnly ? jdgReliefs[0].record.id : null, breakGlass, verdict: refused ? 'REFUSED' : 'ADMITTED', refusals,
+      jdgOnly, jdgRelief: jdgOnly ? jdgReliefs[0].record.id : null, breakGlass, verdict: refused ? 'REFUSED' : 'ADMITTED', refusals, provenance,
       results: results.map(x => ({ id: x.r.id, category: x.r.category, severity: x.r.severity, tag: x.tag, detail: x.detail })),
       summary, version: RULES.version, exit: refused ? 1 : 0,
     }, null, 2))
@@ -240,6 +255,7 @@ export function runAdmit(argv) {
   if (fetchNote) console.log(`  ⚠ ${fetchNote}\n`)
   if (jdgOnly) console.log(`  ◇ JDG-only admission path: the range is judgment records alone (${jdgReliefs[0].record.id}) — forge not consulted\n`)
   console.log(anc === 0 ? `  ✓ up to date: ${S(targetRef)} is an ancestor of HEAD` : breakGlass ? color(33, `  ⚠ admitted under break-glass ${breakGlass.id} from ${S(targetRef)} (review by ${breakGlass.review_by}) — ${S(breakGlass.covered)}`) : color(31, `  ✗ not admissible as-is (refusals below)`))
+  console.log(color(90, `  ${provenanceLine({ digest: provenance.digest, ...provInputs })}`))
   console.log('')
   for (const cat of Object.keys(CATS)) {
     const rows = results.filter(x => x.r.category === cat); if (!rows.length) continue

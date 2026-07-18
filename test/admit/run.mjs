@@ -327,6 +327,28 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   ok(r3.status === 0 && r3.j?.branch === 'lane/7' && (r3.j?.results || []).some(x => x.id === 'MERGE-02'), 'GITHUB_HEAD_REF restores lane identity in CI (branch_scope rules evaluate)')
 }
 
+// ---------- provenance (M6c): the printed half of the ruled surface ----------
+{
+  const w = mkworld('provenance')
+  const r = admitJson(w.clone)
+  const p = r.j?.provenance
+  ok(!!p && /^[0-9a-f]{12}$/.test(p.digest), 'provenance: JSON carries a 12-hex inputs_digest')
+  ok(p && p.checks === 'not-consulted' && /^[0-9a-f]{40}$/.test(p.descriptor_oid || ''), 'provenance: no-forge world digests checks as not-consulted; descriptor oid is the blob OID')
+  // the {check_runs} unwrap path end-to-end: a replay fixture at HEAD's sha
+  // flips checks from 'not-consulted' to a counted consult with a new digest
+  const headSha = git(w.clone, 'rev-parse', 'HEAD')
+  const replay = path.join(w.dir, 'replay'); fs.mkdirSync(replay)
+  fs.writeFileSync(path.join(replay, `check-runs-${headSha}.json`), JSON.stringify({ check_runs: [{ name: 'ci', status: 'completed', conclusion: 'success', head_sha: headSha }, { name: 'admit', status: 'completed', conclusion: 'success', head_sha: headSha }] }))
+  const rr = admitJson(w.clone, [], { BASELINE_FORGE_REPLAY: replay })
+  ok(rr.j?.provenance?.checks === 2 && rr.j.provenance.digest !== p.digest, 'a consulted forge digests differently: checks counted, hash moved')
+  // refusal-inert: the same world REFUSED (stale) must still carry provenance untouched
+  advanceMainAtOrigin(w)
+  const r2 = admitJson(w.clone)
+  ok(r2.j?.verdict === 'REFUSED' && /^[0-9a-f]{12}$/.test(r2.j?.provenance?.digest || ''), 'provenance rides a REFUSED verdict too (refusal-inert, both directions)')
+  const human = cli(w.clone, ['admit'])
+  ok(/provenance: inputs_digest [0-9a-f]{12} · head [0-9a-f]{7} → target [0-9a-f]{7}/.test(human.stdout), 'the human line prints in the ruled shape')
+}
+
 for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })
 console.log(fails ? `\n${fails} failing` : '\nall green')
 process.exit(fails ? 1 : 0)

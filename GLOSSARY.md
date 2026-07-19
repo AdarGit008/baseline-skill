@@ -137,8 +137,9 @@ unresolvable freshness derives no state at all — surfaced, never guessed.
 The engine tag for a cross-tier contradiction (DIV rules): the git plane and the
 forge disagree — issue closed under an active lane, a recorded `next:` at a dead
 issue, an open PR closing a closed issue. Its own verdict in the scorecard and
-`summary.diverged` in `--json`; severity stays warn (the exit code is unchanged
-until M7) because divergence demands a human resolution, not a red build.
+`summary.diverged` in `--json`; blocker since M7a — the row keeps its DIVERGED
+verdict and fails the run; the resolution path rides the finding (reopen the
+issue, or merge/close-and-prune the lane).
 
 ## last-verified stamp
 A line like `last-verified: <short-sha> <date>` in a status doc, naming the last

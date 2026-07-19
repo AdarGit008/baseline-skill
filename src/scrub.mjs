@@ -1,6 +1,6 @@
 // Scrub — the one scan API every layer shares (C34; layered honestly per F7/CF6/FS4).
 // M4a wires the write-time gate inside `baseline log`; M4c adds the pre-push hook for
-// hand-written records, the REC-02 rule (warn until M7's promotion), and the
+// hand-written records, the REC-02 rule (warn — REC promotion deferred by the M7 ruling), and the
 // push-protection/gitleaks delegation check — all of them calling scan(), so there is
 // exactly one opinion about what a secret looks like.
 //

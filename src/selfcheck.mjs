@@ -92,15 +92,11 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     if (!Array.isArray(r.contexts) || !r.contexts.length || !r.contexts.every(c => CTXV.has(c))) problems.push(`${id}: contexts must be a non-empty subset of {${[...CTXV].join('|')}}`)
     if (!CERT.has(r.certainty)) problems.push(`${id}: certainty must be one of {${[...CERT].join('|')}}`)
     if (r.severity === 'blocker' && r.certainty !== 'deterministic') problems.push(`${id}: blocker must be deterministic (got '${r.certainty}') — a blocker can't rest on a heuristic/judgment`)
-    // M5c: the DIVERGED tag short-circuits before the blocker→FAIL branch (src/engine.mjs),
-    // so a div-category rule at severity blocker would tag DIVERGED yet count zero blockers
-    // — a silent green. Until M7 defines blocker-DIVERGED semantics, pin div ⇒ warn so the
-    // dead path can't ship, and M7's promotion is a conscious engine change, not a surprise.
-    if (r.category === 'div' && r.severity !== 'warn') problems.push(`${id}: div-category rules must be severity 'warn' until M7 defines blocker-DIVERGED in the engine (DIVERGED currently bypasses the blocker→FAIL path)`)
-    // M6a: merge rules land warn until M7's promotion — refusal is the admit COMMAND's
-    // contract (staleness / blocker FAIL / gating-source loss), never a warn rule's; a
-    // merge blocker pre-M7 would change admit's exit semantics without the promotion review.
-    if (r.category === 'merge' && r.severity !== 'warn') problems.push(`${id}: merge-category rules must be severity 'warn' until M7's promotion (admit's refusal is a command contract, not a rule severity)`)
+    // M7a: the div⇒warn (M5c) and merge⇒warn (M6a) laws LIFTED with the promotion —
+    // the counting seams (report.isBlocking, shared by check's exits and admit's
+    // leg (b)) now treat blocker-severity DIVERGED as failing, so the dead path
+    // those laws pinned shut no longer exists. The general blocker⇒deterministic
+    // law above covers the promoted set.
     // M6b: reconcile runs ON the default branch — a lane-scoped rule there is
     // unrepresentable (the branch gate would SKIP it on every single run, the exact
     // wallpaper class the context gate exists to kill). Exclusion is structural:

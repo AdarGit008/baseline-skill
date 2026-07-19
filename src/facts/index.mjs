@@ -57,7 +57,7 @@ function normalizeLaneRefs(raw, namespace) {
 // rule reads .agent, so the fetch is dead weight AND a stall risk (its 60s timeout hangs
 // a check run on a black-holed origin for facts nothing consumes). orient/reclaim pass
 // enrich=true (they show/record the agent).
-export function gatherLaneFacts(repo, forge, namespace, { enrich = true } = {}) {
+export function gatherLaneFacts(repo, forge, namespace, { enrich = true, defaultBranch = null } = {}) {
   if (!namespace) return { lanes: [], source: null, reason: 'no lanes.namespace declared', truncated: false }
   const viaForge = normalizeLaneRefs(forge.laneRefs(namespace), namespace)
   let got = viaForge ? { ...viaForge, source: 'forge', reason: null } : null
@@ -86,6 +86,19 @@ export function gatherLaneFacts(repo, forge, namespace, { enrich = true } = {}) 
       }
     }
   }
+  // M7a: the merged-lane fact — a lane whose tip is already an ANCESTOR of the
+  // default branch is finished work, not a standing state. Derives COMPLETED
+  // downstream, exempting it from DIV-01/lease noise (the live hostage the
+  // promotion panel observed: a merged lane's closed anchor is agreement, not
+  // divergence). Provable-only: an unknown tip or unresolvable base derives
+  // merged:false — not-exempt is the honest default, never a guess. One bounded
+  // git spawn per lane (the lane list is already capped at the forge page).
+  if (defaultBranch && got.lanes.length) {
+    const base = ['origin/' + defaultBranch, defaultBranch].find(r => run('git', ['-C', repo.REPO, 'rev-parse', '--verify', '-q', r + '^{commit}']) !== null) || null
+    for (const l of got.lanes) {
+      l.merged = !!(base && l.tip && run('git', ['-C', repo.REPO, 'merge-base', '--is-ancestor', l.tip, base]) !== null)
+    }
+  }
   return got
 }
 
@@ -110,7 +123,7 @@ export function makeLaneWorld(repo, descriptor, { forgeClosed = null, probe = un
     // generic "forge unreachable" that would shadow it (orient.mjs's own anti-pattern)
     const forge = makeForge(repo, { available: !!pf?.available, nwo: pf?.repo || null, posture, probeReason: pf?.reason || null, closedReason: forgeClosed })
     const ns = descriptor?.valid ? descriptor.data?.lanes?.namespace : null
-    const laneFacts = gatherLaneFacts(repo, forge, ns, { enrich: false })
+    const laneFacts = gatherLaneFacts(repo, forge, ns, { enrich: false, defaultBranch: descriptor?.valid ? descriptor.data?.ground_truth_boundary?.default_branch : null })
     const ttl = (descriptor?.valid ? descriptor.data?.lanes?.lease_ttl : null) ?? DEFAULT_LEASE_TTL
     const now = (nowUTC() ?? new Date()).toISOString()
     // issue states for every lane anchor (DIV-01's input), resolved once, memoized in q()
@@ -163,7 +176,7 @@ export function gatherFacts(repo, { descriptor, capability }) {
   // lane refs + lease inputs (M5b) — gathered only when the descriptor declares lanes;
   // resolve every lane anchor's issue state too (a closed anchor is DIV-01's signal)
   const ns = descriptor?.valid ? descriptor.data?.lanes?.namespace : null
-  const laneFacts = gatherLaneFacts(repo, forge, ns)
+  const laneFacts = gatherLaneFacts(repo, forge, ns, { defaultBranch: descriptor?.valid ? descriptor.data?.ground_truth_boundary?.default_branch : null })
   for (const l of laneFacts.lanes) {
     const n = issueOf(ns, l.ref)
     if (n != null && !openNums.has(n)) referenced.add(n)

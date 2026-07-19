@@ -216,6 +216,90 @@
       ""
     ]
   },
+  "admit-degraded-forge": {
+    "exitCode": 1,
+    "command": "admit",
+    "verdict": "REFUSED",
+    "staleness": {
+      "ancestor": true,
+      "stale": false,
+      "indeterminate": false,
+      "shallow": false
+    },
+    "jdgOnly": false,
+    "jdgRelief": null,
+    "breakGlass": null,
+    "refusals": [
+      "FLOW-07: lease ABANDONED (<N>d idle of ttl <N>d) — renew (push work) or hand it over (baseline lane reclaim)"
+    ],
+    "target": {
+      "ref": "origin/main"
+    },
+    "summary": {
+      "refusals": 1,
+      "blockers": 1,
+      "pass": 9,
+      "warn": 0,
+      "diverged": 0,
+      "signoff": 0,
+      "skip": 3,
+      "total": 13
+    },
+    "rules": {
+      "REC-01": {
+        "tag": "PASS",
+        "detail": "1 record(s), history append-only"
+      },
+      "REC-02": {
+        "tag": "PASS",
+        "detail": "1 record(s) scrub-clean at HEAD"
+      },
+      "FLOW-01": {
+        "tag": "SKIP",
+        "detail": "anchor #7 state unresolvable (missing issue or query failed) — strict anchoring not provable, never guessed"
+      },
+      "FLOW-02": {
+        "tag": "PASS",
+        "detail": "1 session record(s) ride this lane"
+      },
+      "FLOW-03": {
+        "tag": "PASS",
+        "detail": "next: recorded (records/sessions/lane/7/2026-01-01-1200-golden.md)"
+      },
+      "FLOW-04": {
+        "tag": "PASS",
+        "detail": "'lane/7' sits in declared family 'lane/*'"
+      },
+      "FLOW-05": {
+        "tag": "PASS",
+        "detail": "newest record records/sessions/lane/7/2026-01-01-1200-golden.md is at origin (as of the last fetch)"
+      },
+      "FLOW-07": {
+        "tag": "FAIL",
+        "detail": "lease ABANDONED (<N>d idle of ttl <N>d) — renew (push work) or hand it over (baseline lane reclaim)"
+      },
+      "MERGE-02": {
+        "tag": "PASS",
+        "detail": "no sister lanes known locally (as of the last fetch)"
+      },
+      "DIV-01": {
+        "tag": "SKIP",
+        "detail": "anchor #7 state unresolvable — divergence not provable, never guessed"
+      },
+      "DIV-02": {
+        "tag": "PASS",
+        "detail": "next: names no issues — nothing to contradict"
+      },
+      "DIV-03": {
+        "tag": "SKIP",
+        "detail": "PR listing failed at the forge — closures unreadable (not \"no PRs\")"
+      },
+      "DESC-03": {
+        "tag": "PASS",
+        "detail": "descriptor untouched in origin/main...HEAD"
+      }
+    }
+  },
   "admit-desc-weaken": {
     "exitCode": 1,
     "command": "admit",
@@ -230,16 +314,17 @@
     "jdgRelief": null,
     "breakGlass": null,
     "refusals": [
+      "FLOW-02: no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\"",
       "DESC-03: baseline.repo.json changed with no same-range judgment — WEAKENING: workflow: 'multi-lane' → 'single-lane' (down-ladder); anchoring: 'strict' → 'off' (down-ladder) — baseline jdg new --kind deviation --subject \"baseline.repo.json\" --reason \"why the posture changed\" --review-by <date>, in this PR"
     ],
     "target": {
       "ref": "origin/main"
     },
     "summary": {
-      "refusals": 1,
-      "blockers": 1,
+      "refusals": 2,
+      "blockers": 2,
       "pass": 3,
-      "warn": 1,
+      "warn": 0,
       "diverged": 0,
       "signoff": 0,
       "skip": 8,
@@ -259,7 +344,7 @@
         "detail": "anchor #7 unverifiable (<forge unreachable>) — strict anchoring not provable"
       },
       "FLOW-02": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\""
       },
       "FLOW-03": {
@@ -321,7 +406,7 @@
       "refusals": 0,
       "blockers": 0,
       "pass": 6,
-      "warn": 1,
+      "warn": 0,
       "diverged": 0,
       "signoff": 0,
       "skip": 6,
@@ -341,7 +426,7 @@
         "detail": "anchor #7 unverifiable (forge not consulted (JDG-only admission path)) — strict anchoring not provable"
       },
       "FLOW-02": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\""
       },
       "FLOW-03": {
@@ -382,10 +467,94 @@
       }
     }
   },
-  "admit-sister-dep": {
+  "admit-relieved": {
     "exitCode": 0,
     "command": "admit",
     "verdict": "ADMITTED",
+    "staleness": {
+      "ancestor": false,
+      "stale": false,
+      "indeterminate": true,
+      "shallow": true
+    },
+    "jdgOnly": false,
+    "jdgRelief": null,
+    "breakGlass": {
+      "id": "JDG-0001"
+    },
+    "refusals": [],
+    "target": {
+      "ref": "origin/main"
+    },
+    "summary": {
+      "refusals": 0,
+      "blockers": 0,
+      "pass": 4,
+      "warn": 0,
+      "diverged": 0,
+      "signoff": 0,
+      "skip": 9,
+      "total": 13
+    },
+    "rules": {
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "shallow clone — history truncated, append-only not provable"
+      },
+      "REC-02": {
+        "tag": "PASS",
+        "detail": "1 record(s) scrub-clean at HEAD"
+      },
+      "FLOW-01": {
+        "tag": "SKIP",
+        "detail": "anchor #7 unverifiable (<forge unreachable>) — strict anchoring not provable"
+      },
+      "FLOW-02": {
+        "tag": "SKIP",
+        "detail": "diff origin/main...HEAD failed — lane coupling not provable"
+      },
+      "FLOW-03": {
+        "tag": "SKIP",
+        "detail": "lane coupling not provable — diff origin/main...HEAD failed"
+      },
+      "FLOW-04": {
+        "tag": "PASS",
+        "detail": "'lane/7' sits in declared family 'lane/*'"
+      },
+      "FLOW-05": {
+        "tag": "SKIP",
+        "detail": "push discipline not provable — diff origin/main...HEAD failed"
+      },
+      "FLOW-07": {
+        "tag": "PASS",
+        "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
+      },
+      "MERGE-02": {
+        "tag": "PASS",
+        "detail": "no sister lanes known locally (as of the last fetch)"
+      },
+      "DIV-01": {
+        "tag": "SKIP",
+        "detail": "anchor #7 state unknown (<forge unreachable>) — divergence not provable"
+      },
+      "DIV-02": {
+        "tag": "SKIP",
+        "detail": "divergence not provable — diff origin/main...HEAD failed"
+      },
+      "DIV-03": {
+        "tag": "SKIP",
+        "detail": "<forge unreachable> — PR closures unreadable"
+      },
+      "DESC-03": {
+        "tag": "SKIP",
+        "detail": "diff origin/main...HEAD failed — change scope unreadable (admit refuses on this as gating-source loss)"
+      }
+    }
+  },
+  "admit-sister-dep": {
+    "exitCode": 1,
+    "command": "admit",
+    "verdict": "REFUSED",
     "staleness": {
       "ancestor": true,
       "stale": false,
@@ -395,15 +564,18 @@
     "jdgOnly": false,
     "jdgRelief": null,
     "breakGlass": null,
-    "refusals": [],
+    "refusals": [
+      "FLOW-02: no session record for lane 'lane/8' — write one: baseline log -m \"...\" --next \"...\"",
+      "MERGE-02: HEAD contains unmerged commits from lane/9 — land/rebase first, or declare the stack: trailer 'Baseline-Stacked-On: lane/9'"
+    ],
     "target": {
       "ref": "origin/main"
     },
     "summary": {
-      "refusals": 0,
-      "blockers": 0,
+      "refusals": 2,
+      "blockers": 2,
       "pass": 3,
-      "warn": 2,
+      "warn": 0,
       "diverged": 0,
       "signoff": 0,
       "skip": 8,
@@ -423,7 +595,7 @@
         "detail": "anchor #8 unverifiable (<forge unreachable>) — strict anchoring not provable"
       },
       "FLOW-02": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "no session record for lane 'lane/8' — write one: baseline log -m \"...\" --next \"...\""
       },
       "FLOW-03": {
@@ -443,7 +615,7 @@
         "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
       },
       "MERGE-02": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "HEAD contains unmerged commits from lane/9 — land/rebase first, or declare the stack: trailer 'Baseline-Stacked-On: lane/9'"
       },
       "DIV-01": {
@@ -478,16 +650,17 @@
     "jdgRelief": null,
     "breakGlass": null,
     "refusals": [
-      "stale: origin/main @ <sha> is not an ancestor of HEAD — re-derive at an up-to-date SHA (merge/rebase the target, then rerun; the up-to-date branch-protection requirement is this refusal's forge-side twin)"
+      "stale: origin/main @ <sha> is not an ancestor of HEAD — re-derive at an up-to-date SHA (merge/rebase the target, then rerun; the up-to-date branch-protection requirement is this refusal's forge-side twin)",
+      "FLOW-02: no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\""
     ],
     "target": {
       "ref": "origin/main"
     },
     "summary": {
-      "refusals": 1,
-      "blockers": 0,
+      "refusals": 2,
+      "blockers": 1,
       "pass": 4,
-      "warn": 1,
+      "warn": 0,
       "diverged": 0,
       "signoff": 0,
       "skip": 8,
@@ -507,7 +680,7 @@
         "detail": "anchor #7 unverifiable (<forge unreachable>) — strict anchoring not provable"
       },
       "FLOW-02": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\""
       },
       "FLOW-03": {
@@ -1998,15 +2171,15 @@
     }
   },
   "flow-repo": {
-    "exitCode": 0,
+    "exitCode": 1,
     "project_type": "docs",
     "profiles": [
       "core"
     ],
     "summary": {
-      "blockers": 0,
+      "blockers": 1,
       "pass": 13,
-      "warn": 9,
+      "warn": 8,
       "diverged": 0,
       "signoff": 1,
       "skip": 63,
@@ -2314,7 +2487,7 @@
         "detail": "matched in 1 file(s)"
       },
       "FLOW-01": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "branch 'lane/feature-x' carries no issue anchor under 'lane/*' — claim lanes: baseline lane claim <issue>"
       },
       "FLOW-02": {
@@ -2722,15 +2895,15 @@
     }
   },
   "lanes-repo": {
-    "exitCode": 0,
+    "exitCode": 1,
     "project_type": "docs",
     "profiles": [
       "core"
     ],
     "summary": {
-      "blockers": 0,
+      "blockers": 2,
       "pass": 16,
-      "warn": 8,
+      "warn": 7,
       "diverged": 1,
       "signoff": 1,
       "skip": 60,
@@ -3062,12 +3235,12 @@
         "detail": "no gated subject changed on this branch"
       },
       "FLOW-07": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "lease ABANDONED (<N>d idle of ttl <N>d) — renew (push work) or hand it over (baseline lane reclaim)"
       },
       "DIV-01": {
         "tag": "DIVERGED",
-        "detail": "lane lane/7 is claimed but its anchor #7 is closed — \"The anchored issue (closed under the lane)\" — resolve first: merge/close the lane, or reopen #7"
+        "detail": "lane lane/7 is claimed but its anchor #7 is closed — \"The anchored issue (closed under the lane)\" — the resolution path: reopen #7 if the work is genuinely unfinished, or merge/close-and-prune the lane if it is done"
       },
       "DIV-02": {
         "tag": "PASS",

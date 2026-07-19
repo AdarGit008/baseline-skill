@@ -4,6 +4,44 @@ All notable changes to the `/baseline` skill are documented here. The format loo
 follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned in
 `rules.json` and `SKILL.md`.
 
+## [Unreleased]
+
+### Changed — V2 M7a: the promotion (10 rules warn → blocker; blocker-DIVERGED refuses)
+- **Severity flips** (per the M7 ruling, PLAN §8): FLOW-01..05, FLOW-07 · DIV-01..03 ·
+  MERGE-02 — all deterministic, all already posture-gated (`workflow: multi-lane |
+  multi-lane-local`), so the promotion is rule DATA plus two conscious law changes,
+  no new mechanism. REC-01/02 stay warn (the only ungated candidates; a
+  severity-by-posture seam has no consumer — revive on real demand for
+  REC-02-at-admit). Pre-flight diff, published before capture: **6 fixtures, 7 row
+  re-tags WARN→FAIL, 3 exit flips, 1 detail reword** (+ the two M6a backfill
+  fixtures below) = re-pin 1 of the ruled 3.
+- **Blocker-DIVERGED refuses without losing its verdict**: the engine keeps the
+  DIVERGED tag; the counting seams share one predicate (`report.isBlocking`) across
+  check's exits and admit's refusal leg (b) — a DIVERGED refusal line says so. The
+  M5c div⇒warn and M6a merge⇒warn selfcheck laws lifted in the same commit.
+- **The merged-lane COMPLETED exemption** (the panel's live-hostage guard): a lane
+  whose tip is an ancestor of the default branch derives COMPLETED — exempt from
+  DIV-01 (its closed anchor is agreement) and the lease clock, sorted last in
+  orient with the prune recipe. Provable-only: unknown tips derive on the normal
+  clock.
+- **The JDG-only admission path is promotion-proof**: a pure judgment-additions
+  range cannot carry a session record by its own ruled shape, so promoted lane
+  blockers (FLOW-02) are excluded from leg (b) under jdgOnly — the relief valve
+  M6a built cannot be re-closed by M7a (findings still ride the output; DESC-03
+  cannot fire there by construction). Caught by the suite, pinned by the corpus.
+- **DESC-03 kind pin**: {sign-off, deviation, risk-acceptance} satisfy;
+  break-glass is EXCLUDED (outage relief never doubles as descriptor-change
+  approval) — with a named hint when a break-glass rides the range with the right
+  subject.
+- **M6a golden-pin backfill**: the relieved break-glass envelope (new `shallow`
+  harness knob — a --depth 1 --no-single-branch clone of the bare origin) and the
+  partially-degraded-forge admit shape are now pinned.
+- Ruled explicitly (CONTRACT): promoted blockers keep `on_unreachable: skip` —
+  gating power exists only where facts are readable; the fail-closed floor stays
+  admit's command legs + reconcile detection.
+- **Gate to M7b** (per the ruling): one clean demo lane cycle at blocker
+  severity — claim → work → log → push → admit green → merge, on baseline-demo.
+
 ## [2.4.0] — 2026-07-18
 
 ### Added — V2 M6c: `baseline gen index` + `gen --check`, `inputs_digest` provenance

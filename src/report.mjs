@@ -9,10 +9,14 @@ export function makeColor(JSON_OUT) {
   return (c, s) => (process.stdout.isTTY && !JSON_OUT) ? `\x1b[${c}m${s}\x1b[0m` : s
 }
 
+// M7a: a blocker-severity row fails whether it tagged FAIL or DIVERGED — the
+// verdict class is preserved in the output; the EXIT treats both as blocking.
+// One predicate, every counting seam (both reports here, admit's leg (b)).
+export const isBlocking = x => x.r.severity === 'blocker' && (x.tag === 'FAIL' || x.tag === 'DIVERGED')
+
 export function reportJson({ results, REPO, cfg, ACTIVE, HEAD }) {
   const out = { repo: REPO, project_type: cfg.project_type, profiles: [...ACTIVE], head: HEAD, results: results.map(x => ({ id: x.r.id, category: x.r.category, severity: x.r.severity, profile: x.r.profile || 'core', tag: x.tag, detail: x.detail })) }
-  const blockers = results.filter(x => x.tag === 'FAIL' && x.r.severity === 'blocker').length
-  // diverged rides the summary but NOT the exit code (severity warn until M7's promotion)
+  const blockers = results.filter(isBlocking).length
   out.summary = { blockers, pass: results.filter(x => x.tag === 'PASS').length, warn: results.filter(x => x.tag === 'WARN').length, diverged: results.filter(x => x.tag === 'DIVERGED').length, signoff: results.filter(x => x.tag === 'SIGN-OFF').length, skip: results.filter(x => x.tag === 'SKIP').length, total: results.length }
   console.log(JSON.stringify(out, null, 2))
   return blockers ? 1 : 0
@@ -37,7 +41,7 @@ export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color }
     console.log('')
   }
   const n = t => results.filter(x => x.tag === t).length
-  const blockers = results.filter(x => x.tag === 'FAIL' && x.r.severity === 'blocker').length
+  const blockers = results.filter(isBlocking).length
   const scored = results.filter(x => x.tag !== 'SKIP').length
   const div = n('DIVERGED')
   console.log('  ' + color(1, 'Summary') + `  ${color(32, n('PASS') + ' pass')} · ${color(31, n('FAIL') + ' fail')} · ${color(33, n('WARN') + ' warn')}${div ? ` · ${color(31, div + ' diverged')}` : ''} · ${color(35, n('SIGN-OFF') + ' sign-off')} · ${color(90, n('SKIP') + ' n/a')}`)

@@ -641,6 +641,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
       const me = w.lanes.find(l => l.ref === BRANCH)
       if (!me) return { ok: null, detail: w.source ? `'${BRANCH}' is not a claimed lane at origin — lease n/a (claim it: baseline lane claim)` : `lanes underived: ${w.reason}` }
+      if (me.state === 'COMPLETED') return { ok: null, detail: 'lane complete (tip merged into the default branch) — lease n/a; prune the branch' }
       if (me.state === null) return { ok: null, detail: me.labels.find(l => /underived/.test(l)) || 'lease underived' }
       // the git-plane low-confidence provenance (committer clock, no PR corroboration)
       // rides the detail — CONTRACT promises it "says so", and orient already shows it
@@ -663,9 +664,12 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       if (!w.forge.available) return { ok: null, detail: `anchor #${n} state unknown (${w.forge.reason}) — divergence not provable` }
       const st = w.issueState(n)
       if (st === 'unknown') return { ok: null, detail: `anchor #${n} state unresolvable — divergence not provable, never guessed` }
-      const hit = deriveDivergence({ lanes: [{ ref: BRANCH, anchor: { issue: n, state: st } }], issueStates: w.issueStates }).find(i => i.code === 'DIV-01')
+      // COMPLETED exemption (M7a): a merged lane's closed anchor is agreement
+      const me = w.lanes.find(l => l.ref === BRANCH)
+      const hit = deriveDivergence({ lanes: [{ ref: BRANCH, state: me?.state, anchor: { issue: n, state: st } }], issueStates: w.issueStates }).find(i => i.code === 'DIV-01')
+      if (me?.state === 'COMPLETED' && !hit) return { ok: true, detail: `lane complete (tip merged into the default branch) — closed anchor #${n} is agreement; prune the branch` }
       return hit
-        ? { ok: false, diverged: true, detail: `${hit.text} — resolve first: merge/close the lane, or reopen #${n}` }
+        ? { ok: false, diverged: true, detail: `${hit.text} — the resolution path: reopen #${n} if the work is genuinely unfinished, or merge/close-and-prune the lane if it is done` }
         : { ok: true, detail: `anchor #${n} is open — lane and tracker agree` }
     }
 
@@ -797,10 +801,16 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       if (!touched) return { ok: true, detail: `descriptor untouched in ${targetRef}...HEAD` }
       const weak = classifyPostureDiff(DESCRIPTOR?.valid ? DESCRIPTOR.data : null, headDescriptor?.valid ? headDescriptor.data : null, DESCRIPTOR_SCHEMA)
       const weakNote = weak.length ? ` — WEAKENING: ${weak.slice(0, 3).join('; ')}${weak.length > 3 ? ` (+${weak.length - 3} more)` : ''}` : ' (no posture axis weakened)'
-      const jdgs = addedJudgments.filter(j => j.record && j.record.subject === DESCRIPTOR_FILE && j.record.review_by >= TODAY)
+      // M7a kind pin: {sign-off, deviation, risk-acceptance} satisfy — break-glass is
+      // EXCLUDED (it is outage relief with its own gate semantics; letting it double
+      // as descriptor-change approval would conflate the two valves M6 separated)
+      const DESC_JDG_KINDS = ['sign-off', 'deviation', 'risk-acceptance']
+      const jdgs = addedJudgments.filter(j => j.record && DESC_JDG_KINDS.includes(j.record.kind) && j.record.subject === DESCRIPTOR_FILE && j.record.review_by >= TODAY)
       if (!jdgs.length) {
+        const kindMiss = addedJudgments.find(j => j.record && j.record.subject === DESCRIPTOR_FILE && j.record.review_by >= TODAY && !DESC_JDG_KINDS.includes(j.record.kind))
         const near = addedJudgments.filter(j => j.record && j.record.subject !== DESCRIPTOR_FILE)
-        const hint = near.length ? ` (a judgment rode this range but its subject is '${near[0].record.subject}', not '${DESCRIPTOR_FILE}' — the matcher is the exact filename)` : jdgCapped ? ` (judgment parsing capped at 500 added records — a qualifying one beyond the cap does not count; shrink the range)` : ''
+        const hint = kindMiss ? ` (${kindMiss.record.id} rode this range with the right subject but kind '${kindMiss.record.kind}' — break-glass is outage relief, never descriptor-change approval; use ${DESC_JDG_KINDS.join('|')})`
+          : near.length ? ` (a judgment rode this range but its subject is '${near[0].record.subject}', not '${DESCRIPTOR_FILE}' — the matcher is the exact filename)` : jdgCapped ? ` (judgment parsing capped at 500 added records — a qualifying one beyond the cap does not count; shrink the range)` : ''
         return { ok: false, detail: `${DESCRIPTOR_FILE} changed with no same-range judgment${weakNote}${hint} — baseline jdg new --kind deviation --subject "${DESCRIPTOR_FILE}" --reason "why the posture changed" --review-by <date>, in this PR` }
       }
       return { ok: true, detail: `descriptor change carries ${jdgs[0].record.id} (subject ${DESCRIPTOR_FILE}, review by ${jdgs[0].record.review_by})${weakNote}` }
@@ -811,7 +821,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       // that may never land (C32). Deterministic from the git plane alone: sister =
       // a local remote-tracking lane ref whose shared history with HEAD reaches past
       // the target tip. The Baseline-Stacked-On trailer (whole-token ref match in the
-      // admitted range) declares the stack and lifts the finding. Lands warn; M7 promotes.
+      // admitted range) declares the stack and lifts the finding. Blocker since M7a.
       if (!ADMITWORLD) return { ok: null, detail: 'admit-context only (no target world assembled)' }
       const { targetTip, headSha, sisters, stackedOn, mergeBase, sistersCapped } = ADMITWORLD
       const w = LANEWORLD()

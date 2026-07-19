@@ -150,6 +150,11 @@ export function makeForge(repo, { available = false, nwo = null, posture = null,
     // labels truncation and suppresses creates under it. Bodies are big: an explicit
     // maxBuffer keeps run()'s 1MB default from silently nulling the whole listing.
     issuesLabeled(label) { return isAvail() ? q(`issues-labeled-${safeKey(label)}`, ['issue', 'list', '--state', 'all', '--label', label, '--limit', '500', '--json', 'number,state,title,body,updatedAt'], { maxBuffer: 64 * 1024 * 1024 }) : null },
+    // M7c: OPS-07's ONE workflow-state query — GET /repos/:nwo/actions/workflows/:file
+    // returns {state}: 'active' or the disabled_* family (disabled_inactivity is
+    // GitHub's 60-day auto-disable, the rule's named death mode). Keyed by the
+    // workflow file's basename; null on any failure (the caller SKIPs, never guesses).
+    workflowState(file) { return isAvail() && file ? q(`workflow-state-${safeKey(file)}`, ['api', `repos/${nwo}/actions/workflows/${encodeURIComponent(file)}`]) : null },
     mutate,
     mutationLog: () => mutLog,
     // Newest session log on a branch, read from origin at that ref via the contents API.

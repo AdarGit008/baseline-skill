@@ -2,13 +2,13 @@
   "rules": [
     {
       "id": "DESC-01",
-      "title": "Repo descriptor present and valid",
+      "title": "Repo descriptor present",
       "category": "desc",
       "severity": "warn",
       "applies_to": "all",
       "source": "https://backstage.io/docs/features/software-catalog/descriptor-format (kind/type/lifecycle/owner); Kubernetes declared-spec vs observed-status",
-      "lesson": "C39 — the repo declares itself; applicability, scrutiny, and ownership consume a schema-validated descriptor, not per-rule tree-sniffing that misfires and can't express intent",
-      "rationale": "type/lifecycle/maturity/workflow cannot be reliably inferred from the tree. A minimal baseline.repo.json is the one stored intent every derivation hangs off. Absent, the checker falls back to fragile auto-detection; present-but-invalid, its declared intent can't be trusted. Transitional WARN — a repo can adopt incrementally.",
+      "lesson": "C39 — the repo declares itself; applicability, scrutiny, and posture consume a schema-validated descriptor, not per-rule tree-sniffing that misfires and can't express intent",
+      "rationale": "type/lifecycle/maturity/workflow cannot be reliably inferred from the tree. A minimal baseline.repo.json is the one stored intent every derivation hangs off; absent, the checker falls back to fragile auto-detection. Presence stays a transitional WARN — adoption is invited, not forced. VALIDITY is DESC-02's (M7c split, the FLOW-02/03 presence/content divide): a repo that never declared loses features, but a repo whose declaration is broken loses enforcement it thinks it has — different failure classes, different severities.",
       "fix": "Add baseline.repo.json at the repo root: copy templates/baseline.repo.json or a config-presets/*.repo.json posture preset, then set type, lifecycle, maturity, workflow, and anchoring.",
       "sources": [
         "tree"
@@ -21,6 +21,29 @@
       "certainty": "deterministic",
       "check": {
         "kind": "descriptor"
+      }
+    },
+    {
+      "id": "DESC-02",
+      "title": "A present descriptor is schema-valid",
+      "category": "desc",
+      "severity": "blocker",
+      "applies_to": "all",
+      "source": "https://backstage.io/docs/features/software-catalog/descriptor-format; JSON Schema fail-fast validation",
+      "lesson": "M7b panel filing — ten workflow-gated blockers hang off descriptor validity: an invalid descriptor turns the posture OFF (every lane/divergence blocker silently SKIPs) while the run stays green-looking, which is exactly the silent-demotion class change control exists to prevent",
+      "rationale": "Deterministic, so blocker is lawful: baseline.repo.json exists and fails schema validation. The engine already answers invalidity with 'workflow contract off' SKIPs on every gated rule — this rule makes that collapse LOUD instead of a warn beside a wall of skips. Absence is DESC-01's warn (no overlap — the FLOW-02/03 divide: presence and content are different findings). Contexts exclude admit deliberately: admit reads the TARGET ref's descriptor (FS1), and a blocker here would hostage the very fix-PR that repairs an invalid main — detection (check/reconcile files the issue) is the honest guarantee, DESC-03 remains the change gate.",
+      "fix": "Fix the named schema errors, or re-copy a config-presets/*.repo.json preset and re-fill the identity fields. Coming from early V2: drop the retired owner key — MIGRATION.md walks the exit.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check",
+        "reconcile"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "descriptor-valid"
       }
     },
     {

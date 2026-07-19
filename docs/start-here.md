@@ -2,7 +2,7 @@
 
 **What this is.** The installable `/baseline` skill — the *project-baseline* readiness
 standard packaged for Claude Code and compatible agents. The canonical toolkit is
-`check.mjs` (runner) + `rules.json` manifest + `rules/` (87 rules, v2.x line).
+`check.mjs` (runner) + `rules.json` manifest + `rules/` (90 rules, v2.x line).
 
 **Current state.** Stable. This repo ships the standard rather than being a buildable
 app, so it scores itself in **distribution mode** via `baseline.config.json`
@@ -19,7 +19,7 @@ per-type coverage.
 - `REFERENCE.md` — full reference: rule table, categories, architecture & flow diagrams, CI wiring.
 - `GLOSSARY.md` — plain-language definitions of the DevOps/supply-chain terms.
 - `MIGRATION.md` — moving a V1-shaped repo onto the V2 contract with existing commands.
-- `check.mjs` + `rules.json` + `rules/` + `src/` — the runner, the manifest, and the 87 rules (co-located; keep them together).
+- `check.mjs` + `rules.json` + `rules/` + `src/` — the runner, the manifest, and the 90 rules (co-located; keep them together).
 - `baseline.mjs` — the unified CLI: check · admit · reconcile · orient · lane · log · jdg · gen · scrub.
 - `templates/` — scaffolds (baseline.repo.json, claim.json, judgment.json, session-log.md, adr.md, doc-with-freshness.md).
 - `hooks/` — SessionStart orient hook + the pre-push records scrub scaffold.

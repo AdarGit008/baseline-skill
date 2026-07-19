@@ -6,6 +6,39 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — V2 M7c: lock + residue (87 → 90 rules; closes the M7 module)
+- **`baseline gen lock` + `tools/baseline.lock.json`**: pin the vendored
+  `tools/baseline/` tree — exactly `{version, tree_hash}` (version from the
+  vendored tree's own `rules.json`; sha256 over sorted path+content pairs, raw
+  bytes, worktree semantics). The consumption model stays vendored (pointer
+  flip cut to V3); the pin is what ships.
+- **REC-06** (warn, deterministic): unpinned vendored tree, unparseable lock,
+  or hash skew — the skew finding names the lock's pinned version AND the
+  tree's current one; no vendored tree at the canonical path → SKIP.
+- **OPS-07** (warn, deterministic, knob-free): ONE recorded forge query of the
+  reconcile workflow's state — `active` passes, the `disabled_*` family fails
+  (`disabled_inactivity` is GitHub's 60-day auto-disable, the named death
+  mode); no reconcile workflow in the tree → SKIP. New forge read:
+  `workflowState(file)`, record/replay-additive.
+- **DESC-02** (blocker, deterministic — the M7b panel's filing): a
+  present-but-invalid `baseline.repo.json` is the loudest row in the run, not
+  a warn beside a wall of posture-off skips. DESC-01 narrows to presence
+  (warn, unchanged severity) — the FLOW-02/03 presence/content divide; DESC-02
+  SKIPs on absence and deliberately does NOT run at admit (an invalid target
+  descriptor must not hostage its own fix-PR; check/reconcile detection is the
+  guarantee, DESC-03 stays the change gate).
+- **gen index pool union**: the session-record pool is tracked∪walked, so the
+  record `baseline log` just wrote (never staged, by design) rides the same
+  regeneration — log→regen→commit is one pass with no one-session lag (the
+  seam the demo transition cycle hit live).
+- **Reconcile caps, JDG_PARSE_CAP parity**: the judgment sweep and the
+  landed-record re-scan are bounded at 500 (the constant one-homed in
+  `src/jdg.mjs`, shared with admit), truncation labeled in the report and
+  summary; out-of-cap entries neither file nor clear that run.
+- **CONTRACT reconcile YAML**: `permissions:` granted per-job (top-level stays
+  read-only) — the tool's own SEC-11 guidance applied to its own spec; the S9
+  manual-copy paragraph documents the canonical vendoring procedure.
+
 ### Removed — V2 M7b: the contraction (88 → 87 rules; the expand/contract debt paid)
 - **CTX-01 and the `status-stamp` check kind** (39 → 38 kinds): the stored-status
   surface is gone — no rule demands a hand-maintained freshness stamp anywhere.

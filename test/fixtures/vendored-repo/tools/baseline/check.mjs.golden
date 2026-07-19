@@ -1,0 +1,2 @@
+// a stand-in vendored engine file — its bytes are part of the hashed tree
+export const VENDORED = true

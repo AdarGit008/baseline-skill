@@ -210,6 +210,65 @@ console.log('\n# remedy — the vendored-consumer (in-repo) form\n')
   } finally { process.argv[1] = orig }
 }
 
+// ---------- gen lock (M7c) — the vendored-tree pin ----------
+{
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gen-lock-')); tmps.push(dir)
+  git(dir, 'init', '-q', '-b', 'main')
+  // no vendored tree: pinning nothing is a failed intent, exit 1, canonical path named
+  let r = cli(dir, ['lock'])
+  ok(r.status === 1 && /no vendored tree at tools\/baseline\//.test(r.stderr), 'lock: absent tree → exit 1 naming the canonical location')
+  // tree without a version: refuse — the lock names the version it pins
+  fs.mkdirSync(path.join(dir, 'tools/baseline'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'tools/baseline/check.mjs'), 'fake\n')
+  r = cli(dir, ['lock'])
+  ok(r.status === 2 && /no readable version/.test(r.stderr), 'lock: version-less tree → exit 2 naming rules.json')
+  // happy path: {version, tree_hash} exactly, 64-hex, trailing newline
+  fs.writeFileSync(path.join(dir, 'tools/baseline/rules.json'), '{ "version": "3.1.4" }\n')
+  r = cli(dir, ['lock'])
+  const lockRaw = fs.readFileSync(path.join(dir, 'tools/baseline.lock.json'), 'utf8')
+  const lock = JSON.parse(lockRaw)
+  ok(r.status === 0 && lock.version === '3.1.4' && /^[0-9a-f]{64}$/.test(lock.tree_hash) && Object.keys(lock).length === 2 && lockRaw.endsWith('\n'), 'lock: writes exactly {version, tree_hash}, hex-64, newline-terminated')
+  // deterministic + idempotent: second run says up to date, bytes untouched
+  r = cli(dir, ['lock'])
+  ok(r.status === 0 && /up to date/.test(r.stdout) && fs.readFileSync(path.join(dir, 'tools/baseline.lock.json'), 'utf8') === lockRaw, 'lock: idempotent — second run is byte-stable and says so')
+  // the lock never hashes itself: writing it must not change the recomputed hash
+  const again = cli(dir, ['lock'])
+  ok(again.status === 0 && /up to date/.test(again.stdout), 'lock: the lock file lives BESIDE the tree — writing it does not skew the hash')
+  // a vendored edit re-pins to a NEW hash on an explicit rerun
+  fs.appendFileSync(path.join(dir, 'tools/baseline/check.mjs'), 'edited\n')
+  r = cli(dir, ['lock'])
+  const lock2 = JSON.parse(fs.readFileSync(path.join(dir, 'tools/baseline.lock.json'), 'utf8'))
+  ok(r.status === 0 && /pinned/.test(r.stdout) && lock2.tree_hash !== lock.tree_hash, 'lock: an explicit re-pin captures the changed tree under a new hash')
+  // overwrite law, lock flavor: a foreign file squatting the canonical path refuses
+  fs.writeFileSync(path.join(dir, 'tools/baseline.lock.json'), '{"note":"hand-written"}\n')
+  r = cli(dir, ['lock'])
+  ok(r.status === 2 && /refusing to overwrite/.test(r.stderr) && fs.readFileSync(path.join(dir, 'tools/baseline.lock.json'), 'utf8') === '{"note":"hand-written"}\n', 'lock: a non-lock file at the lock path is refused and untouched')
+}
+
+// ---------- the records/** pool union (M7c) — log→regen→commit in ONE pass ----------
+{
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gen-union-')); tmps.push(dir)
+  git(dir, 'init', '-q', '-b', 'main')
+  fs.mkdirSync(path.join(dir, 'records/sessions/lane/9'), { recursive: true })
+  fs.mkdirSync(path.join(dir, 'docs'), { recursive: true })
+  fs.writeFileSync(path.join(dir, 'records/sessions/lane/9/2026-03-01-1000-t.md'), '---\nlane: lane/9\n---\nold\n')
+  git(dir, 'add', '-A'); git(dir, 'commit', '-qm', 'seed')
+  cli(dir, ['index'])
+  git(dir, 'add', '-A'); git(dir, 'commit', '-qm', 'index')
+  // the exact demo-transition failure: baseline log writes, stages nothing —
+  // the regen must SEE the untracked record or the committed view lags a session
+  fs.writeFileSync(path.join(dir, 'records/sessions/lane/9/2026-03-02-1100-t.md'), '---\nlane: lane/9\n---\nnew\n')
+  cli(dir, ['index'])
+  ok(/`lane\/9` — 2 record\(s\), newest 2026-03-02/.test(fs.readFileSync(path.join(dir, 'docs/INDEX.md'), 'utf8')), 'union: an untracked just-logged record is in the regenerated view')
+  git(dir, 'add', '-A'); git(dir, 'commit', '-qm', 'work + record + index in one commit')
+  let r = cli(dir, ['--check'])
+  ok(r.status === 0 && /in sync/.test(r.stdout), 'union: after the one-pass commit, gen --check is green (no one-session lag)')
+  // tracked side still counts a deleted-but-tracked record (unchanged law)
+  fs.rmSync(path.join(dir, 'records/sessions/lane/9/2026-03-01-1000-t.md'))
+  cli(dir, ['index'])
+  ok(/`lane\/9` — 2 record\(s\)/.test(fs.readFileSync(path.join(dir, 'docs/INDEX.md'), 'utf8')), 'union: deleted-but-tracked records stay counted via the tracked pool')
+}
+
 console.log('')
 for (const d of tmps) { try { fs.rmSync(d, { recursive: true, force: true }) } catch {} }
 if (fails) { console.error(`✗ ${fails} gen assertion(s) failed`); process.exit(1) }

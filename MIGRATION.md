@@ -39,8 +39,11 @@ delete them from `baseline.config.json` if present.
 
 Find the stamp CTX-12 flags (a doc line beginning with the marker
 `last-verified:` — V1's hand-maintained freshness receipt) and **delete the
-line** (or the whole status doc, if that was its only job). Its job moved to
-derivation:
+line** (or the whole status doc, if that was its only job). The finding lists
+every match — including, on a repo that vendors an old copy of this toolkit,
+the retired `templates/start-here.md` inside the vendored tree: delete that
+line too (or re-vendor to current, which drops the retired scaffold). Its job
+moved to derivation:
 
 ```bash
 node /path/to/baseline-skill/baseline.mjs orient --repo .

@@ -29,6 +29,7 @@
 //     clobber). The refusal probe uses the same uncapped read.
 import fs from 'node:fs'
 import path from 'node:path'
+import crypto from 'node:crypto'
 import { makeOpt, sanitizeTTY } from './util.mjs'
 import { indexRepo } from './repo.mjs'
 import { resolveConfig } from './config.mjs'
@@ -56,6 +57,65 @@ export function remedyCommand(REPO, kind, outRel) {
   return inRepo
     ? `node ${q(path.relative(REPO, self).split(path.sep).join('/'))} gen ${kind} --out ${q(outRel)} --repo .`
     : `node ${q(self)} gen ${kind} --out ${q(outRel)} --repo ${q(REPO)}`
+}
+
+// ---- the vendored-tree lock (M7c) ----
+// C26's contraction endpoint: the consumption model STAYS vendored (the pointer
+// flip is cut to V3 — the demo invokes tools/baseline/ at six sites incl. the
+// required admit check; re-creating M6's relief circularity for no demonstrated
+// demand is the classic contraction overreach). What ships is the pin: `gen lock`
+// writes {version, tree_hash} and REC-06 (warn) compares — unpinned and skewed
+// vendored trees stop being invisible. Paths are CANONICAL, not knobs: the tree
+// at tools/baseline/, the lock BESIDE it (never inside — the lock must not hash
+// itself). A tree vendored elsewhere is REC-06's documented SKIP, and S9's
+// manual-copy paragraph (CONTRACT.md) names the canonical location.
+export const VENDOR_TREE = 'tools/baseline'
+export const VENDOR_LOCK = 'tools/baseline.lock.json'
+
+// Deterministic tree hash: sha256 over `<relpath>\0<sha256(bytes)>\n` per file,
+// paths sorted code-unit, bytes RAW (readText's 512KB/utf8 cap would corrupt a
+// hash the way it silently greens a big view — same law, same exemption).
+// The pool is a DEDICATED full walk of the tree, not the repo walker: the
+// walker's SKIP_DIRS (node_modules, vendor, dist…) would be an undetectable
+// rider channel inside the vendored copy — the pin must see EVERYTHING on disk
+// (panel: lock-seam). Only `.git` is skipped, named and deliberate (a vendored-
+// by-clone tree should shed it; its packfiles differ per clone and would make
+// the pin machine-local). Worktree semantics: an untracked edit inside the
+// vendored tree is a real skew — local stricter than CI, never the reverse.
+// Symlinks and unreadable files are NOT hashed and NOT fatal here: they are
+// collected so the writer can refuse (a tree that can't be fully read can't be
+// pinned honestly) while the verifier degrades to a labeled WARN over the
+// readable set — never a SKIP that would mask a concurrent real skew.
+export function computeVendorLock(REPO, repo) {
+  const files = [], unhashable = []
+  const walkAll = (dir, rel) => {
+    let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }) } catch { unhashable.push(`${rel}/ (unlistable)`); return }
+    for (const e of ents) {
+      if (e.name === '.git') continue
+      const r = `${rel}/${e.name}`
+      if (e.isSymbolicLink()) { unhashable.push(`${r} (symlink)`); continue }
+      if (e.isDirectory()) walkAll(path.join(dir, e.name), r)
+      else files.push(r)
+    }
+  }
+  let rootIsDir = false
+  try { rootIsDir = fs.lstatSync(path.join(REPO, VENDOR_TREE)).isDirectory() } catch {}
+  if (rootIsDir) walkAll(path.join(REPO, VENDOR_TREE), VENDOR_TREE)
+  if (!files.length && !unhashable.length) return { files: 0, unhashable }
+  files.sort()
+  const h = crypto.createHash('sha256')
+  for (const f of files) {
+    let buf
+    try { buf = fs.readFileSync(path.join(REPO, f)) }
+    catch { unhashable.push(`${f} (unreadable)`); continue }
+    h.update(`${f}\0${crypto.createHash('sha256').update(buf).digest('hex')}\n`)
+  }
+  unhashable.sort()
+  // version = the VENDORED tree's own declaration (its rules.json), never the
+  // running engine's — the lock describes the tree it hashes
+  let version = null
+  try { version = JSON.parse(fs.readFileSync(path.join(REPO, VENDOR_TREE, 'rules.json'), 'utf8'))?.version ?? null } catch {}
+  return { files: files.length, tree_hash: h.digest('hex'), version, unhashable }
 }
 
 const firstHeading = (md) => md.match(/^#\s+(.+?)\s*$/m)?.[1] ?? null
@@ -103,8 +163,14 @@ export function generateIndex(repo, outRel) {
   }
   P.push('')
   // session records by lane — count + newest DATE from the filename (the same
-  // recency truth newestLocalLog and the forge listing already derive from)
-  const sessions = repo.match(['records/sessions/**/*.md'], { tracked: true }).sort()
+  // recency truth newestLocalLog and the forge listing already derive from).
+  // Pool = tracked ∪ walked (M7c, ruled): `baseline log` never stages, so a
+  // tracked-only pool makes log→regen→commit lag one session forever — the
+  // committed view omits the record riding its own commit and CI's gen --check
+  // reds it. The union sees the just-written record pre-add (parity with the
+  // JSON ledgers, which already read the worktree) while the tracked side keeps
+  // deleted-but-tracked records counted, exactly as before.
+  const sessions = [...new Set([...repo.match(['records/sessions/**/*.md'], { tracked: true }), ...repo.match(['records/sessions/**/*.md'])])].sort()
   const byLane = new Map()
   for (const f of sessions) {
     const rest = f.slice('records/sessions/'.length)
@@ -149,13 +215,14 @@ export function generateIndex(repo, outRel) {
 const CLAIM_FIELDS = Object.keys(recordSchema('claim').properties).filter(k => !['record', 'id', 'slug', 'citations'].includes(k))
 
 const GEN_USAGE = `usage: baseline gen index [--repo DIR] [--out PATH]
+         baseline gen lock [--repo DIR]
          baseline gen --check [--repo DIR]
          baseline gen migrate-claims [--repo DIR]`
 
 export function runGen(argv) {
   // help must never mutate: a generator WRITES, so an argv we don't fully
   // understand is a usage error, not a shrug-and-proceed
-  if (argv.includes('--help') || argv.includes('-h')) { console.log(`baseline gen — generators that write derivable artifacts\n  ${GEN_USAGE}\n  index: write a deterministic, marker-headed index view (default docs/INDEX.md) over the records ledgers + docs map\n  --check: regenerate every marker-headed view and byte-compare — the CI drift guard (zero views → trivially green; advisory job, never continue-on-error)\n  migrate-claims: explode the legacy docs/CLAIMS.json monolith into records/claims/CLM-NNNN.json (the checker reads records only since M7b; idempotent by slug)`); return 0 }
+  if (argv.includes('--help') || argv.includes('-h')) { console.log(`baseline gen — generators that write derivable artifacts\n  ${GEN_USAGE}\n  index: write a deterministic, marker-headed index view (default docs/INDEX.md) over the records ledgers + docs map\n  lock: pin the vendored ${VENDOR_TREE}/ tree — write ${VENDOR_LOCK} ({version, tree_hash}); REC-06 flags unpinned/skewed trees\n  --check: regenerate every marker-headed view and byte-compare — the CI drift guard (zero views → trivially green; advisory job, never continue-on-error)\n  migrate-claims: explode the legacy docs/CLAIMS.json monolith into records/claims/CLM-NNNN.json (the checker reads records only since M7b; idempotent by slug)`); return 0 }
   const sub = argv[0] && !argv[0].startsWith('-') ? argv[0] : null
   const rest = sub ? argv.slice(1) : argv
   const usage = msg => { console.error(`baseline gen: ${msg}\n  ${GEN_USAGE}`); return 2 }
@@ -163,7 +230,7 @@ export function runGen(argv) {
   if (CHECK && sub) return usage(`--check takes no generator (it discovers marked views)`)
   const FLAGS = CHECK ? new Set(['--check', '--repo']) : sub === 'index' ? new Set(['--repo', '--out']) : new Set(['--repo'])
   const VALUELESS = new Set(['--check'])
-  if (!CHECK && sub !== 'migrate-claims' && sub !== 'index') return usage(sub ? `unknown generator '${sub}'` : 'a generator (or --check) is required')
+  if (!CHECK && sub !== 'migrate-claims' && sub !== 'index' && sub !== 'lock') return usage(sub ? `unknown generator '${sub}'` : 'a generator (or --check) is required')
   for (let i = 0; i < rest.length; i++) {
     if (!rest[i].startsWith('-')) return usage(`unexpected argument '${rest[i]}'`)
     if (!FLAGS.has(rest[i])) return usage(`unknown flag '${rest[i]}'`)
@@ -174,6 +241,7 @@ export function runGen(argv) {
   const REPO = path.resolve(String(opt('--repo', process.cwd())))
 
   if (CHECK) return runGenCheck(REPO)
+  if (sub === 'lock') return runGenLock(REPO)
   if (sub === 'index') {
     // --out is repo-relative, posix, and stays INSIDE the repo — a generator that
     // can write outside its repo is a footgun, not a knob
@@ -253,6 +321,43 @@ export function runGen(argv) {
   console.log(`\ngen migrate-claims: ${wrote} written · ${skipped} already migrated · ${refused} refused`)
   if (wrote) console.log(`  review + commit the new records; the checker no longer reads the legacy ${cfg.claims_file} — deleting it after review clears CLAIM-07`)
   return refused ? 1 : 0
+}
+
+// ---- gen lock (M7c) ----
+function runGenLock(REPO) {
+  const repo = indexRepo(REPO)
+  const lock = computeVendorLock(REPO, repo)
+  // asking to pin an absent tree is a failed intent, not an idempotent no-op
+  // (contrast migrate-claims' "nothing to migrate": there, done IS the goal state)
+  if (!lock.files && !lock.unhashable.length) { console.error(`gen lock: no vendored tree at ${VENDOR_TREE}/ — nothing to pin (the canonical vendored location; see CONTRACT.md's manual-copy procedure)`); return 1 }
+  // the writer is STRICT where the verifier degrades: a tree that cannot be
+  // fully read cannot be pinned honestly — refuse, naming what's in the way
+  if (lock.unhashable.length) { console.error(`gen lock: ${lock.unhashable.length} entr${lock.unhashable.length === 1 ? 'y' : 'ies'} cannot be hashed — ${lock.unhashable.slice(0, 3).join(', ')}${lock.unhashable.length > 3 ? ` (+${lock.unhashable.length - 3})` : ''}; remove or fix them (symlinks and unreadable files cannot be pinned honestly)`); return 2 }
+  if (typeof lock.version !== 'string') { console.error(`gen lock: ${VENDOR_TREE}/rules.json carries no readable string version — is this a baseline toolkit tree? (the lock names the version it pins, and REC-06 validates the shape it writes)`); return 2 }
+  const abs = path.join(REPO, VENDOR_LOCK)
+  // overwrite law, lock flavor: write over a parseable {version, tree_hash} lock
+  // or into absence — a foreign file squatting the canonical path is refused,
+  // same as gen index refuses a marker-less file
+  let existing = null
+  try { existing = fs.readFileSync(abs, 'utf8') }
+  catch (e) {
+    if (e.code === 'EISDIR' || e.code === 'ENOTDIR') { console.error(`gen lock: cannot write ${VENDOR_LOCK} — ${e.code === 'EISDIR' ? 'it is a directory' : 'a file exists where a directory belongs on its path'}`); return 2 }
+    if (e.code !== 'ENOENT') { console.error(`gen lock: cannot read ${VENDOR_LOCK} — ${e.message}`); return 2 }
+  }
+  if (existing !== null) {
+    let old = null
+    try { old = JSON.parse(existing) } catch {}
+    if (!old || typeof old !== 'object' || typeof old.version !== 'string' || typeof old.tree_hash !== 'string') {
+      console.error(`gen lock: refusing to overwrite ${VENDOR_LOCK} — it exists but is not a lock ({version, tree_hash}). Move it aside.`)
+      return 2
+    }
+  }
+  const content = JSON.stringify({ version: lock.version, tree_hash: lock.tree_hash }, null, 2) + '\n'
+  if (existing === content) { console.log(`gen lock: ${VENDOR_LOCK} is up to date (${lock.version} · ${lock.files} files · ${lock.tree_hash.slice(0, 12)})`); return 0 }
+  try { fs.writeFileSync(abs, content) }
+  catch (e) { console.error(`gen lock: cannot write ${VENDOR_LOCK} — ${e.message}`); return 2 }
+  console.log(`gen lock: pinned ${VENDOR_TREE}/ — ${lock.version} · ${lock.files} files · ${lock.tree_hash.slice(0, 12)} → ${VENDOR_LOCK}; commit it (REC-06 verifies)`)
+  return 0
 }
 
 // ---- gen index (M6c) ----

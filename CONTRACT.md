@@ -286,14 +286,16 @@ that's exit 2, not an outage).
 
     on:
       schedule:
-        - cron: '17 5 * * *'   # GitHub may delay/auto-disable after 60d inactivity — orient's headline is the backstop
+        - cron: '17 5 * * *'   # GitHub may delay/auto-disable after 60d inactivity — OPS-07 checks the state; orient's headline is the backstop
       workflow_dispatch:
     permissions:
-      contents: read
-      issues: write
-    jobs:
+      contents: read           # top-level default stays read-only (SEC-11);
+    jobs:                      # write scopes are granted per-job, below
       reconcile:
         runs-on: ubuntu-latest
+        permissions:
+          contents: read
+          issues: write        # the ONE write surface reconcile has
         steps:
           - uses: actions/checkout@v4
             with:
@@ -328,12 +330,35 @@ is a digested VALUE, not a hole). Provenance never refuses, never warns, never
 counts: it is the receipt, not a gate. V3's merge-ref binding is its intended
 consumer; today it is the paste-into-the-PR-thread proof of what was judged.
 
+## The vendored lock (M7c)
+
+**Vendoring is the consumption model** — S9's `--vendor` flag never existed and
+no installer ships; the manual copy IS the procedure: copy the toolkit's tool
+files (SKILL.md's co-located list — at minimum `baseline.mjs`, `check.mjs`,
+`rules.json`, `rules/`, `schema/`, `src/`, plus the shipped `.gitattributes`,
+which keeps the hashed bytes EOL-stable on every platform) into
+**`tools/baseline/`** (the canonical location — the one path REC-06
+and the lock contract know), keep the repo-local `baseline.config.json` /
+`baseline.repo.json` at YOUR root, then pin what you copied:
+
+    node tools/baseline/baseline.mjs gen lock --repo .
+    git add tools/baseline.lock.json    # commit the lock BESIDE the tree, same PR as the copy
+
+`gen lock` writes `tools/baseline.lock.json` — exactly `{version, tree_hash}`:
+the version from the *vendored tree's own* `rules.json`, the hash recomputed
+over every vendored file (sorted paths, raw bytes, worktree semantics).
+**REC-06** (warn, deterministic) compares on every check/reconcile run — *unpinned* (tree, no
+lock), *skew* (hash mismatch, naming the lock's version and the tree's), or
+PASS; no tree at the canonical path is a SKIP. A vendor bump and its re-pin
+travel in ONE PR; regenerate generated views with the NEW tree in that same PR
+(the `gen --check` remedy names this case). **OPS-07** (warn) closes the loop
+at the forge: ONE recorded query of the reconcile workflow's state —
+any non-`active` state fails the rule, named (`disabled_*` in practice —
+GitHub's 60-day auto-disable is the death mode); no reconcile workflow in the tree is a SKIP, never wallpaper.
+
 ## Reserved (lands later, documented now)
 
-- **M7c — lock + residue:** `gen lock` writes `tools/baseline.lock.json`
-  ({version, tree-hash over the vendored files}); REC-06 (warn) flags an
-  unpinned or skewed vendored tree; OPS-07 (warn) reads the reconcile
-  workflow state (`disabled_*` — the 60-day auto-disable — is the named death
-  mode). The M7b contraction itself SHIPPED: status-doc surfaces retired,
-  `signoff.json` and legacy `CLAIMS.json` checker reads ended (MIGRATION.md
-  is the walk-through).
+- **V3 horizon:** the pointer-install consumption flip (revive: a second real
+  consumer or escalating vendor-diff pain), merge-ref/digest binding (revive:
+  a merge-queue-capable consumer), the per-axis descriptor-weakening policy
+  (revive: the first contested weakening rubber-stamp).

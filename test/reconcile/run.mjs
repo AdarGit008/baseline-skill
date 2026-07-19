@@ -16,6 +16,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { findingKey, marker, fingerprint, deriveLifecycle, parseManaged, rebodyClosed, issueTitle, issueBody, MARKER_RE } from '../../src/reconcile.mjs'
+import { scan } from '../../src/scrub.mjs'
 import { makeForge } from '../../src/facts/forge.mjs'
 import { normalizeVolatile } from '../../src/util.mjs'
 
@@ -366,6 +367,71 @@ console.log('\n# integration — sweep, lifecycle, exits (replay forge)\n')
   pull(w)
   const r2 = recJson(w.clone)
   ok(r2.status === 0 && r2.j.relief?.id === 'JDG-0001', 'unexpired gate:reconcile break-glass at the tip relieves a live outage, labeled')
+}
+
+console.log('\n# M7c — JDG_PARSE_CAP parity (sweep + re-scan bounded, labeled)\n')
+{
+  const w = mkworld('caps')
+  fs.mkdirSync(path.join(w.seed, 'records/judgments'), { recursive: true })
+  // 501 ledger entries: first and last are EXPIRED — the in-cap one must file,
+  // the out-of-cap one must NOT (bounded work, fail-closed, labeled — never
+  // silently complete)
+  for (let i = 1; i <= 501; i++) {
+    const id = `JDG-${String(i).padStart(4, '0')}`
+    const over = (i === 1 || i === 501) ? { review_by: '2020-01-01' } : {}
+    fs.writeFileSync(path.join(w.seed, `records/judgments/${id}.json`), JDG(id, over))
+  }
+  git(w.seed, 'add', '-A'); git(w.seed, 'commit', '-qm', 'a 501-entry ledger'); git(w.seed, 'push', '-q', 'origin', 'main')
+  pull(w)
+  const r = recJson(w.clone, ['--dry-run'], ENV(w))
+  ok(r.status === 0 && r.j.summary.jdg.records === 501 && r.j.summary.jdg.swept === 500, `caps: sweep evaluates exactly 500 of 501 (got swept=${r.j?.summary?.jdg?.swept})`)
+  ok(/capped at 500 of 501/.test(r.j.summary.jdg.capped || ''), 'caps: the sweep truncation is LABELED in the summary')
+  ok(r.j.summary.rescan.files === 501 && /capped at 500 of 501/.test(r.j.summary.rescan.capped || ''), 'caps: the re-scan cap is LABELED with the same ceiling')
+  const expiredKeys = r.j.findings.filter(f => /expired/.test(f.title)).map(f => f.key)
+  ok(expiredKeys.some(k => k.includes('JDG-0001')) && !expiredKeys.some(k => k.includes('JDG-0501')), 'caps: in-cap expiry files, out-of-cap expiry does not (its issue neither files nor clears this run)')
+  // panel (fail-open catch): the CLEAR side of the same law. A landed secret in
+  // the out-of-cap tail (records/zz-… sorts after records/judgments/… in ls-tree
+  // path order) has an OPEN filed issue — the capped re-scan never re-read that
+  // blob, so scanComplete must be false and the issue must NOT bot-close.
+  const secret = 'AKIA' + 'IOSFODNN7EXAMPLE'
+  commitSeed(w, 'records/zz-out-of-cap.md', `---\nrecord: session/1\n---\nkey ${secret}\n`, 'a secret in the out-of-cap tail')
+  pull(w)
+  const sid = scan(`key ${secret}`).blocked[0].id
+  const scrubKey = findingKey('scrub', sid)
+  const probe2 = recJson(w.clone, ['--dry-run'], ENV(w))
+  fix(w, 'issues-labeled-baseline', [...listingFor(probe2.j, []), issue(90, 'open', scrubKey, 'aaaaaaaaaaaa')])
+  const r2 = recJson(w.clone, ['--dry-run'], ENV(w))
+  ok(/capped at 500 of 502/.test(r2.j.summary.rescan.capped || ''), 'caps: the tail blob is genuinely out-of-cap (502 record files, 500 scanned)')
+  ok(!r2.j.findings.some(f => f.key === scrubKey), 'caps: the out-of-cap secret is not re-found this run (bounded work)')
+  ok(!(r2.j.actions || []).some(a => a.action === 'close' && a.key === scrubKey), 'caps: …and its OPEN issue is NOT bot-closed — a capped scan is a partial read, and a partial read clears nothing')
+}
+
+console.log('\n# M7c — OPS-07: the reconcile cron is alive at the forge\n')
+{
+  const w = mkworld('ops07')
+  // the workflow carries a leading # comment ON PURPOSE: comment stripping is
+  // per-LINE (stripLineComment's contract) — a whole-file strip would truncate
+  // everything after the first #, lose the run: line, and SKIP a wired cron
+  commitSeed(w, '.github/workflows/baseline-reconcile.yml', 'on:\n  schedule:\n    - cron: "17 5 * * *"   # GitHub may auto-disable after 60d\njobs:\n  reconcile:\n    steps:\n      - run: node tools/baseline/baseline.mjs reconcile --repo .\n', 'wire the cron')
+  pull(w)
+  // no workflow-state replay fixture → SKIP, labeled, never guessed
+  let r = recJson(w.clone, ['--dry-run'], ENV(w))
+  ok(r.status === 0 && !r.j.findings.some(f => f.key.includes('OPS-07')), 'OPS-07: unreadable state (no replay fixture) is a SKIP, never a finding')
+  // disabled_inactivity — the named death mode — is a WARN finding with the re-enable recipe
+  fix(w, 'workflow-state-baseline-reconcile.yml', { name: 'baseline-reconcile', state: 'disabled_inactivity' })
+  r = recJson(w.clone, ['--dry-run'], ENV(w))
+  const f = r.j.findings.find(x => x.key.includes('OPS-07'))
+  ok(!!f && /disabled_inactivity/.test(f.detail) && /60-day/.test(f.detail) && /gh workflow enable/.test(f.detail), 'OPS-07: disabled_inactivity WARNs naming the death mode and the re-enable recipe')
+  // active → healthy, no finding
+  fix(w, 'workflow-state-baseline-reconcile.yml', { name: 'baseline-reconcile', state: 'active' })
+  r = recJson(w.clone, ['--dry-run'], ENV(w))
+  ok(r.status === 0 && !r.j.findings.some(x => x.key.includes('OPS-07')), 'OPS-07: an active cron is a clean PASS')
+  // a state string GitHub invents later is still deterministic: any non-active
+  // state fails the rule NAMING the state — never a guess, never a pass
+  fix(w, 'workflow-state-baseline-reconcile.yml', { name: 'baseline-reconcile', state: 'sabbatical' })
+  r = recJson(w.clone, ['--dry-run'], ENV(w))
+  const fu = r.j.findings.find(x => x.key.includes('OPS-07'))
+  ok(!!fu && /sabbatical/.test(fu.detail), 'OPS-07: an unknown future state fails deterministically, named')
 }
 
 console.log('')

@@ -224,6 +224,30 @@
         "flags": "im",
         "pattern": "(?=[\\s\\S]*^\\s*owner\\s*:\\s*\\S)(?=[\\s\\S]*^\\s*(lifecycle|tier|level)\\s*:\\s*\\S)"
       }
+    },
+    {
+      "id": "OPS-07",
+      "title": "The reconcile cron is alive at the forge",
+      "category": "ops",
+      "severity": "warn",
+      "applies_to": "all",
+      "source": "https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/disabling-and-enabling-a-workflow",
+      "lesson": "C37/M6 — reconcile is the post-merge detection floor (merged-while-red, judgment expiry, landed secrets); a scheduled workflow GitHub has auto-disabled files nothing forever while every dashboard stays green — the death mode is silence, so liveness must be a checked fact, not an assumption",
+      "rationale": "Deterministic, falsifiable, knob-free: a workflow file invoking baseline reconcile exists in the tree (no file → SKIP — repos without the cron are never wallpapered) and ONE recorded forge query reads that workflow's state. 'active' passes; ANY other state fails the rule naming the state — the disabled_* family in practice, where disabled_inactivity is GitHub's 60-day auto-disable, the named death mode; a state GitHub invents later fails deterministically rather than passing silently. No run-age math, no freshness constant: state is the forge's own boolean of whether the cron can fire at all.",
+      "fix": "Re-enable the workflow: gh workflow enable <file> (or the Actions UI); GitHub auto-disables scheduled workflows after 60 days without repository activity — a commit or a manual dispatch resets the clock.",
+      "sources": [
+        "tree",
+        "forge"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check",
+        "reconcile"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "workflow-state"
+      }
     }
   ]
 }

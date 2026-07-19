@@ -26,6 +26,12 @@ import { validateRecord } from './records.mjs'
 import { scan, loadAllowlist, addAllowlistEntries, keepDraft } from './scrub.mjs'
 
 export const JUDGMENTS_DIR = 'records/judgments'
+// One parse-fan-out ceiling for every ledger consumer (M7c one-homed it): admit's
+// added-judgment parse, reconcile's sweep, reconcile's landed-record re-scan. A
+// range or tip carrying thousands of record files must not buy thousands of git
+// spawns; every capped surface LABELS the truncation — bounded work, never
+// silently-complete work.
+export const JDG_PARSE_CAP = 500
 const KINDS = ['sign-off', 'deviation', 'risk-acceptance', 'break-glass']
 const ORDER = { ok: 0, drifted: 1, unresolvable: 2, expired: 3, tripped: 4 }
 

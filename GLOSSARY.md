@@ -298,6 +298,16 @@ A well-known set of twelve principles for building portable, scalable web
 services (config in the environment, stateless processes, etc.). See
 <https://12factor.net>.
 
+## Vendored lock
+
+`tools/baseline.lock.json` — the pin beside a vendored `tools/baseline/` tree:
+`{version, tree_hash}`, written by `baseline gen lock`, verified by REC-06 on
+every check/reconcile run. An unpinned tree drifts invisibly; a skewed one (hash mismatch —
+the finding names the lock's version and the tree's) is running a contract
+nobody re-pinned. The lock lives beside the tree, never inside it, and moves
+with every vendor bump in the same PR. (M7c; the pointer-install flip stayed
+cut to V3 — vendoring remains the consumption model.)
+
 ## Warn
 An advisory rule outcome. A warning is worth fixing but does **not** fail CI or
 block readiness. Contrast [blocker](#blocker).

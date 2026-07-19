@@ -8,13 +8,13 @@ A **testable readiness standard** for new projects. Every lesson is a rule; a ze
 
 **v1** distilled 20 rules from three of the author's own repos. That sample was thin. **v2** pressure-tested v1 against the field's actual prior art — [OpenSSF Scorecard](GLOSSARY.md#openssf-scorecard), [SLSA](GLOSSARY.md#slsa), the [Twelve-Factor App](GLOSSARY.md#twelve-factor-app), Google's SRE books, [Diátaxis](GLOSSARY.md#diataxis), [Keep a Changelog](GLOSSARY.md#keep-a-changelog), [repolinter](GLOSSARY.md#repolinter), [Backstage/Cortex/OpsLevel](GLOSSARY.md#service-catalog), Stryker, and ~40 more sources — kept everything v1 had, and added what the field agreed v1 was missing. Each candidate was **adversarially verified** (is the source real? is it robot-checkable at rest? does it actually add over v1?) before it earned a place; 15 "looks-thorough-checks-nothing" candidates were dropped.
 
-**87 rules across 15 categories.** 25 blockers · 57 warnings · 5 sign-offs.
+**90 rules across 15 categories.** 26 blockers · 59 warnings · 5 sign-offs.
 
 ## Profiles — v2 stays sharp by only running what fits
 
 Not every rule fits every repo. A pre-code planning repo shouldn't be nagged about health endpoints; a CLI shouldn't be told to publish an [SBOM](GLOSSARY.md#sbom). So rules carry a **[profile](GLOSSARY.md#profile)**:
 
-- **core** (72 rules) — always on. Universal, high-confidence, machine-checkable.
+- **core** (75 rules) — always on. Universal, high-confidence, machine-checkable.
 - **service** (6 rules) — **auto-on when `project_type=service`.** Operability rules ([health check](GLOSSARY.md#health-check), [structured logs](GLOSSARY.md#structured-logging), [graceful shutdown](GLOSSARY.md#graceful-shutdown), [runbook](GLOSSARY.md#runbook)) that only make sense for a running service.
 - **advanced** (9 rules) — **opt-in** via `config.profiles: ["advanced"]`. Expert/niche rules (SBOM, [code-scanning](GLOSSARY.md#sast), [mutation testing](GLOSSARY.md#mutation-testing), symbol-integrity) that would be noise on most repos.
 
@@ -58,10 +58,10 @@ These diagrams mirror the runner — they're its actual control flow, not a sket
 ```mermaid
 flowchart LR
   CFG["baseline.config.json — intent"] --> RES
-  RULES["rules/ — 87 rules (manifest: rules.json)"] --> EVAL
+  RULES["rules/ — 90 rules (manifest: rules.json)"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
-    IDX["file index + git helpers"] --> EVAL["~38 check evaluators"]
+    IDX["file index + git helpers"] --> EVAL["~41 check evaluators"]
     RES["config resolution"] --> EVAL
   end
   SO["records/judgments/ — the judgment ledger (sign-offs)"] --> EVAL
@@ -161,7 +161,7 @@ baseline admit [--repo DIR] [--target REF] [--json]     # exit 0 admitted · 1 r
 baseline reconcile [--repo DIR] [--json] [--dry-run] [--target REF]   # exit 0 delivered · 1 delivery failed · 2 usage/environment
 ```
 
-**Four finding sources**: the engine at context `reconcile` (repo-scoped rules; lane rules are excluded structurally — this runs ON the default branch); the **JDG sweep** at the tip (`evaluateJudgment` over the whole ledger: tripped/expired file, invalid records file, drifted/unresolvable ride the report — `review_by` is the backstop); the **landed-record re-scan** (scrub over `records/**` blobs at the tip, allowlist read at the tip, deterministic tier only — a landed secret is live until rotated); and **merged-while-red** over the recent merged-PR window (20) — an admit-named check run with conclusion `failure` at a merged PR's *head* sha files the morning-after issue demanding the retroactive judgment (subject = the short merge sha; cleared by the *existence* of a schema-valid judgment at the tip naming that sha — expiry policing belongs to the sweep; never auto-closed by time).
+**Four finding sources**: the engine at context `reconcile` (repo-scoped rules; lane rules are excluded structurally — this runs ON the default branch); the **JDG sweep** at the tip (`evaluateJudgment` over the ledger, capped at 500 entries — JDG_PARSE_CAP parity, labeled in the summary; out-of-cap judgments neither file nor clear that run: tripped/expired file, invalid records file, drifted/unresolvable ride the report — `review_by` is the backstop); the **landed-record re-scan** (scrub over `records/**` blobs at the tip — same 500-blob cap, labeled — allowlist read at the tip, deterministic tier only — a landed secret is live until rotated); and **merged-while-red** over the recent merged-PR window (20) — an admit-named check run with conclusion `failure` at a merged PR's *head* sha files the morning-after issue demanding the retroactive judgment (subject = the short merge sha; cleared by the *existence* of a schema-valid judgment at the tip naming that sha — expiry policing belongs to the sweep; never auto-closed by time).
 
 **The dedup lifecycle** rides an HTML marker (`<!-- baseline:<id>:<subject> fp:<hash> -->`) plus the **`baseline` label** (the operator's filter/mute affordance and the scan's bound): absent→file · changed→comment + fp re-stamp · cleared→close naming the sha (**positive re-evaluation only — a SKIP is never a clear**) · recurred→reopen the same thread when the close was reconcile's own (`bot-closed` stamp); **a human close is a judgment** — advisory engine rows stay closed (at most one comment on new content), while the deterministic-integrity classes (judgments, landed secrets, merged-while-red) reopen over any close. Cap: 10 creations+reopens per run, overflow in ONE self-draining rollup; a truncated scan suppresses creates entirely.
 
@@ -173,12 +173,15 @@ A **generated view** is a tracked markdown file whose first line is the marker `
 
 ```
 baseline gen index [--repo DIR] [--out PATH]     # write the view (default docs/INDEX.md)
+baseline gen lock [--repo DIR]                   # pin the vendored tree: tools/baseline.lock.json ({version, tree_hash})
 baseline gen --check [--repo DIR]                # regenerate every marked view, byte-compare (CI drift guard)
 ```
 
-`gen index` derives a **deterministic** index — the judgments/claims ledgers, session-record counts per lane (newest date from the *filename*, the tool's one recency truth), and a docs map (first-heading titles, filename fallback; generated views and session bases excluded) — everything sorted, links **relative to the out file's directory** (CTX-05 resolves a doc's links against its own dir; a root-relative link would redden the consumer's own check). It writes over its own marker or into absence and **refuses a file without the marker** (move it aside or pass a different `--out` — never paste the marker onto a hand-written file).
+`gen index` derives a **deterministic** index — the judgments/claims ledgers, session-record counts per lane (newest date from the *filename*, the tool's one recency truth; pool = tracked∪walked since M7c, so the record `baseline log` just wrote — which never stages, by design — rides the same regeneration: log→regen→commit is ONE pass with no one-session lag), and a docs map (first-heading titles, filename fallback; generated views and session bases excluded) — everything sorted, links **relative to the out file's directory** (CTX-05 resolves a doc's links against its own dir; a root-relative link would redden the consumer's own check). It writes over its own marker or into absence and **refuses a file without the marker** (move it aside or pass a different `--out` — never paste the marker onto a hand-written file).
 
 `gen --check` discovers marked views over the tracked∪walked pool with **uncapped reads** (a size-capped read would silently green a big drifted view), regenerates each in memory, and byte-compares. Zero marked views → exit 0, trivially green — the pre-adoption state. Drift → exit 1 with a **verbatim-runnable remedy** derived from the invocation itself (a vendored consumer has no `baseline` on PATH), plus the honesty clauses: the drift may predate your PR, and a vendor bump changes the generator's shape — regenerate with the new version and commit the view alongside it. An unknown kind or an unreadable view exits 1 named, never silently skipped. Wire it as an **advisory CI job — a visibly red job outside the required set, never `continue-on-error: true`** (a green job with a buried ✗ pays the friction and destroys the signal). Residual, documented: a vendored tree's own marked views ride the discovery pool; an alien kind there fails loudly and the remedy names the vendored-skill-older cause.
+
+**The [vendored lock](GLOSSARY.md#vendored-lock) — `gen lock` + REC-06 (V2 M7c).** The consumption model *stays vendored* (the pointer-install flip is cut to V3 — the reference consumer invokes `tools/baseline/` at six sites including its required admit check); what ships is the **pin**. `baseline gen lock` hashes every file under the canonical `tools/baseline/` (sha256 over sorted `path + content-hash` pairs, raw bytes, worktree semantics) and writes `tools/baseline.lock.json` — exactly `{version, tree_hash}`, the version read from the *vendored tree's own* `rules.json`. **REC-06** (warn, deterministic) recomputes and compares on every check/reconcile run: no lock → *unpinned*; hash mismatch → *skew*, naming the lock's pinned version AND the tree's current version (a same-version mismatch is a hand-edit — the worst kind); no vendored tree at the canonical path → SKIP, never wallpaper. The lock lives BESIDE the tree, never inside it (it must not hash itself), and a vendor bump re-pins **in the same PR** — the two artifacts move together or REC-06 says so.
 
 **Admit provenance (`inputs_digest`).** Every `baseline admit` run now prints one receipt line — `provenance: inputs_digest <12hex> · head <sha> → target <sha> · descriptor <blob-oid> · rules <version> · <n> check run(s)|checks not consulted · anchor #<n> <state>|none` — and mirrors the same fields in `--json` under `provenance`. The digest is a **pure function** over the six ruled inputs (head SHA, target SHA, the descriptor's blob OID at the target, rules version, check-run `(name, conclusion, head_sha)` tuples full-tuple-sorted, anchored-issue state); a closed or unreachable plane digests as the *value* `not-consulted` — two runs that consulted different planes always digest differently. Provenance is **refusal-inert**: its assembly never contributes a refusal, a result row, or a summary count. Equality-at-a-glance is its one job today; V3's merge-ref binding is the consumer it was shaped for.
 
@@ -306,7 +309,7 @@ Every rule also declares **`sources`** (which ground-truth planes it reads: tree
 | REPRO-03 | Pinned runtime version is consistent everywhere | 🟡 warn | core |
 | REPRO-04 | Dockerfile base images pinned by digest | 🟡 warn | core |
 
-### Operability (service) (6)
+### Operability (7)
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
@@ -316,6 +319,7 @@ Every rule also declares **`sources`** (which ground-truth planes it reads: tree
 | OPS-04 | Outbound calls are time-bounded/guarded | 🟡 warn | service |
 | OPS-05 | An operational runbook exists | 🟡 warn | service |
 | OPS-06 | A service descriptor declares owner + lifecycle | 🟡 warn | service |
+| OPS-07 | The reconcile cron is alive at the forge (ONE workflow-state query; any non-`active` state fails, named; no workflow → skip) | 🟡 warn | core |
 
 ### Change governance (3)
 
@@ -366,7 +370,7 @@ GOV-01/02 are **live asserts on the readable surface** since M6b (`forge-protect
 
 All CLAIM rules are opt-in (`makes_external_claims` / a register present) and maturity-gated: a descriptor-declared `prototype` repo skips them unless explicitly opted in (C24).
 
-### Records & ledger (4) — M4c
+### Records & ledger (5) — M4c
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
@@ -374,6 +378,7 @@ All CLAIM rules are opt-in (`makes_external_claims` / a register present) and ma
 | REC-02 | Landed records are scrub-clean | 🟡 warn (promotion deferred by the M7 ruling) | core |
 | REC-04 | Every record fact has one home | 🟡 warn (pinned — heuristic) | core |
 | REC-05 | Records are covered by a push-time secret gate (at-rest evidence: gitleaks-class config or a committed scrub hook) | 🟡 warn | core |
+| REC-06 | The vendored baseline tree is pinned and un-skewed (`tools/baseline.lock.json` vs the recomputed tree hash; no vendored tree → skip) | 🟡 warn | core |
 
 REC-01/02/05 skip when no records are committed; REC-04 also cross-checks the ADR homes (`docs/decisions/`, `adr/`, `records/decisions/`), so it can fire on a true ADR-number duplication even without `records/`. REC-01/REC-02 are deterministic and stay warn — the M7 ruling kept them (the only ungated candidates; a severity-by-posture seam has no consumer — revive on a real demand for REC-02-at-admit); REC-03 (record schema conformance as a rule) is reserved.
 
@@ -409,18 +414,19 @@ Cross-tier contradictions (C36) a stateless worker must resolve **first** — th
 
 Admit-context only. Deterministic from the git plane alone: a sister lane whose shared history with HEAD reaches past the target tip has unmerged commits inside this admission (C32). The `Baseline-Stacked-On: lane/<N>` trailer (whole-token, anywhere in the admitted range) declares the stack and lifts the finding. MERGE-01 (admission re-derivation) is the `admit` command itself; MERGE-03 (post-merge revalidation) is reconcile's cron (M6b) — neither is a rule, by ruling.
 
-### Repo descriptor (2)
+### Repo descriptor (3)
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
-| DESC-01 | Repo descriptor present and valid | 🟡 warn | core |
+| DESC-01 | Repo descriptor present | 🟡 warn | core |
+| DESC-02 | A present descriptor is schema-valid | 🔴 blocker | core |
 | DESC-03 | A descriptor change carries its judgment in the same range | 🔴 blocker (admit only) | core |
 
-Declared identity, not a guess: a schema-validated `baseline.repo.json` (`type`, `lifecycle`, `maturity`, `workflow`, `anchoring`) is the one stored intent every applicability/severity derivation consumes. Absent or invalid → warn + scaffold; the `type` supersedes filesystem auto-detection. **DESC-03** (M6a, deterministic — blocker is lawful): `baseline.repo.json` in the admitted range's diff with no same-range judgment whose `subject` is exactly `baseline.repo.json` refuses admission; the posture-weakening classification (the schema's `x-strictness` ladders — workflow/anchoring/maturity — plus gate-consumed set-rules and `join_keys` shrink, `src/derive/posture.mjs`) rides the finding text as M7's per-axis policy seam. FLOW-06 keeps the same pair as a *check-context* advisory — disjoint contexts, one predicate judged once per run.
+Declared identity, not a guess: a schema-validated `baseline.repo.json` (`type`, `lifecycle`, `maturity`, `workflow`, `anchoring`) is the one stored intent every applicability/severity derivation consumes. Absent → DESC-01 warn + scaffold (adoption invited, not forced); present-but-invalid → **DESC-02 blocker** (M7c split, the FLOW-02/03 presence/content divide — ten workflow-gated blockers hang off validity, so a broken declaration is the loudest row in the run, and its contexts exclude admit so the fix-PR is never hostage). A valid descriptor's `type` supersedes filesystem auto-detection. **DESC-03** (M6a, deterministic — blocker is lawful): `baseline.repo.json` in the admitted range's diff with no same-range judgment whose `subject` is exactly `baseline.repo.json` refuses admission; the posture-weakening classification (the schema's `x-strictness` ladders — workflow/anchoring/maturity — plus gate-consumed set-rules and `join_keys` shrink, `src/derive/posture.mjs`) rides the finding text as M7's per-axis policy seam. FLOW-06 keeps the same pair as a *check-context* advisory — disjoint contexts, one predicate judged once per run.
 
 ## Check kinds (how the runner verifies, with zero deps)
 
-`any-file` (glob presence; `mode:absent`, `tracked_only`, `allow`) · `grep` (regex present/absent/all over contents; `tracked_only`) · `file-contains` (file exists AND matches) · `json-field` (parse JSON, assert a dotted path) · `any-of` (pass if any alternative passes) · `command` (run the bootstrap; `repeat`) · `md-links` (relative markdown links resolve) · `doc-freshness` (frontmatter date within a window) · `adr-status` / `adr-forward-link` (decision-record status + resolvable supersede links) · `required-files` (a config list exists + non-empty) · `path-integrity` (backticked paths in docs resolve) · `version-consistency` (runtime major agrees across `.nvmrc`/CI/Dockerfile/`engines`) · `dockerfile-digest` (`FROM` pinned by `@sha256`) · `config-nonempty` · `claims-field` / `claims-citations` · `signoff` · `descriptor` (`baseline.repo.json` present + schema-valid) · the M5c lane-world kinds — `lane-anchor` / `lane-next-filled` / `lane-namespace` / `lane-record-pushed` / `lane-lease` / `div-anchor-closed` / `div-next-closed` / `div-closes-closed` — which evaluate through ONE lazy gathering (the same derivation `orient` renders and `lane reclaim` gates on) and degrade to labeled SKIPs offline · `forge-protection` (M6b — the GOV readable-surface ladder: rules-for-branch, the `protected` flag, the admin-only classic endpoint under `BASELINE_GOV_ADMIN=1`; token-denial SKIPs labeled). Since M6b the lane world is no longer lane-only: GOV-01/02 consult it on every check run of a repo with a declared default branch — one probe + two reads, memoized per run, honestly SKIPped offline.
+`any-file` (glob presence; `mode:absent`, `tracked_only`, `allow`) · `grep` (regex present/absent/all over contents; `tracked_only`) · `file-contains` (file exists AND matches) · `json-field` (parse JSON, assert a dotted path) · `any-of` (pass if any alternative passes) · `command` (run the bootstrap; `repeat`) · `md-links` (relative markdown links resolve) · `doc-freshness` (frontmatter date within a window) · `adr-status` / `adr-forward-link` (decision-record status + resolvable supersede links) · `required-files` (a config list exists + non-empty) · `path-integrity` (backticked paths in docs resolve) · `version-consistency` (runtime major agrees across `.nvmrc`/CI/Dockerfile/`engines`) · `dockerfile-digest` (`FROM` pinned by `@sha256`) · `config-nonempty` · `claims-field` / `claims-citations` · `signoff` · `descriptor` (`baseline.repo.json` presence — validity is `descriptor-valid`'s, DESC-02) · `descriptor-valid` (a present descriptor schema-validates) · `vendored-lock` (M7c — recompute the `tools/baseline/` tree hash against `tools/baseline.lock.json`) · `workflow-state` (M7c — ONE recorded forge query of the reconcile workflow's state) · the M5c lane-world kinds — `lane-anchor` / `lane-next-filled` / `lane-namespace` / `lane-record-pushed` / `lane-lease` / `div-anchor-closed` / `div-next-closed` / `div-closes-closed` — which evaluate through ONE lazy gathering (the same derivation `orient` renders and `lane reclaim` gates on) and degrade to labeled SKIPs offline · `forge-protection` (M6b — the GOV readable-surface ladder: rules-for-branch, the `protected` flag, the admin-only classic endpoint under `BASELINE_GOV_ADMIN=1`; token-denial SKIPs labeled). Since M6b the lane world is no longer lane-only: GOV-01/02 consult it on every check run of a repo with a declared default branch — one probe + two reads, memoized per run, honestly SKIPped offline.
 
 A rule with a check the runner can't evaluate (bad regex, missing target) degrades to **skip**, never a crash — one broken rule can't take down the run.
 

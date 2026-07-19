@@ -151,6 +151,29 @@
         },
         "then_fail_detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
       }
+    },
+    {
+      "id": "REC-06",
+      "title": "The vendored baseline tree is pinned and un-skewed",
+      "category": "records",
+      "severity": "warn",
+      "applies_to": "all",
+      "source": "https://reproducible-builds.org/docs/checksums/",
+      "lesson": "C26/S9 — the contraction's honest endpoint: the consumption model stays vendored (pointer flip cut to V3), so the pin is what makes a vendored copy auditable — an unpinned tree drifts invisibly, a skewed one lies about which contract judged the repo",
+      "rationale": "Deterministic: tools/baseline/ exists while tools/baseline.lock.json is absent (unpinned), not a lock, or its tree_hash differs from the hash recomputed over the vendored files (skew — the finding names the lock's pinned version and the tree's own rules.json version). Worktree semantics like every tree rule: an untracked edit inside the vendored tree is a real skew — local stricter than CI, never the reverse. No vendored tree at the canonical path → SKIP (a copy living elsewhere is outside the lock contract; CONTRACT.md's manual-copy paragraph names the location).",
+      "fix": "Pin it: baseline gen lock writes tools/baseline.lock.json ({version, tree_hash}) — commit it beside the tree. On skew: re-vendor to match the lock, or re-pin deliberately in the same PR as the vendor bump.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check",
+        "reconcile"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "vendored-lock"
+      }
     }
   ]
 }

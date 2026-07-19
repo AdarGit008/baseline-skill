@@ -46,9 +46,14 @@ export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIP
     // failing. The verdict class is never erased into a generic FAIL.
     else if (res.diverged) tag = 'DIVERGED'
     else if (res.signoff || r.check.kind === 'signoff') tag = 'SIGN-OFF'
-    // res.soft downgrades to WARN — an invariant rides here: no PROMOTED (blocker)
-    // kind returns soft today, and none may (a soft return on a blocker would slip
-    // past isBlocking); the pre-merge panel pinned this as the rule for future kinds
+    // res.soft downgrades to WARN. The law, stated precisely (M7c panel corrected
+    // the absolute form): soft-on-a-blocker is a DELIBERATE adoption-path downgrade
+    // that exists in exactly one place today — BUILD-05 (kind `command`) with no
+    // bootstrap_command configured softens to WARN (unconfigured ≠ failing). Every
+    // other soft consumer rides warn-severity rules (records-scrub heuristics,
+    // descriptor absence), where soft is a no-op. NO NEW blocker kind may lean on
+    // soft — a soft return slips past isBlocking, so each one is a hole in the
+    // gate that must be argued as an adoption path, on the record, like BUILD-05.
     else if (res.soft) tag = 'WARN'
     else tag = r.severity === 'blocker' ? 'FAIL' : 'WARN'
     results.push({ r, tag, detail: res.detail })

@@ -1,0 +1,9 @@
+# Byte-stability for the vendored-lock contract (M7c): REC-06's tree hash is
+# over RAW worktree bytes, so an EOL-converting checkout (core.autocrlf) would
+# permanently skew a vendored copy against a lock captured on an LF machine —
+# reported in the same language as tamper. -text disables conversion: bytes in
+# the repository are bytes on disk, on every platform. VENDOR THIS FILE with
+# the tree (it is directory-scoped in the consumer: tools/baseline/.gitattributes
+# governs exactly the hashed subtree). CONTRACT.md's manual-copy procedure
+# names it.
+* -text

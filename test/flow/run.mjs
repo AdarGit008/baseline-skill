@@ -157,7 +157,7 @@ function logRecord(w, lane, next) {
 {
   const { w } = world('redos', { desc: { lanes: { families: ['*'.repeat(80)] } } })
   const out = checkJson(w)
-  ok(tag(out, 'DESC-01').tag === 'WARN' && /at most 64 characters/.test(tag(out, 'DESC-01').detail), 'an over-long families glob is refused at the schema (bounded before globToRe)')
+  ok(tag(out, 'DESC-02').tag === 'FAIL' && /at most 64 characters/.test(tag(out, 'DESC-02').detail), 'an over-long families glob is refused at the schema (bounded before globToRe; invalidity is DESC-02\'s since M7c)')
 }
 
 // ---------- M7a: the merged-lane COMPLETED exemption (the promotion's hostage guard) ----------

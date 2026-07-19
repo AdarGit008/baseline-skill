@@ -2,7 +2,7 @@
 
 The **`baseline`** skill for **Hermes** and **Claude Code** (and any agent that loads
 `SKILL.md`): a zero-dependency project-readiness checker packaged as an installable skill. It scores a repository
-against **87 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
+against **90 rules** across build, tests, security & [supply-chain](GLOSSARY.md#supply-chain), reproducibility,
 operability, change governance, community, context/doc-drift, claims discipline,
 records & ledger, lane workflow, and divergence —
 [blockers](GLOSSARY.md#blocker) fail CI, judgment calls resolve via a dated [sign-off ledger](GLOSSARY.md#sign-off-ledger).
@@ -11,7 +11,7 @@ records & ledger, lane workflow, and divergence —
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/evaluate-stack-dark.svg">
-  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 87 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 38 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/DIVERGED/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
+  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 90 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 41 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/DIVERGED/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
 </picture>
 
 *How a repository becomes an exit code — the [full reference](REFERENCE.md) walks every layer.*
@@ -62,7 +62,7 @@ node baseline.mjs scrub --pushed <sha>          # scan record content for secret
 | `check.mjs` | the checker (`baseline check` delegates here) |
 | `src/` | the runner's modules: repo · config · evaluators · engine · report · self-check · descriptor · probe · orient · rules · records · validate · scrub · log · jdg |
 | `test/` | golden corpus + orient/facts/records suites (`test/golden/run.mjs --verify`, `test/{orient,facts,records}/run.mjs`) — source repo only, not installed |
-| `rules.json` | the rule-set manifest (version, profiles, module list) — the 87 rules live in `rules/` |
+| `rules.json` | the rule-set manifest (version, profiles, module list) — the 90 rules live in `rules/` |
 | `rules/` | the rules, one module per category (build, test, ctx, … desc); M5+ families land as new files |
 | `schema/` | `repo.schema.json` (the descriptor) + `record.{session,judgment,claim,adr}.schema.json` (the Ledger's shapes) |
 | `config.example.json` | per-repo config (copy to `baseline.config.json`) |

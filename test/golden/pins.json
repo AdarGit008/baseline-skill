@@ -109,6 +109,8 @@
       "            ↳ n/a for node",
       "    SKIP      OPS-06    A service descriptor declares owner + lifecycle",
       "            ↳ n/a for node",
+      "    SKIP      OPS-07    The reconcile cron is alive at the forge",
+      "            ↳ no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)",
       "",
       "  Change governance",
       "    SKIP      GOV-01    Merge protection is active on the default branch",
@@ -177,6 +179,8 @@
       "            ↳ no records to cross-check",
       "    SKIP      REC-05    Records are covered by a push-time secret gate",
       "            ↳ n/a (committed records not present)",
+      "    SKIP      REC-06    The vendored baseline tree is pinned and un-skewed",
+      "            ↳ no vendored tree at tools/baseline/ — nothing to pin",
       "",
       "  Lane workflow",
       "    SKIP      FLOW-01   The lane anchors to a real issue",
@@ -203,10 +207,12 @@
       "            ↳ workflow contract off (no valid baseline.repo.json)",
       "",
       "  Repo descriptor",
-      "    WARN      DESC-01   Repo descriptor present and valid",
+      "    WARN      DESC-01   Repo descriptor present",
       "            ↳ no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset",
+      "    SKIP      DESC-02   A present descriptor is schema-valid",
+      "            ↳ no baseline.repo.json — absence is DESC-01's finding",
       "",
-      "  Summary  34 pass · 0 fail · 10 warn · 4 sign-off · 37 n/a",
+      "  Summary  34 pass · 0 fail · 10 warn · 4 sign-off · 40 n/a",
       "  Readiness: 71%  (34/48 applicable)",
       "",
       "  ✓ no blockers.",
@@ -731,8 +737,8 @@
       "warn": 9,
       "diverged": 0,
       "signoff": 2,
-      "skip": 63,
-      "total": 85
+      "skip": 66,
+      "total": 88
     },
     "rules": {
       "BUILD-01": {
@@ -1015,6 +1021,10 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "OPS-07": {
+        "tag": "SKIP",
+        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
+      },
       "REC-01": {
         "tag": "SKIP",
         "detail": "no committed records under records/ yet"
@@ -1030,6 +1040,10 @@
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
+      },
+      "REC-06": {
+        "tag": "SKIP",
+        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
       },
       "FLOW-01": {
         "tag": "SKIP",
@@ -1074,6 +1088,10 @@
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
+      },
+      "DESC-02": {
+        "tag": "SKIP",
+        "detail": "no baseline.repo.json — absence is DESC-01's finding"
       }
     }
   },
@@ -1084,13 +1102,13 @@
       "core"
     ],
     "summary": {
-      "blockers": 2,
-      "pass": 7,
-      "warn": 15,
+      "blockers": 3,
+      "pass": 8,
+      "warn": 14,
       "diverged": 0,
       "signoff": 3,
-      "skip": 58,
-      "total": 85
+      "skip": 60,
+      "total": 88
     },
     "rules": {
       "BUILD-01": {
@@ -1373,6 +1391,10 @@
         "tag": "SKIP",
         "detail": "n/a for node"
       },
+      "OPS-07": {
+        "tag": "SKIP",
+        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
+      },
       "REC-01": {
         "tag": "SKIP",
         "detail": "no committed records under records/ yet"
@@ -1388,6 +1410,10 @@
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
+      },
+      "REC-06": {
+        "tag": "SKIP",
+        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
       },
       "FLOW-01": {
         "tag": "SKIP",
@@ -1430,8 +1456,12 @@
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
       "DESC-01": {
-        "tag": "WARN",
-        "detail": "baseline.repo.json invalid: maturity must be one of prototype|claimed|released (got \"beta\")"
+        "tag": "PASS",
+        "detail": "baseline.repo.json present (schema validity is DESC-02's finding)"
+      },
+      "DESC-02": {
+        "tag": "FAIL",
+        "detail": "baseline.repo.json invalid: maturity must be one of prototype|claimed|released (got \"beta\") — the posture is OFF while this file is broken (every workflow-gated blocker skips); fix the errors or re-copy a preset (retired owner key? MIGRATION.md)"
       }
     }
   },
@@ -1443,12 +1473,12 @@
     ],
     "summary": {
       "blockers": 0,
-      "pass": 7,
+      "pass": 8,
       "warn": 6,
       "diverged": 0,
       "signoff": 1,
-      "skip": 71,
-      "total": 85
+      "skip": 73,
+      "total": 88
     },
     "rules": {
       "BUILD-01": {
@@ -1731,6 +1761,10 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "OPS-07": {
+        "tag": "SKIP",
+        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
+      },
       "REC-01": {
         "tag": "SKIP",
         "detail": "no committed records under records/ yet"
@@ -1746,6 +1780,10 @@
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
+      },
+      "REC-06": {
+        "tag": "SKIP",
+        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
       },
       "FLOW-01": {
         "tag": "SKIP",
@@ -1790,6 +1828,10 @@
       "DESC-01": {
         "tag": "PASS",
         "detail": "type=docs · production/released · workflow=single-lane · anchoring=off"
+      },
+      "DESC-02": {
+        "tag": "PASS",
+        "detail": "baseline.repo.json schema-valid (schema_version 1)"
       }
     }
   },
@@ -1806,8 +1848,8 @@
       "warn": 10,
       "diverged": 0,
       "signoff": 1,
-      "skip": 64,
-      "total": 85
+      "skip": 67,
+      "total": 88
     },
     "rules": {
       "BUILD-01": {
@@ -2090,6 +2132,10 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "OPS-07": {
+        "tag": "SKIP",
+        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
+      },
       "REC-01": {
         "tag": "SKIP",
         "detail": "no committed records under records/ yet"
@@ -2105,6 +2151,10 @@
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
+      },
+      "REC-06": {
+        "tag": "SKIP",
+        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
       },
       "FLOW-01": {
         "tag": "SKIP",
@@ -2149,6 +2199,10 @@
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
+      },
+      "DESC-02": {
+        "tag": "SKIP",
+        "detail": "no baseline.repo.json — absence is DESC-01's finding"
       }
     }
   },
@@ -2160,12 +2214,12 @@
     ],
     "summary": {
       "blockers": 1,
-      "pass": 14,
+      "pass": 15,
       "warn": 8,
       "diverged": 0,
       "signoff": 1,
-      "skip": 61,
-      "total": 85
+      "skip": 63,
+      "total": 88
     },
     "rules": {
       "BUILD-01": {
@@ -2448,6 +2502,10 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "OPS-07": {
+        "tag": "SKIP",
+        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
+      },
       "REC-01": {
         "tag": "WARN",
         "detail": "1 mutation(s): <sha> edited records/sessions/main/2026-06-30-100000-golden.md"
@@ -2463,6 +2521,10 @@
       "REC-05": {
         "tag": "PASS",
         "detail": "matched in 1 file(s)"
+      },
+      "REC-06": {
+        "tag": "SKIP",
+        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
       },
       "FLOW-01": {
         "tag": "FAIL",
@@ -2507,6 +2569,10 @@
       "DESC-01": {
         "tag": "PASS",
         "detail": "type=docs · production/released · workflow=multi-lane · anchoring=relaxed"
+      },
+      "DESC-02": {
+        "tag": "PASS",
+        "detail": "baseline.repo.json schema-valid (schema_version 1)"
       }
     }
   },
@@ -2518,12 +2584,12 @@
     ],
     "summary": {
       "blockers": 0,
-      "pass": 11,
+      "pass": 12,
       "warn": 7,
       "diverged": 0,
       "signoff": 0,
-      "skip": 67,
-      "total": 85
+      "skip": 69,
+      "total": 88
     },
     "rules": {
       "BUILD-01": {
@@ -2806,6 +2872,10 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "OPS-07": {
+        "tag": "SKIP",
+        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
+      },
       "REC-01": {
         "tag": "PASS",
         "detail": "1 record(s), history append-only"
@@ -2821,6 +2891,10 @@
       "REC-05": {
         "tag": "WARN",
         "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+      },
+      "REC-06": {
+        "tag": "SKIP",
+        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
       },
       "FLOW-01": {
         "tag": "SKIP",
@@ -2865,6 +2939,10 @@
       "DESC-01": {
         "tag": "PASS",
         "detail": "type=docs · production/prototype · workflow=single-lane · anchoring=off"
+      },
+      "DESC-02": {
+        "tag": "PASS",
+        "detail": "baseline.repo.json schema-valid (schema_version 1)"
       }
     }
   },
@@ -2876,12 +2954,12 @@
     ],
     "summary": {
       "blockers": 2,
-      "pass": 17,
+      "pass": 18,
       "warn": 7,
       "diverged": 1,
       "signoff": 1,
-      "skip": 58,
-      "total": 85
+      "skip": 60,
+      "total": 88
     },
     "rules": {
       "BUILD-01": {
@@ -3164,6 +3242,10 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
+      "OPS-07": {
+        "tag": "SKIP",
+        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
+      },
       "REC-01": {
         "tag": "PASS",
         "detail": "1 record(s), history append-only"
@@ -3179,6 +3261,10 @@
       "REC-05": {
         "tag": "WARN",
         "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+      },
+      "REC-06": {
+        "tag": "SKIP",
+        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
       },
       "FLOW-01": {
         "tag": "PASS",
@@ -3223,6 +3309,10 @@
       "DESC-01": {
         "tag": "PASS",
         "detail": "type=docs · production/released · workflow=multi-lane · anchoring=strict"
+      },
+      "DESC-02": {
+        "tag": "PASS",
+        "detail": "baseline.repo.json schema-valid (schema_version 1)"
       }
     }
   },
@@ -3238,8 +3328,8 @@
       "warn": 21,
       "diverged": 0,
       "signoff": 3,
-      "skip": 49,
-      "total": 85
+      "skip": 52,
+      "total": 88
     },
     "rules": {
       "BUILD-01": {
@@ -3522,6 +3612,10 @@
         "tag": "SKIP",
         "detail": "n/a for node"
       },
+      "OPS-07": {
+        "tag": "SKIP",
+        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
+      },
       "REC-01": {
         "tag": "SKIP",
         "detail": "no committed records under records/ yet"
@@ -3537,6 +3631,10 @@
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
+      },
+      "REC-06": {
+        "tag": "SKIP",
+        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
       },
       "FLOW-01": {
         "tag": "SKIP",
@@ -3581,6 +3679,10 @@
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
+      },
+      "DESC-02": {
+        "tag": "SKIP",
+        "detail": "no baseline.repo.json — absence is DESC-01's finding"
       }
     }
   },
@@ -3597,8 +3699,8 @@
       "warn": 10,
       "diverged": 0,
       "signoff": 4,
-      "skip": 37,
-      "total": 85
+      "skip": 40,
+      "total": 88
     },
     "rules": {
       "BUILD-01": {
@@ -3881,6 +3983,10 @@
         "tag": "SKIP",
         "detail": "n/a for node"
       },
+      "OPS-07": {
+        "tag": "SKIP",
+        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
+      },
       "REC-01": {
         "tag": "SKIP",
         "detail": "no committed records under records/ yet"
@@ -3896,6 +4002,10 @@
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
+      },
+      "REC-06": {
+        "tag": "SKIP",
+        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
       },
       "FLOW-01": {
         "tag": "SKIP",
@@ -3940,6 +4050,10 @@
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
+      },
+      "DESC-02": {
+        "tag": "SKIP",
+        "detail": "no baseline.repo.json — absence is DESC-01's finding"
       }
     }
   },
@@ -4166,21 +4280,24 @@
       "actions": 11,
       "delivered": 11,
       "failed": 0,
-      "pass": 9,
+      "pass": 10,
       "warn": 15,
       "fail": 4,
       "diverged": 0,
       "signoff": 3,
-      "skip": 43,
-      "rules": 74,
+      "skip": 45,
+      "rules": 77,
       "jdg": {
         "records": 1,
+        "swept": 1,
+        "capped": null,
         "filed": 1,
         "invalid": 0
       },
       "rescan": {
         "files": 1,
         "unscanned": 0,
+        "capped": null,
         "skipped": null,
         "findings": 0
       },
@@ -4200,8 +4317,8 @@
       "warn": 14,
       "diverged": 0,
       "signoff": 3,
-      "skip": 50,
-      "total": 85
+      "skip": 53,
+      "total": 88
     },
     "rules": {
       "BUILD-01": {
@@ -4484,6 +4601,10 @@
         "tag": "PASS",
         "detail": "catalog-info.yaml ok"
       },
+      "OPS-07": {
+        "tag": "SKIP",
+        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
+      },
       "REC-01": {
         "tag": "SKIP",
         "detail": "no committed records under records/ yet"
@@ -4499,6 +4620,10 @@
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
+      },
+      "REC-06": {
+        "tag": "SKIP",
+        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
       },
       "FLOW-01": {
         "tag": "SKIP",
@@ -4543,6 +4668,380 @@
       "DESC-01": {
         "tag": "WARN",
         "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
+      },
+      "DESC-02": {
+        "tag": "SKIP",
+        "detail": "no baseline.repo.json — absence is DESC-01's finding"
+      }
+    }
+  },
+  "vendored-repo": {
+    "exitCode": 1,
+    "project_type": "docs",
+    "profiles": [
+      "core"
+    ],
+    "summary": {
+      "blockers": 1,
+      "pass": 8,
+      "warn": 10,
+      "diverged": 0,
+      "signoff": 1,
+      "skip": 68,
+      "total": 88
+    },
+    "rules": {
+      "BUILD-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-07": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-08": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-09": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "BUILD-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "TEST-07": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "CTX-02": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-03": {
+        "tag": "WARN",
+        "detail": "config.sources_of_truth empty"
+      },
+      "CTX-04": {
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
+      },
+      "CTX-05": {
+        "tag": "PASS",
+        "detail": "1 doc(s), links resolve"
+      },
+      "CTX-06": {
+        "tag": "SKIP",
+        "detail": "config.freshness_globs empty (opt-in)"
+      },
+      "CTX-07": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-08": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "CTX-09": {
+        "tag": "SKIP",
+        "detail": "config.grounding_docs empty (opt-in)"
+      },
+      "CTX-10": {
+        "tag": "SKIP",
+        "detail": "profile 'advanced' off"
+      },
+      "CTX-11": {
+        "tag": "SKIP",
+        "detail": "no docs declare a frontmatter sources: list (opt-in)"
+      },
+      "CTX-12": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "CLAIM-00": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-01": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-02": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-03": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-04": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-05": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-06": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "CLAIM-07": {
+        "tag": "SKIP",
+        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
+      },
+      "SEC-01": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-02": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-03": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-04": {
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
+      },
+      "SEC-05": {
+        "tag": "WARN",
+        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc | pattern not found"
+      },
+      "SEC-06": {
+        "tag": "WARN",
+        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
+      },
+      "SEC-07": {
+        "tag": "PASS",
+        "detail": "none present (good)"
+      },
+      "SEC-08": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-09": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-10": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-11": {
+        "tag": "PASS",
+        "detail": "1 workflow(s) least-privilege"
+      },
+      "SEC-12": {
+        "tag": "WARN",
+        "detail": "pattern not found"
+      },
+      "SEC-13": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "SEC-14": {
+        "tag": "SKIP",
+        "detail": "no files to scan"
+      },
+      "GOV-01": {
+        "tag": "SKIP",
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
+      },
+      "GOV-02": {
+        "tag": "SKIP",
+        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
+      },
+      "GOV-03": {
+        "tag": "WARN",
+        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
+      },
+      "COMM-01": {
+        "tag": "FAIL",
+        "detail": "none of: LICENSE, LICENSE.*, LICENCE, LICENCE.*, COPYING"
+      },
+      "COMM-02": {
+        "tag": "WARN",
+        "detail": "README.md too short (<400 chars)"
+      },
+      "COMM-03": {
+        "tag": "WARN",
+        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
+      },
+      "QUAL-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "QUAL-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "REPRO-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-01": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-02": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-03": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-04": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-05": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-06": {
+        "tag": "SKIP",
+        "detail": "n/a for docs"
+      },
+      "OPS-07": {
+        "tag": "WARN",
+        "detail": "baseline-reconcile.yml: disabled_inactivity at the forge — the cron files nothing while disabled (GitHub's 60-day auto-disable); re-enable: gh workflow enable baseline-reconcile.yml"
+      },
+      "REC-01": {
+        "tag": "SKIP",
+        "detail": "no committed records under records/ yet"
+      },
+      "REC-02": {
+        "tag": "SKIP",
+        "detail": "no committed records to scan"
+      },
+      "REC-04": {
+        "tag": "SKIP",
+        "detail": "no records to cross-check"
+      },
+      "REC-05": {
+        "tag": "SKIP",
+        "detail": "n/a (committed records not present)"
+      },
+      "REC-06": {
+        "tag": "WARN",
+        "detail": "vendored tree skews from its lock: lock pins 2.4.0 (<sha>), tree is 2.4.1 (<sha>) — re-vendor to match, or re-pin deliberately: baseline gen lock"
+      },
+      "FLOW-01": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-02": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-03": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-04": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-05": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-06": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-07": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "DIV-01": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "DIV-02": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "DIV-03": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "DESC-01": {
+        "tag": "WARN",
+        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
+      },
+      "DESC-02": {
+        "tag": "SKIP",
+        "detail": "no baseline.repo.json — absence is DESC-01's finding"
       }
     }
   }

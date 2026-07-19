@@ -59,7 +59,7 @@ import { makeForge } from './facts/forge.mjs'
 import { makeLaneWorld } from './facts/index.mjs'
 import { runRules } from './engine.mjs'
 import { makeColor } from './report.mjs'
-import { loadJudgmentsAt, selectBreakGlass, evaluateJudgment, gatherJdgFacts } from './jdg.mjs'
+import { loadJudgmentsAt, selectBreakGlass, evaluateJudgment, gatherJdgFacts, JDG_PARSE_CAP } from './jdg.mjs'
 import { scan, ALLOWLIST_FILE } from './scrub.mjs'
 
 const USAGE = `usage: baseline reconcile [--repo DIR] [--json] [--dry-run] [--target REF] [--profile P] [--config FILE]`
@@ -295,7 +295,14 @@ export function runReconcile(argv) {
       planes: { forge: { available: forge.available, reason: forge.available ? null : forge.reason } },
     },
   })
-  const sweep = ledger.records.map(j => evaluateJudgment(j, jdgFacts))
+  // JDG_PARSE_CAP parity (M7c): the sweep is bounded like admit's judgment parse —
+  // a tip carrying thousands of ledger entries must not buy an unbounded evaluation
+  // fan-out. First-N in the ledger's own id order (the same slice admit takes),
+  // LABELED below; out-of-cap judgments are not evaluated, so their issues neither
+  // file nor clear this run — bounded, never silently complete.
+  const sweepCapped = ledger.records.length > JDG_PARSE_CAP
+    ? `judgment sweep capped at ${JDG_PARSE_CAP} of ${ledger.records.length} (id order) — out-of-cap judgments not evaluated this run` : null
+  const sweep = ledger.records.slice(0, JDG_PARSE_CAP).map(j => evaluateJudgment(j, jdgFacts))
   for (const r of sweep) {
     const key = findingKey(r.id, r.subject)
     if (r.verdict === 'tripped' || r.verdict === 'expired') {
@@ -331,8 +338,13 @@ export function runReconcile(argv) {
       present.push({ key: findingKey('ledger', ALLOWLIST_FILE), id: 'ledger', subject: ALLOWLIST_FILE, title: `scrub allowlist unreadable on ${BRANCH_NAME}`, detail: `${ALLOWLIST_FILE} at ${targetTip.slice(0, 7)} is not valid JSON — the re-scan ran WITHOUT suppressions; fix the file`, fp: fingerprint('allowlist-unparseable'), reopenAlways: true })
     }
   }
+  // JDG_PARSE_CAP parity (M7c): the re-scan reads one blob per landed record —
+  // same fan-out class as the sweep, same ceiling, LABELED. First-N in ls-tree's
+  // path order (deterministic); out-of-cap blobs are honestly unscanned.
+  const rescanCapped = (recList || []).length > JDG_PARSE_CAP
+    ? `re-scan capped at ${JDG_PARSE_CAP} of ${recList.length} record files (path order) — out-of-cap blobs unscanned this run` : null
   let unscanned = 0
-  for (const rel of recList || []) {
+  for (const rel of (recList || []).slice(0, JDG_PARSE_CAP)) {
     const raw = repo.gitCatFile(targetTip, rel)
     if (raw === null) { unscanned++; continue }
     const { blocked } = scan(raw, { allowlist })
@@ -411,7 +423,10 @@ export function runReconcile(argv) {
       // retirement must close the filing). Every clear rides a completeness guard;
       // a partial read clears nothing (the SKIP-never-clears law, in reverse).
       const presentKeys = new Set(findings.map(f => f.key))
-      const scanComplete = recList !== null && unscanned === 0
+      // a CAPPED re-scan is a partial read: out-of-cap blobs were never re-read,
+      // so their filings must not clear (the panel's fail-open catch — one
+      // out-of-cap landed secret would otherwise bot-close its own issue)
+      const scanComplete = recList !== null && unscanned === 0 && !rescanCapped
       const blockedIds = new Set(findings.filter(f => f.id === 'scrub').map(f => f.subject))
       for (const i of managed) {
         if (presentKeys.has(i.key) || clearedKeys.has(i.key)) continue
@@ -486,8 +501,8 @@ export function runReconcile(argv) {
     mode: DRY ? 'dry-run' : reportOnly ? 'report-only' : 'full',
     findings: findings.length, actions: actions ? actions.length : null, delivered: delivered.length, failed: failed.length,
     pass: n('PASS'), warn: n('WARN'), fail: n('FAIL'), diverged: n('DIVERGED'), signoff: n('SIGN-OFF'), skip: n('SKIP'), rules: results.length,
-    jdg: { records: ledger.records.length, filed: sweep.filter(r => r.verdict === 'tripped' || r.verdict === 'expired').length, invalid: ledger.findings.length },
-    rescan: { files: recList === null ? null : recList.length, unscanned, skipped: rescanSkipped, findings: findings.filter(f => f.id === 'scrub').length },
+    jdg: { records: ledger.records.length, swept: sweep.length, capped: sweepCapped, filed: sweep.filter(r => r.verdict === 'tripped' || r.verdict === 'expired').length, invalid: ledger.findings.length },
+    rescan: { files: recList === null ? null : recList.length, unscanned, capped: rescanCapped, skipped: rescanSkipped, findings: findings.filter(f => f.id === 'scrub').length },
     mergedWindow: mwrWindow,
   }
 
@@ -508,6 +523,8 @@ export function runReconcile(argv) {
   if (fetchNote) console.log(`  ⚠ ${fetchNote}`)
   if (reportOnly) console.log(color(33, `  ⚠ ${S(reportOnly)}`))
   if (truncated) console.log(`  ⚠ issue scan truncated at 500 — new filings suppressed this run (rollup carries them)`)
+  if (sweepCapped) console.log(`  ⚠ ${sweepCapped}`)
+  if (rescanCapped) console.log(`  ⚠ ${rescanCapped}`)
   if (mwrWindow) console.log(`  merged-while-red window: ${mwrWindow}`)
   if (!findings.length) console.log(color(32, `  ✓ nothing to reconcile — ${summary.pass} pass · ${summary.skip} n/a · ledger ${summary.jdg.records} record(s) healthy`))
   for (const f of findings) console.log(`  ${color(33, '●')} ${S(f.key)}\n      ${S(f.title)}\n      ${color(90, '↳ ' + S(f.detail))}`)

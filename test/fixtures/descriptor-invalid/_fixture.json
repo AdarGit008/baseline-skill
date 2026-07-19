@@ -1,3 +1,3 @@
 {
-  "_note": "A schema-invalid baseline.repo.json (maturity 'beta' is not a valid tier). Proves DESC-01 WARN with the deterministic schema error, and that an invalid descriptor's type=docs is NOT honored — project_type falls back to auto-detection (node, from package.json)."
+  "_note": "A schema-invalid baseline.repo.json (maturity 'beta' is not a valid tier). Since the M7c split: DESC-01 PASSes (present), DESC-02 FAILs at BLOCKER with the deterministic schema error — the promotion's corpus proof that a broken declaration is loud, not a warn beside a wall of posture-off skips. Also proves an invalid descriptor's type=docs is NOT honored — project_type falls back to auto-detection (node, from package.json)."
 }

@@ -1,0 +1,19 @@
+on:
+  schedule:
+    - cron: '17 5 * * *'   # GitHub may auto-disable after 60d inactivity — OPS-07 checks
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - run: node tools/baseline/baseline.mjs reconcile --repo .
+        env:
+          GH_TOKEN: ${{ github.token }}

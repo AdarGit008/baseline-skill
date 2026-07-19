@@ -1,0 +1,5 @@
+# vendored-repo
+
+A minimal consumer that vendors the baseline toolkit at `tools/baseline/` and
+pins it with `tools/baseline.lock.json` — except the lock is stale: the tree
+was bumped to 2.4.1 and nobody re-ran `baseline gen lock`.

@@ -1,4 +1,4 @@
-// The ~38 declarative check kinds. makeEvalCheck(ctx) closes over the repo index,
+// The ~41 declarative check kinds. makeEvalCheck(ctx) closes over the repo index,
 // resolved config, and run flags; evalCheck(c, rule) -> {ok:true|false|null, detail, soft?, signoff?}.
 // ok:null means "not evaluable here" and always tags SKIP — one broken rule can't take down the run.
 import path from 'node:path'
@@ -11,11 +11,12 @@ import { scan, loadAllowlist } from './scrub.mjs'
 import { loadClaims, CLAIM_RECORD_GLOB } from './claims.mjs'
 import { extractNext } from './facts/git.mjs'
 import { deriveDivergence } from './derive/divergence.mjs'
+import { computeVendorLock, VENDOR_TREE, VENDOR_LOCK } from './gen.mjs'
 
 const DIV_REF_CAP = 20 // a hostile next: line with dozens of #N must not fan out a forge query each
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'records-append-only', 'records-scrub', 'records-one-home', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'descriptor-change', 'merge-sister-dep', 'forge-protection'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'descriptor-valid', 'records-append-only', 'records-scrub', 'records-one-home', 'vendored-lock', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'descriptor-change', 'merge-sister-dep', 'forge-protection', 'workflow-state'])
 
 export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
   const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile } = repo
@@ -502,6 +503,34 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
       return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') + unpNote : 'every record fact has one home' + unpNote }
     }
 
+    if (k === 'vendored-lock') {
+      // REC-06 (M7c, C26/S9): the vendored tree's pin. Same recompute `gen lock`
+      // performs — one hash definition, two consumers (writer + verifier). SKIP
+      // when the canonical tree is absent: a repo that doesn't vendor (or vendors
+      // elsewhere) is outside the lock contract, never wallpapered. Unhashable
+      // entries (symlinks, unreadable files) DEGRADE to a labeled WARN over the
+      // readable set — a SKIP here would let one dangling symlink mask a real
+      // concurrent skew (the fail-open the panel caught); the writer refuses the
+      // same entries outright.
+      const lock = computeVendorLock(repo.REPO, repo)
+      if (!lock.files && !lock.unhashable.length) return { ok: null, detail: `no vendored tree at ${VENDOR_TREE}/ — nothing to pin` }
+      const caveat = lock.unhashable.length ? ` — and ${lock.unhashable.length} entr${lock.unhashable.length === 1 ? 'y' : 'ies'} cannot be hashed (${lock.unhashable[0]}${lock.unhashable.length > 1 ? `, +${lock.unhashable.length - 1}` : ''}), so the pin cannot fully verify` : ''
+      if (!lock.files) return { ok: false, detail: `vendored tree at ${VENDOR_TREE}/ has no hashable files${caveat}; fix the tree, then pin: baseline gen lock` }
+      const raw = read(VENDOR_LOCK)
+      if (raw == null) return { ok: false, detail: `vendored tree (${lock.files} files${lock.version ? `, ${lock.version}` : ''}) is unpinned — no ${VENDOR_LOCK}; pin it: baseline gen lock` }
+      let pin = null
+      try { pin = JSON.parse(raw.replace(/^\uFEFF/, '')) } catch {}
+      if (!pin || typeof pin.tree_hash !== 'string' || typeof pin.version !== 'string') return { ok: false, detail: `${VENDOR_LOCK} is not a lock ({version, tree_hash}) — rewrite it: baseline gen lock` }
+      if (pin.tree_hash !== lock.tree_hash) {
+        // the ruled skew finding names BOTH versions — equal strings still name
+        // both honestly, with the benign-vs-not causes spelled out
+        const equal = pin.version === (lock.version ?? '') ? ` (same version both sides: a hand-edit, or an EOL-converting checkout missing the vendored .gitattributes)` : ''
+        return { ok: false, detail: `vendored tree skews from its lock: lock pins ${pin.version} (${pin.tree_hash.slice(0, 12)}), tree is ${lock.version ?? 'version unreadable'} (${lock.tree_hash.slice(0, 12)})${equal}${caveat} — re-vendor to match, or re-pin deliberately: baseline gen lock` }
+      }
+      if (lock.unhashable.length) return { ok: false, detail: `lock matches the readable set (${pin.version} · ${lock.files} files)${caveat}; remove the unhashable entr${lock.unhashable.length === 1 ? 'y' : 'ies'} and re-pin: baseline gen lock` }
+      return { ok: true, detail: `pinned: ${pin.version} · ${lock.files} files · ${lock.tree_hash.slice(0, 12)}` }
+    }
+
     if (k === 'branch-session-record') {
       // FLOW-02 (C14): work on a lane carries its own session record — the forensic
       // tier rides the same PR as the change it describes. Engine gates guarantee
@@ -539,11 +568,25 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
     }
 
     if (k === 'descriptor') {
+      // DESC-01 (narrowed at M7c): PRESENCE only — validity is DESC-02's blocker,
+      // the FLOW-02/03 presence/content divide. One condition, one finding.
       const d = DESCRIPTOR
       if (!d || !d.present) return { ok: false, soft: true, detail: `no ${DESCRIPTOR_FILE} — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset` }
-      if (!d.valid) return { ok: false, detail: `${DESCRIPTOR_FILE} invalid: ${d.errors.slice(0, 2).join('; ')}${d.errors.length > 2 ? ` (+${d.errors.length - 2} more)` : ''}` }
+      if (!d.valid) return { ok: true, detail: `${DESCRIPTOR_FILE} present (schema validity is DESC-02's finding)` }
       const x = d.data
       return { ok: true, detail: `type=${x.type} · ${x.lifecycle}/${x.maturity} · workflow=${x.workflow} · anchoring=${x.anchoring}` }
+    }
+
+    if (k === 'descriptor-valid') {
+      // DESC-02 (M7c, the M7b panel's filing): present-but-invalid at BLOCKER. Ten
+      // workflow-gated blockers hang off this file — invalidity flips the posture
+      // off (every gated rule SKIPs 'workflow contract off'), so the collapse must
+      // be the loudest row in the run, not a warn beside a wall of skips. Absence
+      // is DESC-01's (no overlap).
+      const d = DESCRIPTOR
+      if (!d || !d.present) return { ok: null, detail: `no ${DESCRIPTOR_FILE} — absence is DESC-01's finding` }
+      if (!d.valid) return { ok: false, detail: `${DESCRIPTOR_FILE} invalid: ${d.errors.slice(0, 2).join('; ')}${d.errors.length > 2 ? ` (+${d.errors.length - 2} more)` : ''} — the posture is OFF while this file is broken (every workflow-gated blocker skips); fix the errors or re-copy a preset (retired owner key? MIGRATION.md)` }
+      return { ok: true, detail: `${DESCRIPTOR_FILE} schema-valid (schema_version ${d.data.schema_version})` }
     }
 
     // ---- M5c lane/divergence kinds — every one reads through LANEWORLD (the SAME
@@ -756,6 +799,29 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
           : { ok: false, detail: `no active protection on ${DEFAULT_BRANCH} — strict up-to-date and conversation resolution are unset` }
       }
       return { ok: null, detail: `rules readable but ${DEFAULT_BRANCH} metadata is not — classic protection state unknowable with this token` }
+    }
+
+    if (k === 'workflow-state') {
+      // OPS-07 (M7c, falsifiable smallest shape): ONE recorded forge query of the
+      // reconcile workflow's state. The subject is found in the TREE (a workflow
+      // file invoking `baseline… reconcile`) — no workflow wired → SKIP, so repos
+      // without the cron are never wallpapered. No run-age math, no constant, no
+      // knob: `active` is alive, anything else (the disabled_* family — GitHub's
+      // 60-day auto-disable is the named death mode) is a dead cron that will
+      // never file the issues reconcile exists to file.
+      const wfs = match(['.github/workflows/*.yml', '.github/workflows/*.yaml'])
+        .filter(f => /baseline(\.mjs)?['"]?\s+reconcile\b/.test((read(f) || '').split('\n').map(stripLineComment).join('\n')))
+        .sort()
+      if (!wfs.length) return { ok: null, detail: 'no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)' }
+      const file = wfs[0].split('/').pop()
+      const w = LANEWORLD ? LANEWORLD() : null
+      if (!w) return { ok: null, detail: 'no lane world assembled — forge asserts n/a in this runner' }
+      if (!w.forge.available) return { ok: null, detail: `workflow state unreadable (${w.forge.reason})` }
+      const st = w.forge.workflowState(file)
+      if (!st || typeof st.state !== 'string') return { ok: null, detail: w.forge.source === 'replay' ? `workflow state unreadable (no workflow-state replay fixture for ${file})` : `workflow state query failed for ${file} — liveness not provable, never guessed` }
+      const extra = wfs.length > 1 ? ` (${wfs.length} reconcile workflows in tree — asserting the first, ${file})` : ''
+      if (st.state === 'active') return { ok: true, detail: `${file}: active at the forge${extra}` }
+      return { ok: false, detail: `${file}: ${st.state} at the forge — the cron files nothing while disabled${st.state === 'disabled_inactivity' ? ` (GitHub's 60-day auto-disable)` : ''}; re-enable: gh workflow enable ${file}${extra}` }
     }
 
     // ---- M6a admit-context kinds — both read through ADMITWORLD (the target-ref

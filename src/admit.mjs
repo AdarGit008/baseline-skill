@@ -40,7 +40,7 @@ import { runRules } from './engine.mjs'
 import { CATS, makeColor, isBlocking } from './report.mjs'
 import { DESCRIPTOR_FILE, DESCRIPTOR_SCHEMA } from './descriptor.mjs'
 import { validateAgainst } from './validate.mjs'
-import { loadJudgmentsAt, selectBreakGlass, JUDGMENTS_DIR } from './jdg.mjs'
+import { loadJudgmentsAt, selectBreakGlass, JUDGMENTS_DIR, JDG_PARSE_CAP } from './jdg.mjs'
 import { inputsDigest, provenanceLine, provenanceJson } from './digest.mjs'
 import { validateRecord } from './records.mjs'
 
@@ -129,11 +129,11 @@ export function runAdmit(argv) {
   // panel's rename-bypass). Admit's range is judged as honest deletes + adds.
   const changed = repo.gitDiffNames(`${targetTip}...HEAD`, null, { noRenames: true })
   const added = repo.gitDiffNames(`${targetTip}...HEAD`, null, { addedOnly: true, noRenames: true })
-  // parse cap: every other fan-out here is bounded (sisters 100, DIV refs 20) — a PR
-  // adding thousands of judgment files must not buy thousands of git spawns. Beyond the
-  // cap: DESC-03 stays fail-closed (an out-of-cap judgment doesn't satisfy it) and the
-  // JDG-only path is off (unvalidated riders never take the privileged path).
-  const JDG_PARSE_CAP = 500
+  // parse cap (one-homed in jdg.mjs at M7c): every other fan-out here is bounded
+  // (sisters 100, DIV refs 20) — a PR adding thousands of judgment files must not
+  // buy thousands of git spawns. Beyond the cap: DESC-03 stays fail-closed (an
+  // out-of-cap judgment doesn't satisfy it) and the JDG-only path is off
+  // (unvalidated riders never take the privileged path).
   const addedJdgPaths = (added || []).filter(p => p.startsWith(JUDGMENTS_DIR + '/'))
   const jdgCapped = addedJdgPaths.length > JDG_PARSE_CAP
   const addedJudgments = addedJdgPaths.slice(0, JDG_PARSE_CAP).map(rel => {

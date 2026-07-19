@@ -30,7 +30,7 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
 {
   const R = loadRules()
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'rules.json'), 'utf8'))
-  ok(R.rules.length === 87, `loader assembles 87 rules (got ${R.rules.length})`)
+  ok(R.rules.length === 90, `loader assembles 90 rules (got ${R.rules.length})`)
   ok((manifest.modules || []).length === 15, `manifest lists 15 modules (got ${(manifest.modules || []).length})`)
   ok(!('rules' in manifest), 'manifest itself carries no rules (they live in rules/)')
   ok(new Set(R.rules.map(r => r.id)).size === R.rules.length, 'rule ids unique across modules')
@@ -626,15 +626,66 @@ try {
     ok(ctx12.tag === 'FAIL' && ctx12.severity === 'blocker' && /README\.md/.test(ctx12.detail), 'e2e: the stamp signature on a bare repo FAILs CTX-12 at blocker, no config key to hide behind')
     ok(!res18.results.some(x => x.id === 'CTX-01'), 'e2e: CTX-01 is gone from the rule set entirely')
     // M7b: the WORKTREE read stays strict — the descriptor asymmetry's other half.
-    // A retired field in the worktree descriptor is flagged (DESC-01 names it) and
-    // the posture it declared is OFF until shed (the migration pressure). If the
+    // A retired field in the worktree descriptor is flagged (DESC-02 names it at
+    // blocker since the M7c split; presence itself is DESC-01's PASS) and the
+    // posture it declared is OFF until shed (the migration pressure). If the
     // ref-read strip is ever hoisted to worktree reads, this fails.
     fs.writeFileSync(path.join(t18, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 'legacy-team', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
     const res19 = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
     const d1 = res19.results.find(x => x.id === 'DESC-01')
-    ok(d1.tag === 'WARN' && /'owner' is not a known field/.test(d1.detail), 'e2e: worktree read stays STRICT — a retired field makes DESC-01 name it')
+    ok(d1.tag === 'PASS' && /present \(schema validity is DESC-02's/.test(d1.detail), 'e2e: presence narrowed — DESC-01 PASSes a present-but-invalid file, pointing at DESC-02')
+    const d2 = res19.results.find(x => x.id === 'DESC-02')
+    ok(d2.tag === 'FAIL' && d2.severity === 'blocker' && /'owner' is not a known field/.test(d2.detail), 'e2e: worktree read stays STRICT — a retired field makes DESC-02 name it at blocker')
     const f2 = res19.results.find(x => x.id === 'FLOW-02')
     ok(f2.tag === 'SKIP' && /workflow contract off/.test(f2.detail), 'e2e: an invalid worktree descriptor turns the posture OFF — the pressure to shed the field is visible')
+  }
+
+  // ---------- REC-06 (M7c): the vendored-tree lock — SKIP / unpinned / pinned / skew ----------
+  {
+    const t20 = mkrepo('main'); tmps.push(t20)
+    fs.writeFileSync(path.join(t20, 'README.md'), '# x\n')
+    sh(t20, 'git', ['add', '-A']); sh(t20, 'git', ['commit', '-qm', 'seed'])
+    const rec6 = () => JSON.parse(sh(t20, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t20, '--json', '--no-exec'], NOW).out).results.find(x => x.id === 'REC-06')
+    let r = rec6()
+    ok(r.tag === 'SKIP' && /no vendored tree/.test(r.detail), 'e2e: REC-06 SKIPs a repo that does not vendor — never wallpaper')
+    fs.mkdirSync(path.join(t20, 'tools/baseline'), { recursive: true })
+    fs.writeFileSync(path.join(t20, 'tools/baseline/rules.json'), '{ "version": "2.9.9" }\n')
+    fs.writeFileSync(path.join(t20, 'tools/baseline/check.mjs'), 'vendored\n')
+    r = rec6()
+    ok(r.tag === 'WARN' && r.severity === 'warn' && /unpinned/.test(r.detail) && /gen lock/.test(r.detail), 'e2e: REC-06 WARNs an unpinned vendored tree with the pin recipe')
+    sh(t20, process.execPath, [path.join(ROOT, 'baseline.mjs'), 'gen', 'lock', '--repo', t20], NOW)
+    r = rec6()
+    ok(r.tag === 'PASS' && /pinned: 2\.9\.9/.test(r.detail), 'e2e: REC-06 PASSes a pinned, un-skewed tree naming the pinned version')
+    // worktree semantics: an UNTRACKED file inside the vendored tree is a real skew
+    fs.writeFileSync(path.join(t20, 'tools/baseline/extra.mjs'), 'untracked rider\n')
+    r = rec6()
+    ok(r.tag === 'WARN' && /skews from its lock/.test(r.detail), 'e2e: an untracked file inside the vendored tree skews — local stricter than CI, never the reverse')
+    fs.rmSync(path.join(t20, 'tools/baseline/extra.mjs'))
+    // hand-edit skew: same version both sides, named anyway
+    fs.appendFileSync(path.join(t20, 'tools/baseline/check.mjs'), 'tampered\n')
+    r = rec6()
+    ok(r.tag === 'WARN' && /lock pins 2\.9\.9/.test(r.detail) && /tree is 2\.9\.9/.test(r.detail), 'e2e: skew names BOTH versions — a hand-edit shows same version, different bytes')
+    // version-bump skew: old and new named
+    fs.writeFileSync(path.join(t20, 'tools/baseline/rules.json'), '{ "version": "3.0.0" }\n')
+    r = rec6()
+    ok(/lock pins 2\.9\.9/.test(r.detail) && /tree is 3\.0\.0/.test(r.detail), 'e2e: a vendor bump without a re-pin names old AND new versions')
+    // an unparseable lock is a finding, never a crash
+    fs.writeFileSync(path.join(t20, 'tools/baseline.lock.json'), 'not json\n')
+    r = rec6()
+    ok(r.tag === 'WARN' && /not a lock/.test(r.detail), 'e2e: an unparseable lock file is an honest WARN with the rewrite recipe')
+    // panel (lock-seam, fail-open catch): an unhashable entry DEGRADES to a
+    // labeled WARN over the readable set — a SKIP would let one dangling
+    // symlink mask a concurrent real skew. (Clear the poisoned lock first —
+    // the writer rightly refuses to overwrite a non-lock.)
+    fs.rmSync(path.join(t20, 'tools/baseline.lock.json'))
+    sh(t20, process.execPath, [path.join(ROOT, 'baseline.mjs'), 'gen', 'lock', '--repo', t20], NOW)
+    fs.symlinkSync('/nonexistent-target', path.join(t20, 'tools/baseline/dangler'))
+    r = rec6()
+    ok(r.tag === 'WARN' && /cannot be hashed/.test(r.detail) && /dangler \(symlink\)/.test(r.detail), 'e2e: an unhashable entry is a labeled WARN caveat, never a SKIP that masks skew')
+    fs.appendFileSync(path.join(t20, 'tools/baseline/check.mjs'), 'tamper-under-cover\n')
+    r = rec6()
+    ok(r.tag === 'WARN' && /skews from its lock/.test(r.detail) && /dangler \(symlink\)/.test(r.detail), 'e2e: a real skew stays REPORTED even while an unhashable entry rides the tree')
+    fs.unlinkSync(path.join(t20, 'tools/baseline/dangler'))
   }
 } finally {
   for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })

@@ -1,7 +1,7 @@
 ---
 name: baseline
 description: "Use when asked to run baseline, score a repo, check build- or project-readiness, audit a repo against a standard, or adopt/scaffold the project-baseline standard. Runs a zero-dependency Node checker (90 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, claims, records & ledger, lane workflow, and divergence), reads the scorecard, and helps fix or scaffold what's missing."
-version: 2.4.0
+version: 2.5.0
 author: Adar (AdarGit008)
 license: MIT
 platforms: [linux, macos, windows]

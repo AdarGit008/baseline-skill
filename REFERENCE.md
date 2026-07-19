@@ -1,4 +1,4 @@
-# project-baseline v2 (2.4)
+# project-baseline v2 (2.5)
 
 A **testable readiness standard** for new projects. Every lesson is a rule; a zero-dependency runner scores a repo and **fails CI on the blockers**. The judgment calls a script can't make become a dated **[sign-off ledger](GLOSSARY.md#sign-off-ledger)** — so even those leave a checkable trace.
 

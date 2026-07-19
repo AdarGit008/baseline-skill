@@ -4,7 +4,7 @@ All notable changes to the `/baseline` skill are documented here. The format loo
 follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned in
 `rules.json` and `SKILL.md`.
 
-## [Unreleased]
+## [2.5.0] — 2026-07-19
 
 ### Added — V2 M7c: lock + residue (87 → 90 rules; closes the M7 module)
 - **`baseline gen lock` + `tools/baseline.lock.json`**: pin the vendored

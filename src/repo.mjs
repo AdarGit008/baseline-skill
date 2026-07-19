@@ -74,7 +74,6 @@ export function indexRepo(REPO) {
   function gitAgeDays(rel) { const d = gitCommitISO(rel); return d ? (Date.now() - d.getTime()) / 86400000 : null }
   function gitObjExists(ref) { try { execFileSync('git', ['cat-file', '-e', ref], { cwd: REPO, stdio: 'ignore' }); return true } catch { return false } }
   function gitIsAncestor(sha, of = 'HEAD') { try { execFileSync('git', ['merge-base', '--is-ancestor', sha, of], { cwd: REPO, stdio: 'ignore' }); return 0 } catch (e) { return e.status ?? 1 } }
-  function gitLag(sha) { try { return parseInt(execFileSync('git', ['rev-list', '--count', `${sha}..HEAD`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(), 10) } catch { return null } }
   function gitIsShallow() { try { return execFileSync('git', ['rev-parse', '--is-shallow-repository'], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() === 'true' } catch { return false } }
 
   // History events for a path scope: git log --name-status filtered to the given
@@ -119,5 +118,5 @@ export function indexRepo(REPO) {
     try { return execFileSync('git', ['cat-file', 'blob', `${ref}:${rel}`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 256 * 1024 * 1024 }).toString('utf8') } catch { return null }
   }
 
-  return { REPO, FILES, TRACKED, HEAD, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitLag, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile }
+  return { REPO, FILES, TRACKED, HEAD, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile }
 }

@@ -1,33 +1,6 @@
 {
   "rules": [
     {
-      "id": "CTX-01",
-      "title": "Status lives in one owner with a fresh 'last-verified' stamp",
-      "category": "context",
-      "severity": "blocker",
-      "applies_to": "all",
-      "requires": "status_file",
-      "lesson": "CTX-6 status is a computed exit-state",
-      "rationale": "The costliest context failure is misdirecting the next session into redoing settled work.",
-      "fix": "Add 'last-verified: <short-sha> <date>' to the status file; with a valid baseline.repo.json present, set status_file:false to opt out (derived orient replaces it — the stored-status surface retires at M7).",
-      "sources": [
-        "tree",
-        "history"
-      ],
-      "on_unreachable": "skip",
-      "contexts": [
-        "check",
-        "reconcile"
-      ],
-      "certainty": "deterministic",
-      "check": {
-        "kind": "status-stamp",
-        "file_from_config": "status_file",
-        "stamp_key": "last-verified",
-        "match_head": true
-      }
-    },
-    {
       "id": "CTX-02",
       "title": "Every decision record carries a Status; superseded ones link forward",
       "category": "context",
@@ -274,13 +247,12 @@
       "id": "CTX-12",
       "title": "No hand-maintained status stamp (derive it instead)",
       "category": "context",
-      "severity": "warn",
+      "severity": "blocker",
       "applies_to": "all",
-      "requires": "status_file",
       "source": "V2 ADR-0009 — a stored status stamp manufactures the multi-lane collision class it exists to prevent; state is derived by `baseline orient`, not hand-stamped",
-      "lesson": "CTX-12 stored-status tripwire — flags the artifact V2 retires (CTX-01) for migration",
-      "rationale": "A `last-verified:` stamp is a hand-maintained proxy for derived state (the drift-and-collide artifact of ADR-0009). Warn now while CTX-01 still gates the stamp; promotes to blocker once the migration to derived `orient` completes (M7). A repo with no status file simply skips.",
-      "fix": "Delete the status stamp and run `baseline orient` for derived state; the stamp's job moves to the tree/history/forge derivation.",
+      "lesson": "CTX-12 stored-status signature — the V1 stamp artifact (retired at M7) is a blocker wherever it appears",
+      "rationale": "A hand-maintained freshness stamp is a stored proxy for derived state: it drifts, it collides under concurrent lanes, and it misdirects the next session (the ADR-0009 artifact). The stored-status surface retired at M7 — the deterministic line-anchored signature is the whole check, keyed to no config. MIGRATION.md walks the exit.",
+      "fix": "Delete the stamp line and run `baseline orient` for derived state; the stamp's job moves to the tree/history/forge derivation (see MIGRATION.md).",
       "sources": [
         "tree"
       ],
@@ -292,9 +264,11 @@
       "certainty": "deterministic",
       "check": {
         "kind": "grep",
-        "file_from_config": "status_file",
-        "pattern": "last[-_]verified\\s*[:=]",
-        "flags": "i",
+        "globs": [
+          "**/*.md"
+        ],
+        "pattern": "^\\s*last[-_]verified\\s*[:=]",
+        "flags": "im",
         "mode": "absent"
       }
     }

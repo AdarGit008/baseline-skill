@@ -50,8 +50,10 @@ means declaring those rules in a file in the repo, not just in web settings.
 ## Claims explosion
 The C17 migration of the legacy `docs/CLAIMS.json` monolith into per-claim
 `records/claims/CLM-NNNN.json` records, run by `baseline gen migrate-claims`.
-Each V1 claim id survives as the record's `slug`; both homes are read during the
-migration window (see [dual-read](#dual-read)) until M7 retires the legacy read.
+Each V1 claim id survives as the record's `slug`; reruns are idempotent by slug.
+Since the M7 contraction the checker reads records ONLY (see
+[dual-read](#dual-read)) — CLAIM-07 flags a lingering monolith, MIGRATION.md
+walks the exit.
 
 ## CODEOWNERS
 A file that maps paths in the repo to the people or teams responsible for them,
@@ -77,9 +79,10 @@ image can't change underneath you.
 
 ## Dual-read
 Reading both the old and the new home of a record during a sanctioned migration
-window (per-claim records alongside the legacy `CLAIMS.json`; the JDG ledger
-alongside `signoff.json`), so a repo mid-migration is never punished. The
-exploded record shadows its migrated twin by slug; the legacy reads end at M7.
+window, so a repo mid-migration is never punished. V2 ran two such windows —
+per-claim records alongside the legacy `CLAIMS.json`, the JDG ledger alongside
+`signoff.json` — and BOTH ended at the M7 contraction: the checker reads only
+the new homes now, and MIGRATION.md is the sanctioned exit.
 
 ## Exit code
 The number a program returns when it finishes; `0` means success, non-zero means
@@ -130,7 +133,7 @@ Lane identity **is** the branch name — session records live under
 The fully **derived** liveness of a claimed lane (nothing stored to go stale):
 freshness = max(tip committedDate, PR updatedAt) against the descriptor's
 `lease_ttl` → **LIVE** | **STALE** (past ttl/2 — orient's nudge, never a finding)
-| **ABANDONED** (past ttl — FLOW-07 warns; `lane reclaim` may take over). An
+| **ABANDONED** (past ttl — FLOW-07 fails the run, a blocker since M7a; `lane reclaim` may take over). An
 unresolvable freshness derives no state at all — surfaced, never guessed.
 
 ## DIVERGED
@@ -142,9 +145,11 @@ verdict and fails the run; the resolution path rides the finding (reopen the
 issue, or merge/close-and-prune the lane).
 
 ## last-verified stamp
-A line like `last-verified: <short-sha> <date>` in a status doc, naming the last
-commit whose described state was actually reconciled with reality. The baseline
-checks it points at a recent commit, not a stale or off-branch one (CTX-01).
+V1's hand-maintained freshness receipt: a status-doc line naming the last commit
+whose described state was reconciled with reality. Retired at the M7 contraction
+— a stored stamp drifts and collides under concurrent lanes, so state is derived
+(`baseline orient`) and CTX-12 **blocks** the stamp signature wherever it appears
+(MIGRATION.md: delete the line).
 
 ## Least-privilege token
 Granting a CI job only the permissions it needs. In GitHub Actions, setting
@@ -270,8 +275,9 @@ Where a human records that a judgment a script can't automate — like a prior-a
 pass — was actually done, so "manual" rules leave a checkable trace instead of
 being taken on trust. The primary home is the unified JDG ledger
 (`records/judgments/JDG-*.json`, M4b): a dated, unexpired `kind: sign-off`
-judgment naming the rule as its subject. The legacy
-`.project-baseline/signoff.json` file is [dual-read](#dual-read) until M7.
+judgment naming the rule as its subject — the ONLY path since the M7
+contraction retired the legacy `.project-baseline/signoff.json` read
+(MIGRATION.md re-mints surviving entries).
 
 ## SLSA
 **Supply-chain Levels for Software Artifacts** — a framework of graded

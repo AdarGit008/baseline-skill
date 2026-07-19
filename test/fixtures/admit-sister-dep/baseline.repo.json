@@ -3,7 +3,6 @@
   "type": "node",
   "lifecycle": "experimental",
   "maturity": "prototype",
-  "owner": "fixture",
   "workflow": "multi-lane",
   "anchoring": "strict",
   "ground_truth_boundary": { "forge": "github", "default_branch": "main" },

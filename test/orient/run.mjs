@@ -37,7 +37,7 @@ ok(/TREE ✓/.test(r.out) && /HISTORY ✗/.test(r.out) && /FORGE ✗/.test(r.out
 const g = fs.mkdtempSync(path.join(os.tmpdir(), 'orient-git-'))
 execSync('git init -q', { cwd: g, env: GITENV })
 execSync('git config user.email t@t.t && git config user.name t && git config commit.gpgsign false', { cwd: g, env: GITENV })
-fs.writeFileSync(path.join(g, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'library', lifecycle: 'production', maturity: 'released', owner: 't', workflow: 'single-lane', anchoring: 'off' }))
+fs.writeFileSync(path.join(g, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'library', lifecycle: 'production', maturity: 'released', workflow: 'single-lane', anchoring: 'off' }))
 execSync('git add -A && git commit -qm init', { cwd: g, env: GITENV })
 r = orient([], g)
 ok(r.code === 0, 'git + no-gh: exit 0')
@@ -56,7 +56,7 @@ ok(!!j && j.planes.forge.available === false && j.forgeAvailable === false, '--j
 // 5 — M5b lane lines from the GIT PLANE alone (forge down, origin = a local bare repo):
 // claimed lanes appear with state/age/agent even with no PR and no forge (C31)
 const IDENT = { GIT_AUTHOR_NAME: 'T', GIT_AUTHOR_EMAIL: 't@t.t', GIT_COMMITTER_NAME: 'T', GIT_COMMITTER_EMAIL: 't@t.t' }
-const LANE_DESC = { schema_version: 1, type: 'node', lifecycle: 'experimental', maturity: 'prototype', owner: 't', workflow: 'multi-lane', anchoring: 'strict', ground_truth_boundary: { default_branch: 'main' }, lanes: { namespace: 'lane/*', lease_ttl: '7d' }, join_keys: ['Baseline-Agent', 'Baseline-Issue'] }
+const LANE_DESC = { schema_version: 1, type: 'node', lifecycle: 'experimental', maturity: 'prototype', workflow: 'multi-lane', anchoring: 'strict', ground_truth_boundary: { default_branch: 'main' }, lanes: { namespace: 'lane/*', lease_ttl: '7d' }, join_keys: ['Baseline-Agent', 'Baseline-Issue'] }
 function mkLaneWorld(desc) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'orient-lanes-'))
   const bareO = path.join(dir, 'origin.git')

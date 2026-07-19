@@ -58,7 +58,7 @@ const cli = (cwd, args, env = {}) => spawnSync(process.execPath, [BASELINE, ...a
 
 const BASE_DESC = {
   schema_version: 1, type: 'node', lifecycle: 'experimental', maturity: 'prototype',
-  owner: 'tester', workflow: 'multi-lane', anchoring: 'strict',
+  workflow: 'multi-lane', anchoring: 'strict',
   ground_truth_boundary: { forge: 'github', default_branch: 'main' },
   lanes: { namespace: 'lane/*', lease_ttl: '7d' },
   join_keys: ['Baseline-Agent', 'Baseline-Issue'],

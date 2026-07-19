@@ -2,11 +2,9 @@
   "_comment": "Distribution-repo suite: this repo ships the standard, it isn't a buildable app. project_type=docs narrows the run to the rules that fit a docs/distribution repo (build/test/service rules skip as n/a). Scored via: node check.mjs --repo .",
   "project_type": "docs",
   "makes_external_claims": false,
-  "status_file": "docs/start-here.md",
-  "signoff_file": ".project-baseline/signoff.json",
   "sources_of_truth": {
     "check.mjs": "The runner — single source of truth for how a rule is scored.",
-    "rules.json": "The rule-set manifest; the 86 rules live in rules/ (canonical, machine-readable).",
+    "rules.json": "The rule-set manifest; the 87 rules live in rules/ (canonical, machine-readable).",
     "REFERENCE.md": "Full human reference: rule table, categories, architecture diagrams.",
     "SKILL.md": "How the /baseline agent skill behaves.",
     "GLOSSARY.md": "Plain-language definitions of the DevOps/supply-chain terms."

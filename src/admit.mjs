@@ -110,7 +110,7 @@ export function runAdmit(argv) {
   }
   if (!DESCRIPTOR.present) return usage(`no ${DESCRIPTOR_FILE} at ${targetRef} — admit judges by the target's declared posture (FS1); adopt a descriptor on the target branch first`)
   if (!DESCRIPTOR.valid) return usage(`${DESCRIPTOR_FILE} at ${targetRef} is invalid (${DESCRIPTOR.errors.slice(0, 2).join('; ')}) — fix it on the target branch; a broken target posture cannot judge anything`)
-  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, SIGNOFF, JDGS } = cfgRes
+  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, JDGS } = cfgRes
 
   // ---- C35 staleness: command-level, before any rule ----
   const HEADSHA = g('rev-parse', 'HEAD')
@@ -197,7 +197,7 @@ export function runAdmit(argv) {
   // NO_EXEC: no exec-kind rule declares admit context (BUILD-05 is check's crown); the
   // fallback binding re-runs the check required check at the merge-relevant SHA instead
   // (F8 as ruled — the crown never runs twice per SHA because it never runs here at all)
-  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, SIGNOFF, JDGS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD, ADMITWORLD })
+  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JDGS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD, ADMITWORLD })
   const RULES = loadRules()
   const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, context: 'admit' })
 

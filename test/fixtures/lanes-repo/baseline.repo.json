@@ -3,7 +3,6 @@
   "type": "docs",
   "lifecycle": "production",
   "maturity": "released",
-  "owner": "golden",
   "workflow": "multi-lane",
   "anchoring": "strict",
   "lanes": { "namespace": "lane/*", "lease_ttl": "7d", "families": ["adopt/*"] },

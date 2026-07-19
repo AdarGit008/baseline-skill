@@ -3,8 +3,5 @@
   "project_type": "node",
   "_project_type": "use 'python' for a Python CLI, 'library' if it's a published package.",
   "makes_external_claims": false,
-  "bootstrap_command": "npm ci && npm test",
-  "status_file": "README.md",
-  "_status_file": "a small internal tool can keep its 'last-verified' stamp in the README rather than a separate status doc.",
-  "signoff_file": ".project-baseline/signoff.json"
+  "bootstrap_command": "npm ci && npm test"
 }

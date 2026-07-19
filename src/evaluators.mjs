@@ -15,10 +15,10 @@ import { deriveDivergence } from './derive/divergence.mjs'
 const DIV_REF_CAP = 20 // a hostile next: line with dozens of #N must not fan out a forge query each
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'status-stamp', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'records-append-only', 'records-scrub', 'records-one-home', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'descriptor-change', 'merge-sister-dep', 'forge-protection'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'records-append-only', 'records-scrub', 'records-one-home', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'descriptor-change', 'merge-sister-dep', 'forge-protection'])
 
-export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
-  const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitLag, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile } = repo
+export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
+  const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile } = repo
   // The lane rules diff against where the branch diverged: the descriptor-declared
   // default branch, preferring whichever of local/origin twin is NEWER (a stale
   // local default widens the branch diff with upstream-authored commits); an
@@ -207,31 +207,6 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       }
     }
 
-    if (k === 'status-stamp') {
-      const f = cfg[c.file_from_config]
-      // an unhonored opt-out (engine let it through: no valid descriptor) fails with the fix, not "missing: false"
-      if (f === false) return { ok: false, detail: `${c.file_from_config}:false is honored only with a valid ${DESCRIPTOR_FILE} present (orient replaces the status file)` }
-      const t = f && read(f); if (!t) return { ok: false, detail: `status file missing: ${f}` }
-      const m = t.match(new RegExp(c.stamp_key + '\\s*[:=]\\s*([^\\n]+)', 'i'))
-      if (!m) return { ok: false, detail: `no '${c.stamp_key}:' stamp in ${f}` }
-      const val = m[1].trim()
-      if (!c.match_head) return { ok: true, detail: `stamped: ${val.slice(0, 40)}` }
-      const hexes = val.match(/\b[0-9a-f]{7,40}\b/g) || []
-      if (!hexes.length) return { ok: false, detail: `stamp has no commit SHA (got '${val.slice(0, 30)}') — can't verify freshness` }
-      if (!HEAD) return { ok: true, detail: `stamped ${hexes[0].slice(0, 8)} (no git — freshness not verifiable)` }
-      // shallow clone (CI fetch-depth:1) can't resolve ancestry — accept a present stamp as unverifiable-but-fresh
-      if (gitIsShallow()) return { ok: true, detail: `stamped ${hexes[0].slice(0, 8)} (shallow clone — freshness not verifiable)` }
-      // a compact date is hex-valid too — pick the hex that names a real commit, else the first
-      const sha = hexes.find(h => gitObjExists(`${h}^{commit}`)) || hexes[0]
-      const maxLag = cfg.stamp_max_lag_commits ?? 3
-      if (HEAD.startsWith(sha.slice(0, 7)) || sha.startsWith(HEAD)) return { ok: true, detail: `stamped ${sha.slice(0, 8)} (HEAD)` }
-      // A stamp can't name the commit that contains it, so accept a RECENT ANCESTOR as fresh.
-      if (gitIsAncestor(sha) !== 0) return { ok: false, detail: `bogus: stamp ${sha.slice(0, 8)} is not an ancestor of HEAD ${HEAD} — points outside this history` } // BLOCKER
-      const lag = gitLag(sha)
-      if (lag != null && lag > maxLag) return { ok: false, soft: true, detail: `stale: stamp ${lag} commits behind HEAD (max ${maxLag}) — reconcile` } // WARN: honest but old
-      return { ok: true, detail: `stamped ${sha.slice(0, 8)} (${lag ?? '?'} behind HEAD, within ${maxLag})` }
-    }
-
     if (k === 'adr-status') {
       const files = match(cfg[c.globs_from_config]).filter(isAdrFile); if (!files.length) return { ok: null, detail: 'no numbered ADR files found' }
       const allowed = /(proposed|accepted|superseded|deprecated|rejected|amended|draft|active)/i
@@ -392,12 +367,12 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
     }
 
     if (k === 'claims-field' || k === 'claims-citations') {
-      // dual-read (M4c): exploded records/claims/CLM-*.json + the legacy monolith,
-      // records shadowing migrated legacy ids — one merged set, one verdict.
+      // records-only since M7b: exploded records/claims/CLM-*.json is the one home
+      // the checker reads; a lingering legacy monolith is CLAIM-07's business.
       const loaded = loadClaims(repo, cfg)
       if (loaded.errors.length) return { ok: false, detail: loaded.errors.slice(0, 2).join('; ') + (loaded.errors.length > 2 ? ` (+${loaded.errors.length - 2})` : '') }
       let claims = loaded.claims
-      if (!claims.length) return { ok: false, detail: loaded.legacyPresent ? `claims register is empty: ${cfg.claims_file}` : `no claims found (${cfg.claims_file} or ${CLAIM_RECORD_GLOB})` }
+      if (!claims.length) return { ok: false, detail: loaded.legacyPresent ? `no claim records — legacy ${cfg.claims_file} is no longer read; run \`baseline gen migrate-claims\` (MIGRATION.md)` : `no claims found (${CLAIM_RECORD_GLOB})` }
       if (c.applies_to_types) claims = claims.filter(cl => c.applies_to_types.includes(String(cl.type || '').toLowerCase()))
       if (!claims.length) return { ok: null, detail: 'no claims of type ' + c.applies_to_types.join('/') }
       const bad = []
@@ -420,15 +395,18 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
     }
 
     if (k === 'signoff') {
-      // the unified ledger first (M4b): a kind=sign-off JDG whose subject is this
-      // rule id satisfies it while unexpired — a lapsed one is honestly NOT signed.
-      // Legacy signoff.json keeps its exact V1 semantics + detail until M7.
+      // the unified ledger (M4b; the ONLY path since M7b — the legacy signoff.json
+      // read retired with the contraction): a kind=sign-off JDG whose subject is
+      // this rule id satisfies it while unexpired — a lapsed one is honestly NOT
+      // signed. MIGRATION.md re-mints surviving V1 entries as records.
       const j = JDGS && JDGS[rule.id]
       if (j) {
         if (j.review_by < TODAY) return { ok: false, detail: `sign-off ${j.id} lapsed (review_by ${j.review_by}) — re-judge: baseline jdg new`, signoff: true }
         return { ok: true, detail: `${j.id} by ${j.by} ${j.date} (review by ${j.review_by})` }
       }
-      const e = SIGNOFF[rule.id]; if (e && e.date) return { ok: true, detail: `signed ${e.by || '?'} ${e.date}` }
+      // parity with the claims pointer: a V1 repo staring at "no sign-off recorded"
+      // with its old ledger sitting right there deserves the migration named
+      if (FILES.includes('.project-baseline/signoff.json')) return { ok: false, detail: 'no sign-off recorded — legacy signoff.json is no longer read; re-mint: baseline jdg new (MIGRATION.md)', signoff: true }
       return { ok: false, detail: 'no sign-off recorded', signoff: true }
     }
 
@@ -489,7 +467,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
       const unscannedNote = unscanned.length ? ` — ${unscanned.length} record(s) UNSCANNED at HEAD (${unscanned.slice(0, 2).join(', ')}${unscanned.length > 2 ? ', …' : ''})` : ''
       if (det.length) return { ok: false, detail: `deterministic secret shape(s): ` + det.slice(0, 3).join('; ') + (det.length > 3 ? ` (+${det.length - 3})` : '') + unscannedNote }
       if (heu.length) return { ok: false, soft: true, detail: `heuristic finding(s): ` + heu.slice(0, 3).join('; ') + (heu.length > 3 ? ` (+${heu.length - 3})` : '') + unscannedNote }
-      if (unscanned.length) return { ok: false, soft: true, detail: `${scanned} scanned clean, but${unscannedNote.slice(3)}` }
+      if (unscanned.length) return { ok: false, soft: true, detail: `${scanned} scanned clean, but ${unscannedNote.slice(3)}` }
       return { ok: true, detail: `${scanned} record(s) scrub-clean at HEAD` + (allowed ? ` (${allowed} allowlisted)` : '') }
     }
 
@@ -562,7 +540,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, B
 
     if (k === 'descriptor') {
       const d = DESCRIPTOR
-      if (!d || !d.present) return { ok: false, soft: true, detail: `no ${DESCRIPTOR_FILE} — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init` }
+      if (!d || !d.present) return { ok: false, soft: true, detail: `no ${DESCRIPTOR_FILE} — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset` }
       if (!d.valid) return { ok: false, detail: `${DESCRIPTOR_FILE} invalid: ${d.errors.slice(0, 2).join('; ')}${d.errors.length > 2 ? ` (+${d.errors.length - 2} more)` : ''}` }
       const x = d.data
       return { ok: true, detail: `type=${x.type} · ${x.lifecycle}/${x.maturity} · workflow=${x.workflow} · anchoring=${x.anchoring}` }

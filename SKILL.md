@@ -1,6 +1,6 @@
 ---
 name: baseline
-description: "Use when asked to run baseline, score a repo, check build- or project-readiness, audit a repo against a standard, or adopt/scaffold the project-baseline standard. Runs a zero-dependency Node checker (88 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, claims, records & ledger, lane workflow, and divergence), reads the scorecard, and helps fix or scaffold what's missing."
+description: "Use when asked to run baseline, score a repo, check build- or project-readiness, audit a repo against a standard, or adopt/scaffold the project-baseline standard. Runs a zero-dependency Node checker (87 rules across build, tests, security & supply-chain, reproducibility, operability, change-governance, community, context/doc-drift, claims, records & ledger, lane workflow, and divergence), reads the scorecard, and helps fix or scaffold what's missing."
 version: 2.4.0
 author: Adar (AdarGit008)
 license: MIT
@@ -15,7 +15,7 @@ metadata:
 
 ## Overview
 
-A **testable readiness standard**: 88 rules, each backed by a check a zero-dependency Node runner executes on a repo *at rest*. Blockers fail CI (`exit 1`); the judgment calls a script can't make resolve via a dated **sign-off ledger**. The throughline: *don't trust a written promise — make something check it.* A checklist doc drifts; this is the checklist as an exit code.
+A **testable readiness standard**: 87 rules, each backed by a check a zero-dependency Node runner executes on a repo *at rest*. Blockers fail CI (`exit 1`); the judgment calls a script can't make resolve via a dated **sign-off ledger**. The throughline: *don't trust a written promise — make something check it.* A checklist doc drifts; this is the checklist as an exit code.
 
 Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SKILL.md`). The runner is portable — plain Node, no agent-specific dependency. Source: `github.com/AdarGit008/baseline-skill` (reference repo: `baseline-demo`).
 
@@ -37,7 +37,7 @@ Runs natively under **Hermes** and **Claude Code** (and any agent that loads `SK
 
 The unified CLI is **`baseline.mjs`** — `node "<abs>/baseline.mjs" <command>` (`check`, `admit`, `reconcile`, `orient`, `lane`, `log`, `jdg`, `gen`, `scrub`, `help`); `baseline check …` delegates to `check.mjs`, still the checker. Both load the rule set (`rules.json` manifest + `rules/` modules) and `src/` from their own directory, so always invoke **by absolute path**; don't copy them away from the rule set + `src/`. Requires **Node ≥ 18 and `git`** on PATH — if `node` is missing, say so rather than guessing.
 
-Co-located files: `baseline.mjs` (CLI entry: check / admit / reconcile / orient / lane / log / jdg / gen / scrub), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 88 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook + pre-push scrub hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
+Co-located files: `baseline.mjs` (CLI entry: check / admit / reconcile / orient / lane / log / jdg / gen / scrub), `check.mjs` (the checker), `rules.json` + `rules/` (the rule-set manifest + the 87 rules, one module per category), `schema/` (the descriptor schema + the four record schemas), `CONTRACT.md` (the plain-git record forms), `config.example.json`, `templates/` (scaffolds), `config-presets/` (ready-made configs), `hooks/` (SessionStart orient hook + pre-push scrub hook), `REFERENCE.md` (full reference), `GLOSSARY.md` (term definitions).
 
 ## Orientation — the first act
 
@@ -121,11 +121,11 @@ Run the survey (see **Orientation — the first act** above): `node "$SKILL_DIR/
    - `--profile advanced` — opt into expert rules (SBOM, code-scanning, mutation testing, dependency-vuln-scan, coverage-floor). `service` turns on automatically for `project_type=service`.
    - `--json` — machine output instead of the scorecard.
    - **Completion criterion:** you have the readiness %, the blocker count, and each FAIL/notable WARN with its one-line detail.
-3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 86 rows — summarize and offer to fix or scaffold.
+3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 87 rows — summarize and offer to fix or scaffold.
 
 ### init — "set up / adopt / scaffold baseline"
 **Descriptor-first, always.** The repo's `baseline.repo.json` is written before anything else — it's the one file baseline requires (schema: `schema/repo.schema.json`), and every applicability/severity derivation reads it. Its `type` supersedes filesystem auto-detection.
-1. **Write the descriptor.** Copy the closest posture preset (or the blank template) to `<repo>/baseline.repo.json`, then set `type`, `lifecycle`, `maturity`, `owner`, `workflow`, `anchoring`:
+1. **Write the descriptor.** Copy the closest posture preset (or the blank template) to `<repo>/baseline.repo.json`, then set `type`, `lifecycle`, `maturity`, `workflow`, `anchoring`:
    ```bash
    cp "$SKILL_DIR/config-presets/multi-lane-agents.repo.json" <repo>/baseline.repo.json   # V2 default: lanes on
    # or readiness-only.repo.json (just the score, V1-equivalent) · or templates/baseline.repo.json (blank)
@@ -135,9 +135,8 @@ Run the survey (see **Orientation — the first act** above): `node "$SKILL_DIR/
    ```bash
    cp "$SKILL_DIR/config-presets/node-service.json" <repo>/baseline.config.json   # tuning: bootstrap_command, globs…
    mkdir -p <repo>/records/claims && cp "$SKILL_DIR/templates/claim.json" <repo>/records/claims/CLM-0001.json   # only if it makes external claims — one claim, one record
-   mkdir -p <repo>/.project-baseline && cp "$SKILL_DIR/templates/signoff.json" <repo>/.project-baseline/signoff.json
    ```
-   Per-claim records (`records/claims/CLM-NNNN.json`) are the claims home; a legacy `docs/CLAIMS.json` monolith is still dual-read until M7 — CLAIM-07 nudges migration (`baseline gen migrate-claims`).
+   Per-claim records (`records/claims/CLM-NNNN.json`) are the **only** claims home the checker reads; a legacy `docs/CLAIMS.json` monolith is flagged by CLAIM-07 — migrate it (`baseline gen migrate-claims`, steps in `MIGRATION.md`).
 3. Edit `baseline.config.json` to reality: `bootstrap_command` (clean-checkout install+test for BUILD-05), `makes_external_claims` (false skips CLAIM-*). Opt-in `*_globs` keys stay empty until adopted.
 4. Wire the `baseline` job into CI as a **required** check (rule BUILD-06) — snippet is in `REFERENCE.md`.
 5. Run a first score — `DESC-01` confirms the descriptor is present and valid.
@@ -145,7 +144,7 @@ Run the survey (see **Orientation — the first act** above): `node "$SKILL_DIR/
 
 ### fix — "get this to green"
 1. Score first. For each blocker/warn to address, apply the rule's own `fix` field (read it from `rules.json`) as concrete edits — add the missing LICENSE, pin the action to a SHA, git-ignore + rotate the `.env` secret, add the negative test, etc.
-2. For `manual` (sign-off) rules, **don't fake the check** — do the judgment with the user (blast-radius, prior-art pass, wedge/moat) and record a dated entry in `.project-baseline/signoff.json`.
+2. For `manual` (sign-off) rules, **don't fake the check** — do the judgment with the user (blast-radius, prior-art pass, wedge/moat) and record it as a dated, expiring judgment: `baseline jdg new --kind sign-off --subject <RULE-ID> --reason "..." --review-by <date>`.
 3. Re-score to confirm.
 - **Completion criterion:** re-score shows the targeted rules resolved and no new blockers introduced.
 
@@ -174,14 +173,14 @@ Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / 
 
 1. **Copying `check.mjs` away from the rule set (`rules.json` + `rules/`) + `src/`.** It loads them from its own directory — invoke by absolute path instead.
 2. **Presenting a warn as a blocker (or vice-versa).** Severity is in the rule modules (`rules/*.json`) and the runner output — never upgrade/downgrade it.
-3. **Faking a sign-off.** Manual rules exist because a script can't judge them; record a real dated `signoff.json` entry, don't rubber-stamp.
+3. **Faking a sign-off.** Manual rules exist because a script can't judge them; record a real dated judgment (`baseline jdg new --kind sign-off`), don't rubber-stamp.
 4. **Skipping BUILD-05 by habit.** Omit `--no-exec` when the repo is trusted and `bootstrap_command` is set — a green crown check is the strongest single signal.
 5. **Gaming a warn to hit 100%.** An honest advisory warn (e.g. a dependency-updater rule on a zero-dep repo) beats a presence-theater fix. 0 blockers = build-ready is the real bar.
 
 ## Verification Checklist
 
 - [ ] Ran the runner by its **absolute** path with `--repo <target>`
-- [ ] Reported **blockers first**, then warnings, grouped by category (not an 86-row dump)
+- [ ] Reported **blockers first**, then warnings, grouped by category (not an 87-row dump)
 - [ ] For `fix`: re-scored and confirmed no new blockers
 - [ ] For `init`: picked a preset/config, scaffolded only what was missing, ran a first score
 - [ ] Any sign-off is a real dated judgment, not a rubber stamp

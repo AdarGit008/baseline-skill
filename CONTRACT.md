@@ -76,8 +76,9 @@ A judgment is **dated, owned, scoped, reasoned, and it expires**:
 ```
 
 - **Kinds:** `sign-off` (satisfies a manual rule whose id is `subject` — the
-  unified ledger outranks the legacy `signoff.json`, and a **lapsed sign-off is
-  not signed**; the **newest** sign-off per subject governs, so a lapsed newest
+  judgment ledger is the ONLY sign-off path since M7b (the legacy `signoff.json`
+  read retired; MIGRATION.md re-mints surviving entries), and a **lapsed
+  sign-off is not signed**; the **newest** sign-off per subject governs, so a lapsed newest
   is not rescued by an older unexpired record — re-judge) · `deviation` ·
   `risk-acceptance` · `break-glass`.
 - **The machine contract:** `expected_state` is the world you assumed (mismatch =
@@ -127,6 +128,20 @@ same-range judgment is a **blocker refusal**; the *weakening* classification
 (the schema's declared `x-strictness` ladders + gate-consumed set-rules) rides
 the finding text — deterministic, and M7's per-axis policy seam. Tuning knobs
 (`lease_ttl`, `staleness`, `lanes.families`, `engine_pin`) are posture-neutral.
+
+### The two files — the separation is FINAL (re-ruled at M7)
+
+`baseline.repo.json` (identity & posture) and `baseline.config.json` (tuning)
+do **not** converge — ever. The split is load-bearing, not transitional: the
+descriptor is the **change-controlled** file, read at the *target ref* by admit
+(FS1 — that ref-read ignores fields a later schema dropped, so a schema
+contraction never bricks admit against history; the worktree read stays strict)
+and guarded by DESC-03's same-PR judgment; the config is the **free
+worktree file** — paths, commands, thresholds — editable without ceremony.
+Converging them would put every `doc_lag_days` tweak behind judgment ceremony
+and rewrite FS1/DESC-03/schema/corpus to fix zero named failures. Revive trigger
+(the one honest reopen): a demonstrated need for per-field change-control
+granularity inside one file.
 
 ### Break-glass (FS5, ENFORCED since M6a)
 
@@ -315,5 +330,10 @@ consumer; today it is the paste-into-the-PR-thread proof of what was judged.
 
 ## Reserved (lands later, documented now)
 
-- **M7 — contraction:** status-doc surfaces retired; `signoff.json` and the
-  legacy `CLAIMS.json` dual-reads end; pointer install + lock.
+- **M7c — lock + residue:** `gen lock` writes `tools/baseline.lock.json`
+  ({version, tree-hash over the vendored files}); REC-06 (warn) flags an
+  unpinned or skewed vendored tree; OPS-07 (warn) reads the reconcile
+  workflow state (`disabled_*` — the 60-day auto-disable — is the named death
+  mode). The M7b contraction itself SHIPPED: status-doc surfaces retired,
+  `signoff.json` and legacy `CLAIMS.json` checker reads ended (MIGRATION.md
+  is the walk-through).

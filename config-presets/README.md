@@ -13,10 +13,9 @@ ignores any key starting with `_`. The full key reference lives in `../config.ex
 
 | Preset | `project_type` | For | Notable |
 |---|---|---|---|
-| [`context-management`](context-management.json) | `docs` | Docs/knowledge repos where keeping context true over time is the point | Turns the CONTEXT rules **up** (freshness, grounding, generated-provenance, sources-of-truth, symbol resolution); skips build/test |
 | [`node-service`](node-service.json) | `service` | A Node/TS web service or app | Auto-enables the OPS rules (health check, structured logs, graceful shutdown, runbook) |
 | [`python-library`](python-library.json) | `library` | An installable Python package | Build/test/quality/repro; no OPS; add `advanced` for SBOM/scanning |
-| [`internal-tool`](internal-tool.json) | `node` | A CLI/script/utility with no claims | Lean; CLAIM-* and OPS off; stamp lives in the README |
+| [`internal-tool`](internal-tool.json) | `node` | A CLI/script/utility with no claims | Lean; CLAIM-* and OPS off |
 | [`product-with-claims`](product-with-claims.json) | `service` | A product/launch that makes competitive or novelty claims | Turns CLAIM-* discipline **on** (build-state, blast-radius, dated prior-art pass) |
 
 ## Descriptor presets — `baseline.repo.json` (posture)
@@ -37,7 +36,7 @@ cp config-presets/multi-lane-agents.repo.json  /path/to/repo/baseline.repo.json
 | [`multi-lane-agents`](multi-lane-agents.repo.json) | `multi-lane` | The V2 default — one dev or a fleet running N parallel agent lanes | Lane namespaces, 7-day leases, `anchoring: strict` |
 | [`readiness-only`](readiness-only.repo.json) | `single-lane` | Just the readiness score, no workflow contract (V1-equivalent) | Minimal descriptor; `anchoring: off`, no lanes block |
 
-`init` writes a descriptor as its first act; absent one, `DESC-01` warns and offers to scaffold.
+Copying a descriptor preset is adoption's first act; absent one, `DESC-01` warns and names this copy as the fix.
 
 After copying a preset, run a first score:
 
@@ -46,5 +45,5 @@ node /path/to/skill/check.mjs --repo /path/to/repo
 ```
 
 Two dials worth knowing:
-- **`makes_external_claims`** — `false` skips all CLAIM-* rules (most internal repos); `true` requires a `docs/CLAIMS.json` register.
-- **Opt-in `*_globs`** (`freshness_globs`, `generated_globs`, `grounding_docs`) — empty by default so those rules stay silent until you adopt the convention. The `context-management` preset switches them on with example paths — replace with your real ones.
+- **`makes_external_claims`** — `false` skips all CLAIM-* rules (most internal repos); `true` requires per-claim records under `records/claims/` (a legacy `docs/CLAIMS.json` monolith migrates via `baseline gen migrate-claims` — see `../MIGRATION.md`).
+- **Opt-in `*_globs`** (`freshness_globs`, `generated_globs`, `grounding_docs`) — empty by default so those rules stay silent until you adopt the convention; switch them on with your real paths.

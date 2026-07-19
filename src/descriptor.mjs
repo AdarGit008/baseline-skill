@@ -23,7 +23,6 @@ export const FIELD_CONSUMERS = {
   type:                  'M2 · config.project_type — supersedes filesystem auto-detection',
   lifecycle:             'reserved:M7 · record-scrutiny promotion (M4 shipped no lifecycle consumer; #24 decides consume-or-drop)',
   maturity:              'M4c · config CLAIMS_ACTIVE gate — CLAIM category activates at "claimed" (C24, discrete tiers)',
-  owner:                 'reserved:M7 · consume-or-drop (#24 — the M5 panel found no M5 consumer: lane identity is the Baseline-Agent trailer, not the descriptor)',
   workflow:              'M4c · engine posture gate — rules declaring `workflow` SKIP on other postures; string-or-array families since M5c',
   anchoring:             'M5c · FLOW-01 anchoring knob — off SKIPs, relaxed wants a parseable anchor, strict also wants forge resolution',
   ground_truth_boundary: 'M4c · engine default-branch lane gate (branch_scope rules); probe/target-ref reads reserved:M6',
@@ -52,6 +51,18 @@ export function loadDescriptor(repo, { ref = null } = {}) {
   if (raw == null) return { present: false, valid: false, data: null, errors: [], source }
   let data
   try { data = JSON.parse(raw) } catch { return { present: true, valid: false, data: null, errors: ['not valid JSON'], source } }
+  // Schema evolution vs the target-ref seam (M7b): a committed descriptor that was
+  // valid under its era's schema may carry a field a later engine dropped (e.g.
+  // `owner`). A ref-read serves POSTURE FACTS about an already-admitted state, so
+  // an unknown field there is ignored, not fatal — otherwise every schema
+  // contraction bricks admit against the very target the contracting PR must land
+  // on (the M6 relief-circularity class). The WORKTREE read stays strict: the
+  // state being authored next validates against today's schema, and DESC-01
+  // carries the pressure to shed retired fields.
+  if (ref && data && typeof data === 'object' && !Array.isArray(data)) {
+    const known = new Set(Object.keys(DESCRIPTOR_SCHEMA.properties || {}))
+    for (const k of Object.keys(data)) if (!known.has(k) && !k.startsWith('_')) delete data[k]
+  }
   const errors = []
   validateAgainst(data, DESCRIPTOR_SCHEMA, '', errors)
   return { present: true, valid: errors.length === 0, data, errors, source }

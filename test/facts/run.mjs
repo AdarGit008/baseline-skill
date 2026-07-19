@@ -42,7 +42,7 @@ ok(status.backlog.length === 1 && status.backlog[0].number === 2, 'backlog = the
 
 // ---- M5b: the forge lane-refs path over replay (relative Ref.name shape, verified live) ----
 process.env.BASELINE_LOG_NOW = '2026-07-14T12:00:00Z' // pin the lease clock — states below are arithmetic, not luck
-const laneDesc = { schema_version: 1, type: 'node', lifecycle: 'experimental', maturity: 'prototype', owner: 't', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, join_keys: ['Baseline-Agent', 'Baseline-Issue'] }
+const laneDesc = { schema_version: 1, type: 'node', lifecycle: 'experimental', maturity: 'prototype', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, join_keys: ['Baseline-Agent', 'Baseline-Issue'] }
 const repo2 = { REPO: '/nonexistent', HEAD: null, read: rel => rel === 'baseline.repo.json' ? JSON.stringify(laneDesc) : null, gitIsShallow: () => false }
 const facts2 = gatherFacts(repo2, { descriptor: loadDescriptor(repo2), capability: cap })
 const status2 = deriveStatus(facts2, join(facts2), cap)

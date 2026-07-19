@@ -8,13 +8,13 @@ A **testable readiness standard** for new projects. Every lesson is a rule; a ze
 
 **v1** distilled 20 rules from three of the author's own repos. That sample was thin. **v2** pressure-tested v1 against the field's actual prior art — [OpenSSF Scorecard](GLOSSARY.md#openssf-scorecard), [SLSA](GLOSSARY.md#slsa), the [Twelve-Factor App](GLOSSARY.md#twelve-factor-app), Google's SRE books, [Diátaxis](GLOSSARY.md#diataxis), [Keep a Changelog](GLOSSARY.md#keep-a-changelog), [repolinter](GLOSSARY.md#repolinter), [Backstage/Cortex/OpsLevel](GLOSSARY.md#service-catalog), Stryker, and ~40 more sources — kept everything v1 had, and added what the field agreed v1 was missing. Each candidate was **adversarially verified** (is the source real? is it robot-checkable at rest? does it actually add over v1?) before it earned a place; 15 "looks-thorough-checks-nothing" candidates were dropped.
 
-**88 rules across 15 categories.** 25 blockers · 58 warnings · 5 sign-offs.
+**87 rules across 15 categories.** 25 blockers · 57 warnings · 5 sign-offs.
 
 ## Profiles — v2 stays sharp by only running what fits
 
 Not every rule fits every repo. A pre-code planning repo shouldn't be nagged about health endpoints; a CLI shouldn't be told to publish an [SBOM](GLOSSARY.md#sbom). So rules carry a **[profile](GLOSSARY.md#profile)**:
 
-- **core** (56 rules) — always on. Universal, high-confidence, machine-checkable.
+- **core** (72 rules) — always on. Universal, high-confidence, machine-checkable.
 - **service** (6 rules) — **auto-on when `project_type=service`.** Operability rules ([health check](GLOSSARY.md#health-check), [structured logs](GLOSSARY.md#structured-logging), [graceful shutdown](GLOSSARY.md#graceful-shutdown), [runbook](GLOSSARY.md#runbook)) that only make sense for a running service.
 - **advanced** (9 rules) — **opt-in** via `config.profiles: ["advanced"]`. Expert/niche rules (SBOM, [code-scanning](GLOSSARY.md#sast), [mutation testing](GLOSSARY.md#mutation-testing), symbol-integrity) that would be noise on most repos.
 
@@ -58,13 +58,13 @@ These diagrams mirror the runner — they're its actual control flow, not a sket
 ```mermaid
 flowchart LR
   CFG["baseline.config.json — intent"] --> RES
-  RULES["rules/ — 88 rules (manifest: rules.json)"] --> EVAL
+  RULES["rules/ — 87 rules (manifest: rules.json)"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
-    IDX["file index + git helpers"] --> EVAL["~39 check evaluators"]
+    IDX["file index + git helpers"] --> EVAL["~38 check evaluators"]
     RES["config resolution"] --> EVAL
   end
-  SO["signoff.json — human judgments"] --> EVAL
+  SO["records/judgments/ — the judgment ledger (sign-offs)"] --> EVAL
   EVAL --> OUT["scorecard + exit code"]
 ```
 
@@ -75,7 +75,7 @@ flowchart TD
   A["CLI args: --repo / --config / --profile / --no-exec / --json"] --> B["Index repo files: walk + git ls-files + HEAD"]
   B --> C["Resolve config: DEFAULTS then detectType then baseline.config.json then --config then --profile"]
   C --> D["Active profiles: core always; service auto if type=service; others opt-in"]
-  C --> E["Claims active? register in either home (docs/CLAIMS.json or records/claims/) + not maturity-gated (prototype skips unless makes_external_claims:true)"]
+  C --> E["Claims active? register present (records/claims/, or a lingering legacy monolith — activation only; CLAIM-07 flags it) + not maturity-gated (prototype skips unless makes_external_claims:true)"]
   D --> F{"for each rule"}
   E --> F
   F --> G["evalCheck by check.kind"]
@@ -115,11 +115,9 @@ cp -r baseline-v2 tools/baseline
 # 2. declare intent (copy + edit)
 cp tools/baseline/config.example.json baseline.config.json
 
-# 3. scaffold the artifacts the standard expects (per-claim records — the
-#    legacy docs/CLAIMS.json monolith stays dual-readable until M7, CLAIM-07 nudges migration)
+# 3. scaffold the artifacts the standard expects (per-claim records are the one
+#    claims home; a legacy docs/CLAIMS.json migrates via `gen migrate-claims` — MIGRATION.md)
 mkdir -p records/claims && cp tools/baseline/templates/claim.json records/claims/CLM-0001.json
-cp tools/baseline/templates/start-here.md docs/start-here.md
-mkdir -p .project-baseline && cp tools/baseline/templates/signoff.json .project-baseline/signoff.json
 
 # 4. run it
 node tools/baseline/check.mjs                 # human-readable scorecard, exit 1 on blockers
@@ -198,7 +196,6 @@ Everything auto-detects; override only what you need in `baseline.config.json` (
 | `generated_globs` | **opt-in** for CTX-08 — generated files that must carry a `DO NOT EDIT` marker. Empty = rule skips. |
 | `grounding_docs` | **opt-in** for CTX-09 — required docs that must exist + be non-empty. Empty = rule skips. |
 | `decision_globs` / `doc_globs` | where ADR-status/forward-link and link/path checks look. |
-| `stamp_max_lag_commits` | CTX-01 accepts a status stamp naming HEAD or an ancestor within this many commits (default 3); off-branch/bogus fails, honest-but-older warns. |
 | `doc_lag_days` | CTX-11 warns when a doc's anchored `sources:` code was committed more than this many days after the doc (default 30). |
 
 The three opt-in `*_globs` keys default to empty, so those rules stay silent until you adopt the convention — no nagging a repo that hasn't opted in.
@@ -232,15 +229,15 @@ node baseline.mjs jdg new --kind risk-acceptance --subject SEC-13 \
 node baseline.mjs jdg check        # ✓ ok · ≈ drifted · ? unresolvable · ⏰ expired · ✗ tripped
 ```
 
-The machine contract: `expected_state` snapshots the world the judgment assumed (mismatch = **DRIFTED**), `tripwire` (`fact op value`; ops `eq|ne|gt|lt|exists|absent`) VOIDS it (**TRIPPED**), `review_by` lapses it (**EXPIRED**); an unknown fact path is **UNRESOLVABLE** — surfaced, never guessed. Facts: `descriptor.*` · `planes.{tree,history,forge}.*` · `git.{branch,head,shallow}` · `today` (+ `--facts FILE` overlay). `jdg check` exits 1 on tripped/expired/invalid; M6's reconcile runs the same evaluation on cron. A `kind: sign-off` judgment whose `subject` is a manual rule's id satisfies that rule while unexpired — the unified ledger outranks the legacy `signoff.json` (dual-read until M7), and a lapsed sign-off is honestly not signed. The full hand-written forms live in **[CONTRACT.md](CONTRACT.md)**.
+The machine contract: `expected_state` snapshots the world the judgment assumed (mismatch = **DRIFTED**), `tripwire` (`fact op value`; ops `eq|ne|gt|lt|exists|absent`) VOIDS it (**TRIPPED**), `review_by` lapses it (**EXPIRED**); an unknown fact path is **UNRESOLVABLE** — surfaced, never guessed. Facts: `descriptor.*` · `planes.{tree,history,forge}.*` · `git.{branch,head,shallow}` · `today` (+ `--facts FILE` overlay). `jdg check` exits 1 on tripped/expired/invalid; M6's reconcile runs the same evaluation on cron. A `kind: sign-off` judgment whose `subject` is a manual rule's id satisfies that rule while unexpired — the judgment ledger is the ONLY sign-off path (the legacy `signoff.json` read retired at M7b — MIGRATION.md re-mints surviving entries), and a lapsed sign-off is honestly not signed. The full hand-written forms live in **[CONTRACT.md](CONTRACT.md)**.
 
 **The record checks (M4c).** What the write gate promises, the REC rules verify on what actually landed: **REC-01** proves records are append-only from history (modify/delete/rename events, plus a blob-at-introduction comparison that catches merge-hidden edits), **REC-02** re-scans landed records with the same `scan()` — blob content at HEAD, *what landed*, never the worktree — where deterministic findings fire the rule (still warn — REC promotion deferred: the only ungated candidates would need a severity-by-posture mechanism nobody consumes) and heuristics stay soft (WARN forever), **REC-04** flags a record fact living in two homes, and **REC-05** wants a push-time secret gate visible **at rest**: it PASSes on gitleaks-class wiring (CI, pre-commit, or a config) or a committed `scrub-pre-push` hook script. GitHub push protection satisfies the same intent, but it isn't observable at rest — M6's forge rules assert it live — so on its own REC-05 still warns. Hand-written records get the scrub at the push boundary once the scaffolded hook is installed per clone (`cp tools/baseline/hooks/scrub-pre-push.sh .git/hooks/pre-push`), whose engine is `baseline scrub` (worktree files, or `--pushed SHA [--since SHA]` committed-blob ranges). The record-coupled **FLOW** rules run only on a lane branch of a declared multi-lane repo — the engine turns the rule-declared `workflow`/`branch_scope` fields into SKIPs everywhere else, so there are no wallpaper warns: **FLOW-02** wants the lane's session record riding the branch, **FLOW-06** wants a gated subject (the descriptor) changing with its judgment record in the same range (the DESC-03 preview; enforcement lands at M6 admit).
 
-**Claims explosion (M4c).** `baseline gen migrate-claims` explodes the V1 `docs/CLAIMS.json` monolith into per-claim `records/claims/CLM-NNNN.json` (C17) — `slug` preserves the V1 id, numbering continues past existing records, schema-invalid claims are refused loudly, reruns are idempotent. The CLAIM checks dual-read both homes (a record shadows its migrated legacy twin) until M7 retires the legacy read; **CLAIM-07** warns while the monolith lingers. CLAIM activation is also maturity-gated (C24): a descriptor-declared `prototype` repo isn't held to claims discipline unless it explicitly opts in — uniformly, all eight CLAIM rules (CLAIM-06 joined the family gate in the M4c review). And with a valid descriptor present, `status_file: false` is an honored opt-out — CTX-01/CTX-12 skip, `orient` is the status surface.
+**Claims explosion (M4c).** `baseline gen migrate-claims` explodes the V1 `docs/CLAIMS.json` monolith into per-claim `records/claims/CLM-NNNN.json` (C17) — `slug` preserves the V1 id, numbering continues past existing records, schema-invalid claims are refused loudly, reruns are idempotent. Since M7b the CLAIM checks read **records only** — an unmigrated monolith is never counted; **CLAIM-07** warns while it lingers, and the empty-register finding names the migration. CLAIM activation is also maturity-gated (C24): a descriptor-declared `prototype` repo isn't held to claims discipline unless it explicitly opts in — uniformly, all eight CLAIM rules (CLAIM-06 joined the family gate in the M4c review). The stored-status surface is retired outright (M7b): CTX-12 blocks the line-anchored stamp signature in any tracked doc, keyed to no config — `orient` is the status surface, everywhere.
 
 ## The rules
 
-[`blocker`](GLOSSARY.md#blocker) fails CI · [`warn`](GLOSSARY.md#warn) is advisory · [`sign-off`](GLOSSARY.md#sign-off-ledger) (manual) is satisfied only by a dated entry in `.project-baseline/signoff.json`.
+[`blocker`](GLOSSARY.md#blocker) fails CI · [`warn`](GLOSSARY.md#warn) is advisory · [`sign-off`](GLOSSARY.md#sign-off-ledger) (manual) is satisfied only by a dated, unexpired `kind: sign-off` judgment in `records/judgments/` whose `subject` is the rule id.
 
 Every rule also declares **`sources`** (which ground-truth planes it reads: tree · history · forge · exec), **`on_unreachable`** (skip · fail · stale-ok), **`contexts`** (check · admit · reconcile), and **`certainty`** (deterministic · heuristic · judgment). `--self-check` enforces two structural laws: a **blocker must be deterministic**, and a **sign-off must be judgment**.
 
@@ -338,11 +335,10 @@ GOV-01/02 are **live asserts on the readable surface** since M6b (`forge-protect
 | COMM-02 | README exists with newcomer-critical sections | 🟡 warn | core |
 | COMM-03 | CHANGELOG present with an Unreleased section | 🟡 warn | core |
 
-### Context management (12)
+### Context management (11)
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
-| CTX-01 | Status lives in one owner with a fresh 'last-verified' stamp | 🔴 blocker | core |
 | CTX-02 | Every decision record carries a Status; superseded ones link forward | 🔴 blocker | core |
 | CTX-03 | Sources of truth are declared | 🟡 warn | core |
 | CTX-04 | No frozen/consolidated doc without regeneration or supersede banners | ✍️ sign-off | core |
@@ -353,13 +349,13 @@ GOV-01/02 are **live asserts on the readable surface** since M6b (`forge-protect
 | CTX-09 | Required grounding docs exist and are non-empty | 🟡 warn | core |
 | CTX-10 | Code symbols/paths named in docs still resolve | 🟡 warn | advanced |
 | CTX-11 | Docs don't lag the code they anchor | 🟡 warn | core |
-| CTX-12 | No hand-maintained status stamp — derive it (tripwire; retires CTX-01 at M7) | 🟡 warn | core |
+| CTX-12 | No hand-maintained status stamp (derive it instead) | 🔴 blocker | core |
 
 ### Claims discipline (8)
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
-| CLAIM-00 | A claims register exists (either home — records/claims/ or the legacy monolith) | 🔴 blocker | core |
+| CLAIM-00 | A claims register exists (records/claims/; a lingering legacy monolith counts for presence only — CLAIM-07 flags it) | 🔴 blocker | core |
 | CLAIM-01 | Every claim tagged with a build-state | 🔴 blocker | core |
 | CLAIM-02 | Every claim graded by blast radius | 🔴 blocker | core |
 | CLAIM-03 | Novelty/competitive claims have a dated prior-art pass | 🔴 blocker | core |
@@ -374,12 +370,12 @@ All CLAIM rules are opt-in (`makes_external_claims` / a register present) and ma
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
-| REC-01 | Committed records are append-only (proven from history) | 🟡 warn → blocker at M7 | core |
-| REC-02 | Landed records are scrub-clean | 🟡 warn → blocker at M7 | core |
+| REC-01 | Committed records are append-only (proven from history) | 🟡 warn (promotion deferred by the M7 ruling) | core |
+| REC-02 | Landed records are scrub-clean | 🟡 warn (promotion deferred by the M7 ruling) | core |
 | REC-04 | Every record fact has one home | 🟡 warn (pinned — heuristic) | core |
 | REC-05 | Records are covered by a push-time secret gate (at-rest evidence: gitleaks-class config or a committed scrub hook) | 🟡 warn | core |
 
-REC-01/02/05 skip when no records are committed; REC-04 also cross-checks the ADR homes (`docs/decisions/`, `adr/`, `records/decisions/`), so it can fire on a true ADR-number duplication even without `records/`. REC-01/REC-02 are deterministic — M7's promotion per posture is a pure severity flip; REC-03 (record schema conformance as a rule) is reserved.
+REC-01/02/05 skip when no records are committed; REC-04 also cross-checks the ADR homes (`docs/decisions/`, `adr/`, `records/decisions/`), so it can fire on a true ADR-number duplication even without `records/`. REC-01/REC-02 are deterministic and stay warn — the M7 ruling kept them (the only ungated candidates; a severity-by-posture seam has no consumer — revive on a real demand for REC-02-at-admit); REC-03 (record schema conformance as a rule) is reserved.
 
 ### Lane workflow (7) — M4c/M5c
 
@@ -420,17 +416,17 @@ Admit-context only. Deterministic from the git plane alone: a sister lane whose 
 | DESC-01 | Repo descriptor present and valid | 🟡 warn | core |
 | DESC-03 | A descriptor change carries its judgment in the same range | 🔴 blocker (admit only) | core |
 
-Declared identity, not a guess: a schema-validated `baseline.repo.json` (`type`, `lifecycle`, `maturity`, `owner`, `workflow`, `anchoring`) is the one stored intent every applicability/severity derivation consumes. Absent or invalid → warn + scaffold; the `type` supersedes filesystem auto-detection. **DESC-03** (M6a, deterministic — blocker is lawful): `baseline.repo.json` in the admitted range's diff with no same-range judgment whose `subject` is exactly `baseline.repo.json` refuses admission; the posture-weakening classification (the schema's `x-strictness` ladders — workflow/anchoring/maturity — plus gate-consumed set-rules and `join_keys` shrink, `src/derive/posture.mjs`) rides the finding text as M7's per-axis policy seam. FLOW-06 keeps the same pair as a *check-context* advisory — disjoint contexts, one predicate judged once per run.
+Declared identity, not a guess: a schema-validated `baseline.repo.json` (`type`, `lifecycle`, `maturity`, `workflow`, `anchoring`) is the one stored intent every applicability/severity derivation consumes. Absent or invalid → warn + scaffold; the `type` supersedes filesystem auto-detection. **DESC-03** (M6a, deterministic — blocker is lawful): `baseline.repo.json` in the admitted range's diff with no same-range judgment whose `subject` is exactly `baseline.repo.json` refuses admission; the posture-weakening classification (the schema's `x-strictness` ladders — workflow/anchoring/maturity — plus gate-consumed set-rules and `join_keys` shrink, `src/derive/posture.mjs`) rides the finding text as M7's per-axis policy seam. FLOW-06 keeps the same pair as a *check-context* advisory — disjoint contexts, one predicate judged once per run.
 
 ## Check kinds (how the runner verifies, with zero deps)
 
-`any-file` (glob presence; `mode:absent`, `tracked_only`, `allow`) · `grep` (regex present/absent/all over contents; `tracked_only`) · `file-contains` (file exists AND matches) · `json-field` (parse JSON, assert a dotted path) · `any-of` (pass if any alternative passes) · `command` (run the bootstrap; `repeat`) · `md-links` (relative markdown links resolve) · `doc-freshness` (frontmatter date within a window) · `adr-status` / `adr-forward-link` (decision-record status + resolvable supersede links) · `required-files` (a config list exists + non-empty) · `path-integrity` (backticked paths in docs resolve) · `version-consistency` (runtime major agrees across `.nvmrc`/CI/Dockerfile/`engines`) · `dockerfile-digest` (`FROM` pinned by `@sha256`) · `status-stamp` · `config-nonempty` · `claims-field` / `claims-citations` · `signoff` · `descriptor` (`baseline.repo.json` present + schema-valid) · the M5c lane-world kinds — `lane-anchor` / `lane-next-filled` / `lane-namespace` / `lane-record-pushed` / `lane-lease` / `div-anchor-closed` / `div-next-closed` / `div-closes-closed` — which evaluate through ONE lazy gathering (the same derivation `orient` renders and `lane reclaim` gates on) and degrade to labeled SKIPs offline · `forge-protection` (M6b — the GOV readable-surface ladder: rules-for-branch, the `protected` flag, the admin-only classic endpoint under `BASELINE_GOV_ADMIN=1`; token-denial SKIPs labeled). Since M6b the lane world is no longer lane-only: GOV-01/02 consult it on every check run of a repo with a declared default branch — one probe + two reads, memoized per run, honestly SKIPped offline.
+`any-file` (glob presence; `mode:absent`, `tracked_only`, `allow`) · `grep` (regex present/absent/all over contents; `tracked_only`) · `file-contains` (file exists AND matches) · `json-field` (parse JSON, assert a dotted path) · `any-of` (pass if any alternative passes) · `command` (run the bootstrap; `repeat`) · `md-links` (relative markdown links resolve) · `doc-freshness` (frontmatter date within a window) · `adr-status` / `adr-forward-link` (decision-record status + resolvable supersede links) · `required-files` (a config list exists + non-empty) · `path-integrity` (backticked paths in docs resolve) · `version-consistency` (runtime major agrees across `.nvmrc`/CI/Dockerfile/`engines`) · `dockerfile-digest` (`FROM` pinned by `@sha256`) · `config-nonempty` · `claims-field` / `claims-citations` · `signoff` · `descriptor` (`baseline.repo.json` present + schema-valid) · the M5c lane-world kinds — `lane-anchor` / `lane-next-filled` / `lane-namespace` / `lane-record-pushed` / `lane-lease` / `div-anchor-closed` / `div-next-closed` / `div-closes-closed` — which evaluate through ONE lazy gathering (the same derivation `orient` renders and `lane reclaim` gates on) and degrade to labeled SKIPs offline · `forge-protection` (M6b — the GOV readable-surface ladder: rules-for-branch, the `protected` flag, the admin-only classic endpoint under `BASELINE_GOV_ADMIN=1`; token-denial SKIPs labeled). Since M6b the lane world is no longer lane-only: GOV-01/02 consult it on every check run of a repo with a declared default branch — one probe + two reads, memoized per run, honestly SKIPped offline.
 
 A rule with a check the runner can't evaluate (bad regex, missing target) degrades to **skip**, never a crash — one broken rule can't take down the run.
 
 ## What changed from v1
 
-- **Kept:** all 20 v1 rules, verbatim (BUILD-01..06, TEST-01..04, CTX-01..04, CLAIM-00..05).
+- **Kept:** all 20 v1 rules, verbatim (BUILD-01..06, TEST-01..04, CTX-01..04, CLAIM-00..05). CTX-01 — the stored-status stamp — later retired at the M7 contraction; CTX-12 blocks its artifact.
 - **Added 28 core rules:** the security/supply-chain block (secrets, `.env` hygiene, action-pinning, dep-updates, binaries, security policy), code-quality gates (linter/formatter/strict-types), reproducibility (frozen installs, runtime pinning + a cross-file drift check), onboarding basics (LICENSE, README, CHANGELOG, bootstrap entrypoint), change governance (branch-protection-as-code, CODEOWNERS), deeper context checks (broken links, doc freshness, generated-provenance, grounding docs, resolvable ADR supersede links), and acceptance-criteria presence.
 - **Added 6 service rules** (auto-gated) and **7 advanced rules** (opt-in).
 - **Runner:** ~10 new check kinds; profile gating; `tracked_only`/`allow`/`mode` extensions; crash-resilient rule evaluation.

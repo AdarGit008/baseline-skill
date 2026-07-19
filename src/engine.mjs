@@ -16,14 +16,11 @@ export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIP
     if (!Array.isArray(r.contexts) || !r.contexts.includes(context)) continue
     if (r.applies_to && r.applies_to !== 'all' && !r.applies_to.includes(cfg.project_type)) { results.push({ r, tag: 'SKIP', detail: `n/a for ${cfg.project_type}` }); continue }
     if (r.profile && !ACTIVE.has(r.profile)) { results.push({ r, tag: 'SKIP', detail: `profile '${r.profile}' off` }); continue }
+    // `requires` gates a rule on a config key. Its one non-claims consumer (CTX's
+    // status_file, with the descriptor-honored `:false` carve-out) retired with the
+    // stored-status surface at M7b — a future requires key adds its opt-out
+    // semantics consciously, here, not by inheriting a dead branch.
     if (r.requires === 'makes_external_claims') { if (!CLAIMS_ACTIVE) { results.push({ r, tag: 'SKIP', detail: CLAIMS_REASON || 'claims opt-in (no register; set makes_external_claims:true to enable)' }); continue } }
-    else if (r.requires && cfg[r.requires] === false) {
-      // status_file:false is an honored opt-out only when a valid descriptor supplies the
-      // derived replacement (M4c) — a bare repo can't silence CTX by config alone. The key
-      // itself (and this carve-out) retires with the stored-status surface at M7.
-      const honored = r.requires !== 'status_file' || (DESCRIPTOR && DESCRIPTOR.valid)
-      if (honored) { results.push({ r, tag: 'SKIP', detail: `opted out (${r.requires}:false)` }); continue }
-    }
     if (r.workflow) {
       if (!DESCRIPTOR || !DESCRIPTOR.valid) { results.push({ r, tag: 'SKIP', detail: 'workflow contract off (no valid baseline.repo.json)' }); continue }
       // string-or-array (M5c): a rule may serve a posture FAMILY — e.g. the lane rules

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/AdarGit008/baseline-skill/schema/record.claim.schema.json",
   "title": "claim record — records/claims/CLM-NNNN.json",
-  "description": "One external claim, one owned file (C23/C17) — exploded from the V1 docs/CLAIMS.json monolith by `gen migrate-claims` (M4c; the legacy monolith stays dual-readable until M7). Field semantics are V1's, adversarially earned: statement + type + build_state + blast_radius always; existential claims need a de_risk_milestone; novelty/competitive/market claims need prior_art_checked + how_we_differ (those conditionals are enforced by the CLAIM rules, which activate at descriptor maturity 'claimed' — this schema binds shape, not applicability).",
+  "description": "One external claim, one owned file (C23/C17) — exploded from the V1 docs/CLAIMS.json monolith by `gen migrate-claims` (M4c; the legacy monolith\u2019s checker read retired at the M7 contraction). Field semantics are V1's, adversarially earned: statement + type + build_state + blast_radius always; existential claims need a de_risk_milestone; novelty/competitive/market claims need prior_art_checked + how_we_differ (those conditionals are enforced by the CLAIM rules, which activate at descriptor maturity 'claimed' — this schema binds shape, not applicability).",
   "type": "object",
   "additionalProperties": false,
   "required": ["record", "id", "statement", "type", "build_state", "blast_radius"],

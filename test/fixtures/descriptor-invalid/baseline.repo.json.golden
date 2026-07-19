@@ -3,7 +3,6 @@
   "type": "docs",
   "lifecycle": "production",
   "maturity": "beta",
-  "owner": "AdarGit008",
   "workflow": "single-lane",
   "anchoring": "off"
 }

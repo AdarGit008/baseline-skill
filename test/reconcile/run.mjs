@@ -393,7 +393,10 @@ console.log('\n# M7c — JDG_PARSE_CAP parity (sweep + re-scan bounded, labeled)
 console.log('\n# M7c — OPS-07: the reconcile cron is alive at the forge\n')
 {
   const w = mkworld('ops07')
-  commitSeed(w, '.github/workflows/baseline-reconcile.yml', 'on:\n  schedule:\n    - cron: "17 5 * * *"\njobs:\n  reconcile:\n    steps:\n      - run: node tools/baseline/baseline.mjs reconcile --repo .\n', 'wire the cron')
+  // the workflow carries a leading # comment ON PURPOSE: comment stripping is
+  // per-LINE (stripLineComment's contract) — a whole-file strip would truncate
+  // everything after the first #, lose the run: line, and SKIP a wired cron
+  commitSeed(w, '.github/workflows/baseline-reconcile.yml', 'on:\n  schedule:\n    - cron: "17 5 * * *"   # GitHub may auto-disable after 60d\njobs:\n  reconcile:\n    steps:\n      - run: node tools/baseline/baseline.mjs reconcile --repo .\n', 'wire the cron')
   pull(w)
   // no workflow-state replay fixture → SKIP, labeled, never guessed
   let r = recJson(w.clone, ['--dry-run'], ENV(w))

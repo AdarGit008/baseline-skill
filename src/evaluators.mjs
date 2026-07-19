@@ -803,7 +803,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
       // 60-day auto-disable is the named death mode) is a dead cron that will
       // never file the issues reconcile exists to file.
       const wfs = match(['.github/workflows/*.yml', '.github/workflows/*.yaml'])
-        .filter(f => /baseline(\.mjs)?['"]?\s+reconcile\b/.test(stripLineComment(read(f) || '', '#')))
+        .filter(f => /baseline(\.mjs)?['"]?\s+reconcile\b/.test((read(f) || '').split('\n').map(stripLineComment).join('\n')))
         .sort()
       if (!wfs.length) return { ok: null, detail: 'no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)' }
       const file = wfs[0].split('/').pop()

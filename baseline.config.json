@@ -2,6 +2,9 @@
   "_comment": "Distribution-repo suite: this repo ships the standard, it isn't a buildable app. project_type=docs narrows the run to the rules that fit a docs/distribution repo (build/test/service rules skip as n/a). Scored via: node check.mjs --repo .",
   "project_type": "docs",
   "makes_external_claims": false,
+  "_accepted_warns": {
+    "SEC-05": "Not relevant: baseline-skill is zero-dependency (no package manifest or lockfile), so the rule's 'pinned deps rot into known-CVE territory' rationale does not apply; the only updatable surface is pinned GitHub Actions SHAs. We accept the warn rather than add a dependency-update bot with nothing to update. Baseline does not silently suppress warns — this documents the acceptance."
+  },
   "sources_of_truth": {
     "check.mjs": "The runner — single source of truth for how a rule is scored.",
     "rules.json": "The rule-set manifest; the 90 rules live in rules/ (canonical, machine-readable).",

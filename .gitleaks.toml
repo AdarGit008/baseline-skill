@@ -1,0 +1,16 @@
+# gitleaks config for baseline-skill — the SEC-12 secret-scan gate (wired in ci.yml).
+#
+# Extends gitleaks' default rule set. Allowlists the test/ corpus: baseline SHIPS a
+# secret detector (SEC-01), and its fixtures + runners deliberately embed FAKE secrets
+# (e.g. test/fixtures/node-fail/.env.golden) to exercise that detector. Scanning them
+# would fail the tool's own CI on its own test data — the one place fake secrets belong.
+title = "baseline-skill gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "The test corpus carries intentional fake secrets (the SEC-01 detection fixtures)"
+paths = [
+  '''^test/''',
+]

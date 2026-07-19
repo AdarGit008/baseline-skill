@@ -87,10 +87,17 @@ register behind it: **[docs/v2/CONCEPTS.md](https://github.com/AdarGit008/baseli
 [V2.0 milestone](https://github.com/AdarGit008/baseline-skill/milestone/1) (modules M1–M7,
 expand/contract — removal last).
 
-## See it pass
+## See it pass — the worked example
 
-[AdarGit008/baseline-demo](https://github.com/AdarGit008/baseline-demo) is a reference
-repo that scores a perfect 0-blockers / 100% against this standard.
+[**AdarGit008/baseline-demo**](https://github.com/AdarGit008/baseline-demo) is this
+standard applied to a real repo, end to end — the dogfood, so this repo can stay the
+tool. It scores a perfect **0 blockers / 100%**, vendors the toolkit under
+`tools/baseline/` (pinned + lock-verified via REC-06), and runs the full lane workflow —
+claim → work → log → admit → merge — in its own CI. Browse its
+[records ledger](https://github.com/AdarGit008/baseline-demo/tree/main/records) and
+[Actions](https://github.com/AdarGit008/baseline-demo/actions) to watch check / admit /
+reconcile in practice. baseline-skill itself keeps a deliberately minimal self-score
+(it is a zero-dep docs/distribution repo, not a workflow consumer).
 
 ## License
 

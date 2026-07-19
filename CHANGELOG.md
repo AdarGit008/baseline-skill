@@ -4,6 +4,20 @@ All notable changes to the `/baseline` skill are documented here. The format loo
 follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned in
 `rules.json` and `SKILL.md`.
 
+## [Unreleased]
+
+### Added
+- **CI secret-scan gate (SEC-12)**: `gitleaks` wired into `ci.yml` as a server-side
+  complement to the pre-push scrub hook, with a `.gitleaks.toml` that allowlists the
+  `test/` corpus (which carries intentional fake secrets exercising SEC-01).
+
+### Notes
+- **SEC-05 accepted as not-relevant**: this repo is zero-dependency (no manifest or
+  lockfile), so the dependency-update-bot rationale does not apply — documented in
+  `baseline.config.json` rather than papered over with a no-op bot.
+- README's "See it pass" now frames **baseline-demo** as the worked self-application
+  example (the tool points at the dogfood repo rather than dogfooding itself).
+
 ## [2.5.0] — 2026-07-19
 
 ### Added — V2 M7c: lock + residue (87 → 90 rules; closes the M7 module)

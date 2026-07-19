@@ -4683,11 +4683,11 @@
     ],
     "summary": {
       "blockers": 1,
-      "pass": 5,
-      "warn": 8,
+      "pass": 8,
+      "warn": 10,
       "diverged": 0,
       "signoff": 1,
-      "skip": 73,
+      "skip": 68,
       "total": 88
     },
     "rules": {
@@ -4844,16 +4844,16 @@
         "detail": "none present (good)"
       },
       "SEC-03": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       },
       "SEC-04": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       },
       "SEC-05": {
         "tag": "WARN",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
+        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc | pattern not found"
       },
       "SEC-06": {
         "tag": "WARN",
@@ -4876,12 +4876,12 @@
         "detail": "n/a for docs"
       },
       "SEC-11": {
-        "tag": "SKIP",
-        "detail": "no workflow files"
+        "tag": "PASS",
+        "detail": "1 workflow(s) least-privilege"
       },
       "SEC-12": {
-        "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
+        "tag": "WARN",
+        "detail": "pattern not found"
       },
       "SEC-13": {
         "tag": "SKIP",
@@ -4972,8 +4972,8 @@
         "detail": "n/a for docs"
       },
       "OPS-07": {
-        "tag": "SKIP",
-        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
+        "tag": "WARN",
+        "detail": "baseline-reconcile.yml: disabled_inactivity at the forge — the cron files nothing while disabled (GitHub's 60-day auto-disable); re-enable: gh workflow enable baseline-reconcile.yml"
       },
       "REC-01": {
         "tag": "SKIP",

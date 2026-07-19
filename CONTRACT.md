@@ -334,7 +334,10 @@ consumer; today it is the paste-into-the-PR-thread proof of what was judged.
 
 **Vendoring is the consumption model** — S9's `--vendor` flag never existed and
 no installer ships; the manual copy IS the procedure: copy the toolkit's tool
-files into **`tools/baseline/`** (the canonical location — the one path REC-06
+files (SKILL.md's co-located list — at minimum `baseline.mjs`, `check.mjs`,
+`rules.json`, `rules/`, `schema/`, `src/`, plus the shipped `.gitattributes`,
+which keeps the hashed bytes EOL-stable on every platform) into
+**`tools/baseline/`** (the canonical location — the one path REC-06
 and the lock contract know), keep the repo-local `baseline.config.json` /
 `baseline.repo.json` at YOUR root, then pin what you copied:
 
@@ -344,14 +347,14 @@ and the lock contract know), keep the repo-local `baseline.config.json` /
 `gen lock` writes `tools/baseline.lock.json` — exactly `{version, tree_hash}`:
 the version from the *vendored tree's own* `rules.json`, the hash recomputed
 over every vendored file (sorted paths, raw bytes, worktree semantics).
-**REC-06** (warn, deterministic) compares on every run — *unpinned* (tree, no
+**REC-06** (warn, deterministic) compares on every check/reconcile run — *unpinned* (tree, no
 lock), *skew* (hash mismatch, naming the lock's version and the tree's), or
 PASS; no tree at the canonical path is a SKIP. A vendor bump and its re-pin
 travel in ONE PR; regenerate generated views with the NEW tree in that same PR
 (the `gen --check` remedy names this case). **OPS-07** (warn) closes the loop
 at the forge: ONE recorded query of the reconcile workflow's state —
-`disabled_*` (GitHub's 60-day auto-disable, the named death mode) fails the
-rule; no reconcile workflow in the tree is a SKIP, never wallpaper.
+any non-`active` state fails the rule, named (`disabled_*` in practice —
+GitHub's 60-day auto-disable is the death mode); no reconcile workflow in the tree is a SKIP, never wallpaper.
 
 ## Reserved (lands later, documented now)
 

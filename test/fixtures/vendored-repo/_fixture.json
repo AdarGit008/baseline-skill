@@ -1,3 +1,4 @@
 {
-  "_note": "A consumer repo vendoring tools/baseline/ whose committed lock names an older version (2.4.0) and a stale hash (all-zero — synthetic, unambiguous) while the tree's own rules.json says 2.4.1. Proves REC-06's skew WARN names BOTH versions with the re-pin recipe — the vendor-bump-without-re-pin case the lock exists to catch. Everything else is a bare-minimum repo; REC-06 is the fixture's one subject."
+  "_note": "A consumer repo vendoring tools/baseline/ whose committed lock names an older version (2.4.0) and a stale hash (all-zero — synthetic, unambiguous) while the tree's own rules.json says 2.4.1: REC-06's skew WARN names BOTH versions with the re-pin recipe — the vendor-bump-without-re-pin case the lock exists to catch. It also wires a reconcile cron (comment-bearing YAML — the per-line comment-strip case) whose replayed forge state is disabled_inactivity: OPS-07's WARN names GitHub's 60-day auto-disable, the corpus's one non-SKIP OPS-07 pin (the panel's coverage catch). Everything else is a bare-minimum repo.",
+  "forge_replay": "_forge"
 }

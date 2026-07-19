@@ -9,16 +9,16 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 ### Added — V2 M7c: lock + residue (87 → 90 rules; closes the M7 module)
 - **`baseline gen lock` + `tools/baseline.lock.json`**: pin the vendored
   `tools/baseline/` tree — exactly `{version, tree_hash}` (version from the
-  vendored tree's own `rules.json`; sha256 over sorted path+content pairs, raw
+  vendored tree's own `rules.json`; sha256 over sorted path+content-hash pairs, raw
   bytes, worktree semantics). The consumption model stays vendored (pointer
   flip cut to V3); the pin is what ships.
 - **REC-06** (warn, deterministic): unpinned vendored tree, unparseable lock,
   or hash skew — the skew finding names the lock's pinned version AND the
   tree's current one; no vendored tree at the canonical path → SKIP.
 - **OPS-07** (warn, deterministic, knob-free): ONE recorded forge query of the
-  reconcile workflow's state — `active` passes, the `disabled_*` family fails
-  (`disabled_inactivity` is GitHub's 60-day auto-disable, the named death
-  mode); no reconcile workflow in the tree → SKIP. New forge read:
+  reconcile workflow's state — `active` passes, any other state fails naming it
+  (the `disabled_*` family in practice; `disabled_inactivity` is GitHub's
+  60-day auto-disable, the named death mode); no reconcile workflow in the tree → SKIP. New forge read:
   `workflowState(file)`, record/replay-additive.
 - **DESC-02** (blocker, deterministic — the M7b panel's filing): a
   present-but-invalid `baseline.repo.json` is the loudest row in the run, not

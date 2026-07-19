@@ -74,26 +74,48 @@ export const VENDOR_LOCK = 'tools/baseline.lock.json'
 
 // Deterministic tree hash: sha256 over `<relpath>\0<sha256(bytes)>\n` per file,
 // paths sorted code-unit, bytes RAW (readText's 512KB/utf8 cap would corrupt a
-// hash the way it silently greens a big view — same law, same exemption). The
-// walked pool gives worktree semantics (an untracked edit inside the vendored
-// tree is a real skew — local stricter than CI, never the reverse).
+// hash the way it silently greens a big view — same law, same exemption).
+// The pool is a DEDICATED full walk of the tree, not the repo walker: the
+// walker's SKIP_DIRS (node_modules, vendor, dist…) would be an undetectable
+// rider channel inside the vendored copy — the pin must see EVERYTHING on disk
+// (panel: lock-seam). Only `.git` is skipped, named and deliberate (a vendored-
+// by-clone tree should shed it; its packfiles differ per clone and would make
+// the pin machine-local). Worktree semantics: an untracked edit inside the
+// vendored tree is a real skew — local stricter than CI, never the reverse.
+// Symlinks and unreadable files are NOT hashed and NOT fatal here: they are
+// collected so the writer can refuse (a tree that can't be fully read can't be
+// pinned honestly) while the verifier degrades to a labeled WARN over the
+// readable set — never a SKIP that would mask a concurrent real skew.
 export function computeVendorLock(REPO, repo) {
-  const files = repo.match([`${VENDOR_TREE}/**`]).sort()
-  if (!files.length) return { files: 0 }
+  const files = [], unhashable = []
+  const walkAll = (dir, rel) => {
+    let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }) } catch { unhashable.push(`${rel}/ (unlistable)`); return }
+    for (const e of ents) {
+      if (e.name === '.git') continue
+      const r = `${rel}/${e.name}`
+      if (e.isSymbolicLink()) { unhashable.push(`${r} (symlink)`); continue }
+      if (e.isDirectory()) walkAll(path.join(dir, e.name), r)
+      else files.push(r)
+    }
+  }
+  let rootIsDir = false
+  try { rootIsDir = fs.lstatSync(path.join(REPO, VENDOR_TREE)).isDirectory() } catch {}
+  if (rootIsDir) walkAll(path.join(REPO, VENDOR_TREE), VENDOR_TREE)
+  if (!files.length && !unhashable.length) return { files: 0, unhashable }
+  files.sort()
   const h = crypto.createHash('sha256')
-  let unreadable = null
   for (const f of files) {
     let buf
     try { buf = fs.readFileSync(path.join(REPO, f)) }
-    catch { unreadable = f; break }
+    catch { unhashable.push(`${f} (unreadable)`); continue }
     h.update(`${f}\0${crypto.createHash('sha256').update(buf).digest('hex')}\n`)
   }
-  if (unreadable) return { files: files.length, unreadable }
+  unhashable.sort()
   // version = the VENDORED tree's own declaration (its rules.json), never the
   // running engine's — the lock describes the tree it hashes
   let version = null
   try { version = JSON.parse(fs.readFileSync(path.join(REPO, VENDOR_TREE, 'rules.json'), 'utf8'))?.version ?? null } catch {}
-  return { files: files.length, tree_hash: h.digest('hex'), version }
+  return { files: files.length, tree_hash: h.digest('hex'), version, unhashable }
 }
 
 const firstHeading = (md) => md.match(/^#\s+(.+?)\s*$/m)?.[1] ?? null
@@ -307,9 +329,11 @@ function runGenLock(REPO) {
   const lock = computeVendorLock(REPO, repo)
   // asking to pin an absent tree is a failed intent, not an idempotent no-op
   // (contrast migrate-claims' "nothing to migrate": there, done IS the goal state)
-  if (!lock.files) { console.error(`gen lock: no vendored tree at ${VENDOR_TREE}/ — nothing to pin (the canonical vendored location; see CONTRACT.md's manual-copy procedure)`); return 1 }
-  if (lock.unreadable) { console.error(`gen lock: cannot hash ${lock.unreadable} — fix the file or its permissions (an unreadable tree cannot be pinned honestly)`); return 2 }
-  if (lock.version == null) { console.error(`gen lock: ${VENDOR_TREE}/rules.json carries no readable version — is this a baseline toolkit tree? (the lock names the version it pins)`); return 2 }
+  if (!lock.files && !lock.unhashable.length) { console.error(`gen lock: no vendored tree at ${VENDOR_TREE}/ — nothing to pin (the canonical vendored location; see CONTRACT.md's manual-copy procedure)`); return 1 }
+  // the writer is STRICT where the verifier degrades: a tree that cannot be
+  // fully read cannot be pinned honestly — refuse, naming what's in the way
+  if (lock.unhashable.length) { console.error(`gen lock: ${lock.unhashable.length} entr${lock.unhashable.length === 1 ? 'y' : 'ies'} cannot be hashed — ${lock.unhashable.slice(0, 3).join(', ')}${lock.unhashable.length > 3 ? ` (+${lock.unhashable.length - 3})` : ''}; remove or fix them (symlinks and unreadable files cannot be pinned honestly)`); return 2 }
+  if (typeof lock.version !== 'string') { console.error(`gen lock: ${VENDOR_TREE}/rules.json carries no readable string version — is this a baseline toolkit tree? (the lock names the version it pins, and REC-06 validates the shape it writes)`); return 2 }
   const abs = path.join(REPO, VENDOR_LOCK)
   // overwrite law, lock flavor: write over a parseable {version, tree_hash} lock
   // or into absence — a foreign file squatting the canonical path is refused,

@@ -507,10 +507,15 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
       // REC-06 (M7c, C26/S9): the vendored tree's pin. Same recompute `gen lock`
       // performs — one hash definition, two consumers (writer + verifier). SKIP
       // when the canonical tree is absent: a repo that doesn't vendor (or vendors
-      // elsewhere) is outside the lock contract, never wallpapered.
+      // elsewhere) is outside the lock contract, never wallpapered. Unhashable
+      // entries (symlinks, unreadable files) DEGRADE to a labeled WARN over the
+      // readable set — a SKIP here would let one dangling symlink mask a real
+      // concurrent skew (the fail-open the panel caught); the writer refuses the
+      // same entries outright.
       const lock = computeVendorLock(repo.REPO, repo)
-      if (!lock.files) return { ok: null, detail: `no vendored tree at ${VENDOR_TREE}/ — nothing to pin` }
-      if (lock.unreadable) return { ok: null, detail: `${lock.unreadable} unreadable — the vendored tree cannot be hashed honestly` }
+      if (!lock.files && !lock.unhashable.length) return { ok: null, detail: `no vendored tree at ${VENDOR_TREE}/ — nothing to pin` }
+      const caveat = lock.unhashable.length ? ` — and ${lock.unhashable.length} entr${lock.unhashable.length === 1 ? 'y' : 'ies'} cannot be hashed (${lock.unhashable[0]}${lock.unhashable.length > 1 ? `, +${lock.unhashable.length - 1}` : ''}), so the pin cannot fully verify` : ''
+      if (!lock.files) return { ok: false, detail: `vendored tree at ${VENDOR_TREE}/ has no hashable files${caveat}; fix the tree, then pin: baseline gen lock` }
       const raw = read(VENDOR_LOCK)
       if (raw == null) return { ok: false, detail: `vendored tree (${lock.files} files${lock.version ? `, ${lock.version}` : ''}) is unpinned — no ${VENDOR_LOCK}; pin it: baseline gen lock` }
       let pin = null
@@ -518,9 +523,11 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
       if (!pin || typeof pin.tree_hash !== 'string' || typeof pin.version !== 'string') return { ok: false, detail: `${VENDOR_LOCK} is not a lock ({version, tree_hash}) — rewrite it: baseline gen lock` }
       if (pin.tree_hash !== lock.tree_hash) {
         // the ruled skew finding names BOTH versions — equal strings still name
-        // both honestly (same version, different bytes = a hand-edit, the worst kind)
-        return { ok: false, detail: `vendored tree skews from its lock: lock pins ${pin.version} (${pin.tree_hash.slice(0, 12)}), tree is ${lock.version ?? 'version unreadable'} (${lock.tree_hash.slice(0, 12)}) — re-vendor to match, or re-pin deliberately: baseline gen lock` }
+        // both honestly, with the benign-vs-not causes spelled out
+        const equal = pin.version === (lock.version ?? '') ? ` (same version both sides: a hand-edit, or an EOL-converting checkout missing the vendored .gitattributes)` : ''
+        return { ok: false, detail: `vendored tree skews from its lock: lock pins ${pin.version} (${pin.tree_hash.slice(0, 12)}), tree is ${lock.version ?? 'version unreadable'} (${lock.tree_hash.slice(0, 12)})${equal}${caveat} — re-vendor to match, or re-pin deliberately: baseline gen lock` }
       }
+      if (lock.unhashable.length) return { ok: false, detail: `lock matches the readable set (${pin.version} · ${lock.files} files)${caveat}; remove the unhashable entr${lock.unhashable.length === 1 ? 'y' : 'ies'} and re-pin: baseline gen lock` }
       return { ok: true, detail: `pinned: ${pin.version} · ${lock.files} files · ${lock.tree_hash.slice(0, 12)}` }
     }
 

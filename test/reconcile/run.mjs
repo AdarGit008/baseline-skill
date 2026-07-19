@@ -16,6 +16,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { findingKey, marker, fingerprint, deriveLifecycle, parseManaged, rebodyClosed, issueTitle, issueBody, MARKER_RE } from '../../src/reconcile.mjs'
+import { scan } from '../../src/scrub.mjs'
 import { makeForge } from '../../src/facts/forge.mjs'
 import { normalizeVolatile } from '../../src/util.mjs'
 
@@ -388,6 +389,21 @@ console.log('\n# M7c — JDG_PARSE_CAP parity (sweep + re-scan bounded, labeled)
   ok(r.j.summary.rescan.files === 501 && /capped at 500 of 501/.test(r.j.summary.rescan.capped || ''), 'caps: the re-scan cap is LABELED with the same ceiling')
   const expiredKeys = r.j.findings.filter(f => /expired/.test(f.title)).map(f => f.key)
   ok(expiredKeys.some(k => k.includes('JDG-0001')) && !expiredKeys.some(k => k.includes('JDG-0501')), 'caps: in-cap expiry files, out-of-cap expiry does not (its issue neither files nor clears this run)')
+  // panel (fail-open catch): the CLEAR side of the same law. A landed secret in
+  // the out-of-cap tail (records/zz-… sorts after records/judgments/… in ls-tree
+  // path order) has an OPEN filed issue — the capped re-scan never re-read that
+  // blob, so scanComplete must be false and the issue must NOT bot-close.
+  const secret = 'AKIA' + 'IOSFODNN7EXAMPLE'
+  commitSeed(w, 'records/zz-out-of-cap.md', `---\nrecord: session/1\n---\nkey ${secret}\n`, 'a secret in the out-of-cap tail')
+  pull(w)
+  const sid = scan(`key ${secret}`).blocked[0].id
+  const scrubKey = findingKey('scrub', sid)
+  const probe2 = recJson(w.clone, ['--dry-run'], ENV(w))
+  fix(w, 'issues-labeled-baseline', [...listingFor(probe2.j, []), issue(90, 'open', scrubKey, 'aaaaaaaaaaaa')])
+  const r2 = recJson(w.clone, ['--dry-run'], ENV(w))
+  ok(/capped at 500 of 502/.test(r2.j.summary.rescan.capped || ''), 'caps: the tail blob is genuinely out-of-cap (502 record files, 500 scanned)')
+  ok(!r2.j.findings.some(f => f.key === scrubKey), 'caps: the out-of-cap secret is not re-found this run (bounded work)')
+  ok(!(r2.j.actions || []).some(a => a.action === 'close' && a.key === scrubKey), 'caps: …and its OPEN issue is NOT bot-closed — a capped scan is a partial read, and a partial read clears nothing')
 }
 
 console.log('\n# M7c — OPS-07: the reconcile cron is alive at the forge\n')
@@ -410,6 +426,12 @@ console.log('\n# M7c — OPS-07: the reconcile cron is alive at the forge\n')
   fix(w, 'workflow-state-baseline-reconcile.yml', { name: 'baseline-reconcile', state: 'active' })
   r = recJson(w.clone, ['--dry-run'], ENV(w))
   ok(r.status === 0 && !r.j.findings.some(x => x.key.includes('OPS-07')), 'OPS-07: an active cron is a clean PASS')
+  // a state string GitHub invents later is still deterministic: any non-active
+  // state fails the rule NAMING the state — never a guess, never a pass
+  fix(w, 'workflow-state-baseline-reconcile.yml', { name: 'baseline-reconcile', state: 'sabbatical' })
+  r = recJson(w.clone, ['--dry-run'], ENV(w))
+  const fu = r.j.findings.find(x => x.key.includes('OPS-07'))
+  ok(!!fu && /sabbatical/.test(fu.detail), 'OPS-07: an unknown future state fails deterministically, named')
 }
 
 console.log('')

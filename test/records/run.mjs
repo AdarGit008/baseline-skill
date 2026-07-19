@@ -673,6 +673,19 @@ try {
     fs.writeFileSync(path.join(t20, 'tools/baseline.lock.json'), 'not json\n')
     r = rec6()
     ok(r.tag === 'WARN' && /not a lock/.test(r.detail), 'e2e: an unparseable lock file is an honest WARN with the rewrite recipe')
+    // panel (lock-seam, fail-open catch): an unhashable entry DEGRADES to a
+    // labeled WARN over the readable set — a SKIP would let one dangling
+    // symlink mask a concurrent real skew. (Clear the poisoned lock first —
+    // the writer rightly refuses to overwrite a non-lock.)
+    fs.rmSync(path.join(t20, 'tools/baseline.lock.json'))
+    sh(t20, process.execPath, [path.join(ROOT, 'baseline.mjs'), 'gen', 'lock', '--repo', t20], NOW)
+    fs.symlinkSync('/nonexistent-target', path.join(t20, 'tools/baseline/dangler'))
+    r = rec6()
+    ok(r.tag === 'WARN' && /cannot be hashed/.test(r.detail) && /dangler \(symlink\)/.test(r.detail), 'e2e: an unhashable entry is a labeled WARN caveat, never a SKIP that masks skew')
+    fs.appendFileSync(path.join(t20, 'tools/baseline/check.mjs'), 'tamper-under-cover\n')
+    r = rec6()
+    ok(r.tag === 'WARN' && /skews from its lock/.test(r.detail) && /dangler \(symlink\)/.test(r.detail), 'e2e: a real skew stays REPORTED even while an unhashable entry rides the tree')
+    fs.unlinkSync(path.join(t20, 'tools/baseline/dangler'))
   }
 } finally {
   for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })

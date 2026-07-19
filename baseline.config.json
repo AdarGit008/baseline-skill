@@ -4,7 +4,7 @@
   "makes_external_claims": false,
   "sources_of_truth": {
     "check.mjs": "The runner — single source of truth for how a rule is scored.",
-    "rules.json": "The rule-set manifest; the 87 rules live in rules/ (canonical, machine-readable).",
+    "rules.json": "The rule-set manifest; the 90 rules live in rules/ (canonical, machine-readable).",
     "REFERENCE.md": "Full human reference: rule table, categories, architecture diagrams.",
     "SKILL.md": "How the /baseline agent skill behaves.",
     "GLOSSARY.md": "Plain-language definitions of the DevOps/supply-chain terms."

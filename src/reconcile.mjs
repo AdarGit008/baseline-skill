@@ -423,7 +423,10 @@ export function runReconcile(argv) {
       // retirement must close the filing). Every clear rides a completeness guard;
       // a partial read clears nothing (the SKIP-never-clears law, in reverse).
       const presentKeys = new Set(findings.map(f => f.key))
-      const scanComplete = recList !== null && unscanned === 0
+      // a CAPPED re-scan is a partial read: out-of-cap blobs were never re-read,
+      // so their filings must not clear (the panel's fail-open catch — one
+      // out-of-cap landed secret would otherwise bot-close its own issue)
+      const scanComplete = recList !== null && unscanned === 0 && !rescanCapped
       const blockedIds = new Set(findings.filter(f => f.id === 'scrub').map(f => f.subject))
       for (const i of managed) {
         if (presentKeys.has(i.key) || clearedKeys.has(i.key)) continue

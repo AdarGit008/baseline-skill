@@ -14,7 +14,7 @@ A **testable readiness standard** for new projects. Every lesson is a rule; a ze
 
 Not every rule fits every repo. A pre-code planning repo shouldn't be nagged about health endpoints; a CLI shouldn't be told to publish an [SBOM](GLOSSARY.md#sbom). So rules carry a **[profile](GLOSSARY.md#profile)**:
 
-- **core** (72 rules) — always on. Universal, high-confidence, machine-checkable.
+- **core** (75 rules) — always on. Universal, high-confidence, machine-checkable.
 - **service** (6 rules) — **auto-on when `project_type=service`.** Operability rules ([health check](GLOSSARY.md#health-check), [structured logs](GLOSSARY.md#structured-logging), [graceful shutdown](GLOSSARY.md#graceful-shutdown), [runbook](GLOSSARY.md#runbook)) that only make sense for a running service.
 - **advanced** (9 rules) — **opt-in** via `config.profiles: ["advanced"]`. Expert/niche rules (SBOM, [code-scanning](GLOSSARY.md#sast), [mutation testing](GLOSSARY.md#mutation-testing), symbol-integrity) that would be noise on most repos.
 
@@ -58,7 +58,7 @@ These diagrams mirror the runner — they're its actual control flow, not a sket
 ```mermaid
 flowchart LR
   CFG["baseline.config.json — intent"] --> RES
-  RULES["rules/ — 87 rules (manifest: rules.json)"] --> EVAL
+  RULES["rules/ — 90 rules (manifest: rules.json)"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
     IDX["file index + git helpers"] --> EVAL["~41 check evaluators"]
@@ -181,7 +181,7 @@ baseline gen --check [--repo DIR]                # regenerate every marked view,
 
 `gen --check` discovers marked views over the tracked∪walked pool with **uncapped reads** (a size-capped read would silently green a big drifted view), regenerates each in memory, and byte-compares. Zero marked views → exit 0, trivially green — the pre-adoption state. Drift → exit 1 with a **verbatim-runnable remedy** derived from the invocation itself (a vendored consumer has no `baseline` on PATH), plus the honesty clauses: the drift may predate your PR, and a vendor bump changes the generator's shape — regenerate with the new version and commit the view alongside it. An unknown kind or an unreadable view exits 1 named, never silently skipped. Wire it as an **advisory CI job — a visibly red job outside the required set, never `continue-on-error: true`** (a green job with a buried ✗ pays the friction and destroys the signal). Residual, documented: a vendored tree's own marked views ride the discovery pool; an alien kind there fails loudly and the remedy names the vendored-skill-older cause.
 
-**The vendored lock — `gen lock` + REC-06 (V2 M7c).** The consumption model *stays vendored* (the pointer-install flip is cut to V3 — the reference consumer invokes `tools/baseline/` at six sites including its required admit check); what ships is the **pin**. `baseline gen lock` hashes every file under the canonical `tools/baseline/` (sha256 over sorted `path + content-hash` pairs, raw bytes, worktree semantics) and writes `tools/baseline.lock.json` — exactly `{version, tree_hash}`, the version read from the *vendored tree's own* `rules.json`. **REC-06** (warn, deterministic) recomputes and compares on every run: no lock → *unpinned*; hash mismatch → *skew*, naming the lock's pinned version AND the tree's current version (a same-version mismatch is a hand-edit — the worst kind); no vendored tree at the canonical path → SKIP, never wallpaper. The lock lives BESIDE the tree, never inside it (it must not hash itself), and a vendor bump re-pins **in the same PR** — the two artifacts move together or REC-06 says so.
+**The [vendored lock](GLOSSARY.md#vendored-lock) — `gen lock` + REC-06 (V2 M7c).** The consumption model *stays vendored* (the pointer-install flip is cut to V3 — the reference consumer invokes `tools/baseline/` at six sites including its required admit check); what ships is the **pin**. `baseline gen lock` hashes every file under the canonical `tools/baseline/` (sha256 over sorted `path + content-hash` pairs, raw bytes, worktree semantics) and writes `tools/baseline.lock.json` — exactly `{version, tree_hash}`, the version read from the *vendored tree's own* `rules.json`. **REC-06** (warn, deterministic) recomputes and compares on every check/reconcile run: no lock → *unpinned*; hash mismatch → *skew*, naming the lock's pinned version AND the tree's current version (a same-version mismatch is a hand-edit — the worst kind); no vendored tree at the canonical path → SKIP, never wallpaper. The lock lives BESIDE the tree, never inside it (it must not hash itself), and a vendor bump re-pins **in the same PR** — the two artifacts move together or REC-06 says so.
 
 **Admit provenance (`inputs_digest`).** Every `baseline admit` run now prints one receipt line — `provenance: inputs_digest <12hex> · head <sha> → target <sha> · descriptor <blob-oid> · rules <version> · <n> check run(s)|checks not consulted · anchor #<n> <state>|none` — and mirrors the same fields in `--json` under `provenance`. The digest is a **pure function** over the six ruled inputs (head SHA, target SHA, the descriptor's blob OID at the target, rules version, check-run `(name, conclusion, head_sha)` tuples full-tuple-sorted, anchored-issue state); a closed or unreachable plane digests as the *value* `not-consulted` — two runs that consulted different planes always digest differently. Provenance is **refusal-inert**: its assembly never contributes a refusal, a result row, or a summary count. Equality-at-a-glance is its one job today; V3's merge-ref binding is the consumer it was shaped for.
 
@@ -309,7 +309,7 @@ Every rule also declares **`sources`** (which ground-truth planes it reads: tree
 | REPRO-03 | Pinned runtime version is consistent everywhere | 🟡 warn | core |
 | REPRO-04 | Dockerfile base images pinned by digest | 🟡 warn | core |
 
-### Operability (service) (6)
+### Operability (7)
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
@@ -319,7 +319,7 @@ Every rule also declares **`sources`** (which ground-truth planes it reads: tree
 | OPS-04 | Outbound calls are time-bounded/guarded | 🟡 warn | service |
 | OPS-05 | An operational runbook exists | 🟡 warn | service |
 | OPS-06 | A service descriptor declares owner + lifecycle | 🟡 warn | service |
-| OPS-07 | The reconcile cron is alive at the forge (ONE workflow-state query; `disabled_*` fails, no workflow → skip) | 🟡 warn | core |
+| OPS-07 | The reconcile cron is alive at the forge (ONE workflow-state query; any non-`active` state fails, named; no workflow → skip) | 🟡 warn | core |
 
 ### Change governance (3)
 
@@ -370,7 +370,7 @@ GOV-01/02 are **live asserts on the readable surface** since M6b (`forge-protect
 
 All CLAIM rules are opt-in (`makes_external_claims` / a register present) and maturity-gated: a descriptor-declared `prototype` repo skips them unless explicitly opted in (C24).
 
-### Records & ledger (4) — M4c
+### Records & ledger (5) — M4c
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
@@ -414,7 +414,7 @@ Cross-tier contradictions (C36) a stateless worker must resolve **first** — th
 
 Admit-context only. Deterministic from the git plane alone: a sister lane whose shared history with HEAD reaches past the target tip has unmerged commits inside this admission (C32). The `Baseline-Stacked-On: lane/<N>` trailer (whole-token, anywhere in the admitted range) declares the stack and lifts the finding. MERGE-01 (admission re-derivation) is the `admit` command itself; MERGE-03 (post-merge revalidation) is reconcile's cron (M6b) — neither is a rule, by ruling.
 
-### Repo descriptor (2)
+### Repo descriptor (3)
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|

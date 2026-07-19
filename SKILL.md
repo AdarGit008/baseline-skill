@@ -121,7 +121,7 @@ Run the survey (see **Orientation — the first act** above): `node "$SKILL_DIR/
    - `--profile advanced` — opt into expert rules (SBOM, code-scanning, mutation testing, dependency-vuln-scan, coverage-floor). `service` turns on automatically for `project_type=service`.
    - `--json` — machine output instead of the scorecard.
    - **Completion criterion:** you have the readiness %, the blocker count, and each FAIL/notable WARN with its one-line detail.
-3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 87 rows — summarize and offer to fix or scaffold.
+3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 90 rows — summarize and offer to fix or scaffold.
 
 ### init — "set up / adopt / scaffold baseline"
 **Descriptor-first, always.** The repo's `baseline.repo.json` is written before anything else — it's the one file baseline requires (schema: `schema/repo.schema.json`), and every applicability/severity derivation reads it. Its `type` supersedes filesystem auto-detection.
@@ -139,8 +139,8 @@ Run the survey (see **Orientation — the first act** above): `node "$SKILL_DIR/
    Per-claim records (`records/claims/CLM-NNNN.json`) are the **only** claims home the checker reads; a legacy `docs/CLAIMS.json` monolith is flagged by CLAIM-07 — migrate it (`baseline gen migrate-claims`, steps in `MIGRATION.md`).
 3. Edit `baseline.config.json` to reality: `bootstrap_command` (clean-checkout install+test for BUILD-05), `makes_external_claims` (false skips CLAIM-*). Opt-in `*_globs` keys stay empty until adopted.
 4. Wire the `baseline` job into CI as a **required** check (rule BUILD-06) — snippet is in `REFERENCE.md`.
-5. Run a first score — `DESC-01` confirms the descriptor is present and valid.
-- **Completion criterion:** `baseline.repo.json` exists and validates (DESC-01 PASS), `node check.mjs --repo <repo>` runs, and every scaffolded artifact is accounted for.
+5. Run a first score — `DESC-01` confirms the descriptor is present, `DESC-02` that it schema-validates.
+- **Completion criterion:** `baseline.repo.json` exists and validates (DESC-01 + DESC-02 PASS), `node check.mjs --repo <repo>` runs, and every scaffolded artifact is accounted for.
 
 ### fix — "get this to green"
 1. Score first. For each blocker/warn to address, apply the rule's own `fix` field (read it from `rules.json`) as concrete edits — add the missing LICENSE, pin the action to a SHA, git-ignore + rotate the `.env` secret, add the negative test, etc.
@@ -166,7 +166,7 @@ Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / 
 - **`applies_to`** (`"all"` or a subset of `node`/`python`/`service`/`library`/`docs`) scopes each rule to the repo types it fits — e.g. a `docs` repo skips build/test/service rules.
 - **Profiles:** `core` always; `service` auto-on for `project_type=service`; `advanced` only with `--profile advanced`.
 - **Claims are opt-in:** CLAIM-* run only if a claims register exists or `makes_external_claims:true` is set.
-- **Descriptor:** a `baseline.repo.json` declares the repo's identity/posture; its `type` supersedes auto-detection, and `DESC-01` warns (and offers to scaffold) when it's absent or invalid.
+- **Descriptor:** a `baseline.repo.json` declares the repo's identity/posture; its `type` supersedes auto-detection, and `DESC-01` warns (and offers to scaffold) when it's absent; a present-but-invalid one is `DESC-02`'s blocker.
 - Config auto-detects; `baseline.config.json` at the repo root overrides (keys documented in `config.example.json`). The runner is zero-dependency and crash-resilient: an unevaluable check degrades to SKIP, never crashing the run.
 
 ## Common Pitfalls
@@ -180,7 +180,7 @@ Exits 1 on any rule with a missing/typo'd `applies_to`, an unknown check-kind / 
 ## Verification Checklist
 
 - [ ] Ran the runner by its **absolute** path with `--repo <target>`
-- [ ] Reported **blockers first**, then warnings, grouped by category (not an 87-row dump)
+- [ ] Reported **blockers first**, then warnings, grouped by category (not a 90-row dump)
 - [ ] For `fix`: re-scored and confirmed no new blockers
 - [ ] For `init`: picked a preset/config, scaffolded only what was missing, ran a first score
 - [ ] Any sign-off is a real dated judgment, not a rubber stamp

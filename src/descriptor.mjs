@@ -57,8 +57,8 @@ export function loadDescriptor(repo, { ref = null } = {}) {
   // an unknown field there is ignored, not fatal — otherwise every schema
   // contraction bricks admit against the very target the contracting PR must land
   // on (the M6 relief-circularity class). The WORKTREE read stays strict: the
-  // state being authored next validates against today's schema, and DESC-01
-  // carries the pressure to shed retired fields.
+  // state being authored next validates against today's schema, and DESC-02
+  // (blocker since the M7c split) carries the pressure to shed retired fields.
   if (ref && data && typeof data === 'object' && !Array.isArray(data)) {
     const known = new Set(Object.keys(DESCRIPTOR_SCHEMA.properties || {}))
     for (const k of Object.keys(data)) if (!known.has(k) && !k.startsWith('_')) delete data[k]

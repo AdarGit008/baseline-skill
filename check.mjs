@@ -33,7 +33,7 @@ const TYPES = RULES.project_types || ['node', 'python', 'service', 'library', 'd
 
 const color = makeColor(JSON_OUT)
 const repo = indexRepo(REPO)
-const { cfg, DEFAULTS, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, SIGNOFF, JDGS, DESCRIPTOR } = resolveConfig(repo, {
+const { cfg, DEFAULTS, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, JDGS, DESCRIPTOR } = resolveConfig(repo, {
   cliConfigPath: opt('--config', null),
   profileArgs: optAll('--profile'),
 })
@@ -52,7 +52,7 @@ const DEFAULT_BRANCH = (DESCRIPTOR.valid && DESCRIPTOR.data.ground_truth_boundar
 // run never spawns gh) and exit-stable offline (degradations become labeled SKIPs).
 const LANEWORLD = makeLaneWorld(repo, DESCRIPTOR)
 
-const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, SIGNOFF, JDGS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD })
+const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD })
 const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH })
 
 process.exit(JSON_OUT

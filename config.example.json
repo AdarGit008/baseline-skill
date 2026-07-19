@@ -9,8 +9,6 @@
   "bootstrap_command": "pnpm install --frozen-lockfile && pnpm -w test",
   "_bootstrap_command": "the clean-checkout Task-1 command for BUILD-05; must exit 0. Omit to skip.",
   "command_timeout_ms": 600000,
-  "status_file": "docs/start-here.md",
-  "_status_file": "CTX-01's single status owner. Setting false (with a valid baseline.repo.json present) is an honored opt-out — orient replaces the status file.",
   "claims_file": "docs/CLAIMS.json",
   "decision_globs": ["docs/decisions/0*.md", "adr/*.md"],
   "doc_globs": ["**/*.md"],
@@ -21,17 +19,14 @@
   "_doc_freshness_days": "CTX-06 goes red when a freshness_globs doc's last_review_date is older than this.",
   "doc_lag_days": 30,
   "_doc_lag_days": "CTX-11 goes red when a doc's anchored source code (frontmatter 'sources: [glob]') was committed more than this many days after the doc.",
-  "stamp_max_lag_commits": 3,
-  "_stamp_max_lag_commits": "CTX-01 accepts a 'last-verified' stamp naming HEAD or an ancestor within this many commits as fresh; beyond it (or off-branch) it warns to reconcile.",
   "generated_globs": [],
   "_generated_globs": "OPT-IN for CTX-08: generated files that must carry a 'DO NOT EDIT' marker. Empty = rule skips. e.g. [\"**/*.gen.ts\", \"docs/api/**\"]",
   "grounding_docs": [],
   "_grounding_docs": "OPT-IN for CTX-09: required grounding docs that must exist and be non-empty. Empty = rule skips. e.g. [\"docs/architecture.md\", \"docs/tech-stack.md\"]",
   "sources_of_truth": {
-    "status": "docs/start-here.md",
+    "status": "derived — baseline orient",
     "facts": "docs/knowledge-ledger.md",
     "decisions": "docs/decisions/"
   },
-  "signoff_file": ".project-baseline/signoff.json",
   "prior_art_recheck_days": 90
 }

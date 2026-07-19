@@ -1,8 +1,0 @@
-{
-  "_comment": "Manual sign-offs: dated human judgments the runner can't automate. In distribution mode (project_type=docs) the only applicable manual rule is CTX-04; TEST-03/04 now scope to code repos and skip here. Review and re-date before merge.",
-  "CTX-04": {
-    "by": "adar",
-    "date": "2026-07-05",
-    "note": "n/a — no frozen/consolidated/LOCKED docs in this repo. REFERENCE.md is a hand-maintained reference (its rule table is regenerated from rules.json) and carries no supersede banner because nothing here is superseded."
-  }
-}

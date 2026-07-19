@@ -4,11 +4,12 @@
   "makes_external_claims": false,
   "bootstrap_command": "npm ci && npm test",
   "_bootstrap_command": "BUILD-05 crown check: a clean checkout installs and runs the first test. Must exit 0. Swap npm for pnpm/yarn as needed.",
-  "status_file": "docs/start-here.md",
-  "decision_globs": ["docs/decisions/0*.md", "adr/*.md"],
+  "decision_globs": [
+    "docs/decisions/0*.md",
+    "adr/*.md"
+  ],
   "sources_of_truth": {
-    "status": "docs/start-here.md",
+    "status": "derived — baseline orient",
     "decisions": "docs/decisions/"
-  },
-  "signoff_file": ".project-baseline/signoff.json"
+  }
 }

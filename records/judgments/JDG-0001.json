@@ -1,0 +1,10 @@
+{
+  "record": "judgment/1",
+  "id": "JDG-0001",
+  "kind": "sign-off",
+  "date": "2026-07-19",
+  "by": "adar",
+  "subject": "CTX-04",
+  "reason": "Re-minted from legacy .project-baseline/signoff.json at the M7b contraction (MIGRATION.md step: the JDG ledger is the sole sign-off path). Original judgment: adar 2026-07-05 — no frozen/consolidated/LOCKED docs in this repo; REFERENCE.md is a hand-maintained reference (rule table regenerated from rules.json) and carries no supersede banner because nothing here is superseded.",
+  "review_by": "2027-01-19"
+}

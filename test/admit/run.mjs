@@ -38,7 +38,7 @@ const admitJson = (cwd, args = [], env = {}) => {
 }
 
 const BASE_DESC = {
-  schema_version: 1, type: 'node', lifecycle: 'experimental', maturity: 'prototype', owner: 't',
+  schema_version: 1, type: 'node', lifecycle: 'experimental', maturity: 'prototype',
   workflow: 'multi-lane', anchoring: 'strict',
   ground_truth_boundary: { default_branch: 'main' },
   lanes: { namespace: 'lane/*', lease_ttl: '7d' },
@@ -83,6 +83,31 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   const r2 = cli(w2.clone, ['admit'])
   ok(r2.status === 2 && /no baseline\.repo\.json at origin\/main/.test(r2.stderr), 'no descriptor at the TARGET → exit 2 naming FS1')
   ok(cli(w2.clone, ['admit', '--target']).status === 2, '--target without a value → usage')
+}
+
+// ---------- schema evolution at the target ref (M7b: the owner drop) ----------
+// A target-branch descriptor written under an earlier schema may carry a field
+// the current engine dropped (`owner`). The ref-read ignores unknown fields —
+// otherwise the very PR that sheds the field could never be admitted (the M6
+// relief-circularity class, re-created by a schema contraction).
+{
+  const legacy = { ...BASE_DESC, owner: 'legacy-team' }
+  const w = mkworld('ownertarget', legacy)
+  git(w.clone, 'checkout', '-q', '-b', 'lane/7')
+  commit(w.clone, 'work.txt', 'w\n', 'lane work')
+  logLane(w.clone, 'lane/7')
+  let r = admitJson(w.clone)
+  ok(r.status === 0 && r.j?.verdict === 'ADMITTED', `owner-bearing TARGET descriptor still admits — ref-reads ignore unknown fields (got ${r.status} ${r.j?.verdict})`)
+  // the shedding PR itself: descriptor drops owner + same-PR judgment = the ceremony
+  const w2 = mkworld('ownershed', legacy)
+  git(w2.clone, 'checkout', '-q', '-b', 'lane/8')
+  commit(w2.clone, 'baseline.repo.json', JSON.stringify(BASE_DESC, null, 2) + '\n', 'drop retired owner field')
+  commit(w2.clone, 'records/judgments/JDG-0101.json', JDG('JDG-0101', { subject: 'baseline.repo.json', kind: 'deviation', reason: 'shed the retired owner field (M7b schema)' }), 'jdg')
+  logLane(w2.clone, 'lane/8')
+  r = admitJson(w2.clone)
+  ok(r.status === 0 && r.j?.verdict === 'ADMITTED', `the owner-shedding PR admits with its same-PR judgment (got ${r.status} ${r.j?.verdict})`)
+  const d3 = (r.j?.results || []).find(x => x.id === 'DESC-03')
+  ok(d3 && d3.tag === 'PASS', `DESC-03 judged the descriptor change through the ceremony (got ${d3?.tag})`)
 }
 
 // ---------- staleness: the C35 command contract ----------

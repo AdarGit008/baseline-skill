@@ -6,6 +6,60 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Removed — V2 M7b: the contraction (88 → 87 rules; the expand/contract debt paid)
+- **CTX-01 and the `status-stamp` check kind** (39 → 38 kinds): the stored-status
+  surface is gone — no rule demands a hand-maintained freshness stamp anywhere.
+  Its knobs died with it: `DEFAULTS.status_file`, `stamp_max_lag_commits`, the
+  engine's `status_file:false` descriptor-honored carve-out (with zero remaining
+  `requires` consumers outside the claims family, the generic `requires:false`
+  opt-out branch retired too — a future key adds its semantics consciously).
+- **The legacy sign-off read**: `.project-baseline/signoff.json` no longer
+  satisfies a manual rule — the JDG ledger (`records/judgments/`, `kind:
+  sign-off`, subject = rule id) is the ONLY path. `signoff_file` config key,
+  `templates/signoff.json`, and the SKILL teaching retired with it; the five
+  manual rules are otherwise unchanged. The skill's own CTX-04 entry was
+  re-minted as `records/judgments/JDG-0001.json` in this PR — the migration,
+  dogfooded.
+- **The legacy claims read**: the CLAIM checks read `records/claims/CLM-*.json`
+  ONLY — an unmigrated `docs/CLAIMS.json` is never counted (CLAIM-07 keeps
+  flagging it; the empty-register finding names the migration).
+  `loadLegacyClaims` survives with exactly one consumer: `gen migrate-claims`,
+  MIGRATION.md's executor. `templates/CLAIMS.json` (a scaffold for the artifact
+  the tripwire flags) deleted.
+- **`owner` dropped from the descriptor** (schema `required` + property, both
+  `*.repo.json` presets, the template, the S7 consumer map): grep-proven zero
+  consumers — lane identity is the `Baseline-Agent` trailer, ownership is
+  CODEOWNERS' job (GOV-03). The schema is `additionalProperties:false`, so a
+  descriptor still carrying `owner` is invalid: remove the key (the demo's own
+  edit dogfoods DESC-03's same-PR-judgment ceremony on its next adoption PR).
+- **`templates/start-here.md` and `config-presets/context-management.json`** —
+  the status-doc scaffold and the preset whose center of gravity was the
+  stored-status keys.
+
+### Changed — V2 M7b: CTX-12 rewritten; the separation ruled FINAL; MIGRATION.md
+- **CTX-12 is the stored-status signature, at blocker**: de-config-keyed
+  (`requires`/`file_from_config` died with the key), glob-scanned (`**/*.md`),
+  line-anchored (`^\s*` + the stamp marker at line start, flags `im`) — the
+  deterministic signature IS the whole check; the issue's "heuristic residue"
+  leg was CUT (no such heuristic exists; revive: observed evasion on a real
+  repo). In-slice self-housekeeping: the skill's own `docs/start-here.md`
+  stamp — which this very rule would have blocked — deleted in the same PR.
+- **`baseline.repo.json` / `baseline.config.json` separation is FINAL**
+  (CONTRACT.md): the descriptor is the change-controlled file read at the
+  target ref; the config is the free worktree file. Convergence CUT — revive
+  only on demonstrated per-field change-control demand.
+- **MIGRATION.md** (doc-only — the `fix` command stays CUT): the four V1
+  artifacts, each with its existing detector (DESC-01 · CTX-12 · the manual
+  rules' unsatisfied sign-offs · CLAIM-07), and every step an existing command
+  (preset copy · stamp deletion · `jdg new` re-mint · `gen migrate-claims`).
+  Worked example: baseline-demo's minted `pre-v2` tag, migrated by the doc
+  alone — transcript in the PR.
+- **Stale fix-string sweep**: DESC-01 (rule + evaluator detail) no longer names
+  the nonexistent `init` command nor the dropped `owner` field; presets/docs
+  stop teaching `status:` doc pointers (derived `orient` is the status surface).
+- Corpus re-pin **2 of the ruled 3** (CTX-01's death + the CTX-12 rework):
+  pre-flight diff published in the PR before capture.
+
 ### Changed — V2 M7a: the promotion (10 rules warn → blocker; blocker-DIVERGED refuses)
 - **Severity flips** (per the M7 ruling, PLAN §8): FLOW-01..05, FLOW-07 · DIV-01..03 ·
   MERGE-02 — all deterministic, all already posture-gated (`workflow: multi-lane |

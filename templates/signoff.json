@@ -1,7 +1,0 @@
-{
-  "_help": "Dated human sign-off ledger for the 'manual' rules — the judgment calls a script can't make (blast-radius, prior-art done, wedge/moat pressure-test). The gate treats a manual rule as satisfied ONLY if it has an entry here, so even judgment leaves a checkable, auditable trace. Add { by, date, note } per rule id.",
-  "TEST-03": { "by": "adar", "date": "2026-07-04", "note": "Isolation + PII sweeps pinned to live table count (15/16); any new table turns CI red on arrival." },
-  "TEST-04": { "by": "adar", "date": "2026-07-04", "note": "Every acceptance criterion's enums/fields cross-checked against their type defs; each 'must raise' has a negative test." },
-  "CTX-04": { "by": "adar", "date": "2026-07-04", "note": "No frozen consolidated spec; decisions live in per-file ADRs with Status + Superseded-by." },
-  "CLAIM-05": { "by": "adar", "date": "2026-07-04", "note": "Wedge=migration on-ramp, Moat=AI report-gen depth. Moat pressure-tested assuming interception/pipeline are free — holds on output quality." }
-}

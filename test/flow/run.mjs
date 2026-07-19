@@ -20,7 +20,7 @@ const GITENV = { GIT_AUTHOR_NAME: 'Flow', GIT_AUTHOR_EMAIL: 'flow@t.invalid', GI
 const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { encoding: 'utf8', env: { ...process.env, ...GITENV } }).trim()
 
 const DESC = {
-  schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 't',
+  schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released',
   workflow: 'multi-lane', anchoring: 'strict',
   lanes: { namespace: 'lane/*', lease_ttl: '7d', families: ['release/*'] },
   join_keys: ['Baseline-Agent', 'Baseline-Issue'],
@@ -36,9 +36,8 @@ function world(name, { desc = {}, replay = null } = {}) {
   git(w, 'init', '-q', '-b', 'main')
   fs.writeFileSync(path.join(w, 'baseline.repo.json'), JSON.stringify({ ...DESC, ...desc, lanes: { ...DESC.lanes, ...(desc.lanes || {}) } }, null, 2) + '\n')
   fs.writeFileSync(path.join(w, 'README.md'), '# flow fixture\n')
-  // status_file:false (honored with a valid descriptor) + a LICENSE clear CTX-01/COMM-01
-  // so exit codes reflect ONLY the FLOW/DIV rules under test (as the golden lanes-repo does)
-  fs.writeFileSync(path.join(w, 'baseline.config.json'), JSON.stringify({ status_file: false }, null, 2) + '\n')
+  // a LICENSE clears COMM-01 so exit codes reflect ONLY the FLOW/DIV rules
+  // under test (as the golden lanes-repo does)
   fs.writeFileSync(path.join(w, 'LICENSE'), 'MIT-ish flow fixture (not a real grant).\n')
   git(w, 'add', '-A'); git(w, 'commit', '-qm', 'init'); git(w, 'remote', 'add', 'origin', bare); git(w, 'push', '-q', 'origin', 'main')
   let replayDir = null

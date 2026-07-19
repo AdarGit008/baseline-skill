@@ -30,7 +30,7 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
 {
   const R = loadRules()
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'rules.json'), 'utf8'))
-  ok(R.rules.length === 88, `loader assembles 88 rules (got ${R.rules.length})`)
+  ok(R.rules.length === 87, `loader assembles 87 rules (got ${R.rules.length})`)
   ok((manifest.modules || []).length === 15, `manifest lists 15 modules (got ${(manifest.modules || []).length})`)
   ok(!('rules' in manifest), 'manifest itself carries no rules (they live in rules/)')
   ok(new Set(R.rules.map(r => r.id)).size === R.rules.length, 'rule ids unique across modules')
@@ -252,7 +252,7 @@ try {
   fs.mkdirSync(path.join(t7, 'records/judgments'), { recursive: true })
   fs.mkdirSync(path.join(t7, 'docs'), { recursive: true })
   fs.mkdirSync(path.join(t7, '.project-baseline'), { recursive: true })
-  fs.writeFileSync(path.join(t7, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'prototype', owner: 'adar', workflow: 'single-lane', anchoring: 'off' }))
+  fs.writeFileSync(path.join(t7, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'prototype', workflow: 'single-lane', anchoring: 'off' }))
   fs.writeFileSync(path.join(t7, 'docs/start-here.md'), '# status\n\nlast-verified: abc1234\n')
   fs.writeFileSync(path.join(t7, 'README.md'), '# bridge fixture\n')
   fs.writeFileSync(path.join(t7, 'LICENSE'), 'MIT\n')
@@ -286,10 +286,10 @@ try {
     ok(/no branch/.test(gate({ branch_scope: 'lane' }, { BRANCH: null }).detail), 'engine: lane rule SKIPs on detached HEAD, honestly')
     const undecl = gate({ workflow: 'multi-lane', branch_scope: 'lane' }, { DESCRIPTOR: ML, BRANCH: 'lane/x', DEFAULT_BRANCH: null })
     ok(undecl.tag === 'SKIP' && /default branch undeclared/.test(undecl.detail), 'engine: an undeclared default branch SKIPs lane rules — never a guessed main')
-    const opted = gate({ requires: 'status_file' }, { cfg: { status_file: false }, DESCRIPTOR: SL })
-    ok(opted.tag === 'SKIP' && /opted out \(status_file:false\)/.test(opted.detail), 'engine: status_file:false honored WITH a valid descriptor')
-    ok(gate({ requires: 'status_file' }, { cfg: { status_file: false } }).tag === 'PASS', 'engine: status_file:false NOT honored without a descriptor — the rule still runs')
-    ok(gate({ requires: 'status_file' }, { cfg: { status_file: false }, DESCRIPTOR: { valid: false, present: true } }).tag === 'PASS', 'engine: an invalid descriptor confers no opt-out')
+    // M7b: the generic requires:false opt-out branch retired with status_file —
+    // a config key set false no longer silences any rule; only the claims-family
+    // gate (requires: makes_external_claims) confers a SKIP.
+    ok(gate({ requires: 'some_key' }, { cfg: { some_key: false } }).tag === 'PASS', 'engine: requires:false confers no opt-out since M7b — the rule runs')
     const cskip = gate({ requires: 'makes_external_claims' }, { CLAIMS_ACTIVE: false, CLAIMS_REASON: "maturity=prototype — CLAIM activates at 'claimed'" })
     ok(cskip.tag === 'SKIP' && /maturity=prototype/.test(cskip.detail), 'engine: the claims skip detail carries the maturity reason')
     // M6a: the context gate EXCLUDES (no row) — a "wrong context" SKIP on every check
@@ -305,7 +305,7 @@ try {
     const t9 = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-maturity-')); tmps.push(t9)
     fs.mkdirSync(path.join(t9, 'docs'), { recursive: true })
     fs.writeFileSync(path.join(t9, 'docs/CLAIMS.json'), JSON.stringify({ claims: [{ id: 'x', statement: 's', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }] }))
-    const desc = m => JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: m, owner: 'a', workflow: 'single-lane', anchoring: 'off' })
+    const desc = m => JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: m, workflow: 'single-lane', anchoring: 'off' })
     fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('prototype'))
     const proto = resolveConfig(indexRepo(t9))
     ok(proto.CLAIMS_ACTIVE === false && /maturity=prototype/.test(proto.CLAIMS_REASON), 'maturity=prototype: register present but CLAIM inactive (activates at claimed)')
@@ -415,15 +415,25 @@ try {
     const t12 = mkrepo('main'); tmps.push(t12)
     fs.writeFileSync(path.join(t12, 'README.md'), '# lane fixture\n')
     fs.writeFileSync(path.join(t12, 'LICENSE'), 'MIT\n')
-    fs.writeFileSync(path.join(t12, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 'a', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
-    fs.writeFileSync(path.join(t12, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false, status_file: false }))
+    fs.writeFileSync(path.join(t12, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
+    fs.writeFileSync(path.join(t12, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false }))
     sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'base'])
     const CHECK12 = path.join(ROOT, 'check.mjs')
     const byId = out => Object.fromEntries(JSON.parse(out).results.map(x => [x.id, x]))
     let res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
     ok(res['FLOW-02'].tag === 'SKIP' && /default branch/.test(res['FLOW-02'].detail), 'e2e: FLOW-02 SKIPs on the default branch — no wallpaper warns')
-    ok(res['CTX-01'].tag === 'SKIP' && /opted out/.test(res['CTX-01'].detail), 'e2e: status_file:false + descriptor = CTX-01 opted out')
-    ok(res['CTX-12'].tag === 'SKIP', 'e2e: CTX-12 rides the same opt-out')
+    // M7b: the stored-status surface is GONE — CTX-01 has no row at all, and
+    // CTX-12 (blocker) is de-config-keyed: no stamp in the tree = PASS, no
+    // status_file key to opt anything out.
+    ok(!('CTX-01' in res), 'e2e: CTX-01 retired — no row, not a SKIP')
+    ok(res['CTX-12'].tag === 'PASS' && res['CTX-12'].severity === 'blocker', 'e2e: CTX-12 is the de-config-keyed stored-status blocker — clean tree PASSes')
+    fs.writeFileSync(path.join(t12, 'docs-stamp.md'), 'notes\n\nlast-verified: deadbee 2026-01-01\n')
+    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
+    ok(res['CTX-12'].tag === 'FAIL' && /docs-stamp\.md/.test(res['CTX-12'].detail), 'e2e: a line-anchored stamp anywhere in the tree FAILs CTX-12 and names the file')
+    fs.writeFileSync(path.join(t12, 'docs-stamp.md'), 'notes mention `last-verified: x` mid-line only\n')
+    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
+    ok(res['CTX-12'].tag === 'PASS', 'e2e: a mid-line mention is not the signature — line-anchored means line-anchored')
+    fs.rmSync(path.join(t12, 'docs-stamp.md'))
     sh(t12, 'git', ['checkout', '-qb', 'lane/t'])
     res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
     ok(res['FLOW-02'].tag === 'SKIP' && /no work on this branch yet/.test(res['FLOW-02'].detail), 'e2e: a freshly-cut lane SKIPs — the record couples to work, not to branch creation')
@@ -435,7 +445,7 @@ try {
     const lrec = 'records/sessions/lane/t/2026-07-11-120000-a.md'
     fs.mkdirSync(path.join(t12, path.dirname(lrec)), { recursive: true })
     fs.writeFileSync(path.join(t12, lrec), '---\nrecord: session/1\nlane: lane/t\nagent: a\nstarted: 2026-07-11T12:00:00Z\n---\n\n## Did\nx\n\n## Left open\nnext: y\n')
-    fs.writeFileSync(path.join(t12, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 'a', workflow: 'multi-lane', anchoring: 'relaxed', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
+    fs.writeFileSync(path.join(t12, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', workflow: 'multi-lane', anchoring: 'relaxed', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
     sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'lane work + descriptor change'])
     res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
     ok(res['FLOW-02'].tag === 'PASS', 'e2e: the session record riding the lane flips FLOW-02 to PASS')
@@ -464,7 +474,7 @@ try {
     ] }))
     fs.writeFileSync(path.join(t13, 'records/claims/CLM-0002.json'), JSON.stringify({ record: 'claim/1', id: 'CLM-0002', slug: 'alpha', statement: 'record alpha', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }))
     const merged = loadClaims(indexRepo(t13), { claims_file: 'docs/CLAIMS.json' })
-    ok(merged.claims.length === 2 && merged.claims.find(c => c.slug === 'alpha').statement === 'record alpha' && merged.claims.some(c => c.id === 'beta'), 'dual-read: records shadow their migrated legacy twin; unmigrated legacy claims survive')
+    ok(merged.claims.length === 1 && merged.claims[0].statement === 'record alpha' && merged.legacyPresent === true, 'records-only (M7b): the checker counts records alone; the unread monolith surfaces as legacyPresent')
     const g1 = sh(t13, process.execPath, [BASELINE, 'gen', 'migrate-claims', '--repo', t13], NOW)
     ok(g1.code === 0 && /1 written/.test(g1.out) && /1 already migrated/.test(g1.out), 'gen: migrates only the unmigrated claim (numbering continues past CLM-0002)')
     ok(fs.existsSync(path.join(t13, 'records/claims/CLM-0003.json')) && JSON.parse(fs.readFileSync(path.join(t13, 'records/claims/CLM-0003.json'), 'utf8')).slug === 'beta', 'gen: the new record gets the next number and keeps the V1 id as slug')
@@ -533,7 +543,7 @@ try {
     fs.writeFileSync(path.join(t15b, 'docs/CLAIMS.json'), JSON.stringify({ claims: [{ id: 'CLM-0001', statement: 'unmigrated legacy', type: 'novelty', build_state: 'planned', blast_radius: 'company' }] }))
     fs.writeFileSync(path.join(t15b, 'records/claims/CLM-0001.json'), JSON.stringify({ record: 'claim/1', id: 'CLM-0001', slug: 'unrelated', statement: 'unrelated record', ...V }))
     const merged15 = loadClaims(indexRepo(t15b), { claims_file: 'docs/CLAIMS.json' })
-    ok(merged15.claims.length === 2 && merged15.claims.some(c => c.statement === 'unmigrated legacy'), 'dual-read: a record id can never shadow an unmigrated legacy claim (slug is THE key — no green-by-omission)')
+    ok(merged15.claims.length === 1 && merged15.claims[0].statement === 'unrelated record' && merged15.legacyPresent === true, 'records-only (M7b): legacy content is never counted — and never shadowed into silence; legacyPresent still points at the migration')
   }
 
   // ---- M4c review: scrub --since range semantics (the hook's primary mode) ----
@@ -598,15 +608,19 @@ try {
     ok(h4.code === 1, 'hook: multiple stdin ref lines all process (child scrub must not drain the ref list)')
   }
 
-  // ---- M4c review: the unhonored opt-out speaks its condition (blocker-side) ----
+  // ---- M7b: the de-config-keyed stored-status signature on a BARE repo ----
+  // (was: the status_file:false unhonored-opt-out test — that concept retired with
+  // the key; what remains checkable is that a bare repo with a stamp cannot
+  // config its way out, because there is no config surface at all)
   {
     const t18 = mkrepo('main'); tmps.push(t18)
-    fs.writeFileSync(path.join(t18, 'README.md'), '# bare\n')
-    fs.writeFileSync(path.join(t18, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false, status_file: false }))
+    fs.writeFileSync(path.join(t18, 'README.md'), '# bare\n\nlast-verified: abc1234 2026-01-01\n')
+    fs.writeFileSync(path.join(t18, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false }))
     sh(t18, 'git', ['add', '-A']); sh(t18, 'git', ['commit', '-qm', 'base'])
     const res18 = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
-    const ctx01 = res18.results.find(x => x.id === 'CTX-01')
-    ok(ctx01.tag === 'FAIL' && /honored only with a valid/.test(ctx01.detail), 'e2e: status_file:false with NO descriptor fails CTX-01 with the fix named — never "missing: false"')
+    const ctx12 = res18.results.find(x => x.id === 'CTX-12')
+    ok(ctx12.tag === 'FAIL' && ctx12.severity === 'blocker' && /README\.md/.test(ctx12.detail), 'e2e: the stamp signature on a bare repo FAILs CTX-12 at blocker, no config key to hide behind')
+    ok(!res18.results.some(x => x.id === 'CTX-01'), 'e2e: CTX-01 is gone from the rule set entirely')
   }
 } finally {
   for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })

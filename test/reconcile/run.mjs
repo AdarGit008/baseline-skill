@@ -39,7 +39,7 @@ const recJson = (cwd, args = [], env = {}) => {
 }
 
 const DESC = (over = {}) => ({
-  schema_version: 1, type: 'node', lifecycle: 'experimental', maturity: 'prototype', owner: 't',
+  schema_version: 1, type: 'node', lifecycle: 'experimental', maturity: 'prototype',
   workflow: 'multi-lane', anchoring: 'strict',
   ground_truth_boundary: { default_branch: 'main' },
   lanes: { namespace: 'lane/*', lease_ttl: '7d' },

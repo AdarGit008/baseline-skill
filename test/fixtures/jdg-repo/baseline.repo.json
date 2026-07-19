@@ -3,7 +3,6 @@
   "type": "docs",
   "lifecycle": "production",
   "maturity": "prototype",
-  "owner": "adar",
   "workflow": "single-lane",
   "anchoring": "off"
 }

@@ -1,6 +1,4 @@
-# jdg-repo — status
+# jdg-repo — status doc
 
-last-verified: {{HEAD1}} {{TODAY}}
-
-Minimal V1-style status stamp so CTX-01 passes; the point of this fixture is the
-judgment ledger, not the stamp (which CTX-12 rightly nudges about).
+The point of this fixture is the judgment ledger; state is derived, not stamped
+(its V1-style stamp retired with CTX-01 at M7b — CTX-12 now blocks the artifact).

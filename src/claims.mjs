@@ -1,12 +1,10 @@
-// Claims dual-read (M4c -> M7): the CLAIM rules read BOTH homes — the legacy
-// docs/CLAIMS.json monolith (V1) and the exploded per-claim records/claims/CLM-*.json
-// (C17/C23). THE MIGRATION KEY IS THE SLUG, nowhere else: a record whose `slug`
-// matches a legacy claim's id supersedes it, so the sanctioned overlap window never
-// double-counts a claim — and never false-shadows one (a record's own CLM-NNNN id
-// must not hide an unmigrated legacy claim that happens to share the spelling; the
-// reader and `gen migrate-claims` share this one definition of "migrated"). The
-// legacy read retires at M7 (#24's delete list); until then CLAIM-07 warns it into
-// motion. `gen migrate-claims` writes through the same shapes.
+// Claims: ONE home since M7b — the per-claim records/claims/CLM-*.json (C17/C23).
+// The V1 docs/CLAIMS.json monolith retired from the checker read with M7's
+// contraction: the CLAIM rules evaluate records only, and an unmigrated monolith
+// surfaces exactly twice — CLAIM-07 (the migration tripwire: monolith present at
+// all = debt) and the empty-register detail below. `loadLegacyClaims` SURVIVES
+// with one consumer, `gen migrate-claims` — MIGRATION.md's own executor; deleting
+// it wholesale would kill the migration path the retirement depends on.
 import { validateRecord } from './records.mjs'
 
 export const CLAIM_RECORD_GLOB = 'records/claims/CLM-*.json'
@@ -28,6 +26,7 @@ export function loadClaimRecords(repo) {
   return { claims, errors }
 }
 
+// The V1 monolith reader — `gen migrate-claims`'s input, NOT a checker path.
 // -> { present, claims, error }. present=false when the monolith doesn't exist;
 // error set when it exists but can't be read as {claims:[...]}.
 export function loadLegacyClaims(repo, cfg) {
@@ -41,16 +40,12 @@ export function loadLegacyClaims(repo, cfg) {
   return { present: true, claims: data.claims.filter(cl => cl && typeof cl === 'object').map(cl => ({ ...cl, _file: f })), error: null }
 }
 
-// The merged view the CLAIM checks evaluate. Records win: a legacy claim whose id
-// matches a record's SLUG is shadowed — its migrated copy is the one home. Slug
-// only: shadowing by record id would silently drop an unmigrated legacy claim
-// whose author picked a CLM-NNNN-shaped id (green-by-omission on blocker rules).
+// The view the CLAIM checks evaluate: records ONLY. legacyPresent is a bare
+// tree fact (the monolith file exists — never parsed here), kept so the
+// empty-register finding can point an unmigrated V1 repo at the migration
+// instead of reporting "no claims" while its register sits in the old home.
 export function loadClaims(repo, cfg) {
   const rec = loadClaimRecords(repo)
-  const legacy = loadLegacyClaims(repo, cfg)
-  const migrated = new Set()
-  for (const cl of rec.claims) if (cl.slug) migrated.add(String(cl.slug))
-  const survivors = legacy.claims.filter(cl => !migrated.has(String(cl.id ?? '')))
-  const errors = [...rec.errors, ...(legacy.error ? [legacy.error] : [])]
-  return { claims: [...rec.claims, ...survivors], recordCount: rec.claims.length, legacyPresent: legacy.present, legacyCount: legacy.claims.length, errors }
+  const legacyPresent = typeof cfg.claims_file === 'string' && (repo.FILES.includes(cfg.claims_file) || repo.match(cfg.claims_file).length > 0)
+  return { claims: rec.claims, recordCount: rec.claims.length, legacyPresent, errors: rec.errors }
 }

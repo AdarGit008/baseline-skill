@@ -7,7 +7,8 @@
   "prior_art_recheck_days": 90,
   "_prior_art_recheck_days": "CLAIM-03: a novelty/competitive claim's prior-art pass goes stale after this many days and must be re-run.",
   "bootstrap_command": "npm ci && npm test",
-  "status_file": "docs/start-here.md",
-  "decision_globs": ["docs/decisions/0*.md", "adr/*.md"],
-  "signoff_file": ".project-baseline/signoff.json"
+  "decision_globs": [
+    "docs/decisions/0*.md",
+    "adr/*.md"
+  ]
 }

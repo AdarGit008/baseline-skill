@@ -3,7 +3,7 @@
     "exitCode": 0
   },
   "human_scorecard": {
-    "exitCode": 1,
+    "exitCode": 0,
     "text": [
       "",
       "  project-baseline v2.4.0  ·  <REPO>  ·  type=node  ·  profiles=[core,advanced]  ·  HEAD=<sha>",
@@ -127,8 +127,6 @@
       "            ↳ CHANGELOG.md ok",
       "",
       "  Context management",
-      "    FAIL      CTX-01    Status lives in one owner with a fresh 'last-verified' stamp",
-      "            ↳ no 'last-verified:' stamp in README.md",
       "    SKIP      CTX-02    Every decision record carries a Status; superseded ones link forward",
       "            ↳ no numbered ADR files found",
       "    WARN      CTX-03    Sources of truth are declared",
@@ -206,12 +204,12 @@
       "",
       "  Repo descriptor",
       "    WARN      DESC-01   Repo descriptor present and valid",
-      "            ↳ no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init",
+      "            ↳ no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset",
       "",
-      "  Summary  34 pass · 1 fail · 10 warn · 4 sign-off · 37 n/a",
-      "  Readiness: 69%  (34/49 applicable)",
+      "  Summary  34 pass · 0 fail · 10 warn · 4 sign-off · 37 n/a",
+      "  Readiness: 71%  (34/48 applicable)",
       "",
-      "  ✗ 1 blocker(s) — not build-ready.",
+      "  ✓ no blockers.",
       "",
       ""
     ]
@@ -728,13 +726,13 @@
       "core"
     ],
     "summary": {
-      "blockers": 4,
-      "pass": 9,
+      "blockers": 3,
+      "pass": 8,
       "warn": 9,
       "diverged": 0,
-      "signoff": 1,
+      "signoff": 2,
       "skip": 63,
-      "total": 86
+      "total": 85
     },
     "rules": {
       "BUILD-01": {
@@ -805,10 +803,6 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "CTX-01": {
-        "tag": "FAIL",
-        "detail": "no 'last-verified:' stamp in README.md"
-      },
       "CTX-02": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
@@ -859,23 +853,23 @@
       },
       "CLAIM-01": {
         "tag": "FAIL",
-        "detail": "CLM-A: build_state='planned' not in {shipped-tested|designed-unshipped|assumed-unmeasured}; CLM-B: build_state='not-a-real-state' not in {shipped-tested|designed-unshipped|assumed-unmeasured}; CLM-C: build_state='shipped' not in {shipped-tested|designed-unshipped|assumed-unmeasured}"
+        "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
       },
       "CLAIM-02": {
         "tag": "FAIL",
-        "detail": "CLM-A: blast_radius='company' not in {existential|recoverable}; CLM-B: no blast_radius; CLM-C: blast_radius='module' not in {existential|recoverable}"
+        "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
       },
       "CLAIM-03": {
         "tag": "FAIL",
-        "detail": "CLM-A: missing how_we_differ; CLM-B: prior-art stale (<N>d > <N>d); CLM-B: missing how_we_differ"
+        "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
       },
       "CLAIM-04": {
         "tag": "WARN",
-        "detail": "CLM-B: citation missing url/supports_because"
+        "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
       },
       "CLAIM-05": {
-        "tag": "PASS",
-        "detail": "signed adar 2026-07-01"
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
       },
       "CLAIM-06": {
         "tag": "PASS",
@@ -1079,7 +1073,7 @@
       },
       "DESC-01": {
         "tag": "WARN",
-        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
       }
     }
   },
@@ -1090,13 +1084,13 @@
       "core"
     ],
     "summary": {
-      "blockers": 3,
+      "blockers": 2,
       "pass": 7,
       "warn": 15,
       "diverged": 0,
       "signoff": 3,
       "skip": 58,
-      "total": 86
+      "total": 85
     },
     "rules": {
       "BUILD-01": {
@@ -1166,10 +1160,6 @@
       "TEST-07": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
-      },
-      "CTX-01": {
-        "tag": "FAIL",
-        "detail": "no 'last-verified:' stamp in README.md"
       },
       "CTX-02": {
         "tag": "SKIP",
@@ -1446,19 +1436,19 @@
     }
   },
   "descriptor-repo": {
-    "exitCode": 1,
+    "exitCode": 0,
     "project_type": "docs",
     "profiles": [
       "core"
     ],
     "summary": {
-      "blockers": 1,
+      "blockers": 0,
       "pass": 7,
       "warn": 6,
       "diverged": 0,
       "signoff": 1,
       "skip": 71,
-      "total": 86
+      "total": 85
     },
     "rules": {
       "BUILD-01": {
@@ -1528,10 +1518,6 @@
       "TEST-07": {
         "tag": "SKIP",
         "detail": "n/a for docs"
-      },
-      "CTX-01": {
-        "tag": "FAIL",
-        "detail": "no 'last-verified:' stamp in README.md"
       },
       "CTX-02": {
         "tag": "SKIP",
@@ -1815,13 +1801,13 @@
       "core"
     ],
     "summary": {
-      "blockers": 2,
-      "pass": 9,
-      "warn": 11,
+      "blockers": 3,
+      "pass": 7,
+      "warn": 10,
       "diverged": 0,
-      "signoff": 0,
+      "signoff": 1,
       "skip": 64,
-      "total": 86
+      "total": 85
     },
     "rules": {
       "BUILD-01": {
@@ -1892,10 +1878,6 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "CTX-01": {
-        "tag": "PASS",
-        "detail": "stamped <sha> (1 behind HEAD, within 3)"
-      },
       "CTX-02": {
         "tag": "FAIL",
         "detail": "0004-dangling.md: superseded w/o forward link"
@@ -1905,8 +1887,8 @@
         "detail": "declared"
       },
       "CTX-04": {
-        "tag": "PASS",
-        "detail": "signed adar 2026-07-01"
+        "tag": "SIGN-OFF",
+        "detail": "no sign-off recorded"
       },
       "CTX-05": {
         "tag": "FAIL",
@@ -1937,7 +1919,7 @@
         "detail": "1 anchored doc(s) not lagging"
       },
       "CTX-12": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "matched in 1 file(s): docs/start-here.md"
       },
       "CLAIM-00": {
@@ -2166,7 +2148,7 @@
       },
       "DESC-01": {
         "tag": "WARN",
-        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
       }
     }
   },
@@ -2178,12 +2160,12 @@
     ],
     "summary": {
       "blockers": 1,
-      "pass": 13,
+      "pass": 14,
       "warn": 8,
       "diverged": 0,
       "signoff": 1,
-      "skip": 63,
-      "total": 86
+      "skip": 61,
+      "total": 85
     },
     "rules": {
       "BUILD-01": {
@@ -2254,10 +2236,6 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "CTX-01": {
-        "tag": "SKIP",
-        "detail": "opted out (status_file:false)"
-      },
       "CTX-02": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
@@ -2299,8 +2277,8 @@
         "detail": "no docs declare a frontmatter sources: list (opt-in)"
       },
       "CTX-12": {
-        "tag": "SKIP",
-        "detail": "opted out (status_file:false)"
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -2541,11 +2519,11 @@
     "summary": {
       "blockers": 0,
       "pass": 11,
-      "warn": 8,
+      "warn": 7,
       "diverged": 0,
       "signoff": 0,
       "skip": 67,
-      "total": 86
+      "total": 85
     },
     "rules": {
       "BUILD-01": {
@@ -2616,10 +2594,6 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "CTX-01": {
-        "tag": "PASS",
-        "detail": "stamped <sha> (1 behind HEAD, within 3)"
-      },
       "CTX-02": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
@@ -2661,8 +2635,8 @@
         "detail": "no docs declare a frontmatter sources: list (opt-in)"
       },
       "CTX-12": {
-        "tag": "WARN",
-        "detail": "matched in 1 file(s): docs/start-here.md"
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -2902,12 +2876,12 @@
     ],
     "summary": {
       "blockers": 2,
-      "pass": 16,
+      "pass": 17,
       "warn": 7,
       "diverged": 1,
       "signoff": 1,
-      "skip": 60,
-      "total": 86
+      "skip": 58,
+      "total": 85
     },
     "rules": {
       "BUILD-01": {
@@ -2978,10 +2952,6 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "CTX-01": {
-        "tag": "SKIP",
-        "detail": "opted out (status_file:false)"
-      },
       "CTX-02": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
@@ -3023,8 +2993,8 @@
         "detail": "no docs declare a frontmatter sources: list (opt-in)"
       },
       "CTX-12": {
-        "tag": "SKIP",
-        "detail": "opted out (status_file:false)"
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -3263,13 +3233,13 @@
       "core"
     ],
     "summary": {
-      "blockers": 7,
-      "pass": 5,
+      "blockers": 6,
+      "pass": 6,
       "warn": 21,
       "diverged": 0,
       "signoff": 3,
-      "skip": 50,
-      "total": 86
+      "skip": 49,
+      "total": 85
     },
     "rules": {
       "BUILD-01": {
@@ -3340,10 +3310,6 @@
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
-      "CTX-01": {
-        "tag": "FAIL",
-        "detail": "status file missing: docs/start-here.md"
-      },
       "CTX-02": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
@@ -3385,8 +3351,8 @@
         "detail": "no docs declare a frontmatter sources: list (opt-in)"
       },
       "CTX-12": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
+        "tag": "PASS",
+        "detail": "pattern not found (good)"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -3614,25 +3580,25 @@
       },
       "DESC-01": {
         "tag": "WARN",
-        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
       }
     }
   },
   "node-pass": {
-    "exitCode": 1,
+    "exitCode": 0,
     "project_type": "node",
     "profiles": [
       "advanced",
       "core"
     ],
     "summary": {
-      "blockers": 1,
+      "blockers": 0,
       "pass": 34,
       "warn": 10,
       "diverged": 0,
       "signoff": 4,
       "skip": 37,
-      "total": 86
+      "total": 85
     },
     "rules": {
       "BUILD-01": {
@@ -3702,10 +3668,6 @@
       "TEST-07": {
         "tag": "WARN",
         "detail": "pattern not found | jest.coverageThreshold not satisfied in package.json"
-      },
-      "CTX-01": {
-        "tag": "FAIL",
-        "detail": "no 'last-verified:' stamp in README.md"
       },
       "CTX-02": {
         "tag": "SKIP",
@@ -3977,7 +3939,7 @@
       },
       "DESC-01": {
         "tag": "WARN",
-        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
       }
     }
   },
@@ -4018,11 +3980,6 @@
         "key": "baseline:TEST-01:main",
         "id": "TEST-01",
         "detail": "none of: **/*.test.*, **/*.spec.*, **/*_test.py, **/*_test.go, **/*Test.java"
-      },
-      {
-        "key": "baseline:CTX-01:main",
-        "id": "CTX-01",
-        "detail": "no 'last-verified:' stamp in README.md"
       },
       {
         "key": "baseline:CTX-03:main",
@@ -4130,11 +4087,11 @@
       },
       {
         "action": "file",
-        "key": "baseline:CTX-01:main"
+        "key": "baseline:CTX-03:main"
       },
       {
         "action": "file",
-        "key": "baseline:CTX-03:main"
+        "key": "baseline:GOV-01:main"
       },
       {
         "action": "file",
@@ -4205,17 +4162,17 @@
     ],
     "summary": {
       "mode": "dry-run",
-      "findings": 21,
+      "findings": 20,
       "actions": 11,
       "delivered": 11,
       "failed": 0,
       "pass": 9,
       "warn": 15,
-      "fail": 5,
+      "fail": 4,
       "diverged": 0,
       "signoff": 3,
       "skip": 43,
-      "rules": 75,
+      "rules": 74,
       "jdg": {
         "records": 1,
         "filed": 1,
@@ -4238,13 +4195,13 @@
       "service"
     ],
     "summary": {
-      "blockers": 2,
+      "blockers": 1,
       "pass": 17,
       "warn": 14,
       "diverged": 0,
       "signoff": 3,
       "skip": 50,
-      "total": 86
+      "total": 85
     },
     "rules": {
       "BUILD-01": {
@@ -4314,10 +4271,6 @@
       "TEST-07": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
-      },
-      "CTX-01": {
-        "tag": "FAIL",
-        "detail": "no 'last-verified:' stamp in README.md"
       },
       "CTX-02": {
         "tag": "SKIP",
@@ -4589,7 +4542,7 @@
       },
       "DESC-01": {
         "tag": "WARN",
-        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/owner/workflow); scaffold it with init"
+        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
       }
     }
   }

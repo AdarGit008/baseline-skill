@@ -4,9 +4,10 @@
   "makes_external_claims": false,
   "bootstrap_command": "pip install -e '.[dev]' && pytest -q",
   "_bootstrap_command": "BUILD-05 crown check on a clean checkout. Adjust for poetry/uv/hatch (e.g. 'uv sync && uv run pytest').",
-  "status_file": "docs/start-here.md",
-  "decision_globs": ["docs/decisions/0*.md", "adr/*.md"],
+  "decision_globs": [
+    "docs/decisions/0*.md",
+    "adr/*.md"
+  ],
   "profiles": [],
-  "_profiles": "add \"advanced\" to enable SBOM, static code-scanning, mutation testing, dependency-vuln-scan, coverage-floor.",
-  "signoff_file": ".project-baseline/signoff.json"
+  "_profiles": "add \"advanced\" to enable SBOM, static code-scanning, mutation testing, dependency-vuln-scan, coverage-floor."
 }

@@ -23,16 +23,13 @@ export function buildDefaults(repo) {
     makes_external_claims: true,
     bootstrap_command: null,
     command_timeout_ms: 600000,
-    status_file: firstExisting(['docs/start-here.md', 'docs/start_here.md', 'start-here.md', 'start_here.md', 'README.md']),
     claims_file: 'docs/CLAIMS.json',
     decision_globs: ['docs/decisions/*.md', 'docs/adr/*.md', 'adr/*.md', 'docs/decisions/**/*.md', 'records/decisions/*.md'], // records/decisions/ is CONTRACT.md's V2 decision home — REC-04's cross-check must see it
     doc_globs: ['**/*.md'],
     sources_of_truth: {},
-    signoff_file: '.project-baseline/signoff.json',
     prior_art_recheck_days: 90,
     doc_freshness_days: 180,
     doc_lag_days: 30,      // CTX-11: max days a doc may lag the code it anchors
-    stamp_max_lag_commits: 3, // CTX-01: a status stamp naming an ancestor within N commits of HEAD is still "fresh"
     freshness_globs: [],   // opt-in: docs that must carry last_review_date
     generated_globs: [],   // opt-in: generated files that must carry a DO NOT EDIT marker
     grounding_docs: [],    // opt-in: required grounding docs (exist + non-empty)
@@ -75,14 +72,13 @@ export function resolveConfig(repo, { cliConfigPath = null, profileArgs = [], de
   if (cfg.project_type === 'service') ACTIVE.add('service')
   for (const p of (cfg.profiles || [])) ACTIVE.add(p)
 
-  let SIGNOFF = {}; const so = repo.read(cfg.signoff_file); if (so) try { SIGNOFF = JSON.parse(so) } catch {}
-
-  // The unified ledger (M4b): kind=sign-off judgments satisfy manual rules by
-  // subject. ONE loader and ONE selection rule (jdg.mjs) — schema-valid records
-  // only, so a malformed review_by can never read as signed-forever while
-  // `jdg check` calls the same file INVALID. Legacy signoff.json stays a
-  // dual-read until M7's contraction. Expiry is judged at evaluation time.
+  // The unified ledger (M4b, sole path since M7b): kind=sign-off judgments satisfy
+  // manual rules by subject. ONE loader and ONE selection rule (jdg.mjs) —
+  // schema-valid records only, so a malformed review_by can never read as
+  // signed-forever while `jdg check` calls the same file INVALID. The legacy
+  // signoff.json dual-read retired with M7's contraction (MIGRATION.md re-mints
+  // surviving entries as records). Expiry is judged at evaluation time.
   const JDGS = selectSignoffs(loadJudgments(repo.REPO).records)
 
-  return { cfg, DEFAULTS, EXPLICIT, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, SIGNOFF, JDGS, DESCRIPTOR }
+  return { cfg, DEFAULTS, EXPLICIT, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, JDGS, DESCRIPTOR }
 }

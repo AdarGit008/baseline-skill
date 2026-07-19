@@ -229,7 +229,7 @@ export function runReconcile(argv) {
     cfgRes = resolveConfig(repo, { cliConfigPath: opt('--config', null), profileArgs: optAll('--profile'), descriptorRef: targetTip })
     DESCRIPTOR = cfgRes.DESCRIPTOR
   }
-  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, SIGNOFF, JDGS } = cfgRes
+  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, JDGS } = cfgRes
   const BRANCH_NAME = targetRef.replace(/^origin\//, '')
 
   // ---- posture gate: reconcile IS forge writes — a posture that closes the forge
@@ -267,7 +267,7 @@ export function runReconcile(argv) {
   // GITHUB_HEAD_REF: a miswired pull_request job must not evaluate a PR branch
   // while claiming to revalidate main) ----
   const LANEWORLD = makeLaneWorld(repo, DESCRIPTOR, { probe: pf })
-  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, SIGNOFF, JDGS, DESCRIPTOR, BRANCH: BRANCH_NAME, DEFAULT_BRANCH: declared || BRANCH_NAME, LANEWORLD })
+  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JDGS, DESCRIPTOR, BRANCH: BRANCH_NAME, DEFAULT_BRANCH: declared || BRANCH_NAME, LANEWORLD })
   const RULES = loadRules()
   const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH: BRANCH_NAME, DEFAULT_BRANCH: declared || BRANCH_NAME, context: 'reconcile' })
 

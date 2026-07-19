@@ -155,7 +155,7 @@ const GEN_USAGE = `usage: baseline gen index [--repo DIR] [--out PATH]
 export function runGen(argv) {
   // help must never mutate: a generator WRITES, so an argv we don't fully
   // understand is a usage error, not a shrug-and-proceed
-  if (argv.includes('--help') || argv.includes('-h')) { console.log(`baseline gen — generators that write derivable artifacts\n  ${GEN_USAGE}\n  index: write a deterministic, marker-headed index view (default docs/INDEX.md) over the records ledgers + docs map\n  --check: regenerate every marker-headed view and byte-compare — the CI drift guard (zero views → trivially green; advisory job, never continue-on-error)\n  migrate-claims: explode the legacy docs/CLAIMS.json monolith into records/claims/CLM-NNNN.json (dual-read until M7; idempotent by slug)`); return 0 }
+  if (argv.includes('--help') || argv.includes('-h')) { console.log(`baseline gen — generators that write derivable artifacts\n  ${GEN_USAGE}\n  index: write a deterministic, marker-headed index view (default docs/INDEX.md) over the records ledgers + docs map\n  --check: regenerate every marker-headed view and byte-compare — the CI drift guard (zero views → trivially green; advisory job, never continue-on-error)\n  migrate-claims: explode the legacy docs/CLAIMS.json monolith into records/claims/CLM-NNNN.json (the checker reads records only since M7b; idempotent by slug)`); return 0 }
   const sub = argv[0] && !argv[0].startsWith('-') ? argv[0] : null
   const rest = sub ? argv.slice(1) : argv
   const usage = msg => { console.error(`baseline gen: ${msg}\n  ${GEN_USAGE}`); return 2 }
@@ -251,7 +251,7 @@ export function runGen(argv) {
     console.log(`  + ${rel} (slug: ${slug})${dropped.length ? ` — dropped: ${dropped.join(', ')}` : ''}`)
   }
   console.log(`\ngen migrate-claims: ${wrote} written · ${skipped} already migrated · ${refused} refused`)
-  if (wrote) console.log(`  review + commit the new records; the legacy ${cfg.claims_file} stays dual-readable until M7 — deleting it after review clears CLAIM-07`)
+  if (wrote) console.log(`  review + commit the new records; the checker no longer reads the legacy ${cfg.claims_file} — deleting it after review clears CLAIM-07`)
   return refused ? 1 : 0
 }
 

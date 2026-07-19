@@ -52,7 +52,7 @@ export async function runOrient(argv) {
   const d = status.descriptor
   P.push(d.present
     ? `Descriptor: ${d.valid ? `${d.type} · ${d.workflow}` : `present but INVALID (${d.errors[0] || 'schema error'})`}`
-    : `Descriptor: undeclared — advisory orientation only (run \`baseline init\` to declare)`)
+    : `Descriptor: undeclared — advisory orientation only (declare it: copy a config-presets/*.repo.json posture preset to baseline.repo.json)`)
   if (status.nowFallback) P.push(`_⚠ ${status.nowFallback}_`)
 
   if (status.findings.length) {

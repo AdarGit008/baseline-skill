@@ -813,7 +813,7 @@
       },
       "CTX-04": {
         "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
+        "detail": "no sign-off recorded — legacy signoff.json is no longer read; re-mint: baseline jdg new (MIGRATION.md)"
       },
       "CTX-05": {
         "tag": "PASS",
@@ -869,7 +869,7 @@
       },
       "CLAIM-05": {
         "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
+        "detail": "no sign-off recorded — legacy signoff.json is no longer read; re-mint: baseline jdg new (MIGRATION.md)"
       },
       "CLAIM-06": {
         "tag": "PASS",
@@ -1888,7 +1888,7 @@
       },
       "CTX-04": {
         "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
+        "detail": "no sign-off recorded — legacy signoff.json is no longer read; re-mint: baseline jdg new (MIGRATION.md)"
       },
       "CTX-05": {
         "tag": "FAIL",

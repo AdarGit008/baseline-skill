@@ -133,7 +133,7 @@ Lane identity **is** the branch name — session records live under
 The fully **derived** liveness of a claimed lane (nothing stored to go stale):
 freshness = max(tip committedDate, PR updatedAt) against the descriptor's
 `lease_ttl` → **LIVE** | **STALE** (past ttl/2 — orient's nudge, never a finding)
-| **ABANDONED** (past ttl — FLOW-07 warns; `lane reclaim` may take over). An
+| **ABANDONED** (past ttl — FLOW-07 fails the run, a blocker since M7a; `lane reclaim` may take over). An
 unresolvable freshness derives no state at all — surfaced, never guessed.
 
 ## DIVERGED

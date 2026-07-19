@@ -253,7 +253,7 @@ try {
   fs.mkdirSync(path.join(t7, 'docs'), { recursive: true })
   fs.mkdirSync(path.join(t7, '.project-baseline'), { recursive: true })
   fs.writeFileSync(path.join(t7, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'prototype', workflow: 'single-lane', anchoring: 'off' }))
-  fs.writeFileSync(path.join(t7, 'docs/start-here.md'), '# status\n\nlast-verified: abc1234\n')
+  fs.writeFileSync(path.join(t7, 'docs/start-here.md'), '# status\n\nderived — see orient\n')
   fs.writeFileSync(path.join(t7, 'README.md'), '# bridge fixture\n')
   fs.writeFileSync(path.join(t7, 'LICENSE'), 'MIT\n')
   fs.writeFileSync(path.join(t7, '.project-baseline/signoff.json'), JSON.stringify({ 'CTX-04': { by: 'legacy', date: '2020-01-01', note: 'eternal legacy entry' } }))
@@ -261,7 +261,7 @@ try {
   const CHECK = path.join(ROOT, 'check.mjs')
   const br = sh(t7, process.execPath, [CHECK, '--repo', t7, '--json', '--no-exec'], NOW)
   const ctx04 = JSON.parse(br.out).results.find(r => r.id === 'CTX-04')
-  ok(ctx04.tag === 'SIGN-OFF' && /lapsed/.test(ctx04.detail), 'bridge: a LAPSED sign-off JDG is honestly not signed — and outranks the eternal legacy entry')
+  ok(ctx04.tag === 'SIGN-OFF' && /lapsed/.test(ctx04.detail), 'bridge: a LAPSED sign-off JDG is honestly not signed — the unread legacy entry cannot rescue it')
   // a malformed record must never read as signed-forever: strict loading excludes it
   fs.writeFileSync(path.join(t7, 'records/judgments/JDG-0002.json'), JSON.stringify({ record: 'judgment/1', id: 'JDG-0002', kind: 'sign-off', date: '2026-07-01', by: 'adar', subject: 'CTX-04', reason: 'r', review_by: 20200101 }))
   const br2 = sh(t7, process.execPath, [CHECK, '--repo', t7, '--json', '--no-exec'], NOW)
@@ -433,7 +433,11 @@ try {
     fs.writeFileSync(path.join(t12, 'docs-stamp.md'), 'notes mention `last-verified: x` mid-line only\n')
     res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
     ok(res['CTX-12'].tag === 'PASS', 'e2e: a mid-line mention is not the signature — line-anchored means line-anchored')
-    fs.rmSync(path.join(t12, 'docs-stamp.md'))
+    fs.writeFileSync(path.join(t12, 'docs-stamp.md'), 'last-verified: aaa1111\n')
+    fs.writeFileSync(path.join(t12, 'docs-stamp2.md'), 'last-verified: bbb2222\n')
+    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
+    ok(res['CTX-12'].tag === 'FAIL' && /matched in 2 file\(s\)/.test(res['CTX-12'].detail) && /docs-stamp\.md/.test(res['CTX-12'].detail) && /docs-stamp2\.md/.test(res['CTX-12'].detail), 'e2e: multiple stamps — the detail counts every match and names the files')
+    fs.rmSync(path.join(t12, 'docs-stamp.md')); fs.rmSync(path.join(t12, 'docs-stamp2.md'))
     sh(t12, 'git', ['checkout', '-qb', 'lane/t'])
     res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
     ok(res['FLOW-02'].tag === 'SKIP' && /no work on this branch yet/.test(res['FLOW-02'].detail), 'e2e: a freshly-cut lane SKIPs — the record couples to work, not to branch creation')
@@ -621,6 +625,16 @@ try {
     const ctx12 = res18.results.find(x => x.id === 'CTX-12')
     ok(ctx12.tag === 'FAIL' && ctx12.severity === 'blocker' && /README\.md/.test(ctx12.detail), 'e2e: the stamp signature on a bare repo FAILs CTX-12 at blocker, no config key to hide behind')
     ok(!res18.results.some(x => x.id === 'CTX-01'), 'e2e: CTX-01 is gone from the rule set entirely')
+    // M7b: the WORKTREE read stays strict — the descriptor asymmetry's other half.
+    // A retired field in the worktree descriptor is flagged (DESC-01 names it) and
+    // the posture it declared is OFF until shed (the migration pressure). If the
+    // ref-read strip is ever hoisted to worktree reads, this fails.
+    fs.writeFileSync(path.join(t18, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 'legacy-team', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
+    const res19 = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
+    const d1 = res19.results.find(x => x.id === 'DESC-01')
+    ok(d1.tag === 'WARN' && /'owner' is not a known field/.test(d1.detail), 'e2e: worktree read stays STRICT — a retired field makes DESC-01 name it')
+    const f2 = res19.results.find(x => x.id === 'FLOW-02')
+    ok(f2.tag === 'SKIP' && /workflow contract off/.test(f2.detail), 'e2e: an invalid worktree descriptor turns the posture OFF — the pressure to shed the field is visible')
   }
 } finally {
   for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })

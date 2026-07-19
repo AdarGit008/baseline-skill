@@ -15,7 +15,7 @@ surface — its own CTX-12 now blocks the artifact it used to be). Run
 per-type coverage.
 
 **Layout.**
-- `SKILL.md` — the agent skill (modes: score / init / fix / explain).
+- `SKILL.md` — the agent skill (modes: orient / score / init / fix / explain).
 - `REFERENCE.md` — full reference: rule table, categories, architecture & flow diagrams, CI wiring.
 - `GLOSSARY.md` — plain-language definitions of the DevOps/supply-chain terms.
 - `MIGRATION.md` — moving a V1-shaped repo onto the V2 contract with existing commands.

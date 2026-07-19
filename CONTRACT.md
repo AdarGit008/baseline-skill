@@ -134,7 +134,9 @@ the finding text — deterministic, and M7's per-axis policy seam. Tuning knobs
 `baseline.repo.json` (identity & posture) and `baseline.config.json` (tuning)
 do **not** converge — ever. The split is load-bearing, not transitional: the
 descriptor is the **change-controlled** file, read at the *target ref* by admit
-(FS1) and guarded by DESC-03's same-PR judgment; the config is the **free
+(FS1 — that ref-read ignores fields a later schema dropped, so a schema
+contraction never bricks admit against history; the worktree read stays strict)
+and guarded by DESC-03's same-PR judgment; the config is the **free
 worktree file** — paths, commands, thresholds — editable without ceremony.
 Converging them would put every `doc_lag_days` tweak behind judgment ceremony
 and rewrite FS1/DESC-03/schema/corpus to fix zero named failures. Revive trigger

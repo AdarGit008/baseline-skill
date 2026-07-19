@@ -367,8 +367,8 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
     }
 
     if (k === 'claims-field' || k === 'claims-citations') {
-      // dual-read (M4c): exploded records/claims/CLM-*.json + the legacy monolith,
-      // records shadowing migrated legacy ids — one merged set, one verdict.
+      // records-only since M7b: exploded records/claims/CLM-*.json is the one home
+      // the checker reads; a lingering legacy monolith is CLAIM-07's business.
       const loaded = loadClaims(repo, cfg)
       if (loaded.errors.length) return { ok: false, detail: loaded.errors.slice(0, 2).join('; ') + (loaded.errors.length > 2 ? ` (+${loaded.errors.length - 2})` : '') }
       let claims = loaded.claims
@@ -404,6 +404,9 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
         if (j.review_by < TODAY) return { ok: false, detail: `sign-off ${j.id} lapsed (review_by ${j.review_by}) — re-judge: baseline jdg new`, signoff: true }
         return { ok: true, detail: `${j.id} by ${j.by} ${j.date} (review by ${j.review_by})` }
       }
+      // parity with the claims pointer: a V1 repo staring at "no sign-off recorded"
+      // with its old ledger sitting right there deserves the migration named
+      if (FILES.includes('.project-baseline/signoff.json')) return { ok: false, detail: 'no sign-off recorded — legacy signoff.json is no longer read; re-mint: baseline jdg new (MIGRATION.md)', signoff: true }
       return { ok: false, detail: 'no sign-off recorded', signoff: true }
     }
 

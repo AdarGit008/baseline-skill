@@ -27,7 +27,9 @@ cp /path/to/baseline-skill/config-presets/multi-lane-agents.repo.json  baseline.
 ```
 
 Set `type`, `lifecycle`, `maturity`, `workflow`, `anchoring` (schema:
-`schema/repo.schema.json`; keys starting with `_` are ignored notes). The
+`schema/repo.schema.json`; keys starting with `_` are ignored notes — and if
+you are coming from an early-V2 descriptor rather than bare V1, drop the
+retired `owner` key while here: the schema no longer knows it). The
 descriptor is the **change-controlled** file — after adoption, edits to it need a
 same-PR judgment (DESC-03). Tuning stays in `baseline.config.json`, which is free
 to edit; the two files are separate **by contract, finally** (see CONTRACT.md).
@@ -39,8 +41,9 @@ delete them from `baseline.config.json` if present.
 
 Find the stamp CTX-12 flags (a doc line beginning with the marker
 `last-verified:` — V1's hand-maintained freshness receipt) and **delete the
-line** (or the whole status doc, if that was its only job). The finding lists
-every match — including, on a repo that vendors an old copy of this toolkit,
+line** (or the whole status doc, if that was its only job). The finding counts
+every match and names the first files — including, on a repo that vendors an
+old copy of this toolkit,
 the retired `templates/start-here.md` inside the vendored tree: delete that
 line too (or re-vendor to current, which drops the retired scaffold). Its job
 moved to derivation:

@@ -30,8 +30,12 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   `*.repo.json` presets, the template, the S7 consumer map): grep-proven zero
   consumers — lane identity is the `Baseline-Agent` trailer, ownership is
   CODEOWNERS' job (GOV-03). The schema is `additionalProperties:false`, so a
-  descriptor still carrying `owner` is invalid: remove the key (the demo's own
-  edit dogfoods DESC-03's same-PR-judgment ceremony on its next adoption PR).
+  WORKTREE descriptor still carrying `owner` is invalid — remove the key (the
+  demo's own edit dogfoods DESC-03's same-PR-judgment ceremony on its next
+  adoption PR). Ref-reads of already-committed descriptors ignore unknown
+  fields, so admit against an owner-bearing target still works — the shedding
+  PR is admittable (without this, every schema contraction re-creates the M6
+  relief-circularity).
 - **`templates/start-here.md` and `config-presets/context-management.json`** —
   the status-doc scaffold and the preset whose center of gravity was the
   stored-status keys.

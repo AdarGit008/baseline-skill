@@ -121,7 +121,7 @@ Run the survey (see **Orientation — the first act** above): `node "$SKILL_DIR/
    - `--profile advanced` — opt into expert rules (SBOM, code-scanning, mutation testing, dependency-vuln-scan, coverage-floor). `service` turns on automatically for `project_type=service`.
    - `--json` — machine output instead of the scorecard.
    - **Completion criterion:** you have the readiness %, the blocker count, and each FAIL/notable WARN with its one-line detail.
-3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 86 rows — summarize and offer to fix or scaffold.
+3. Present it: lead with **blockers** (they fail CI), then warnings worth fixing, grouped by category. Don't dump all 87 rows — summarize and offer to fix or scaffold.
 
 ### init — "set up / adopt / scaffold baseline"
 **Descriptor-first, always.** The repo's `baseline.repo.json` is written before anything else — it's the one file baseline requires (schema: `schema/repo.schema.json`), and every applicability/severity derivation reads it. Its `type` supersedes filesystem auto-detection.

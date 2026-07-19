@@ -11,7 +11,7 @@ records & ledger, lane workflow, and divergence —
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/evaluate-stack-dark.svg">
-  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 87 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 38 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
+  <img alt="How /baseline decides — the evaluate stack. Five layers: the CLI (check.mjs) loads 87 rules as pure data; the judge (engine.mjs) gates and tags; the lab (evaluators.mjs) runs 38 check kinds; the senses (repo.mjs) read files and git; the world is fs + git itself. Verdicts PASS/FAIL/WARN/DIVERGED/SKIP/SIGN-OFF roll up into one exit code that gates CI." src="docs/assets/evaluate-stack-light.svg" width="100%">
 </picture>
 
 *How a repository becomes an exit code — the [full reference](REFERENCE.md) walks every layer.*
@@ -58,7 +58,7 @@ node baseline.mjs scrub --pushed <sha>          # scan record content for secret
 |---|---|
 | `SKILL.md` | the skill definition (modes: orient / score / init / fix / explain) |
 | `CONTRACT.md` | the plain-git twin: what the workflow expects of a repo, no tool required |
-| `baseline.mjs` | the CLI entry point — `orient`, `check`, `lane`, `log`, `jdg`, `gen`, `scrub`, `help` |
+| `baseline.mjs` | the CLI entry point — `check`, `admit`, `reconcile`, `orient`, `lane`, `log`, `jdg`, `gen`, `scrub`, `help` |
 | `check.mjs` | the checker (`baseline check` delegates here) |
 | `src/` | the runner's modules: repo · config · evaluators · engine · report · self-check · descriptor · probe · orient · rules · records · validate · scrub · log · jdg |
 | `test/` | golden corpus + orient/facts/records suites (`test/golden/run.mjs --verify`, `test/{orient,facts,records}/run.mjs`) — source repo only, not installed |

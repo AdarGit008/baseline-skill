@@ -14,7 +14,7 @@ A **testable readiness standard** for new projects. Every lesson is a rule; a ze
 
 Not every rule fits every repo. A pre-code planning repo shouldn't be nagged about health endpoints; a CLI shouldn't be told to publish an [SBOM](GLOSSARY.md#sbom). So rules carry a **[profile](GLOSSARY.md#profile)**:
 
-- **core** (56 rules) — always on. Universal, high-confidence, machine-checkable.
+- **core** (72 rules) — always on. Universal, high-confidence, machine-checkable.
 - **service** (6 rules) — **auto-on when `project_type=service`.** Operability rules ([health check](GLOSSARY.md#health-check), [structured logs](GLOSSARY.md#structured-logging), [graceful shutdown](GLOSSARY.md#graceful-shutdown), [runbook](GLOSSARY.md#runbook)) that only make sense for a running service.
 - **advanced** (9 rules) — **opt-in** via `config.profiles: ["advanced"]`. Expert/niche rules (SBOM, [code-scanning](GLOSSARY.md#sast), [mutation testing](GLOSSARY.md#mutation-testing), symbol-integrity) that would be noise on most repos.
 
@@ -75,7 +75,7 @@ flowchart TD
   A["CLI args: --repo / --config / --profile / --no-exec / --json"] --> B["Index repo files: walk + git ls-files + HEAD"]
   B --> C["Resolve config: DEFAULTS then detectType then baseline.config.json then --config then --profile"]
   C --> D["Active profiles: core always; service auto if type=service; others opt-in"]
-  C --> E["Claims active? register in either home (docs/CLAIMS.json or records/claims/) + not maturity-gated (prototype skips unless makes_external_claims:true)"]
+  C --> E["Claims active? register present (records/claims/, or a lingering legacy monolith — activation only; CLAIM-07 flags it) + not maturity-gated (prototype skips unless makes_external_claims:true)"]
   D --> F{"for each rule"}
   E --> F
   F --> G["evalCheck by check.kind"]
@@ -355,7 +355,7 @@ GOV-01/02 are **live asserts on the readable surface** since M6b (`forge-protect
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
-| CLAIM-00 | A claims register exists (either home — records/claims/ or the legacy monolith) | 🔴 blocker | core |
+| CLAIM-00 | A claims register exists (records/claims/; a lingering legacy monolith counts for presence only — CLAIM-07 flags it) | 🔴 blocker | core |
 | CLAIM-01 | Every claim tagged with a build-state | 🔴 blocker | core |
 | CLAIM-02 | Every claim graded by blast radius | 🔴 blocker | core |
 | CLAIM-03 | Novelty/competitive claims have a dated prior-art pass | 🔴 blocker | core |
@@ -370,12 +370,12 @@ All CLAIM rules are opt-in (`makes_external_claims` / a register present) and ma
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
-| REC-01 | Committed records are append-only (proven from history) | 🟡 warn → blocker at M7 | core |
-| REC-02 | Landed records are scrub-clean | 🟡 warn → blocker at M7 | core |
+| REC-01 | Committed records are append-only (proven from history) | 🟡 warn (promotion deferred by the M7 ruling) | core |
+| REC-02 | Landed records are scrub-clean | 🟡 warn (promotion deferred by the M7 ruling) | core |
 | REC-04 | Every record fact has one home | 🟡 warn (pinned — heuristic) | core |
 | REC-05 | Records are covered by a push-time secret gate (at-rest evidence: gitleaks-class config or a committed scrub hook) | 🟡 warn | core |
 
-REC-01/02/05 skip when no records are committed; REC-04 also cross-checks the ADR homes (`docs/decisions/`, `adr/`, `records/decisions/`), so it can fire on a true ADR-number duplication even without `records/`. REC-01/REC-02 are deterministic — M7's promotion per posture is a pure severity flip; REC-03 (record schema conformance as a rule) is reserved.
+REC-01/02/05 skip when no records are committed; REC-04 also cross-checks the ADR homes (`docs/decisions/`, `adr/`, `records/decisions/`), so it can fire on a true ADR-number duplication even without `records/`. REC-01/REC-02 are deterministic and stay warn — the M7 ruling kept them (the only ungated candidates; a severity-by-posture seam has no consumer — revive on a real demand for REC-02-at-admit); REC-03 (record schema conformance as a rule) is reserved.
 
 ### Lane workflow (7) — M4c/M5c
 

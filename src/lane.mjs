@@ -76,7 +76,7 @@ export function runLane(argv) {
 // ---- and both writers stamp ONLY declared join keys (C38) — one refusal voice ----
 function descriptorGates(repo, usage, verb) {
   const d = loadDescriptor(repo)
-  if (!d.present) return usage(`no ${DESCRIPTOR_FILE} — lane ${verb} derives the branch from the descriptor's lanes.namespace (declare it: baseline init)`)
+  if (!d.present) return usage(`no ${DESCRIPTOR_FILE} — lane ${verb} derives the branch from the descriptor's lanes.namespace (declare it: copy a config-presets/*.repo.json posture preset)`)
   if (!d.valid) return usage(`${DESCRIPTOR_FILE} is invalid (${d.errors[0] || 'schema error'}) — ${verb} refuses to guess a namespace from a broken descriptor`)
   const ns = d.data.lanes?.namespace
   if (!ns) return usage(`descriptor declares no lanes.namespace — add e.g. "lanes": { "namespace": "lane/*" }`)

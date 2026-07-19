@@ -85,7 +85,6 @@ function normalizeDetail(s, tmp) {
     .replace(/\b\d+(\.\d+)?d\b/g, '<N>d')                 // "437d old (>180)" -> "<N>d old (>180)"
     .replace(/\b\d+h\b/g, '<N>h')                         // lease ages ("26h idle") — run-date volatile
     .replace(/\(\d+ commits? behind/g, '(<N> commits behind')
-    .replace(/stamp \d+ commits behind/g, 'stamp <N> commits behind')
     // The forge-probe cause is MACHINE-dependent (gh absent vs unauthed vs authed-no-repo)
     // — check's lane SKIPs now name the specific cause honestly, but the PIN must collapse
     // the variants to one token, exactly like a SHA. Real runs still show the true cause.

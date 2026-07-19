@@ -14,7 +14,7 @@
 <text x="114" y="224" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#383D96" text-anchor="start" opacity="0.8">the only entry point</text>
 <text x="388" y="162" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#5C61C9" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="184" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#383D96" text-anchor="start">flags: --repo · --json · --no-exec</text>
-<text x="388" y="203.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#383D96" text-anchor="start">loads rules.json — the 88-rule</text>
+<text x="388" y="203.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#383D96" text-anchor="start">loads rules.json — the 87-rule</text>
 <text x="388" y="223" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#383D96" text-anchor="start">standard, as pure data</text>
 <rect x="674" y="150" width="196" height="84" rx="6" fill="#FFF1A8" stroke="#C9A92C" stroke-width="2"/>
 <text x="688" y="174" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11.5" font-weight="bold" fill="#584D14" text-anchor="start">never knows:</text>
@@ -26,7 +26,7 @@
 <circle cx="78" cy="350" r="21" fill="none" stroke="#9038D8" stroke-width="2.8"/>
 <text x="78" y="357" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#6B21A8" text-anchor="middle">L2</text>
 <text x="114" y="336" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#6B21A8" text-anchor="start">THE JUDGE</text>
-<text x="114" y="360" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#6B21A8" text-anchor="start" opacity="0.85">engine.mjs · 51 lines</text>
+<text x="114" y="360" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#6B21A8" text-anchor="start" opacity="0.85">engine.mjs · 57 lines</text>
 <text x="114" y="382" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#6B21A8" text-anchor="start" opacity="0.8">gate → evaluate → tag</text>
 <text x="388" y="320" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#9038D8" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="342" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#6B21A8" text-anchor="start">5 gates: type? profile? opt-out?</text>
@@ -59,7 +59,7 @@
 <circle cx="78" cy="666" r="21" fill="none" stroke="#0E9384" stroke-width="2.8"/>
 <text x="78" y="673" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#0F5E56" text-anchor="middle">L4</text>
 <text x="114" y="652" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#0F5E56" text-anchor="start">THE SENSES</text>
-<text x="114" y="676" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#0F5E56" text-anchor="start" opacity="0.85">repo.mjs · 119 lines</text>
+<text x="114" y="676" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#0F5E56" text-anchor="start" opacity="0.85">repo.mjs · 122 lines</text>
 <text x="114" y="698" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#0F5E56" text-anchor="start" opacity="0.8">the repo index, built once</text>
 <text x="388" y="636" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#0E9384" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="658" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#0F5E56" text-anchor="start">find: match(globs) · read: 3</text>
@@ -159,7 +159,7 @@
 <rect x="36" y="1075" width="400" height="150" rx="6" fill="#FFF1A8" stroke="#C9A92C" stroke-width="2"/>
 <text x="60" y="1109" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#584D14" text-anchor="start">kept honest — this repo’s own CI</text>
 <text x="60" y="1137" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#584D14" text-anchor="start">--self-check → rules.json is internally valid</text>
-<text x="60" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#584D14" text-anchor="start">golden corpus → 14 fixture repos × 88 pinned</text>
+<text x="60" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#584D14" text-anchor="start">golden corpus → 17 fixture repos × 13 pinned</text>
 <text x="60" y="1181" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#584D14" text-anchor="start">     verdicts — ANY drift fails the build</text>
 <text x="60" y="1203" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#584D14" text-anchor="start">self-score → baseline scores its own repo</text>
 <rect x="470" y="1075" width="400" height="150" rx="6" fill="#DDF0FF" stroke="#4C93CE" stroke-width="2"/>

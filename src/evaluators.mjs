@@ -15,6 +15,13 @@ import { computeVendorLock, VENDOR_TREE, VENDOR_LOCK } from './gen.mjs'
 
 const DIV_REF_CAP = 20 // a hostile next: line with dozens of #N must not fan out a forge query each
 
+// The judgment kinds that can SANCTION a change: REC-01's tombstone (an edited
+// record covered by a judgment naming its path) and DESC-03's descriptor-change
+// approval. break-glass is deliberately absent — it is outage relief with its own
+// gate semantics, never record-edit or descriptor approval (the DESC-03 reasoning,
+// applied to both valves). One home, or the two consumers drift.
+const SANCTION_KINDS = ['sign-off', 'deviation', 'risk-acceptance']
+
 // The AUTHORITATIVE closing set per open PR: forge closingIssuesReferences (the sidebar
 // link + keyword-derived entries — a superset of the body-text regex), with the body
 // regex as the fallback when the forge query FAILS. forgeCloses is null when the query
@@ -32,7 +39,7 @@ function scopedPrClosers(w) {
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
 export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'descriptor-valid', 'records-append-only', 'records-scrub', 'records-one-home', 'vendored-lock', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'pr-closes-own-anchor', 'descriptor-change', 'merge-sister-dep', 'forge-protection', 'workflow-state'])
 
-export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
+export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
   const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile } = repo
   // The lane rules diff against where the branch diverged: the descriptor-declared
   // default branch, preferring whichever of local/origin twin is NEWER (a stale
@@ -444,17 +451,32 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
       if (mdr === null || adds === null) return { ok: null, detail: 'git history unreadable' }
       const current = new Set(match([scope + '**'], { tracked: true }))
       if (!adds.length && !mdr.length && !current.size) return { ok: null, detail: `no committed records under ${scope} yet` }
-      const bad = mdr.map(e => `${e.sha.slice(0, 7)} ${e.status === 'M' ? 'edited' : e.status === 'D' ? 'deleted' : 'renamed'} ${e.to || e.path}`)
+      // Issue #47: a mutation whose path is covered by an unexpired SANCTIONING
+      // judgment (subject glob-matches the reported path — globToRe, one home) is
+      // sanctioned, not an offence. The tombstone makes the rule's own `fix` true:
+      // an author reaches clean without rewriting history. break-glass never
+      // sanctions (see SANCTION_KINDS); an expired tombstone stops sanctioning.
+      const mutations = [] // { path, text } — path is what a tombstone names
+      for (const e of mdr) mutations.push({ path: e.to || e.path, text: `${e.sha.slice(0, 7)} ${e.status === 'M' ? 'edited' : e.status === 'D' ? 'deleted' : 'renamed'} ${e.to || e.path}` })
       const touched = new Set(mdr.map(e => e.path))
       const addBlobs = new Map() // path -> Set of blob shas at each add
       for (const e of adds) { const b = gitBlobAt(e.sha, e.path); if (b) { if (!addBlobs.has(e.path)) addBlobs.set(e.path, new Set()); addBlobs.get(e.path).add(b) } }
       for (const [p, blobs] of addBlobs) {
-        if (!current.has(p)) { if (!mdr.some(e => (e.status === 'D' || e.status === 'R') && e.path === p)) bad.push(`${p} vanished with no recorded delete (merge-hidden?)`); continue }
+        if (!current.has(p)) { if (!mdr.some(e => (e.status === 'D' || e.status === 'R') && e.path === p)) mutations.push({ path: p, text: `${p} vanished with no recorded delete (merge-hidden?)` }); continue }
         if (touched.has(p)) continue // already reported above
         const now = gitBlobAt('HEAD', p)
-        if (now && blobs.size && !blobs.has(now)) bad.push(`${p} content differs from its introduction with no recorded edit (merge-hidden?)`)
+        if (now && blobs.size && !blobs.has(now)) mutations.push({ path: p, text: `${p} content differs from its introduction with no recorded edit (merge-hidden?)` })
       }
-      return { ok: bad.length === 0, detail: bad.length ? `${bad.length} mutation(s): ` + bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') : `${current.size} record(s), history append-only` }
+      const sanctionsOf = path => (JUDGMENTS || []).filter(j => SANCTION_KINDS.includes(j.kind) && j.review_by >= TODAY && globToRe(j.subject).test(path)).map(j => j.id)
+      const sanctioned = [], unexplained = []
+      for (const m of mutations) {
+        const ids = sanctionsOf(m.path)
+        if (ids.length) sanctioned.push({ text: m.text, by: ids.join(', ') })
+        else unexplained.push(m.text)
+      }
+      if (!mutations.length) return { ok: true, detail: `${current.size} record(s), history append-only` }
+      if (!unexplained.length) return { ok: true, detail: `${sanctioned.length} mutation(s) sanctioned by judgment: ` + sanctioned.map(s => `${s.text} [${s.by}]`).join('; ') }
+      return { ok: false, detail: `${unexplained.length} mutation(s): ` + unexplained.slice(0, 3).join('; ') + (unexplained.length > 3 ? ` (+${unexplained.length - 3})` : '') + (sanctioned.length ? ` — ${sanctioned.length} sanctioned (${sanctioned.map(s => s.by).join(', ')})` : '') }
     }
 
     if (k === 'records-scrub') {
@@ -888,8 +910,9 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
       const weakNote = weak.length ? ` — WEAKENING: ${weak.slice(0, 3).join('; ')}${weak.length > 3 ? ` (+${weak.length - 3} more)` : ''}` : ' (no posture axis weakened)'
       // M7a kind pin: {sign-off, deviation, risk-acceptance} satisfy — break-glass is
       // EXCLUDED (it is outage relief with its own gate semantics; letting it double
-      // as descriptor-change approval would conflate the two valves M6 separated)
-      const DESC_JDG_KINDS = ['sign-off', 'deviation', 'risk-acceptance']
+      // as descriptor-change approval would conflate the two valves M6 separated).
+      // One home: SANCTION_KINDS is the shared set (REC-01's tombstone uses it too).
+      const DESC_JDG_KINDS = SANCTION_KINDS
       const jdgs = addedJudgments.filter(j => j.record && DESC_JDG_KINDS.includes(j.record.kind) && j.record.subject === DESCRIPTOR_FILE && j.record.review_by >= TODAY)
       if (!jdgs.length) {
         const kindMiss = addedJudgments.find(j => j.record && j.record.subject === DESCRIPTOR_FILE && j.record.review_by >= TODAY && !DESC_JDG_KINDS.includes(j.record.kind))

@@ -375,6 +375,43 @@ try {
     r = mkc()(AO, { id: 'REC-01' })
     ok(r.ok === true, 'REC-01: two lanes adding the same record, resolved to one side, is NOT a false edit (introduction = the SET of add-blobs)')
 
+    // ---- Issue #47: REC-01's sanctioned-edit route (unit — the classifier) ----
+    const t10d = mkrepo('main'); tmps.push(t10d)
+    const recd = 'records/sessions/main/2026-07-01-100000-a.md'
+    fs.mkdirSync(path.join(t10d, path.dirname(recd)), { recursive: true })
+    fs.writeFileSync(path.join(t10d, recd), '---\nrecord: session/1\nlane: main\nagent: a\nstarted: 2026-07-01T10:00:00Z\n---\n\n## Did\nx\n')
+    sh(t10d, 'git', ['add', '-A']); sh(t10d, 'git', ['commit', '-qm', 'r1'])
+    fs.appendFileSync(path.join(t10d, recd), 'edited\n'); sh(t10d, 'git', ['add', '-A']); sh(t10d, 'git', ['commit', '-qm', 'edit'])
+    const mkD = jdgs => makeEvalCheck({ repo: indexRepo(t10d), cfg: {}, NO_EXEC: true, JDGS: {}, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    const JDG = over => ({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-07-01', by: 'a', subject: recd, reason: 'supersede with vendored evidence', review_by: '2999-01-01', ...over })
+    r = mkD([])(AO, { id: 'REC-01' })
+    ok(r.ok === false && /1 mutation/.test(r.detail), '#47: no judgments -> the edit is an unexplained mutation')
+    r = mkD([JDG()])(AO, { id: 'REC-01' })
+    ok(r.ok === true && /sanctioned/.test(r.detail) && /JDG-0001/.test(r.detail), '#47: an unexpired deviation naming the path sanctions the edit')
+    r = mkD([JDG({ subject: 'records/claims/CLM-0001.json' })])(AO, { id: 'REC-01' })
+    ok(r.ok === false && /1 mutation/.test(r.detail), '#47: a judgment naming a DIFFERENT path does not sanction')
+    r = mkD([JDG({ kind: 'break-glass', gate: 'admit' })])(AO, { id: 'REC-01' })
+    ok(r.ok === false && /1 mutation/.test(r.detail), '#47: break-glass never sanctions a record edit (outage relief, not approval)')
+    r = mkD([JDG({ review_by: '2000-01-01' })])(AO, { id: 'REC-01' })
+    ok(r.ok === false && /1 mutation/.test(r.detail), '#47: an EXPIRED tombstone stops sanctioning — the mutation counts again')
+    r = mkD([JDG({ subject: 'records/sessions/main/*.md' })])(AO, { id: 'REC-01' })
+    ok(r.ok === true && /sanctioned/.test(r.detail), '#47: a scope subject (glob) sanctions — matched via globToRe')
+
+    // mixed + all-sanctioned over two records
+    const t10e = mkrepo('main'); tmps.push(t10e)
+    const recA = 'records/sessions/main/2026-07-01-100000-a.md'
+    const recB = 'records/sessions/main/2026-07-01-100001-b.md'
+    for (const p of [recA, recB]) { fs.mkdirSync(path.join(t10e, path.dirname(p)), { recursive: true }); fs.writeFileSync(path.join(t10e, p), '---\nrecord: session/1\nlane: main\nagent: a\nstarted: 2026-07-01T10:00:00Z\n---\n\n## Did\nx\n') }
+    sh(t10e, 'git', ['add', '-A']); sh(t10e, 'git', ['commit', '-qm', 'r1'])
+    for (const p of [recA, recB]) fs.appendFileSync(path.join(t10e, p), 'edited\n')
+    sh(t10e, 'git', ['add', '-A']); sh(t10e, 'git', ['commit', '-qm', 'edit both'])
+    const mkE = jdgs => makeEvalCheck({ repo: indexRepo(t10e), cfg: {}, NO_EXEC: true, JDGS: {}, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    const JDGE = (subject, id = 'JDG-0001') => ({ record: 'judgment/1', id, kind: 'deviation', date: '2026-07-01', by: 'a', subject, reason: 'r', review_by: '2999-01-01' })
+    r = mkE([JDGE(recA)])(AO, { id: 'REC-01' })
+    ok(r.ok === false && /^1 mutation/.test(r.detail) && /sanctioned/.test(r.detail), '#47: one sanctioned + one unexplained -> counts ONLY the unexplained and names the sanction')
+    r = mkE([JDGE(recA, 'JDG-0001'), JDGE(recB, 'JDG-0002')])(AO, { id: 'REC-01' })
+    ok(r.ok === true && /2 mutation\(s\) sanctioned/.test(r.detail), '#47: all sanctioned -> PASS naming both judgments')
+
     const t11 = mkrepo('main'); tmps.push(t11)
     const rec2 = 'records/sessions/main/2026-07-01-110000-a.md'
     fs.mkdirSync(path.join(t11, path.dirname(rec2)), { recursive: true })
@@ -408,6 +445,29 @@ try {
     ok(r.ok === false && /two homes/.test(r.detail), 'REC-04: session narrative in both records/sessions and docs/session-log is flagged')
     fs.rmSync(path.join(t11, 'docs/session-log'), { recursive: true })
     ok(mk11()(OH, { id: 'REC-04' }).ok === true, 'REC-04: unique ids, one home — clean')
+  }
+
+  // ---- Issue #47: REC-01's sanctioned-edit route end-to-end through check.mjs ----
+  {
+    const CHECK47 = path.join(ROOT, 'check.mjs')
+    const t47 = mkrepo('main'); tmps.push(t47)
+    fs.writeFileSync(path.join(t47, 'README.md'), '# issue 47 fixture\n')
+    fs.writeFileSync(path.join(t47, 'LICENSE'), 'MIT\n')
+    fs.writeFileSync(path.join(t47, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false }))
+    fs.writeFileSync(path.join(t47, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', workflow: 'single-lane', anchoring: 'off' }))
+    const rec47 = 'records/sessions/main/2026-07-01-100000-a.md'
+    fs.mkdirSync(path.join(t47, path.dirname(rec47)), { recursive: true })
+    fs.writeFileSync(path.join(t47, rec47), '---\nrecord: session/1\nlane: main\nagent: a\nstarted: 2026-07-01T10:00:00Z\n---\n\n## Did\nx\n')
+    sh(t47, 'git', ['add', '-A']); sh(t47, 'git', ['commit', '-qm', 'base'])
+    fs.appendFileSync(path.join(t47, rec47), 'edited\n'); sh(t47, 'git', ['add', '-A']); sh(t47, 'git', ['commit', '-qm', 'edit'])
+    const byId47 = out => Object.fromEntries(JSON.parse(out).results.map(x => [x.id, x]))
+    let res47 = byId47(sh(t47, process.execPath, [CHECK47, '--repo', t47, '--json', '--no-exec'], NOW).out)
+    ok(res47['REC-01'].tag === 'WARN' && /1 mutation/.test(res47['REC-01'].detail), 'e2e #47: an unsanctioned edit is a mutation finding')
+    fs.mkdirSync(path.join(t47, 'records/judgments'), { recursive: true })
+    fs.writeFileSync(path.join(t47, 'records/judgments/JDG-0001.json'), JSON.stringify({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-07-11', by: 'a', subject: rec47, reason: 'supersede with vendored evidence', review_by: '2026-07-18' }))
+    sh(t47, 'git', ['add', '-A']); sh(t47, 'git', ['commit', '-qm', 'tombstone'])
+    res47 = byId47(sh(t47, process.execPath, [CHECK47, '--repo', t47, '--json', '--no-exec'], NOW).out)
+    ok(res47['REC-01'].tag === 'PASS' && /sanctioned/.test(res47['REC-01'].detail) && /JDG-0001/.test(res47['REC-01'].detail), 'e2e #47: a committed tombstone sanctions the edit — REC-01 resolves PASS')
   }
 
   // ---- M4c: the lane loop end-to-end through check.mjs (FLOW + opt-out + REC threading) ----

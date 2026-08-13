@@ -11,6 +11,17 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   complement to the pre-push scrub hook, with a `.gitleaks.toml` that allowlists the
   `test/` corpus (which carries intentional fake secrets exercising SEC-01).
 
+### Fixed
+- **REC-01's sanctioned-edit route now resolves (issue #47)**: the rule's `fix` told an
+  author to "record a JDG and leave the tombstone," but the evaluator never read the
+  ledger, so a sanctioned edit was scored identically to a rewrite and the warn could
+  not be cleared without rewriting history. `records-append-only` now reads the judgment
+  ledger: a mutation whose path is covered by an unexpired
+  `sign-off`/`risk-acceptance`/`deviation` judgment (subject glob-matched against the
+  path) is reported as *sanctioned* and excluded from the finding count. `break-glass`
+  never sanctions (outage relief, not record-edit approval); an expired tombstone stops
+  sanctioning. Detail lines now separate sanctioned from unexplained mutations.
+
 ### Notes
 - **SEC-05 accepted as not-relevant**: this repo is zero-dependency (no manifest or
   lockfile), so the dependency-update-bot rationale does not apply — documented in

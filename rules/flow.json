@@ -213,6 +213,33 @@
       "check": {
         "kind": "lane-lease"
       }
+    },
+    {
+      "id": "FLOW-08",
+      "title": "An open PR will close its own lane anchor",
+      "category": "flow",
+      "severity": "warn",
+      "applies_to": "all",
+      "workflow": [
+        "multi-lane",
+        "multi-lane-local"
+      ],
+      "source": "https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue",
+      "lesson": "C36 — an anchor closed by the Development sidebar (no closing keyword in the body) closes invisibly on merge; DIV-01's post-merge blocker needs a pre-merge warning",
+      "rationale": "The closing set is forge-authoritative (closingIssuesReferences — sidebar links AND keywords). A lane PR that must not close its anchor still closes it on merge if the issue was ever linked in the sidebar; DIV-01 then fires as a blocker and the lane deadlocks. Warn, never block: the contradiction has not happened yet. Repo-wide (no branch_scope), like DIV-03 — every open PR is checked against its own head branch's anchor. Distinguishes a sidebar-linked close (invisible to the body) from a body-declared closing keyword.",
+      "fix": "Unlink the issue from the PR's Development sidebar (or edit the body) if the lane continues past this PR; otherwise let it close and prune the lane.",
+      "sources": [
+        "forge"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check",
+        "admit"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "pr-closes-own-anchor"
+      }
     }
   ]
 }

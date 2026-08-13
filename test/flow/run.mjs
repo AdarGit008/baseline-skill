@@ -134,6 +134,110 @@ function logRecord(w, lane, next) {
   ok(out.summary.diverged === 2 && out.exitCode === 1 && out.summary.blockers === 2, 'two blocker-DIVERGED: verdict class preserved, EXIT 1, counted as blockers (M7a)')
 }
 
+// ---------- DIV-03 sees a SIDEBAR-linked closure (no closing keyword in the body) ----------
+{
+  // PR #41's body has no closing keyword; the forge's closingIssuesReferences is the
+  // ONLY place the #5 closure is visible. The body regex alone would report "none closes".
+  const replay = {
+    'issue-9.json': { number: 9, state: 'OPEN', title: 'the live anchor' },
+    'issue-5.json': { number: 5, state: 'CLOSED', title: 'already done' },
+    'issues-open.json': [{ number: 9, title: 'the live anchor', labels: [], milestone: null, updatedAt: '2026-07-01T00:00:00Z' }],
+    'prs-open.json': [{ number: 41, title: 'sidebar closer', headRefName: 'lane/9', isDraft: false, updatedAt: '2026-07-01T00:00:00Z', body: 'Work toward #5.' }],
+    'pr-closers-41.json': { data: { repository: { pullRequest: { number: 41, closingIssuesReferences: { nodes: [{ number: 5 }] } } } } },
+  }
+  const { w, replayDir } = world('sidebar', { replay })
+  git(w, 'checkout', '-q', '-b', 'lane/9'); logRecord(w, 'lane/9', 'ship it')
+  const out = checkJson(w, { replayDir })
+  ok(tag(out, 'DIV-03').tag === 'DIVERGED' && /#5/.test(tag(out, 'DIV-03').detail), 'DIV-03 DIVERGED: PR #41 closes already-closed #5 via a sidebar link (no keyword in the body)')
+}
+
+// ---------- FLOW-08 warns when an open PR will close its OWN lane anchor (sidebar link) ----------
+{
+  // The trap from #46: a lane PR whose body disclaims the close, but the anchor was
+  // linked in the sidebar — it closes on merge regardless. FLOW-08 is the preventive
+  // twin of DIV-01 (which fires AFTER the close and deadlocks the lane).
+  const replay = {
+    'issue-112.json': { number: 112, state: 'OPEN', title: 'the continuing lane' },
+    'issues-open.json': [{ number: 112, title: 'the continuing lane', labels: [], milestone: null, updatedAt: '2026-07-01T00:00:00Z' }],
+    'prs-open.json': [{ number: 124, title: 'lane tip PR', headRefName: 'lane/112', isDraft: false, updatedAt: '2026-07-01T00:00:00Z', body: 'First line: this PR does not close its anchor issue. The lane continues past this merge.' }],
+    'pr-closers-124.json': { data: { repository: { pullRequest: { number: 124, closingIssuesReferences: { nodes: [{ number: 112 }] } } } } },
+  }
+  const { w, replayDir } = world('ownanchor', { replay })
+  git(w, 'checkout', '-q', '-b', 'lane/112'); logRecord(w, 'lane/112', 'keep going')
+  const out = checkJson(w, { replayDir })
+  ok(tag(out, 'FLOW-08').tag === 'WARN' && /will close its own anchor #112/.test(tag(out, 'FLOW-08').detail) && /via linked reference, not body text/.test(tag(out, 'FLOW-08').detail),
+    `FLOW-08 WARN: PR #124 will close its own anchor #112 via sidebar (got ${tag(out, 'FLOW-08').tag}: ${tag(out, 'FLOW-08').detail?.slice(0, 80)})`)
+  ok(tag(out, 'DIV-01').tag === 'PASS' && tag(out, 'DIV-03').tag === 'PASS', 'DIV-01/03 stay PASS — the anchor is still open (FLOW-08 is the pre-merge warning, not a divergence)')
+}
+
+// ---------- FLOW-08 distinguishes a closing KEYWORD from a sidebar link ----------
+{
+  const replay = {
+    'issue-113.json': { number: 113, state: 'OPEN', title: 'keyword anchor' },
+    'issues-open.json': [{ number: 113, title: 'keyword anchor', labels: [], milestone: null, updatedAt: '2026-07-01T00:00:00Z' }],
+    'prs-open.json': [{ number: 125, title: 'keyword closer', headRefName: 'lane/113', isDraft: false, updatedAt: '2026-07-01T00:00:00Z', body: 'Closes #113.' }],
+    'pr-closers-125.json': { data: { repository: { pullRequest: { number: 125, closingIssuesReferences: { nodes: [{ number: 113 }] } } } } },
+  }
+  const { w, replayDir } = world('ownanchor-kw', { replay })
+  git(w, 'checkout', '-q', '-b', 'lane/113'); logRecord(w, 'lane/113', 'keep going')
+  const out = checkJson(w, { replayDir })
+  ok(tag(out, 'FLOW-08').tag === 'WARN' && /via closing keyword/.test(tag(out, 'FLOW-08').detail) && !/via linked reference/.test(tag(out, 'FLOW-08').detail),
+    `FLOW-08 names the keyword source when the body declares it (got ${tag(out, 'FLOW-08').detail?.slice(0, 80)})`)
+}
+
+// ---------- FLOW-08 PASS: an open PR that closes a DIFFERENT issue, not its own anchor ----------
+{
+  const replay = {
+    'issue-9.json': { number: 9, state: 'OPEN', title: 'live anchor' },
+    'issue-5.json': { number: 5, state: 'OPEN', title: 'other live issue' },
+    'issues-open.json': [
+      { number: 9, title: 'live anchor', labels: [], milestone: null, updatedAt: '2026-07-01T00:00:00Z' },
+      { number: 5, title: 'other live issue', labels: [], milestone: null, updatedAt: '2026-07-01T00:00:00Z' },
+    ],
+    'prs-open.json': [{ number: 126, title: 'closes a sibling', headRefName: 'lane/9', isDraft: false, updatedAt: '2026-07-01T00:00:00Z', body: 'Closes #5.' }],
+    'pr-closers-126.json': { data: { repository: { pullRequest: { number: 126, closingIssuesReferences: { nodes: [{ number: 5 }] } } } } },
+  }
+  const { w, replayDir } = world('ownanchor-pass', { replay })
+  git(w, 'checkout', '-q', '-b', 'lane/9'); logRecord(w, 'lane/9', 'keep going')
+  const out = checkJson(w, { replayDir })
+  ok(tag(out, 'FLOW-08').tag === 'PASS' && /no open PR closes its own lane anchor/.test(tag(out, 'FLOW-08').detail),
+    'FLOW-08 PASS: PR #126 closes #5, not its own anchor #9')
+}
+
+// ---------- an EMPTY forge closing set is authoritative — it does NOT fall back to the body ----------
+{
+  // forge succeeds with nodes: [] while the body carries a closing keyword: the forge
+  // answer (closes nothing) governs. The body regex is the fallback only on query
+  // FAILURE (null), never on an empty success — pins the `??` (not `||`) contract.
+  const replay = {
+    'issue-9.json': { number: 9, state: 'OPEN', title: 'live' },
+    'issue-5.json': { number: 5, state: 'CLOSED', title: 'already done' },
+    'issues-open.json': [{ number: 9, title: 'live', labels: [], milestone: null, updatedAt: '2026-07-01T00:00:00Z' }],
+    'prs-open.json': [{ number: 42, title: 'empty closer', headRefName: 'lane/9', isDraft: false, updatedAt: '2026-07-01T00:00:00Z', body: 'Closes #5.' }],
+    'pr-closers-42.json': { data: { repository: { pullRequest: { number: 42, closingIssuesReferences: { nodes: [] } } } } },
+  }
+  const { w, replayDir } = world('emptyclosers', { replay })
+  git(w, 'checkout', '-q', '-b', 'lane/9'); logRecord(w, 'lane/9', 'ship')
+  const out = checkJson(w, { replayDir })
+  ok(tag(out, 'DIV-03').tag === 'PASS' && /none closes an already-closed issue/.test(tag(out, 'DIV-03').detail),
+    `DIV-03 PASS: an EMPTY forge closing set is authoritative — the body keyword is NOT consulted (got ${tag(out, 'DIV-03').tag}: ${tag(out, 'DIV-03').detail?.slice(0, 60)})`)
+}
+
+// ---------- FLOW-08 fallback: the forge closers query fails, the body keyword still warns ----------
+{
+  const replay = {
+    'issue-114.json': { number: 114, state: 'OPEN', title: 'fallback anchor' },
+    'issues-open.json': [{ number: 114, title: 'fallback anchor', labels: [], milestone: null, updatedAt: '2026-07-01T00:00:00Z' }],
+    'prs-open.json': [{ number: 127, title: 'keyword fallback', headRefName: 'lane/114', isDraft: false, updatedAt: '2026-07-01T00:00:00Z', body: 'Closes #114.' }],
+    // NO pr-closers-127.json — the per-PR query fails (null); the body regex is the fallback
+  }
+  const { w, replayDir } = world('fallback', { replay })
+  git(w, 'checkout', '-q', '-b', 'lane/114'); logRecord(w, 'lane/114', 'keep going')
+  const out = checkJson(w, { replayDir })
+  ok(tag(out, 'FLOW-08').tag === 'WARN' && /via closing keyword/.test(tag(out, 'FLOW-08').detail),
+    `FLOW-08 WARN via the body-regex fallback when the forge closers query fails (got ${tag(out, 'FLOW-08').tag}: ${tag(out, 'FLOW-08').detail?.slice(0, 60)})`)
+}
+
 // ---------- DIV-01 fires when the anchor issue is closed under an active lane ----------
 {
   const replay = { 'issue-7.json': { number: 7, state: 'CLOSED', title: 'closed under the lane' }, 'issues-open.json': [], 'prs-open.json': [] }
@@ -149,7 +253,7 @@ function logRecord(w, lane, next) {
   const { w } = world('mll', { desc: { workflow: 'multi-lane-local' } })
   git(w, 'checkout', '-q', '-b', 'lane/7'); logRecord(w, 'lane/7', 'next step'); git(w, 'push', '-q', 'origin', 'lane/7')
   const out = checkJson(w)
-  for (const id of ['FLOW-01', 'DIV-01', 'DIV-03']) ok(tag(out, id).tag === 'SKIP' && /forge not consulted \(multi-lane-local posture\)/.test(tag(out, id).detail), `${id} SKIPs naming the posture, never faked unreachability`)
+  for (const id of ['FLOW-01', 'DIV-01', 'DIV-03', 'FLOW-08']) ok(tag(out, id).tag === 'SKIP' && /forge not consulted \(multi-lane-local posture\)/.test(tag(out, id).detail), `${id} SKIPs naming the posture, never faked unreachability`)
   ok(tag(out, 'FLOW-03').tag === 'PASS' && tag(out, 'FLOW-05').tag === 'PASS', 'git-plane rules (FLOW-03/05) still evaluate under multi-lane-local')
 }
 

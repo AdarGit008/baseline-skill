@@ -18,7 +18,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { gh, ghJson } from '../probe.mjs'
-import { deepEq, normalizeVolatile } from '../util.mjs'
+import { closes as issueCloses, deepEq, normalizeVolatile } from '../util.mjs'
 import { cacheWrite } from '../cache.mjs'
 
 export function makeForge(repo, { available = false, nwo = null, posture = null, probeReason = null, closedReason = null, mutations = 'live' } = {}) {
@@ -56,6 +56,27 @@ export function makeForge(repo, { available = false, nwo = null, posture = null,
   }
 
   const safeKey = (s) => String(s).replace(/[^A-Za-z0-9._-]/g, '_')
+
+  // A PR's authoritative closing set — the ONE home for "which issues does this PR
+  // close". The forge's closingIssuesReferences (the Development sidebar link +
+  // same-repo keyword-derived entries — a superset of the body-text regex) governs
+  // when the query succeeds; the body regex is the fallback when it FAILS. `??` not
+  // `||`: an EMPTY forge result is authoritative and must not fall back to the body.
+  // Both orient's headline (facts/index gatherFacts) and the DIV/FLOW evaluators read
+  // this, so the source of truth can never drift between surfaces.
+  const prClosers = (pr) => {
+    const n = pr?.number
+    let forge = null
+    if (isAvail() && n != null) {
+      const [owner, name] = String(nwo || '/').split('/')
+      const QUERY = 'query($owner:String!,$name:String!,$n:Int!){repository(owner:$owner,name:$name){pullRequest(number:$n){number closingIssuesReferences(first:50){nodes{number}}}}}'
+      const raw = q(`pr-closers-${safeKey(n)}`, ['api', 'graphql', '-f', `query=${QUERY}`, '-f', `owner=${owner}`, '-f', `name=${name}`, '-F', `n=${n}`])
+      const nodes = raw?.data?.repository?.pullRequest?.closingIssuesReferences?.nodes
+      forge = Array.isArray(nodes) ? nodes.map(x => x?.number).filter(Boolean) : null
+    }
+    const body = issueCloses(pr?.body)
+    return { forge, body, closes: forge ?? body }
+  }
 
   // ---- the mutation channel (M6b) ----
   // Plans are plain JSON ({ action, key, issue?, title? }); recordings carry the
@@ -107,6 +128,10 @@ export function makeForge(repo, { available = false, nwo = null, posture = null,
     // must not coalesce to [] and let a rule assert "no open PRs" as fact — the caller
     // SKIPs on null. [] only when the forge is genuinely closed/unreachable up front.
     prsOpenOrNull() { return isAvail() ? q('prs-open', ['pr', 'list', '--state', 'open', '--json', 'number,title,headRefName,isDraft,updatedAt,body', '--limit', '50']) : [] },
+    // The authoritative closing set for a PR — see the prClosers closure above (one
+    // home shared with gatherFacts). gh pr list --json closingIssuesReferences is NOT
+    // on gh 2.45.0, so this is gh api graphql (one spawn per PR, memoized by q()).
+    prClosers,
     issuesOpen() { return isAvail() ? (q('issues-open', ['issue', 'list', '--state', 'open', '--json', 'number,title,labels,milestone,updatedAt', '--limit', '200']) || []) : [] },
     issue(n) { return isAvail() ? q(`issue-${safeKey(n)}`, ['issue', 'view', String(n), '--json', 'number,state,title']) : null },
     // M5b: every lane tip's committedDate + associated-PR updatedAt in ONE GraphQL refs()

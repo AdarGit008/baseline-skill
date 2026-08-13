@@ -165,7 +165,9 @@ export function gatherFacts(repo, { descriptor, capability }) {
   const openNums = new Set(issues.map(i => i.number))
   const prs = forge.prsOpen().map(pr => {
     const log = SESSION_BASES.reduce((acc, base) => acc || forge.branchLog(base, pr.headRefName), null)
-    return { number: pr.number, title: pr.title, branch: pr.headRefName, draft: !!pr.isDraft, updatedAt: pr.updatedAt, next: log?.raw ? extractNext(log.raw) : null, hasLog: !!log, closes: closes(pr.body) }
+    // forge-authoritative closing set (sidebar links included); the body regex is the
+    // null-honest fallback — one home (forge.prClosers), shared with the DIV/FLOW rules.
+    return { number: pr.number, title: pr.title, branch: pr.headRefName, draft: !!pr.isDraft, updatedAt: pr.updatedAt, next: log?.raw ? extractNext(log.raw) : null, hasLog: !!log, closes: forge.prClosers(pr).closes }
   })
 
   // Resolve the state of every referenced issue we can't already see as open (for divergence

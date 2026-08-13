@@ -197,6 +197,8 @@
       "            ↳ workflow contract off (no valid baseline.repo.json)",
       "    SKIP      FLOW-07   The lane's lease is live",
       "            ↳ workflow contract off (no valid baseline.repo.json)",
+      "    SKIP      FLOW-08   An open PR will close its own lane anchor",
+      "            ↳ workflow contract off (no valid baseline.repo.json)",
       "",
       "  Divergence (cross-tier)",
       "    SKIP      DIV-01    Issue closed, lane still active",
@@ -212,7 +214,7 @@
       "    SKIP      DESC-02   A present descriptor is schema-valid",
       "            ↳ no baseline.repo.json — absence is DESC-01's finding",
       "",
-      "  Summary  34 pass · 0 fail · 10 warn · 4 sign-off · 40 n/a",
+      "  Summary  34 pass · 0 fail · 10 warn · 4 sign-off · 41 n/a",
       "  Readiness: 71%  (34/48 applicable)",
       "",
       "  ✓ no blockers.",
@@ -246,8 +248,8 @@
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
-      "skip": 3,
-      "total": 13
+      "skip": 4,
+      "total": 14
     },
     "rules": {
       "REC-01": {
@@ -281,6 +283,10 @@
       "FLOW-07": {
         "tag": "FAIL",
         "detail": "lease ABANDONED (<N>d idle of ttl <N>d) — renew (push work) or hand it over (baseline lane reclaim)"
+      },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "PR listing failed at the forge — closures unreadable (not \"no PRs\")"
       },
       "MERGE-02": {
         "tag": "PASS",
@@ -331,8 +337,8 @@
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
-      "skip": 8,
-      "total": 13
+      "skip": 9,
+      "total": 14
     },
     "rules": {
       "REC-01": {
@@ -366,6 +372,10 @@
       "FLOW-07": {
         "tag": "PASS",
         "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
+      },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "<forge unreachable> — PR closures unreadable"
       },
       "MERGE-02": {
         "tag": "PASS",
@@ -413,8 +423,8 @@
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
-      "skip": 6,
-      "total": 13
+      "skip": 7,
+      "total": 14
     },
     "rules": {
       "REC-01": {
@@ -448,6 +458,10 @@
       "FLOW-07": {
         "tag": "PASS",
         "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
+      },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "forge not consulted (JDG-only admission path) — PR closures unreadable"
       },
       "MERGE-02": {
         "tag": "PASS",
@@ -497,8 +511,8 @@
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
-      "skip": 9,
-      "total": 13
+      "skip": 10,
+      "total": 14
     },
     "rules": {
       "REC-01": {
@@ -532,6 +546,10 @@
       "FLOW-07": {
         "tag": "PASS",
         "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
+      },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "<forge unreachable> — PR closures unreadable"
       },
       "MERGE-02": {
         "tag": "PASS",
@@ -582,8 +600,8 @@
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
-      "skip": 8,
-      "total": 13
+      "skip": 9,
+      "total": 14
     },
     "rules": {
       "REC-01": {
@@ -617,6 +635,10 @@
       "FLOW-07": {
         "tag": "PASS",
         "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
+      },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "<forge unreachable> — PR closures unreadable"
       },
       "MERGE-02": {
         "tag": "FAIL",
@@ -667,8 +689,8 @@
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
-      "skip": 8,
-      "total": 13
+      "skip": 9,
+      "total": 14
     },
     "rules": {
       "REC-01": {
@@ -702,6 +724,10 @@
       "FLOW-07": {
         "tag": "PASS",
         "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
+      },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "<forge unreachable> — PR closures unreadable"
       },
       "MERGE-02": {
         "tag": "PASS",
@@ -737,8 +763,8 @@
       "warn": 9,
       "diverged": 0,
       "signoff": 2,
-      "skip": 66,
-      "total": 88
+      "skip": 67,
+      "total": 89
     },
     "rules": {
       "BUILD-01": {
@@ -1073,6 +1099,10 @@
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
@@ -1107,8 +1137,8 @@
       "warn": 14,
       "diverged": 0,
       "signoff": 3,
-      "skip": 60,
-      "total": 88
+      "skip": 61,
+      "total": 89
     },
     "rules": {
       "BUILD-01": {
@@ -1443,6 +1473,10 @@
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
@@ -1477,8 +1511,8 @@
       "warn": 6,
       "diverged": 0,
       "signoff": 1,
-      "skip": 73,
-      "total": 88
+      "skip": 74,
+      "total": 89
     },
     "rules": {
       "BUILD-01": {
@@ -1813,6 +1847,10 @@
         "tag": "SKIP",
         "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
       },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
@@ -1848,8 +1886,8 @@
       "warn": 10,
       "diverged": 0,
       "signoff": 1,
-      "skip": 67,
-      "total": 88
+      "skip": 68,
+      "total": 89
     },
     "rules": {
       "BUILD-01": {
@@ -2184,6 +2222,10 @@
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
@@ -2218,8 +2260,8 @@
       "warn": 8,
       "diverged": 0,
       "signoff": 1,
-      "skip": 63,
-      "total": 88
+      "skip": 64,
+      "total": 89
     },
     "rules": {
       "BUILD-01": {
@@ -2554,6 +2596,10 @@
         "tag": "SKIP",
         "detail": "lanes underived: <forge unreachable>; origin unreachable (ls-remote failed)"
       },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "<forge unreachable> — PR closures unreadable"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "'lane/feature-x' carries no issue anchor — nothing to diverge from (FLOW-01's territory)"
@@ -2588,8 +2634,8 @@
       "warn": 7,
       "diverged": 0,
       "signoff": 0,
-      "skip": 69,
-      "total": 88
+      "skip": 70,
+      "total": 89
     },
     "rules": {
       "BUILD-01": {
@@ -2924,6 +2970,10 @@
         "tag": "SKIP",
         "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
       },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
@@ -2954,12 +3004,12 @@
     ],
     "summary": {
       "blockers": 2,
-      "pass": 18,
+      "pass": 19,
       "warn": 7,
       "diverged": 1,
       "signoff": 1,
       "skip": 60,
-      "total": 88
+      "total": 89
     },
     "rules": {
       "BUILD-01": {
@@ -3294,6 +3344,10 @@
         "tag": "FAIL",
         "detail": "lease ABANDONED (<N>d idle of ttl <N>d) — renew (push work) or hand it over (baseline lane reclaim)"
       },
+      "FLOW-08": {
+        "tag": "PASS",
+        "detail": "no open PRs — nothing to warn about"
+      },
       "DIV-01": {
         "tag": "DIVERGED",
         "detail": "lane lane/7 is claimed but its anchor #7 is closed — \"The anchored issue (closed under the lane)\" — the resolution path: reopen #7 if the work is genuinely unfinished, or merge/close-and-prune the lane if it is done"
@@ -3328,8 +3382,8 @@
       "warn": 21,
       "diverged": 0,
       "signoff": 3,
-      "skip": 52,
-      "total": 88
+      "skip": 53,
+      "total": 89
     },
     "rules": {
       "BUILD-01": {
@@ -3664,6 +3718,10 @@
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
@@ -3699,8 +3757,8 @@
       "warn": 10,
       "diverged": 0,
       "signoff": 4,
-      "skip": 40,
-      "total": 88
+      "skip": 41,
+      "total": 89
     },
     "rules": {
       "BUILD-01": {
@@ -4035,6 +4093,10 @@
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
@@ -4317,8 +4379,8 @@
       "warn": 14,
       "diverged": 0,
       "signoff": 3,
-      "skip": 53,
-      "total": 88
+      "skip": 54,
+      "total": 89
     },
     "rules": {
       "BUILD-01": {
@@ -4653,6 +4715,10 @@
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
+      "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
@@ -4687,8 +4753,8 @@
       "warn": 10,
       "diverged": 0,
       "signoff": 1,
-      "skip": 68,
-      "total": 88
+      "skip": 69,
+      "total": 89
     },
     "rules": {
       "BUILD-01": {
@@ -5020,6 +5086,10 @@
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
       "FLOW-07": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-08": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },

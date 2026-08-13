@@ -31,7 +31,7 @@ function scopedPrClosers(w) {
 }
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'descriptor-valid', 'records-append-only', 'records-scrub', 'records-one-home', 'vendored-lock', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'descriptor-change', 'merge-sister-dep', 'forge-protection', 'workflow-state'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'descriptor-valid', 'records-append-only', 'records-scrub', 'records-one-home', 'vendored-lock', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'pr-closes-own-anchor', 'descriptor-change', 'merge-sister-dep', 'forge-protection', 'workflow-state'])
 
 export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
   const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile } = repo
@@ -741,7 +741,33 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
       const hits = deriveDivergence({ prs: scoped, issueStates: w.issueStates }).filter(i => i.code === 'DIV-03')
       return hits.length
         ? { ok: false, diverged: true, detail: `${hits.slice(0, 3).map(h => h.text).join('; ')}${hits.length > 3 ? ` (+${hits.length - 3})` : ''} — done-with-nothing-merged; retarget the PR or close it` }
-        : { ok: true, detail: `${prs.length} open PR(s), none closes an already-closed issue` }
+        : { ok: true, detail: `${scoped.length} open PR(s), none closes an already-closed issue` }
+    }
+
+    if (k === 'pr-closes-own-anchor') {
+      // FLOW-08: an open PR whose closing set contains ITS OWN lane anchor — the
+      // preventive twin of DIV-01 (which fires only AFTER the close and deadlocks the
+      // lane). Repo-wide (like DIV-03): every open PR is checked against its own head
+      // branch's anchor, so a CI run on any branch sees the trap before the merge.
+      // Warn, never block — the contradiction hasn't happened yet.
+      const w = LANEWORLD()
+      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
+      if (!w.forge.available) return { ok: null, detail: `${w.forge.reason} — PR closures unreadable` }
+      const scoped = scopedPrClosers(w)
+      if (scoped === null) return { ok: null, detail: 'PR listing failed at the forge — closures unreadable (not "no PRs")' }
+      if (!scoped.length) return { ok: true, detail: 'no open PRs — nothing to warn about' }
+      const hits = []
+      for (const pr of scoped) {
+        const n = issueOf(w.ns, pr.branch)
+        if (n == null || !pr.closes.includes(n)) continue
+        // a closure the forge saw but the body does not declare is a sidebar link —
+        // the exact shape that closes invisibly; a body-declared close is a keyword
+        const viaSidebar = !!pr.forgeCloses?.includes(n) && !pr.bodyCloses.includes(n)
+        hits.push(`PR #${pr.number} (${pr.branch}) will close its own anchor #${n} on merge (${viaSidebar ? 'via linked reference, not body text' : 'via closing keyword'}) — intended? If the lane continues past this PR, unlink the issue first`)
+      }
+      return hits.length
+        ? { ok: false, detail: hits.slice(0, 3).join('; ') + (hits.length > 3 ? ` (+${hits.length - 3} more)` : '') }
+        : { ok: true, detail: 'no open PR closes its own lane anchor' }
     }
 
     // ---- M6b: GOV-01/02 live asserts on the READABLE surface (the ruled ladder:

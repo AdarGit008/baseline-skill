@@ -15,6 +15,21 @@ import { computeVendorLock, VENDOR_TREE, VENDOR_LOCK } from './gen.mjs'
 
 const DIV_REF_CAP = 20 // a hostile next: line with dozens of #N must not fan out a forge query each
 
+// The AUTHORITATIVE closing set per open PR: forge closingIssuesReferences (the sidebar
+// link + keyword-derived entries — a superset of the body-text regex), with the body
+// regex as the fallback when the forge query FAILS. forgeCloses is null when the query
+// failed; a failed query must never read as "closes nothing" (the body regex still
+// answers). One home for div-closes-closed (DIV-03) and pr-closes-own-anchor (FLOW-08).
+function scopedPrClosers(w) {
+  const prs = w.prsOpenOrNull() // null-honest: a FAILED query must not read as "no PRs"
+  if (prs === null) return null
+  return prs.map(pr => {
+    const forgeCloses = w.forge.prClosingIssues(pr.number)
+    const bodyCloses = issueCloses(pr.body)
+    return { number: pr.number, branch: pr.headRefName, closes: forgeCloses ?? bodyCloses, forgeCloses, bodyCloses }
+  })
+}
+
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
 export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'descriptor-valid', 'records-append-only', 'records-scrub', 'records-one-home', 'vendored-lock', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'descriptor-change', 'merge-sister-dep', 'forge-protection', 'workflow-state'])
 
@@ -714,13 +729,14 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, DESCRIPTOR, BRANCH = n
     }
 
     if (k === 'div-closes-closed') {
-      // DIV-03: done-with-nothing-merged — an open PR closing an already-closed issue
+      // DIV-03: done-with-nothing-merged — an open PR closing an already-closed issue.
+      // The closing set is forge-authoritative (sidebar links included); the body regex
+      // is only the fallback when the per-PR closingIssuesReferences query failed.
       const w = LANEWORLD()
       if (!w.forge.available) return { ok: null, detail: `${w.forge.reason} — PR closures unreadable` }
-      const prs = w.prsOpenOrNull() // null-honest: a FAILED query must not read as "no PRs"
-      if (prs === null) return { ok: null, detail: 'PR listing failed at the forge — closures unreadable (not "no PRs")' }
-      if (!prs.length) return { ok: true, detail: 'no open PRs — nothing to diverge' }
-      const scoped = prs.map(pr => ({ number: pr.number, branch: pr.headRefName, closes: issueCloses(pr.body) }))
+      const scoped = scopedPrClosers(w)
+      if (scoped === null) return { ok: null, detail: 'PR listing failed at the forge — closures unreadable (not "no PRs")' }
+      if (!scoped.length) return { ok: true, detail: 'no open PRs — nothing to diverge' }
       for (const pr of scoped) for (const n of pr.closes) w.issueState(n) // resolve, memoized
       const hits = deriveDivergence({ prs: scoped, issueStates: w.issueStates }).filter(i => i.code === 'DIV-03')
       return hits.length

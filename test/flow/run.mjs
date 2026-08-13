@@ -134,6 +134,23 @@ function logRecord(w, lane, next) {
   ok(out.summary.diverged === 2 && out.exitCode === 1 && out.summary.blockers === 2, 'two blocker-DIVERGED: verdict class preserved, EXIT 1, counted as blockers (M7a)')
 }
 
+// ---------- DIV-03 sees a SIDEBAR-linked closure (no closing keyword in the body) ----------
+{
+  // PR #41's body has no closing keyword; the forge's closingIssuesReferences is the
+  // ONLY place the #5 closure is visible. The body regex alone would report "none closes".
+  const replay = {
+    'issue-9.json': { number: 9, state: 'OPEN', title: 'the live anchor' },
+    'issue-5.json': { number: 5, state: 'CLOSED', title: 'already done' },
+    'issues-open.json': [{ number: 9, title: 'the live anchor', labels: [], milestone: null, updatedAt: '2026-07-01T00:00:00Z' }],
+    'prs-open.json': [{ number: 41, title: 'sidebar closer', headRefName: 'lane/9', isDraft: false, updatedAt: '2026-07-01T00:00:00Z', body: 'Work toward #5.' }],
+    'pr-closers-41.json': { data: { repository: { pullRequest: { number: 41, closingIssuesReferences: { nodes: [{ number: 5 }] } } } } },
+  }
+  const { w, replayDir } = world('sidebar', { replay })
+  git(w, 'checkout', '-q', '-b', 'lane/9'); logRecord(w, 'lane/9', 'ship it')
+  const out = checkJson(w, { replayDir })
+  ok(tag(out, 'DIV-03').tag === 'DIVERGED' && /#5/.test(tag(out, 'DIV-03').detail), 'DIV-03 DIVERGED: PR #41 closes already-closed #5 via a sidebar link (no keyword in the body)')
+}
+
 // ---------- DIV-01 fires when the anchor issue is closed under an active lane ----------
 {
   const replay = { 'issue-7.json': { number: 7, state: 'CLOSED', title: 'closed under the lane' }, 'issues-open.json': [], 'prs-open.json': [] }

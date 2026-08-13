@@ -107,6 +107,20 @@ export function makeForge(repo, { available = false, nwo = null, posture = null,
     // must not coalesce to [] and let a rule assert "no open PRs" as fact — the caller
     // SKIPs on null. [] only when the forge is genuinely closed/unreachable up front.
     prsOpenOrNull() { return isAvail() ? q('prs-open', ['pr', 'list', '--state', 'open', '--json', 'number,title,headRefName,isDraft,updatedAt,body', '--limit', '50']) : [] },
+    // A PR's AUTHORITATIVE closing set: GraphQL closingIssuesReferences (the Development
+    // sidebar link + keyword-derived entries — a superset of the body-text regex the DIV
+    // rules used to read alone). Returns issue numbers, or null when the query FAILS (the
+    // caller falls back to the body regex; a failed query must never read as "closes
+    // nothing"). gh pr list --json closingIssuesReferences is NOT on gh 2.45.0, so this
+    // is gh api graphql. One spawn per PR, memoized by q(); batching stays deferred.
+    prClosingIssues(n) {
+      if (!isAvail() || n == null) return null
+      const [owner, name] = String(nwo || '/').split('/')
+      const QUERY = 'query($owner:String!,$name:String!,$n:Int!){repository(owner:$owner,name:$name){pullRequest(number:$n){number closingIssuesReferences(first:50){nodes{number}}}}}'
+      const raw = q(`pr-closers-${safeKey(n)}`, ['api', 'graphql', '-f', `query=${QUERY}`, '-f', `owner=${owner}`, '-f', `name=${name}`, '-F', `n=${n}`])
+      const nodes = raw?.data?.repository?.pullRequest?.closingIssuesReferences?.nodes
+      return Array.isArray(nodes) ? nodes.map(x => x?.number).filter(Boolean) : null
+    },
     issuesOpen() { return isAvail() ? (q('issues-open', ['issue', 'list', '--state', 'open', '--json', 'number,title,labels,milestone,updatedAt', '--limit', '200']) || []) : [] },
     issue(n) { return isAvail() ? q(`issue-${safeKey(n)}`, ['issue', 'view', String(n), '--json', 'number,state,title']) : null },
     // M5b: every lane tip's committedDate + associated-PR updatedAt in ONE GraphQL refs()

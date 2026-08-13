@@ -24,9 +24,8 @@ function scopedPrClosers(w) {
   const prs = w.prsOpenOrNull() // null-honest: a FAILED query must not read as "no PRs"
   if (prs === null) return null
   return prs.map(pr => {
-    const forgeCloses = w.forge.prClosingIssues(pr.number)
-    const bodyCloses = issueCloses(pr.body)
-    return { number: pr.number, branch: pr.headRefName, closes: forgeCloses ?? bodyCloses, forgeCloses, bodyCloses }
+    const { closes, forge, body } = w.forge.prClosers(pr)
+    return { number: pr.number, branch: pr.headRefName, closes, forgeCloses: forge, bodyCloses: body }
   })
 }
 

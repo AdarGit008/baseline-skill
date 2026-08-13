@@ -204,6 +204,40 @@ function logRecord(w, lane, next) {
     'FLOW-08 PASS: PR #126 closes #5, not its own anchor #9')
 }
 
+// ---------- an EMPTY forge closing set is authoritative — it does NOT fall back to the body ----------
+{
+  // forge succeeds with nodes: [] while the body carries a closing keyword: the forge
+  // answer (closes nothing) governs. The body regex is the fallback only on query
+  // FAILURE (null), never on an empty success — pins the `??` (not `||`) contract.
+  const replay = {
+    'issue-9.json': { number: 9, state: 'OPEN', title: 'live' },
+    'issue-5.json': { number: 5, state: 'CLOSED', title: 'already done' },
+    'issues-open.json': [{ number: 9, title: 'live', labels: [], milestone: null, updatedAt: '2026-07-01T00:00:00Z' }],
+    'prs-open.json': [{ number: 42, title: 'empty closer', headRefName: 'lane/9', isDraft: false, updatedAt: '2026-07-01T00:00:00Z', body: 'Closes #5.' }],
+    'pr-closers-42.json': { data: { repository: { pullRequest: { number: 42, closingIssuesReferences: { nodes: [] } } } } },
+  }
+  const { w, replayDir } = world('emptyclosers', { replay })
+  git(w, 'checkout', '-q', '-b', 'lane/9'); logRecord(w, 'lane/9', 'ship')
+  const out = checkJson(w, { replayDir })
+  ok(tag(out, 'DIV-03').tag === 'PASS' && /none closes an already-closed issue/.test(tag(out, 'DIV-03').detail),
+    `DIV-03 PASS: an EMPTY forge closing set is authoritative — the body keyword is NOT consulted (got ${tag(out, 'DIV-03').tag}: ${tag(out, 'DIV-03').detail?.slice(0, 60)})`)
+}
+
+// ---------- FLOW-08 fallback: the forge closers query fails, the body keyword still warns ----------
+{
+  const replay = {
+    'issue-114.json': { number: 114, state: 'OPEN', title: 'fallback anchor' },
+    'issues-open.json': [{ number: 114, title: 'fallback anchor', labels: [], milestone: null, updatedAt: '2026-07-01T00:00:00Z' }],
+    'prs-open.json': [{ number: 127, title: 'keyword fallback', headRefName: 'lane/114', isDraft: false, updatedAt: '2026-07-01T00:00:00Z', body: 'Closes #114.' }],
+    // NO pr-closers-127.json — the per-PR query fails (null); the body regex is the fallback
+  }
+  const { w, replayDir } = world('fallback', { replay })
+  git(w, 'checkout', '-q', '-b', 'lane/114'); logRecord(w, 'lane/114', 'keep going')
+  const out = checkJson(w, { replayDir })
+  ok(tag(out, 'FLOW-08').tag === 'WARN' && /via closing keyword/.test(tag(out, 'FLOW-08').detail),
+    `FLOW-08 WARN via the body-regex fallback when the forge closers query fails (got ${tag(out, 'FLOW-08').tag}: ${tag(out, 'FLOW-08').detail?.slice(0, 60)})`)
+}
+
 // ---------- DIV-01 fires when the anchor issue is closed under an active lane ----------
 {
   const replay = { 'issue-7.json': { number: 7, state: 'CLOSED', title: 'closed under the lane' }, 'issues-open.json': [], 'prs-open.json': [] }

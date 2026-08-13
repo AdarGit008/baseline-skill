@@ -1,21 +1,26 @@
-# Tasks — Issue #46
+# Tasks — Issue #47
 
-- [x] Task 1: `forge.prClosingIssues(n)` + `div-closes-closed` reads the forge authority
-  - Acceptance: `makeForge` exposes `prClosingIssues(n)` (GraphQL, memoized, null on failure); `div-closes-closed` uses `closes = forge ?? issueCloses(body)`; a sidebar-linked closure (body has no keyword) is detected by DIV-03.
-  - Verify: `node test/flow/run.mjs` ✓
-  - Files: `src/facts/forge.mjs`, `src/evaluators.mjs`, `test/flow/run.mjs`
+- [x] Task 1: RED tests for the sanctioned-edit route
+  - Acceptance: `test/records/run.mjs` gains unit tests (sanctioned PASS, wrong-subject fails, break-glass fails, expired fails, glob-scope PASS, mixed reports only unexplained, all-sanctioned PASS) and one `check.mjs` e2e tombstone flow (WARN→PASS). They FAIL against the current evaluator.
+  - Verify: `node test/records/run.mjs` → new assertions fail, existing pass ✓
+  - Files: `test/records/run.mjs`
 
-- [x] Task 2: `pr-closes-own-anchor` kind + FLOW-08 rule
-  - Acceptance: `CHECK_KINDS` gains `pr-closes-own-anchor`; `rules/flow.json` gains FLOW-08 (warn, check+admit, no branch_scope); an open PR whose closing set contains its own anchor warns, distinguishing sidebar vs keyword.
-  - Verify: `node test/flow/run.mjs` ✓
-  - Files: `src/evaluators.mjs`, `rules/flow.json`, `test/flow/run.mjs`
+- [x] Task 2: thread JUDGMENTS through resolveConfig → check/admit/reconcile → makeEvalCheck
+  - Acceptance: `resolveConfig` returns `JUDGMENTS` (full `loadJudgments().records`); `check.mjs`, `src/admit.mjs`, `src/reconcile.mjs` pass it; `makeEvalCheck` accepts `JUDGMENTS = null`. `JDGS` unchanged.
+  - Verify: `node test/records/run.mjs` still RED (no behavior change yet), no crashes ✓
+  - Files: `src/config.mjs`, `check.mjs`, `src/admit.mjs`, `src/reconcile.mjs`, `src/evaluators.mjs`
 
-- [x] Task 3: `gatherFacts` derives `closes` from the forge (fallback body regex)
-  - Acceptance: orient's divergence headline and the check rule read the same authority; facts replay fixtures `pr-closers-*.json` added.
-  - Verify: `node test/facts/run.mjs` ✓
-  - Files: `src/facts/index.mjs`, `test/facts/run.mjs`
+- [x] Task 3: REC-01 classifier + shared SANCTION_KINDS constant
+  - Acceptance: `records-append-only` classifies each mutation as sanctioned (unexpired {sign-off,deviation,risk-acceptance} judgment whose subject glob-matches the reported path) vs unexplained; all-sanctioned → ok:true; any unexplained → ok:false counting only unexplained; detail names sanctioning id(s). `SANCTION_KINDS` hoisted and reused by DESC-03 (behavior-preserving).
+  - Verify: `node test/records/run.mjs` GREEN ✓
+  - Files: `src/evaluators.mjs`
 
-- [x] Task 4: bookkeeping + full suite + golden re-capture
-  - Acceptance: `test/records/run.mjs` asserts 91 rules; golden pins re-captured and `--verify` green; self-check green.
-  - Verify: self-check + all 9 runners + golden `--capture`/`--verify` ✓
-  - Files: `test/records/run.mjs`, `test/golden/pins.json`
+- [x] Task 4: REC-01 fix field + docs
+  - Acceptance: `rules/rec.json` `fix` names the tombstone command; `CONTRACT.md`, `REFERENCE.md`, `CHANGELOG.md` updated.
+  - Verify: `node check.mjs --self-check` green; docs consistent ✓
+  - Files: `rules/rec.json`, `CONTRACT.md`, `REFERENCE.md`, `CHANGELOG.md`
+
+- [x] Task 5: full suite + golden verify
+  - Acceptance: self-check + all 9 runners + `test/golden/run.mjs --verify` green with NO re-capture.
+  - Verify: `node check.mjs --self-check`; `node test/{records,orient,facts,lane,flow,admit,reconcile,gen}/run.mjs`; `node test/golden/run.mjs --verify` ✓
+  - Files: none (verification only)

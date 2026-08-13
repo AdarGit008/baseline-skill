@@ -73,6 +73,26 @@ const t7 = status3.lanes.find(l => l.ref === 'lane/7')
 ok(t7?.labels.some(l => /PR page truncated/.test(l)), 'a truncated PR sub-page labels the lane — freshness can only be understated, never silently')
 fs.rmSync(truncDir, { recursive: true, force: true })
 
+// ---- forge-authoritative closers: a SIDEBAR-linked close (no keyword in the body) is
+// visible to orient's divergence headline — the blind spot #46 fixes. -------
+{
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-sidebar-'))
+  for (const [f, v] of Object.entries({
+    'issues-open.json': [{ number: 9, title: 'live', labels: [], milestone: null, updatedAt: '2026-07-10T00:00:00Z' }],
+    'issue-5.json': { number: 5, state: 'CLOSED', title: 'done' },
+    'prs-open.json': [{ number: 50, title: 'sidebar closer', headRefName: 'lane/a', isDraft: false, updatedAt: '2026-07-10T00:00:00Z', body: 'Work toward #5.' }],
+    'pr-closers-50.json': { data: { repository: { pullRequest: { number: 50, closingIssuesReferences: { nodes: [{ number: 5 }] } } } } },
+  })) fs.writeFileSync(path.join(dir, f), JSON.stringify(v) + '\n')
+  process.env.BASELINE_FORGE_REPLAY = dir
+  const repo3 = { REPO: '/nonexistent', HEAD: null, read: () => null, gitIsShallow: () => false }
+  const facts4 = gatherFacts(repo3, { descriptor: loadDescriptor(repo3), capability: cap })
+  const status4 = deriveStatus(facts4, join(facts4), cap)
+  ok(status4.divergence.length === 1 && /#50\b/.test(status4.divergence[0]) && /#5\b/.test(status4.divergence[0]),
+    `forge closers: PR #50 closes already-closed #5 via a sidebar link (body has no keyword) — orient sees it (got ${status4.divergence.length}: ${status4.divergence[0] || 'none'})`)
+  fs.rmSync(dir, { recursive: true, force: true })
+  process.env.BASELINE_FORGE_REPLAY = path.resolve(HERE, '..', 'forge-fixtures', 'scenario')
+}
+
 // ---- one-derivation parity: orient's divergence headline and the DIV rules' classifier
 // are the SAME deriveDivergence over the SAME facts — a change to "closed" can't move one
 // surface and not the other. Assert the two agree on a mixed world. ----

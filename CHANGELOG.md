@@ -22,6 +22,25 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   never sanctions (outage relief, not record-edit approval); an expired tombstone stops
   sanctioning. Detail lines now separate sanctioned from unexplained mutations.
 
+### Security
+- **Glob matching no longer backtracks (issue #47)**: `globToRe` compiled a glob to a
+  RegExp, so `**a**a**a…` became `^.*a.*a.*a…$` — catastrophic backtracking on any path
+  that does not match. Measured through the shipped helper: 4.6ms at 44 glob chars,
+  892ms at 68, ~3.9x per 6 more characters. #47 made a judgment `subject` — ledger text
+  — flow straight into it, turning a latent hazard into a reachable one; the existing
+  `lanes.families` glob was already exposed at 374ms on its 64-char cap.
+  The helper is now `globMatcher`: it compiles to a token list and matches with a
+  single non-backtracking sweep carrying the reachable-position set, O(tokens x path).
+  Same match semantics, verified byte-for-byte against the old regex over 41,980
+  glob/path pairs (curated + fuzzed). It returns a matcher exposing `.test(s)` — the
+  only method any of the nine call sites ever used — so the change is a drop-in.
+  Worst case at the 256-char cap: **1ms**, against a regex that never finished.
+  Two rejected alternatives, both measured and both ineffective: lazy quantifiers
+  (`.*?`) reorder the search without shrinking it (891ms vs 892ms), and a length cap
+  loose enough to hold a real record path is loose enough to hang.
+- **`judgment.subject` bounded to 256 characters**: defense in depth behind the
+  matcher, not the fix — it caps work rather than averting a hang.
+
 ### Notes
 - **SEC-05 accepted as not-relevant**: this repo is zero-dependency (no manifest or
   lockfile), so the dependency-update-bot rationale does not apply — documented in

@@ -47,7 +47,7 @@ rewriting history.
 - Node >= 18, zero dependencies. Forge reads are replay-backed; this change is
   **git-plane + tree-plane only** — no new forge surface.
 - Judgment loading reuses `loadJudgments` (`src/jdg.mjs`) and the existing
-  `globToRe` (`src/util.mjs`) matching primitive — no new helpers, no new deps.
+  `globMatcher` (`src/util.mjs`) matching primitive — no new helpers, no new deps.
 
 ```
 self-check:  node check.mjs --self-check
@@ -90,7 +90,7 @@ so a later human can revisit the cheapest ones.
    vs. a permanent sanction of an immutable fact).
 
 2. **Matching = `subject` glob-matches the reported mutation path** via the existing
-   `globToRe` (the one canonical helper, already used by lane placement). An exact
+   `globMatcher` (the one canonical helper, already used by lane placement). An exact
    path (`records/claims/CLM-0001.json`) is a literal glob and matches exactly; a
    scope (`records/claims/**`, `records/sessions/main/*.md`) covers a set. This is
    "matched on subject, as DESC-03 matches", generalized from one filename to a
@@ -129,7 +129,7 @@ so a later human can revisit the cheapest ones.
 Match the existing evaluator style: a leading comment naming the rule id and the
 lesson, `ok: null` for SKIP (never a guess), `{ ok: true }` for PASS,
 `{ ok: false }` for a finding. Detail strings render through `sanitizeTTY` at the
-boundary — keep them plain. Reuse `globToRe` and the one `TODAY` clock already in
+boundary — keep them plain. Reuse `globMatcher` and the one `TODAY` clock already in
 scope; do not add a second matching helper or a second clock.
 
 ```js

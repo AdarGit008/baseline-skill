@@ -4,7 +4,7 @@
 import path from 'node:path'
 import fs from 'node:fs'
 import { execSync } from 'node:child_process'
-import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE, nowUTC, globToRe, issueOf, refs as issueRefs, closes as issueCloses } from './util.mjs'
+import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE, nowUTC, globMatcher, issueOf, refs as issueRefs, closes as issueCloses } from './util.mjs'
 import { DESCRIPTOR_FILE, DESCRIPTOR_SCHEMA } from './descriptor.mjs'
 import { classifyPostureDiff } from './derive/posture.mjs'
 import { scan, loadAllowlist } from './scrub.mjs'
@@ -84,7 +84,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
   // when a namespace IS declared and the branch is non-resident; no namespace → the M4c
   // behavior (these rules already handle an absent namespace themselves).
   const laneNs = DESCRIPTOR?.valid ? DESCRIPTOR.data?.lanes?.namespace : null
-  const nonResidentLane = () => BRANCH && laneNs && !globToRe(laneNs).test(BRANCH)
+  const nonResidentLane = () => BRANCH && laneNs && !globMatcher(laneNs).test(BRANCH)
 
   function evalCheck(c, rule) {
     const k = c.kind
@@ -452,7 +452,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       const current = new Set(match([scope + '**'], { tracked: true }))
       if (!adds.length && !mdr.length && !current.size) return { ok: null, detail: `no committed records under ${scope} yet` }
       // Issue #47: a mutation whose path is covered by an unexpired SANCTIONING
-      // judgment (subject glob-matches the reported path — globToRe, one home) is
+      // judgment (subject glob-matches the reported path — globMatcher, one home) is
       // sanctioned, not an offence. The tombstone makes the rule's own `fix` true:
       // an author reaches clean without rewriting history. break-glass never
       // sanctions (see SANCTION_KINDS); an expired tombstone stops sanctioning.
@@ -467,7 +467,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
         const now = gitBlobAt('HEAD', p)
         if (now && blobs.size && !blobs.has(now)) mutations.push({ path: p, text: `${p} content differs from its introduction with no recorded edit (merge-hidden?)` })
       }
-      const sanctionsOf = path => (JUDGMENTS || []).filter(j => SANCTION_KINDS.includes(j.kind) && j.review_by >= TODAY && globToRe(j.subject).test(path)).map(j => j.id)
+      const sanctionsOf = path => (JUDGMENTS || []).filter(j => SANCTION_KINDS.includes(j.kind) && j.review_by >= TODAY && globMatcher(j.subject).test(path)).map(j => j.id)
       const sanctioned = [], unexplained = []
       for (const m of mutations) {
         const ids = sanctionsOf(m.path)
@@ -592,7 +592,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       if (!base) return { ok: null, detail: `default branch '${DEFAULT_BRANCH}' not resolvable locally` }
       const changed = gitDiffNames(`${base}...HEAD`, null)
       if (changed === null) return { ok: null, detail: `diff ${base}...HEAD failed` }
-      const hits = globs => { const res = asArr(globs).map(globToRe); return changed.some(f => res.some(re => re.test(f))) }
+      const hits = globs => { const res = asArr(globs).map(globMatcher); return changed.some(f => res.some(re => re.test(f))) }
       const bad = []; let triggered = 0
       for (const p of (c.pairs || [])) {
         if (!hits(p.if_changed)) continue
@@ -671,7 +671,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       const w = LANEWORLD()
       if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
       const pools = [w.ns, ...w.families]
-      const hit = pools.find(g => globToRe(g).test(BRANCH))
+      const hit = pools.find(g => globMatcher(g).test(BRANCH))
       return hit
         ? { ok: true, detail: `'${BRANCH}' sits in declared family '${hit}'` }
         : { ok: false, detail: `branch '${BRANCH}' is outside every declared family (${pools.join(' · ')}) — claim a lane (baseline lane claim) or declare the family (lanes.families)` }

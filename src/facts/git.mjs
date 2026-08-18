@@ -4,7 +4,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { currentLane, run } from '../probe.mjs'
-import { globToRe, issueOf, TRAILER_AGENT, TRAILER_ISSUE } from '../util.mjs'
+import { globMatcher, issueOf, TRAILER_AGENT, TRAILER_ISSUE } from '../util.mjs'
 
 export const SESSION_BASES = ['records/sessions', 'docs/session-log']
 
@@ -38,7 +38,7 @@ export function laneRefsGit(REPO, namespace) {
   const pat = 'refs/heads/' + namespace
   const ls = run('git', ['-C', REPO, 'ls-remote', 'origin', pat], { timeout: 30000 })
   if (ls === null) return null
-  const re = globToRe(namespace)
+  const re = globMatcher(namespace)
   const all = ls.split('\n').filter(Boolean).map(l => l.split(/\s+/))
     .map(([sha, ref]) => ({ sha, ref: String(ref || '').replace(/^refs\/heads\//, '') }))
     .filter(t => t.sha && re.test(t.ref))

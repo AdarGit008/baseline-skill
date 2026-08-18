@@ -29,7 +29,7 @@
 // Exit: 0 admitted (warn/diverged findings ride the output) · 1 refused (stale /
 // blocker FAIL / gating-source loss) · 2 usage or environment (nothing evaluated).
 import path from 'node:path'
-import { makeOpt, makeOptAll, nowUTC, sanitizeTTY, globToRe, issueOf } from './util.mjs'
+import { makeOpt, makeOptAll, nowUTC, sanitizeTTY, globMatcher, issueOf } from './util.mjs'
 import { loadRules } from './rules.mjs'
 import { indexRepo } from './repo.mjs'
 import { laneOrNull, run } from './probe.mjs'
@@ -165,7 +165,7 @@ export function runAdmit(argv) {
   let sisters = [], sistersCapped = false
   if (ns && BRANCH) {
     const dir = String(ns).slice(0, String(ns).lastIndexOf('/', String(ns).indexOf('*')) + 1)
-    const re = globToRe(ns)
+    const re = globMatcher(ns)
     const out = g('for-each-ref', '--format=%(refname:short) %(objectname)', `refs/remotes/origin/${dir}`) || ''
     for (const line of out.split('\n').filter(Boolean)) {
       const [short, tip] = line.split(' ')

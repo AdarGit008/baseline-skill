@@ -16,6 +16,7 @@ import { extractNext, newestLocalLog, gitFacts } from '../../src/facts/git.mjs'
 import { runRules } from '../../src/engine.mjs'
 import { makeEvalCheck } from '../../src/evaluators.mjs'
 import { indexRepo } from '../../src/repo.mjs'
+import { globMatcher } from '../../src/util.mjs'
 import { resolveConfig } from '../../src/config.mjs'
 import { loadClaims } from '../../src/claims.mjs'
 
@@ -395,7 +396,7 @@ try {
     r = mkD([JDG({ review_by: '2000-01-01' })])(AO, { id: 'REC-01' })
     ok(r.ok === false && /1 mutation/.test(r.detail), '#47: an EXPIRED tombstone stops sanctioning — the mutation counts again')
     r = mkD([JDG({ subject: 'records/sessions/main/*.md' })])(AO, { id: 'REC-01' })
-    ok(r.ok === true && /sanctioned/.test(r.detail), '#47: a scope subject (glob) sanctions — matched via globToRe')
+    ok(r.ok === true && /sanctioned/.test(r.detail), '#47: a scope subject (glob) sanctions — matched via globMatcher')
 
     // mixed + all-sanctioned over two records
     const t10e = mkrepo('main'); tmps.push(t10e)
@@ -411,6 +412,26 @@ try {
     ok(r.ok === false && /^1 mutation/.test(r.detail) && /sanctioned/.test(r.detail), '#47: one sanctioned + one unexplained -> counts ONLY the unexplained and names the sanction')
     r = mkE([JDGE(recA, 'JDG-0001'), JDGE(recB, 'JDG-0002')])(AO, { id: 'REC-01' })
     ok(r.ok === true && /2 mutation\(s\) sanctioned/.test(r.detail), '#47: all sanctioned -> PASS naming both judgments')
+
+    // ---- Issue #47: the subject is attacker-influenced text that rides into the matcher ----
+    // A glob like `**a**a**a…` compiled to `^.*a.*a.*a…$` backtracked exponentially: 892ms
+    // at 68 chars, ~3.9x per 6 more, i.e. a hang well inside the 256-char schema cap. The
+    // sweep matcher has no search tree, so these must stay in the low milliseconds. Lazy
+    // quantifiers were measured and do NOT help (891ms) — do not "fix" this back to a regex.
+    const hostile = '**a'.repeat(85) + '*' // exactly the 256-char cap the schema allows
+    ok(hostile.length === 256, '#47: the ReDoS probe sits exactly at the schema cap (256 chars)')
+    const t0 = Date.now()
+    ok(globMatcher(hostile).test('a'.repeat(84) + 'b'.repeat(200)) === false, '#47: a hostile subject at the cap still answers (no hang)')
+    ok(Date.now() - t0 < 250, `#47: ...and answers in bounded time (${Date.now() - t0}ms; the regex form never finished)`)
+    ok(validateRecord('judgment', JDG({ subject: 'a'.repeat(257) })).some(e => /at most 256 characters/.test(e)), '#47: an over-long subject is refused at the schema (defense in depth, not the ReDoS fix)')
+    ok(validateRecord('judgment', JDG({ subject: 'a'.repeat(256) })).length === 0, '#47: a subject exactly at the cap is valid')
+
+    // the sweep replaced a regex — pin the semantics the regex had, exactly
+    ok(globMatcher('**/x').test('x') && globMatcher('**/x').test('a/b/x'), '#47: `**/` swallows the slash — `**/x` still matches a bare `x`')
+    ok(!globMatcher('*.md').test('a/b.md') && globMatcher('*.md').test('b.md'), '#47: a single `*` does not cross a path separator')
+    ok(globMatcher('**.md').test('a/b.md'), '#47: `**` does cross path separators')
+    ok(globMatcher('a?c').test('abc') && !globMatcher('a?c').test('ac'), '#47: `?` is exactly one character')
+    ok(globMatcher('v1.2').test('v1.2') && !globMatcher('v1.2').test('v1x2'), '#47: a literal dot stays literal (metacharacters are not regex any more)')
 
     const t11 = mkrepo('main'); tmps.push(t11)
     const rec2 = 'records/sessions/main/2026-07-01-110000-a.md'

@@ -1,66 +1,138 @@
-# Code Review — Issue #46 (five-axis)
+# Code Review — Issue #47 (five-axis)
 
-Reviewed diff: `2aa80a0..HEAD` (4 commits, ~105 lines of source/test change).
+Reviewed diff: `9d30bda..HEAD` — the REC-01 sanctioned-edit route (2 commits, landed)
+plus the `globMatcher` rewrite the security axis forced.
 
 ## Verdict: **Approve**
 
-The change is correct, matches the repo's conventions, and adds regression coverage. Three
-non-blocking observations below.
+The feature is correct and well covered. The security axis failed on first pass and
+the fix is included in this review, not deferred — see below. Two non-blocking
+observations at the end.
 
 ## Correctness — PASS
 
-- `forge.prClosingIssues(n)` (`src/facts/forge.mjs:116`) reads the GraphQL
-  `closingIssuesReferences` envelope and returns `number[]` or `null`; the fixed query string
-  uses `$n/$owner/$name` variables, so no injection surface. Verified live on gh 2.45.0.
-- `scopedPrClosers(w)` (`src/evaluators.mjs:23`) makes the forge authoritative with the body
-  regex as the null-honest fallback — a failed query falls back to `issueCloses(body)` (never
-  worse than prior behavior), never coalesced to "closes nothing".
-- `gatherFacts` (`src/facts/index.mjs:171`) applies the same authority so orient and the DIV
-  rules agree (one-derivation parity). The referenced-issue resolver already walks `pr.closes`,
-  so forge-discovered closers get their issue states resolved.
-- FLOW-08 (`src/evaluators.mjs:750`) correctly SKIPs on no namespace / no forge / null PR
-  listing, and returns `ok:false` (warn severity) only for a real self-anchor close.
-- `deriveDivergence` was **not** touched — the shared classifier is still the single "closed"
-  definition, and both surfaces now feed it the same input.
+- `src/evaluators.mjs:470` classifies a mutation by filtering `JUDGMENTS` on
+  `SANCTION_KINDS.includes(j.kind) && j.review_by >= TODAY && globMatcher(j.subject).test(path)`.
+  The three predicates are exactly the recorded contract: unexpired, sanction-class,
+  subject-matching. `break-glass` is excluded by the shared constant (line 23), and
+  an expired tombstone stops sanctioning.
+- `src/evaluators.mjs:459-468` carries each mutation as `{ path, text }` with `path`
+  the reported path (`e.to || e.path` for MDR, `p` for the layer-2 merge-hidden cases),
+  so the tombstone names what the finding shows. The `touched` set still keys on
+  `e.path` — layer-2 de-duplication is unchanged.
+- `src/evaluators.mjs:477-479`: no mutations → the detail string is byte-identical to
+  before; all-sanctioned → `ok: true`; mixed → counts only `unexplained` and appends a
+  `— N sanctioned (...)` disposition. Golden `--verify` is green with no re-capture.
+- `src/config.mjs:84-85` splits the existing `loadJudgments` call so `JDGS` (sign-off
+  map) and `JUDGMENTS` (full list) share one parse; `selectSignoffs` receives the same
+  array it did before — behavior-preserving.
+- `SANCTION_KINDS` is hoisted and reused by DESC-03 (`src/evaluators.mjs:915`) — a pure
+  deduplication, no semantic change to the descriptor gate.
 
 ## Readability & Simplicity — PASS
 
-- Names are descriptive (`prClosingIssues`, `scopedPrClosers`, `viaSidebar`); comments name
-  the rule id, the lesson, and the null-honesty contract, matching the file's style.
-- No dead code, no "clever" tricks, no nested conditionals.
+- Names are descriptive (`sanctionsOf`, `mutations`, `unexplained`); the leading comment
+  names the issue and the contract, matching the file's style.
+- `globMatcher`/`sweep` (`src/util.mjs:92`, `:112`) is longer than the regex it replaces
+  — 60 lines against 15. That is the cost of not backtracking, and the header comment
+  carries the measurements plus an explicit "do not fix this back to a regex," because
+  the regex form is the obvious-looking thing a future reader would restore.
 
-## Architecture — PASS (one observation)
+## Architecture — PASS
 
-- `prClosingIssues` sits on the forge with the other reads; `scopedPrClosers` is one home for
-  the two DIV/FLOW evaluators; the rule is data-declared in `rules/flow.json`. Fits the design.
+- The ledger reads through the existing `resolveConfig` → `makeEvalCheck` seam, the same
+  path `JDGS` already takes — no new loader, no new module, no forge surface.
+- `SANCTION_KINDS` is one home for its two consumers (REC-01 + DESC-03), exactly the
+  repo's "one home or the two consumers drift" discipline.
+- The rename `globToRe` → `globMatcher` is not cosmetic: the function no longer returns
+  a RegExp, and a name that lied would invite a caller to reach for `.source` or `.exec`.
+  All nine call sites used only `.test()`, so the new return shape is a drop-in.
 
-## Security — PASS
+## Security — **FAIL on first pass, fixed in this change**
 
-- No secrets, no injection (parameterized GraphQL), PR branch/title rendered through the
-  existing `sanitizeTTY` boundary (`src/report.mjs:40`).
+The original submission tried to harden `globToRe` with lazy quantifiers plus a
+`maxLength: 256` bound on `judgment.subject`, and the first draft of this review passed
+it. Both were measured before the axis was signed off. **Neither works.**
 
-## Performance — PASS (accepted tradeoff)
+`globToRe` compiled a glob to `^…$` regex, so `**a**a**a…` became `^.*a.*a.*a…$` —
+catastrophic backtracking on a path that does not match. Measured through the shipped
+helper, non-matching input:
 
-- One memoized GraphQL spawn per open PR (capped at 50 by the PR list), shared by DIV-03,
-  FLOW-08, and orient's headline via the forge's `q()` memo. Matches the codebase's stated
-  "batching deferred" policy and the existing per-issue spawn pattern.
+| glob chars | time |
+|---|---|
+| 44 | 4.6 ms |
+| 50 | 14.6 ms |
+| 56 | 56.3 ms |
+| 62 | 238 ms |
+| 68 | 892 ms |
+
+~3.9x per 6 characters. That matters here because #47 is what makes a judgment
+`subject` — ledger-authored text — flow into the matcher.
+
+- **Lazy quantifiers do not fix it.** Same glob, same path: greedy 892ms, lazy 891ms.
+  Laziness reorders the search; it does not shrink the search space. The comment
+  claiming "lazy scanning is linear per segment" was false.
+- **The 256-char cap does not fix it.** At ~3.9x per 6 chars, 256 chars is roughly
+  `3.9^31` beyond the 892ms row — an effectively permanent hang. Any cap loose enough
+  to hold a real record path (`records/sessions/main/2026-07-01-100000-agent.md` is 48
+  chars) is loose enough to hang.
+- The hazard was **not new to #47**: `lanes.families` already reached the same helper,
+  and measured 374ms at its existing 64-char cap. #47 only made it reachable from a
+  second, wider surface.
+
+**The fix**: `globMatcher` (`src/util.mjs:92`) compiles the glob to a token list and
+matches with one non-backtracking sweep (`:112`) that carries the set of reachable path
+positions as a bitmap — O(tokens x path), no search tree. Results:
+
+| case | old | new |
+|---|---|---|
+| 68-char hostile glob | 892 ms | 0.11 ms |
+| 256-char hostile glob (at the cap) | never finished | 1.00 ms |
+| `lanes.families` at its 64-char cap | 374 ms | 0.06 ms |
+| 10k realistic path matches | — | 17.5 ms (1.75 µs each) |
+
+Semantics are preserved byte-for-byte: 41,980 glob/path pairs (curated edge cases +
+fuzzed) compared against the old regex, **0 mismatches**. The sweep deliberately keeps
+the regex's quirks — `.*` and `.` stop at a newline, `[^/]*` does not — so no caller
+sees a behavior change. `test/records/run.mjs` pins both the timing bound and those
+semantics.
+
+`maxLength: 256` is kept as defense in depth, and its schema description now says so
+rather than claiming to be the ReDoS defense.
+
+Otherwise: no secrets, no injection; subject/path strings render through the existing
+`sanitizeTTY` boundary.
+
+## Performance — PASS
+
+- `sanctionsOf` is O(mutations x judgments) and now recompiles a *token list* rather
+  than a RegExp per call. Both inputs are bounded (history events, a schema-valid
+  ledger); no new spawns, no network.
+- The matcher rewrite is a net win everywhere, not a tax: the repo-wide `match()` in
+  `src/repo.mjs:51` runs every glob against every file, and it got faster.
 
 ## Findings (non-blocking)
 
-- **Optional** — `src/evaluators.mjs:23` and `src/facts/index.mjs:171` each encode the
-  `forgeClosers ?? closes(body)` fallback. Two homes for one rule, against the repo's strong
-  "one home" discipline. The two differ in null-contract (`prsOpenOrNull` vs `prsOpen`), so a
-  naive merge would be wrong — but a small shared `resolvePrClosers(forgeClosers, body)`
-  helper would remove the drift risk. Not blocking.
-- **Consider** — FLOW-08 does not exclude draft PRs (`isDraft`), so a draft that links its own
-  anchor warns "will close on merge". DIV-03 has the same stance (no draft filter), so this is
-  consistent; flagging only because the "on merge" phrasing is slightly premature for drafts.
-- **FYI** — `closingIssuesReferences(first:50)` truncates beyond 50 closers per PR; matches the
-  PR list's `--limit 50`, GitHub's own ceiling is 100. Cosmetic in practice.
+- **Optional** — `src/evaluators.mjs:470` re-compiles `globMatcher(j.subject)` for every
+  mutation. A precompiled `[{ m, id }]` list built once per evaluation would remove the
+  re-parse. Cheaper to justify now than before (compilation is a token scan, not a
+  regex parse), still not worth doing until a repo shows many-mutations x
+  many-judgments pressure.
+- **Consider** — an expired tombstone re-lights the warn for an immutable historical
+  edit, forcing periodic re-judgment. This is the SPEC's recorded decision #4 and the
+  cheapest to revisit (one-line flip to permanent); the alternative trades "ledgers
+  lapse" consistency for less ceremony. Flagged for the dogfood data to settle.
+
+## Process note
+
+The first draft of this review signed off the security axis by reading the code's own
+comment instead of measuring it. The claim was false and the axis was wrong. Security
+claims about pathological input get a measurement in this repo, not a reading.
 
 ## Verification story
 
-`check.mjs --self-check` green · `test/golden/run.mjs --verify` green (re-captured) ·
-`test/{orient,facts,records,lane,flow,admit,reconcile,gen}/run.mjs` green · self-score
-`node check.mjs --repo . --no-exec` = 0 blockers. Golden diff is purely additive (FLOW-08 rows
-+ summary counts); no other verdict moved.
+`check.mjs --self-check` green · `test/records/run.mjs` green (9 REC-01 assertions + 10
+new for the matcher: cap probe, no-hang timing bound, schema bound at 256/257, and five
+glob-semantics pins) · `test/{orient,facts,lane,flow,admit,reconcile,gen}/run.mjs` green
+· `test/golden/run.mjs --verify` green, 18 fixtures identical, **no** re-capture ·
+41,980-pair differential test old-vs-new, 0 mismatches.

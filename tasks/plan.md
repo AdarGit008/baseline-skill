@@ -20,7 +20,7 @@ disposition.
   read the same parse. New param defaults to `null` so the existing direct
   `makeEvalCheck` test callers are unchanged and fail-closed (no judgments ⇒ no
   sanctions).
-- **Matching = `globToRe(subject).test(path)`** — reuse the canonical glob helper;
+- **Matching = `globMatcher(subject).test(path)`** — reuse the canonical glob helper;
   exact paths are literal globs, scopes use `*`/`**`. No new matcher.
 - **Unexpired only** (`review_by >= TODAY`) — same clock DESC-03 and the signoff
   bridge use.

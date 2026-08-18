@@ -1,172 +1,182 @@
-# Spec: Issue #47 — REC-01's sanctioned-edit route must actually resolve
+# Spec: Issue #52 — derive the hardening backlog from mcgyvr
 
 ## Objective
 
-REC-01 ("Committed records are append-only") tells the author, in its own `fix`
-field, that a landed record that must change is a judgment: *"record a JDG and leave
-the tombstone."* But the `records-append-only` evaluator
-(`src/evaluators.mjs`, `k === 'records-append-only'`) never reads the judgment
-ledger. Recording the JDG changes nothing — the warn reports the same mutation
-count forever.
+Every hardening issue this repo has landed since v2.5.0 was discovered by accident:
+someone running the workflow in `mcgyvr` tripped over a rule and wrote it up. #46,
+#47, #49 and #50 are all that shape — four issues, four separate accidents.
 
-This is worse than a cosmetic warn:
+`mcgyvr` has accumulated **36 ADRs and 162 session records across 95 lanes**
+(2026-08-01 → 2026-08-18). An ADR in that corpus is, by construction, a failure
+severe enough to become policy; a session record is where the friction was felt
+before anyone decided what to do about it. Nobody had read the corpus with the
+question *"what should baseline have caught?"* in hand.
 
-1. **The warn cannot be cleared by behaving well.** A mutation is permanent
-   history; the only way to clear the rule is to rewrite history, which is the act
-   the rule exists to prevent. A permanently-lit warn stops being read after two
-   sprints — and REC-01 is the rule you least want people tuning out.
-2. **It scores a repair identically to a rewrite.** Real case (`mcgyvr`, vendors
-   2.5.0): swapping a rot-prone citation for sha256-pinned evidence made a record
-   *more* forensically sound — REC-01's whole purpose — and the rule flagged it
-   exactly as it would an edit that fakes a result.
+This issue is that read, producing a **ranked hardening backlog** with each
+confirmed finding reproduced against baseline-skill code and filed as its own
+issue.
 
-**Fix:** REC-01 reads the judgment ledger the way DESC-03 already does. A mutation
-whose path is covered by a sanctioning judgment is reported as *sanctioned* and
-excluded from the finding count. Unsanctioned mutations still fail. The sanctioned
-route named in the rule's `fix` becomes true: an author can reach clean without
-rewriting history.
+**This branch carries the review, the spec, the plan and the drafted child issues.
+It changes no evaluator, no rule and no test.**
 
 ### Success criteria
 
-- A committed mutation to a record under `records/`, covered by an unexpired
-  sanctioning judgment naming that path, is excluded from REC-01's finding count.
-- If every mutation is sanctioned, REC-01 returns `ok: true` (PASS) and the detail
-  names the sanctioning judgment id(s).
-- If any mutation is unsanctioned, REC-01 returns `ok: false` (WARN) counting only
-  the unsanctioned mutations, and the detail separates sanctioned from unexplained.
-- `break-glass` judgments never sanction (outage relief, not record-edit approval —
-  the DESC-03 reasoning, applied here).
-- An expired judgment (`review_by` in the past) does not sanction; the mutation
-  counts and the detail stays honest about it.
-- No regression: `test/{records,golden,orient,facts,lane,flow,admit,reconcile,gen}/run.mjs`
-  all pass; `check.mjs --self-check` passes; golden `--verify` unchanged (REC-01 is
-  SKIP in every golden fixture — no judgment records there).
+- All 36 ADRs and all 162 session records read (limits stated where they exist).
+- Every filed finding **reproduced against baseline-skill code at `df7f5c3`** with a
+  runnable repro, in the style of #50 — not cited to a mcgyvr record alone.
+- Findings ranked by **trust damage × frequency** (the issue's declared rule).
+- Candidates that did not reproduce recorded as candidates, **not filed**.
+- Corroborating evidence for the two already-open issues (#49, #50) recorded with
+  dates and lane ids.
+- No change to `src/`, `rules/`, `check.mjs` or `test/` on this branch.
+
+## Scope
+
+**In** (from the issue's own answers): defects in existing rules · coverage gaps
+where a mcgyvr failure has no rule at all · lane and workflow mechanics.
+
+**Out**: ergonomics and doc-drift polish; anything requiring a change to `mcgyvr`.
 
 ## Tech stack / commands
 
-- Node >= 18, zero dependencies. Forge reads are replay-backed; this change is
-  **git-plane + tree-plane only** — no new forge surface.
-- Judgment loading reuses `loadJudgments` (`src/jdg.mjs`) and the existing
-  `globMatcher` (`src/util.mjs`) matching primitive — no new helpers, no new deps.
+Node ≥ 18, zero dependencies. Read-only against `mcgyvr`; reproductions build
+throwaway git repos under the session scratchpad and invoke this repo's checker.
 
 ```
-self-check:  node check.mjs --self-check
-records:     node test/records/run.mjs          (focused suite for this change)
-golden:      node test/golden/run.mjs --verify
-full:        node test/{orient,facts,lane,flow,admit,reconcile,gen}/run.mjs
-golden recapture: node test/golden/run.mjs --capture   (only if a pin genuinely moved)
+repro (per finding):  see tasks/issues/F<n>-*.md — each carries a self-contained
+                      shell block that builds a scratch repo and prints the verdict
+self-check:           node check.mjs --self-check
+full suite:           node test/{records,golden,orient,facts,lane,flow,admit,reconcile,gen}/run.mjs
+self-score:           node check.mjs --repo . --no-exec
 ```
 
-## Project structure (relevant)
+## The findings, ranked
 
-```
-src/config.mjs      — resolveConfig: return the FULL judgment list (JUDGMENTS),
-                      not just the sign-off map (JDGS)
-check.mjs           — thread JUDGMENTS into makeEvalCheck
-src/admit.mjs       — thread JUDGMENTS into makeEvalCheck (REC-01 has admit context)
-src/reconcile.mjs   — thread JUDGMENTS into makeEvalCheck (REC-01 has reconcile context)
-src/evaluators.mjs  — records-append-only: classify each mutation as sanctioned /
-                      unexplained; hoist the sanction-kind set to one constant
-rules/rec.json      — rewrite REC-01's `fix` to name the exact tombstone command
-CONTRACT.md         — document the tombstone route + matching/expiry semantics
-REFERENCE.md        — REC-01 row: note the sanctioned-edit route
-CHANGELOG.md        — [Unreleased] entry
-test/records/run.mjs — RED tests: sanctioned / unsanctioned / wrong-subject /
-                      break-glass / expired / glob-scope / mixed / all-sanctioned,
-                      plus one check.mjs end-to-end tombstone flow
-```
+Rank is trust damage × frequency. Trust damage is how much the defect makes an
+author stop believing baseline's output; frequency is how many distinct mcgyvr
+lanes hit it.
 
-## Key design decisions (recorded assumptions — autonomous, no human to ask)
+| # | Finding | Class | Trust | Freq | Repro |
+|---|---------|-------|-------|------|-------|
+| F1 | `committedLog` picks the newest lane record by **filename sort**, so a same-day record that sorts later governs FLOW-03/05 and DIV-02 | rule defect | blocker fires on a compliant lane; **silently blinds DIV-02** | 3 lanes + 1 latent | ✅ |
+| F2 | Every lane rule (FLOW-01…07, DIV-01/02) is **inert on the `pull_request` event** — the run a branch ruleset actually requires | rule defect | the merge gate is the run that does not check | 2 incidents | ✅ |
+| F3 | REC-01 scores an **append** identically to a rewrite, and the reply-corpus design guarantees one append per measurement run | rule defect | the warn that stops being read | 6+ records, monotonic | ✅ |
+| F4 | ADR **amendment** edges (`Amends:` / `Amended-by:`) are read by no rule — a dangling amendment pointer resolves to nothing and is not reported | coverage gap | a decision graph nothing checks | 18 edges, 15 one-way | ✅ |
 
-The issue flags exactly one design fork and answers it; the rest are recorded here
-so a later human can revisit the cheapest ones.
+### F1 — the newest record is the last filename, not the newest record
 
-1. **Tombstone is backfillable (NOT same-range).** The JDG need not ride the same
-   commit range as the mutation (DESC-03's rule). It is read from the ledger at
-   evaluation time, whenever it was recorded. This is the issue author's own
-   reading ("REC-01 wants the latter") and is what *"leave the tombstone"* means:
-   a later, permanent record. DESC-03's same-range constraint is deliberately NOT
-   inherited — the two rules ask different questions (atomicity of a gated change
-   vs. a permanent sanction of an immutable fact).
-
-2. **Matching = `subject` glob-matches the reported mutation path** via the existing
-   `globMatcher` (the one canonical helper, already used by lane placement). An exact
-   path (`records/claims/CLM-0001.json`) is a literal glob and matches exactly; a
-   scope (`records/claims/**`, `records/sessions/main/*.md`) covers a set. This is
-   "matched on subject, as DESC-03 matches", generalized from one filename to a
-   path/scope. The tombstone names the path as it appears in the finding detail.
-
-3. **Sanctioning kinds = {sign-off, deviation, risk-acceptance}.**
-   `break-glass` is excluded — it is outage relief with its own gate semantics; the
-   exact reasoning DESC-03 already encodes ("break-glass is outage relief, never
-   descriptor-change approval"). The set is hoisted to one module-level constant
-   shared by REC-01 and DESC-03 (one home).
-
-4. **The sanction is active only while unexpired** (`review_by >= TODAY`, the
-   run's one clock already computed in `makeEvalCheck`). A lapsed tombstone stops
-   sanctioning and the mutation counts again — forcing a re-look, per the ledger's
-   "every judgment lapses" rule. This matches DESC-03 (`review_by >= TODAY`) and
-   the signoff bridge (a lapsed sign-off is honestly not signed). *(Cheapest to
-   revisit: a permanent tombstone would instead sanction forever; the code is a
-   one-line flip if dogfood data says re-judging immutable history is ceremony.)*
-
-5. **Ledger source = the worktree ledger** via `resolveConfig` (the same
-   `loadJudgments` the signoff bridge uses), threaded as a new `JUDGMENTS` param to
-   `makeEvalCheck`. Schema-invalid judgments are already excluded by
-   `loadJudgments`, so a malformed tombstone can never sanction. In `admit` and
-   `reconcile` the worktree ledger is the incoming-branch / tip ledger, which is
-   exactly the ledger a tombstone would ride or already live in.
-
-6. **Disposition is reported, not just counted.** The detail separates sanctioned
-   from unexplained and names the sanctioning id(s). The issue's secondary ask —
-   *distinguishing pure-append edits from restatements via the diff* — is **out of
-   scope**: it is explicitly marked secondary and "where the diff makes that cheap
-   to tell"; a content diff over full history is not cheap and would buy a new
-   correctness surface. Deferred as a follow-up.
-
-## Code style
-
-Match the existing evaluator style: a leading comment naming the rule id and the
-lesson, `ok: null` for SKIP (never a guess), `{ ok: true }` for PASS,
-`{ ok: false }` for a finding. Detail strings render through `sanitizeTTY` at the
-boundary — keep them plain. Reuse `globMatcher` and the one `TODAY` clock already in
-scope; do not add a second matching helper or a second clock.
+`src/evaluators.mjs:61-71`:
 
 ```js
-// module scope (beside DIV_REF_CAP):
-// The judgment kinds that can SANCTION a change (REC-01's tombstone) or approve a
-// descriptor change (DESC-03) — break-glass is deliberately absent: it is outage
-// relief with its own gate semantics, never record-edit or descriptor approval.
-const SANCTION_KINDS = ['sign-off', 'deviation', 'risk-acceptance']
+const md = added.filter(f => f.endsWith('.md')).sort()
+if (!md.length) return null
+const rel = md.at(-1)
 ```
 
-## Testing strategy
+`added` is every record the lane adds against the default branch. The sort is
+lexicographic over the path, so within one day the **slug** decides which record is
+"newest". `records/sessions/lane/231/2026-08-13-checks-1-and-2-under-the-gate-adar.md`
+carries a filled `next:`; `…2026-08-13-positive-control-prereg.md` correctly carries
+none — a pre-registration is not a session. `c` < `p`, so FLOW-03 reads the
+pre-registration and fails a lane whose record discipline is intact.
 
-- **TDD / Prove-It**: write the RED tests in `test/records/run.mjs` first (they fail
-  on the current evaluator), then implement to GREEN, then run the full suite.
-- **Unit level** (extend the existing "REC evaluators against real history" block):
-  pass `JUDGMENTS` directly to `makeEvalCheck` and assert the classifier. Use
-  extreme `review_by` dates (`2000-01-01` / `2999-01-01`) so the unit process's
-  real clock never matters.
-- **End-to-end level** (new block, mirrors the t12 pattern): a repo with a committed
-  record, a committed edit, then a real `records/judgments/JDG-0001.json` tombstone
-  committed — run `check.mjs --json` and assert REC-01 flips WARN→PASS. This is the
-  guard against forgetting to thread `JUDGMENTS` through `resolveConfig`.
-- Golden corpus is untouched (REC-01 is SKIP in every golden fixture); `--verify`
-  must stay green with **no** re-capture.
+The second-order effect is the expensive one: DIV-02 reads the same selection, so
+picking a `next:`-less record turns divergence detection off with a SKIP that reads
+like "nothing to check".
 
-## Boundaries
+Observed on mcgyvr `lane/231` (2026-08-13, CI blocker), `lane/113` (2026-08-13) and
+`lane/266` (2026-08-15); latent on `lane/225`, which survived only because
+`f1-t…` happens to sort after `f1-r…`.
 
-- **Always**: run the suite before commit; null → SKIP, never guess; detail strings
-  honest about source; no new dependencies.
-- **Never**: change rule severity or context; change existing REC-01 semantics for
-  repos with no judgments (identical output); add a forge read; weaken the
-  unsanctioned-mutation finding.
-- **Deferred (out of scope)**: the pure-append-vs-restatement diff distinction
-  (issue's secondary ask); a severity-by-posture seam (M7's already-ruled revoke).
+### F2 — the lane rules do not run on the event that gates the merge
 
-## Open questions
+`actions/checkout` on a `pull_request` event checks out the merge ref detached, so
+`laneOrNull` returns null and every branch-scoped rule takes the honest
+`no branch resolved (detached HEAD / CI checkout)` SKIP. Same commit, two verdicts:
+on `push` the lane rules fire; on `pull_request` all seven FLOW rules plus DIV-01
+and DIV-02 go n/a.
 
-None — all ambiguities resolved and recorded as assumptions above. The single most
-revisitable choice is decision #4 (expiry: unexpired-only vs permanent tombstone);
-it is the cheapest to flip and the one the dogfood data would settle first.
+Which run a branch ruleset requires then decides whether the merge gate has any lane
+discipline in it at all. mcgyvr hit both directions: `lane/91` (2026-08-01) had two
+dependabot PRs **blocked** because the push run failed FLOW-04 while the PR run
+passed; `lane/282` (2026-08-16) recorded the inverse as the more serious reading.
+
+Filed today only as an "adjacent finding" inside #49, which asks for it to be split
+out if real. It is real.
+
+### F3 — an append is not a rewrite, and REC-01 cannot tell them apart
+
+`records-append-only` reports every `M`/`D`/`R` event under `records/` as a mutation.
+An append is an `M`. mcgyvr's three long-standing mutations were *all* additive or
+citation-repairing — one of them (`67c92db`) replaced a rot-prone citation with
+sha256-pinned evidence, making the record **more** forensically sound.
+
+#47 gave the rule a sanctioned route, which is the right escape hatch and does not
+close this: the finding still cannot say whether a mutation added to a record or
+rewrote it, so a repair and a falsification are scored alike and the author's only
+signal is a count. mcgyvr's `lane/212` names the sharp end — `records/corpora/worker-replies/golden.json`
+must be re-pinned on every measurement run, so REC-01's count grows by one per sweep
+**by design**.
+
+### F4 — the decision graph's amendment edges are unchecked
+
+CTX-02 and CTX-07 read `Status:` and `Superseded-by:` only. `Amends:` and
+`Amended-by:` are read by no rule and no kind. An ADR declaring `Amends: ADR-0019`
+where no ADR-0019 exists passes both; an ADR amended by another, saying nothing back,
+passes both.
+
+mcgyvr's decision graph is amendment-shaped rather than supersede-shaped — 18 edges,
+of which **15 are one-way** — and it had to build `tests/test_decisions.py` and
+`tools/decisions/index.py` locally to get the check baseline does not ship.
+
+## Corroboration for the two open issues
+
+- **#49** (duplicate decision-record numbers) — two real incidents, both after the
+  issue was filed. `ADR-0027` was claimed by `lane/265` and `lane/282` on 2026-08-16
+  and caught only by a human re-read ("two ADRs numbered 0027 under different
+  filenames merge without a git conflict, so nothing would have reported it").
+  `ADR-0035` was **actually landed twice** on 2026-08-17 — PR #298 at 22:15 and PR
+  #303 at 23:25, seventy minutes apart — and was resolved by renumbering on
+  `lane/304` the next day.
+- **#50** (FLOW-03's `## Left open` placement) — two further instances beyond the
+  one in the issue: `lane/113` session/4 (an `## Amendment` section appended after
+  `## Left open`) and `lane/266` session/5 (a closing prose section after it). Both
+  cost a whole extra session record, because REC-01 makes the older one immutable.
+
+## Candidates recorded and NOT filed
+
+Per the issue's bar, these did not clear reproduction and stay candidates:
+
+1. **`reconcile`'s forge writes are not verified against intent.** `mutate()` treats
+   `result !== null` as success — a transport check. mcgyvr's ADR-0001 records
+   `gh issue edit --body-file` **blanking a body and exiting 0**, twice, and built
+   `tools/issues/body.py` to read the live body back. Plausible here, but this repo's
+   filing path passes bodies as strings rather than files, so the specific hazard was
+   not reproduced.
+2. **The inert-rule class.** mcgyvr's ADR-0026 lens 3 and ADR-0034 are one long
+   argument that a check which cannot say what it applied is worse than no check.
+   Whether a baseline rule can PASS vacuously — matching nothing and reporting
+   health — was not established on any rule; it needs a rule-by-rule sweep, which is
+   its own issue-sized job.
+3. **A merged lane is spent, and the next commit has nowhere to go.** Four lanes hit
+   it (`106`, `114`, `216`, `231`); `lane/216` lost a correction by six minutes to a
+   squash. Real friction, but working-as-designed under DIV-01 rather than a defect,
+   and the remedy (a new issue and lane) is what the rule intends.
+4. **DIV-02 costs a whole record to clear a stale `next:`.** Three lanes wrote a
+   session record whose only content was "the plan is stale" (`10`, `133`, `150`).
+   Cost is real; no defect identified.
+5. **Claims are validated against a schema nothing enforces** — flagged in four
+   mcgyvr lanes over 10 claim records. **Refuted on current main**: `loadClaimRecords`
+   runs `validateRecord('claim', …)` and surfaces schema-invalid records as errors.
+   mcgyvr's vendored copy predates the fix.
+
+## Stated limits of the read
+
+- Two of the 162 session records — `225/2026-08-11-bench-campaign-t1-brief.md` and
+  `225/2026-08-11-bench-probe-t2-brief.md`, 21 KB each — are problem-generation
+  briefs addressed to sub-agents. They were scanned for baseline surface (`baseline`,
+  `REC-`, `FLOW-`, `DIV-`, judgment, admit, orient, scrub) rather than read in full;
+  the scan returned only `tools/bench/admit.py` references, which are mcgyvr's own
+  gate and not baseline's. Every other record was read whole.
+- The read is of what mcgyvr **wrote down**. Friction that never reached a record is
+  outside it, and the live-baseline-run evidence source was declined at interview.

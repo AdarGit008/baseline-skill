@@ -78,7 +78,11 @@ export function resolveConfig(repo, { cliConfigPath = null, profileArgs = [], de
   // signed-forever while `jdg check` calls the same file INVALID. The legacy
   // signoff.json dual-read retired with M7's contraction (MIGRATION.md re-mints
   // surviving entries as records). Expiry is judged at evaluation time.
-  const JDGS = selectSignoffs(loadJudgments(repo.REPO).records)
+  // The SAME parse also surfaces as JUDGMENTS (the full schema-valid list) for the
+  // rules that read beyond sign-offs — REC-01's tombstone sanctions a mutation by
+  // subject (issue #47), DESC-03 matches added judgments by subject at admit.
+  const JUDGMENTS = loadJudgments(repo.REPO).records
+  const JDGS = selectSignoffs(JUDGMENTS)
 
-  return { cfg, DEFAULTS, EXPLICIT, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, JDGS, DESCRIPTOR }
+  return { cfg, DEFAULTS, EXPLICIT, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, JDGS, JUDGMENTS, DESCRIPTOR }
 }

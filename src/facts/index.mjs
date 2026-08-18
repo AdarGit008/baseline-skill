@@ -5,7 +5,7 @@
 import { treeFacts } from './tree.mjs'
 import { gitFacts, SESSION_BASES, extractNext, laneRefsGit, laneOwner, LANES_PRIV } from './git.mjs'
 import { makeForge } from './forge.mjs'
-import { globToRe, issueOf, TRAILER_AGENT, nowUTC, refs, closes } from '../util.mjs'
+import { globMatcher, issueOf, TRAILER_AGENT, nowUTC, refs, closes } from '../util.mjs'
 import { DEFAULT_LEASE_TTL, parseTtlMs, deriveLanes } from '../derive/lanes.mjs'
 import { run, probeForge } from '../probe.mjs'
 
@@ -25,7 +25,7 @@ function normalizeLaneRefs(raw, namespace) {
   const refsNode = raw?.data?.repository?.refs
   if (!Array.isArray(refsNode?.nodes)) return null
   const dir = String(namespace).slice(0, String(namespace).lastIndexOf('/', String(namespace).indexOf('*')) + 1)
-  const re = globToRe(namespace)
+  const re = globMatcher(namespace)
   const lanes = []
   for (const n of refsNode.nodes) {
     const ref = dir + String(n?.name ?? '')

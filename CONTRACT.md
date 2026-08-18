@@ -25,7 +25,13 @@ All durable intent lives under `records/` (schemas in `schema/record.*.schema.js
 
 **Append-only:** never edit a committed record — write the next one. (REC-01
 proves this from history: modify/delete/rename of a record is a finding, and a
-blob-at-introduction comparison catches merge-hidden edits.)
+blob-at-introduction comparison catches merge-hidden edits.) If a landed record
+must change, that's a judgment: record a tombstone naming the record's path —
+`baseline jdg new --kind deviation --subject "records/…" --reason "…" --review-by <date>`.
+A mutation covered by an unexpired `sign-off`/`risk-acceptance`/`deviation` whose
+subject glob-matches the path is *sanctioned* and excluded from the finding;
+`break-glass` never sanctions (it is outage relief), and an expired tombstone stops
+sanctioning.
 
 ### Session records (by hand)
 

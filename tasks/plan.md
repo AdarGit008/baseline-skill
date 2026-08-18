@@ -1,55 +1,74 @@
-# Implementation Plan: Issue #46 — forge-authoritative PR closures + FLOW-08 pre-merge warn
+# Implementation Plan: Issue #47 — REC-01's sanctioned-edit route resolves
 
 ## Overview
 
-Read "which issues a PR closes" from the forge's `closingIssuesReferences` (GraphQL) instead
-of the body-text regex, with the body regex retained as a null-honest fallback. Add FLOW-08, a
-warn-severity preventive twin of DIV-01 that fires when an open PR will close its own lane
-anchor. Keep orient's divergence headline on the same authority (one-derivation parity).
+Wire REC-01 (`records-append-only`) to the judgment ledger so a mutation covered by
+a sanctioning JDG is reported as *sanctioned* and excluded from the finding count —
+making the rule's own `fix` ("record a JDG and leave the tombstone") true. The
+mechanism already exists: `resolveConfig` loads the ledger for the signoff bridge;
+DESC-03 already matches judgments by subject. The change threads the full judgment
+list into `makeEvalCheck`, classifies each REC-01 mutation against it, and reports
+disposition.
 
 ## Architecture decisions
 
-- **`prClosingIssues(n)`** on the forge: one `gh api graphql` call per PR, memoized by `q()`,
-  returns `number[]` or `null` (failure → caller falls back, never "closes nothing").
-- **Shared helper `scopedPrClosers(w)`** in `evaluators.mjs`: per-PR
-  `{ number, branch, closes, forgeCloses, bodyCloses }` where `closes = forge ?? body`.
-- **`gatherFacts`** uses the same authority so orient and the DIV rules agree.
-- **FLOW-08** = `pr-closes-own-anchor`, warn, `check`+`admit`, no branch_scope (repo-wide).
+- **One home for the sanction-kind set** — hoist DESC-03's inline `['sign-off',
+  'deviation', 'risk-acceptance']` to a module constant `SANCTION_KINDS` shared by
+  both REC-01 and DESC-03. Behavior-preserving for DESC-03.
+- **Thread `JUDGMENTS` (full list) alongside the existing `JDGS` (signoff map)** —
+  `resolveConfig` already calls `loadJudgments`; split the call so both consumers
+  read the same parse. New param defaults to `null` so the existing direct
+  `makeEvalCheck` test callers are unchanged and fail-closed (no judgments ⇒ no
+  sanctions).
+- **Matching = `globMatcher(subject).test(path)`** — reuse the canonical glob helper;
+  exact paths are literal globs, scopes use `*`/`**`. No new matcher.
+- **Unexpired only** (`review_by >= TODAY`) — same clock DESC-03 and the signoff
+  bridge use.
+- **Golden corpus untouched** — REC-01 is SKIP in every golden fixture; no re-pin.
 
 ## Task list
 
-### Phase 1: forge closers + DIV-03
-- [ ] Task 1: `forge.prClosingIssues(n)` + `div-closes-closed` reads the forge authority.
+### Phase 1: RED tests
+- [ ] Task 1: write the failing unit + e2e tests in `test/records/run.mjs`.
 
 ### Checkpoint 1
-- [ ] `test/flow/run.mjs` passes; DIV-03 detects a sidebar-linked closure via replay.
+- [ ] `node test/records/run.mjs` fails on the NEW assertions only (RED proven).
 
-### Phase 2: FLOW-08 warn
-- [ ] Task 2: `pr-closes-own-anchor` kind + FLOW-08 rule.
+### Phase 2: plumbing
+- [ ] Task 2: `resolveConfig` returns `JUDGMENTS`; thread it through `check.mjs`,
+  `src/admit.mjs`, `src/reconcile.mjs` into `makeEvalCheck` (new `JUDGMENTS` param).
 
 ### Checkpoint 2
-- [ ] `test/flow/run.mjs` passes; FLOW-08 warns on sidebar and keyword anchors.
+- [ ] Tests still RED (plumbing present, evaluator unchanged); no crash on the
+  new param.
 
-### Phase 3: orient parity
-- [ ] Task 3: `gatherFacts` derives `closes` from the forge (fallback body regex).
+### Phase 3: evaluator logic (GREEN)
+- [ ] Task 3: classify each mutation in `records-append-only`; hoist
+  `SANCTION_KINDS`; update DESC-03 to use it.
 
 ### Checkpoint 3
-- [ ] `test/facts/run.mjs` passes; divergence headline sees forge-discovered closers.
+- [ ] `node test/records/run.mjs` GREEN (all new + existing assertions).
 
-### Phase 4: bookkeeping + full suite
-- [ ] Task 4: rule count 90→91, golden re-capture, full suite green.
+### Phase 4: docs + fix field
+- [ ] Task 4: rewrite REC-01 `fix` in `rules/rec.json`; update `CONTRACT.md`,
+  `REFERENCE.md`, `CHANGELOG.md`.
+
+### Phase 5: full verification
+- [ ] Task 5: `check.mjs --self-check` + all 9 runners + golden `--verify` green.
 
 ### Checkpoint: Complete
-- [ ] self-check, golden --verify, and all 9 test runners green; FLOW-08 and DIV-03 behavior pinned.
+- [ ] No golden re-capture; REC-01 behavior pinned for sanctioned/unsanctioned/
+      wrong-subject/break-glass/expired/glob-scope/mixed/all-sanctioned.
 
 ## Risks and mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Per-PR GraphQL spawn count grows with open PRs | Med | PR list already capped at 50; memoized; matches existing per-issue pattern |
-| Fallback re-introduces blind spot on query failure | Low | Fallback is strictly the prior behavior (never worse); null is never coalesced to "no closers" |
-| Golden re-capture hides an unintended change | Med | Review the re-captured diff for only FLOW-08 rows + DIV-03 detail drift |
+| Forgetting to thread JUDGMENTS through one of the three CLIs | Med — unit tests pass, real CLI silently ignores tombstones | The e2e `check.mjs` test is the guard; admit/reconcile share the `resolveConfig` path so a single threading is the failure surface |
+| A subject glob matching too broadly (e.g. `records/**` sanctions unrelated edits) | Low | That is the author's explicit scope — a scope subject IS a deliberate broad sanction; `jdg new` requires a `--reason` |
+| Expired-tombstone re-lighting a permanent mutation forces re-judgment | Low | One-line flip to permanent if dogfood data objects; documented in SPEC decision #4 |
+| Detail-string change leaks into golden | Low | REC-01 is SKIP in every golden fixture; `--verify` must stay green with no re-capture |
 
 ## Open questions
 
-None.
+None (see SPEC.md).

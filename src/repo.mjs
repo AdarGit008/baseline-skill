@@ -3,7 +3,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { execSync, execFileSync } from 'node:child_process'
-import { asArr, globToRe, parseDate } from './util.mjs'
+import { asArr, globMatcher, parseDate } from './util.mjs'
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.turbo', 'coverage', '.next', '__pycache__', 'vendor', '.venv', 'venv'])
 
@@ -48,8 +48,8 @@ export function indexRepo(REPO) {
   // match globs against the repo, with optional tracked-only, allow (exclude) and exclude_globs
   function match(globs, { tracked = false, exclude = [], excludeGlobs = [] } = {}) {
     const pool = (tracked && TRACKED) ? [...TRACKED] : FILES
-    const res = asArr(globs).map(globToRe)
-    const exRes = [...asArr(exclude), ...asArr(excludeGlobs)].map(globToRe)
+    const res = asArr(globs).map(globMatcher)
+    const exRes = [...asArr(exclude), ...asArr(excludeGlobs)].map(globMatcher)
     return pool.filter(f => res.some(r => r.test(f)) && !exRes.some(r => r.test(f)))
   }
   const read = rel => { try { return fs.readFileSync(path.join(REPO, rel), 'utf8') } catch { return null } }

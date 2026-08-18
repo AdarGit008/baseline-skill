@@ -72,20 +72,67 @@ export function getPath(obj, dotted) { return dotted.split('.').reduce((o, k) =>
 export function reOf(pattern, flags) { try { return new RegExp(pattern, flags || 'im') } catch { return null } }
 export function nonEmpty(v) { return v != null && v !== '' && !(Array.isArray(v) && v.length === 0) && !(typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0) }
 
-export function globToRe(g) {
-  let re = ''
-  const push = frag => { // collapse an adjacent identical quantifier: `.*.*`/`[^/]*[^/]*`
-    if ((frag === '.*' || frag === '[^/]*') && re.endsWith(frag)) return // are catastrophic backtracking
-    re += frag                                                            // fuel and mean the same set
-  }
+// Glob matching, compiled to a token list and matched by a non-backtracking sweep
+// (issue #47). It does NOT compile to a RegExp: `^.*a.*a.*a…$` — what a glob like
+// `**a**a**a…` becomes — backtracks exponentially on a path that does not match, and
+// a judgment `subject` is attacker-influenced text that rides straight in here. Making
+// the quantifiers lazy does NOT help (measured: 68-char glob, 892ms greedy vs 891ms
+// lazy) — laziness reorders the search, it does not shrink it. Neither does a length
+// cap alone: cost is ~3.9x per 6 glob chars, so any cap loose enough to hold a real
+// record path is loose enough to hang.
+//
+// So: one pass over the tokens, carrying the SET of path positions reachable so far as
+// a bitmap. Each token advances the whole set at once, so the work is O(tokens x path)
+// with no search tree to explode. Same match semantics as the old regex, byte for byte:
+//   `**` -> `.*`     (crosses `/`, but not a newline — `.` never did)
+//   `*`  -> `[^/]*`  (one segment; a newline is not special to a character class)
+//   `?`  -> `.`      (exactly one char, not a newline)
+// `**/` swallows the slash, so `**/x` still matches a bare `x`. Returns a matcher
+// exposing `.test(s)` — the only method any call site ever used.
+export function globMatcher(g) {
+  const toks = []
+  let lit = ''
+  const flush = () => { if (lit) { toks.push({ k: 'lit', v: lit }); lit = '' } }
+  // collapse an adjacent identical quantifier: `**` `**` means the same set as one.
+  // Harmless for the sweep (it is idempotent), kept so the token list reads clean.
+  const push = k => { flush(); if (toks[toks.length - 1]?.k !== k) toks.push({ k }) }
   for (let i = 0; i < g.length; i++) {
     const c = g[i]
-    if (c === '*') { if (g[i + 1] === '*') { push('.*'); i++; if (g[i + 1] === '/') i++ } else push('[^/]*') }
-    else if (c === '?') re += '.'
-    else if ('/.+^${}()|[]\\'.includes(c)) re += '\\' + c
-    else re += c
+    if (c === '*') { if (g[i + 1] === '*') { push('any'); i++; if (g[i + 1] === '/') i++ } else push('seg') }
+    else if (c === '?') { flush(); toks.push({ k: 'one' }) }
+    else lit += c
   }
-  return new RegExp('^' + re + '$')
+  flush()
+  return { test: s => sweep(toks, String(s)) }
+}
+
+// The sweep. `cur[i] = 1` means "some prefix of the tokens consumed exactly s[0..i)".
+// Start reachable at 0, advance token by token, accept iff the end of the path is
+// reachable once every token is spent.
+function sweep(toks, s) {
+  const n = s.length
+  let cur = new Uint8Array(n + 1)
+  cur[0] = 1
+  for (const t of toks) {
+    const next = new Uint8Array(n + 1)
+    if (t.k === 'lit') {
+      const v = t.v, L = v.length
+      for (let i = 0; i + L <= n; i++) if (cur[i] && s.startsWith(v, i)) next[i + L] = 1
+    } else if (t.k === 'one') { // `.` — one char, never a newline
+      for (let i = 0; i < n; i++) if (cur[i] && s[i] !== '\n') next[i + 1] = 1
+    } else { // a run: `.*` stops at a newline, `[^/]*` stops at a slash
+      const stop = t.k === 'any' ? '\n' : '/'
+      let on = false
+      for (let i = 0; i <= n; i++) {
+        if (cur[i]) on = true
+        if (on) next[i] = 1
+        if (i < n && s[i] === stop) on = false // the run cannot cross it
+      }
+    }
+    cur = next
+    if (!cur.includes(1)) return false // nothing reachable — no later token can revive it
+  }
+  return cur[n] === 1
 }
 
 // Issue-reference extraction, shared by orient's divergence headline and the DIV rules —

@@ -29,7 +29,7 @@
 // Exit: 0 admitted (warn/diverged findings ride the output) · 1 refused (stale /
 // blocker FAIL / gating-source loss) · 2 usage or environment (nothing evaluated).
 import path from 'node:path'
-import { makeOpt, makeOptAll, nowUTC, sanitizeTTY, globToRe, issueOf } from './util.mjs'
+import { makeOpt, makeOptAll, nowUTC, sanitizeTTY, globMatcher, issueOf } from './util.mjs'
 import { loadRules } from './rules.mjs'
 import { indexRepo } from './repo.mjs'
 import { laneOrNull, run } from './probe.mjs'
@@ -110,7 +110,7 @@ export function runAdmit(argv) {
   }
   if (!DESCRIPTOR.present) return usage(`no ${DESCRIPTOR_FILE} at ${targetRef} — admit judges by the target's declared posture (FS1); adopt a descriptor on the target branch first`)
   if (!DESCRIPTOR.valid) return usage(`${DESCRIPTOR_FILE} at ${targetRef} is invalid (${DESCRIPTOR.errors.slice(0, 2).join('; ')}) — fix it on the target branch; a broken target posture cannot judge anything`)
-  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, JDGS } = cfgRes
+  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, JDGS, JUDGMENTS } = cfgRes
 
   // ---- C35 staleness: command-level, before any rule ----
   const HEADSHA = g('rev-parse', 'HEAD')
@@ -165,7 +165,7 @@ export function runAdmit(argv) {
   let sisters = [], sistersCapped = false
   if (ns && BRANCH) {
     const dir = String(ns).slice(0, String(ns).lastIndexOf('/', String(ns).indexOf('*')) + 1)
-    const re = globToRe(ns)
+    const re = globMatcher(ns)
     const out = g('for-each-ref', '--format=%(refname:short) %(objectname)', `refs/remotes/origin/${dir}`) || ''
     for (const line of out.split('\n').filter(Boolean)) {
       const [short, tip] = line.split(' ')
@@ -197,7 +197,7 @@ export function runAdmit(argv) {
   // NO_EXEC: no exec-kind rule declares admit context (BUILD-05 is check's crown); the
   // fallback binding re-runs the check required check at the merge-relevant SHA instead
   // (F8 as ruled — the crown never runs twice per SHA because it never runs here at all)
-  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JDGS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD, ADMITWORLD })
+  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JDGS, JUDGMENTS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD, ADMITWORLD })
   const RULES = loadRules()
   const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, context: 'admit' })
 

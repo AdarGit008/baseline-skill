@@ -9,7 +9,7 @@ import { DESCRIPTOR_FILE, DESCRIPTOR_SCHEMA } from './descriptor.mjs'
 import { classifyPostureDiff } from './derive/posture.mjs'
 import { scan, loadAllowlist } from './scrub.mjs'
 import { loadClaims, CLAIM_RECORD_GLOB } from './claims.mjs'
-import { extractNext } from './facts/git.mjs'
+import { extractNext, diagnoseNext } from './facts/git.mjs'
 import { parseFrontmatter } from './records.mjs'
 import { deriveDivergence } from './derive/divergence.mjs'
 import { computeVendorLock, VENDOR_TREE, VENDOR_LOCK } from './gen.mjs'
@@ -92,7 +92,10 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
     const note = sessions.length
       ? `${sessions.length > 1 ? `session/${pick.ord} of ${sessions.length} record(s)` : 'the lane\u2019s only session record'}${skipped ? `; ${skipped} non-session record(s) not considered` : ''}`
       : `${seen.length} record(s), none carrying a record: ordinal`
-    return { rel: pick.rel, next: extractNext(pick.raw || ''), basis, note, kind: pick.kind, count: seen.length }
+    // The diagnosis rides along, not just the value: FLOW-03 needs to say WHICH of the
+    // three empty states it found (#50).
+    const diag = diagnoseNext(pick.raw || '')
+    return { rel: pick.rel, next: diag.next, diag, basis, note, kind: pick.kind, count: seen.length }
   }
   // How a FLOW/DIV finding names the record it read — which file, and on what basis it
   // was chosen. The SKIP path needs this most: "no committed next:" without it reads as
@@ -688,9 +691,16 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       const log = committedLog(BRANCH)
       if (log?.unprovable) return { ok: null, detail: `lane coupling not provable — ${log.unprovable}` }
       if (!log) return { ok: null, detail: `no committed session record on this lane yet (absence is FLOW-02's)` }
-      return log.next
-        ? { ok: true, detail: `next: recorded — ${logProvenance(log)}` }
-        : { ok: false, detail: `${log.rel} has an empty next: — record the one next step (baseline log ... --next "..."). Read as ${log.basis}; ${log.note}` }
+      if (log.next) return { ok: true, detail: `next: recorded — ${logProvenance(log)}` }
+      // Name the cause, since the parser knows it. "empty next:" on a record whose next:
+      // is full and merely outside the section sends the author to fix the one thing that
+      // is not wrong, and never names the requirement they missed (#50).
+      const d = log.diag || { cause: 'blank', stray: null }
+      const stray = d.stray ? ` (a filled-in next: sits at line ${d.stray}, outside the section)` : ''
+      const cause = d.cause === 'no-section' ? `${log.rel} has no '## Left open' section — next: is read from inside it${stray}`
+        : d.cause === 'no-line' ? `${log.rel}: the '## Left open' section has no next: line${stray}`
+          : `${log.rel} has an empty next:`
+      return { ok: false, detail: `${cause} — record the one next step (baseline log ... --next "..."). Read as ${log.basis}; ${log.note}` }
     }
 
     if (k === 'lane-namespace') {

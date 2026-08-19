@@ -12,6 +12,19 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   `test/` corpus (which carries intentional fake secrets exercising SEC-01).
 
 ### Fixed
+- **FLOW-03 now names which empty state it found (issue #50)**: `extractNext` is a
+  `## Left open` *section* parser, and returned `null` for three different situations —
+  no section anywhere, a section with no `next:` line, and a `next:` with a blank value.
+  FLOW-03 reported all three as the third, so a record whose `next:` was written and full,
+  just trailing the document instead of sitting under the heading, was told its `next:`
+  was empty; the requirement it had missed was named nowhere outside the evaluator.
+  The parser is now `diagnoseNext`, returning `{ next, cause, stray }` — `cause` is one of
+  `ok` / `no-section` / `no-line` / `blank`, and `stray` is the 1-based line of a
+  filled-in `next:` living outside the section, which is the misleading case. FLOW-03
+  reports the cause, and points at the `next:` it did not read. `extractNext` keeps its
+  old string-or-null shape for the four callers that only want the value. Whether a
+  top-level `next:` should be *accepted* is left alone deliberately: requiring the section
+  is a real discipline, and the issue asked for the finding to say so, not to relax it.
 - **REC-01's sanctioned-edit route now resolves (issue #47)**: the rule's `fix` told an
   author to "record a JDG and leave the tombstone," but the evaluator never read the
   ledger, so a sanctioned edit was scored identically to a rewrite and the warn could

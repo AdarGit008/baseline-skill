@@ -3,6 +3,8 @@
 // string; the probe never throws. Forge reachability is gh presence + auth + a repo the
 // working directory actually resolves to (which also proves the network/API is up).
 import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
 import { slug } from './util.mjs'
 
 // Short, no-shell runner: literal argv, bounded time, null on ANY failure (missing binary,
@@ -33,6 +35,63 @@ export function currentLane(repo) {
 export function laneOrNull(repo) {
   const l = currentLane(repo)
   return l && l !== '(detached)' ? l : null
+}
+
+// A ref name a lane may actually be called: non-empty, one token, not the detached
+// sentinel, not an option-looking string. An environment naming a lane `HEAD` or ''
+// is naming nothing, and must degrade to the honest null rather than to a lane.
+const refName = v => {
+  const s = String(v ?? '').trim()
+  return s && s !== 'HEAD' && !/\s/.test(s) && !s.startsWith('-') ? s : null
+}
+
+// The CI event describes the workspace the job CHECKED OUT — not every repository the
+// same job happens to score. GITHUB_WORKSPACE names that directory, so where it is set
+// and is not this repo, the event's branch belongs to somebody else's checkout and the
+// environment is refused. Not hypothetical: CI caught it on #55's own PR — a suite
+// scoring a temp fixture inherited the job's GITHUB_HEAD_REF and labeled an unrelated
+// repo with the PR's branch. Unset (every local run) trusts the environment as before.
+const envSpeaksFor = (repo, env) => {
+  const ws = String(env.GITHUB_WORKSPACE || '').trim()
+  if (!ws) return true
+  try {
+    const a = fs.realpathSync(ws), b = fs.realpathSync(repo.REPO)
+    // AT or UNDER the workspace: `actions/checkout` with a `path:` puts the repo in a
+    // subdirectory, and that is still the checkout the event describes
+    return b === a || b.startsWith(a.endsWith(path.sep) ? a : a + path.sep)
+  } catch { return false }
+}
+
+// Lane identity for the MERGE-TIME surfaces (check, admit): the checkout's branch, or —
+// when the checkout cannot name one — the CI event that can. `actions/checkout` leaves
+// refs/pull/N/merge DETACHED on a pull_request by design (#55), so a gate that reads the
+// checkout alone is n/a on precisely the event a branch-protection ruleset requires: the
+// merge gate does not run at the merge. Returns the basis with the name — a lane resolved
+// from the environment is a weaker claim than a checked-out branch and every surface that
+// reports it says which it had.
+//
+// The checkout ALWAYS wins: the environment is consulted only where there is no branch at
+// all, so a stale exported GITHUB_HEAD_REF cannot redirect a local run — and the event is
+// believed only for the workspace it describes (envSpeaksFor).
+//
+// `reconcile` deliberately does NOT call this (src/reconcile.mjs) — its subject is the
+// default branch, and a miswired pull_request job must not evaluate a PR branch while
+// claiming to revalidate main. That dissent is a decision; keep it documented at both ends.
+export function resolveLane(repo, env = process.env) {
+  const l = laneOrNull(repo)
+  if (l) return { lane: l, basis: 'checkout', event: null }
+  if (!envSpeaksFor(repo, env)) return { lane: null, basis: null, event: null }
+  // pull_request: GITHUB_HEAD_REF is the PR's head branch and is set on no other event,
+  // so it needs no event guard. (GITHUB_REF_NAME here would be the useless 'N/merge'.)
+  const head = refName(env.GITHUB_HEAD_REF)
+  if (head) return { lane: head, basis: 'GITHUB_HEAD_REF', event: env.GITHUB_EVENT_NAME || 'pull_request' }
+  // push with a detached checkout. GITHUB_REF_NAME is a TAG's name on a tag push, so only
+  // a REF_TYPE of 'branch' qualifies — a release tag is not a lane.
+  if (env.GITHUB_REF_TYPE === 'branch') {
+    const name = refName(env.GITHUB_REF_NAME)
+    if (name) return { lane: name, basis: 'GITHUB_REF_NAME', event: env.GITHUB_EVENT_NAME || 'push' }
+  }
+  return { lane: null, basis: null, event: null }
 }
 
 // One derivation of agent identity for every writer (log's record frontmatter, lane

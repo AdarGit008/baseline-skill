@@ -270,7 +270,7 @@
       },
       "FLOW-03": {
         "tag": "PASS",
-        "detail": "next: recorded (records/sessions/lane/7/2026-01-01-1200-golden.md)"
+        "detail": "next: recorded — records/sessions/lane/7/2026-01-01-1200-golden.md — chosen by record: session/1; the lane’s only session record"
       },
       "FLOW-04": {
         "tag": "PASS",
@@ -278,7 +278,7 @@
       },
       "FLOW-05": {
         "tag": "PASS",
-        "detail": "newest record records/sessions/lane/7/2026-01-01-1200-golden.md is at origin (as of the last fetch)"
+        "detail": "newest record records/sessions/lane/7/2026-01-01-1200-golden.md is at origin (as of the last fetch) — chosen by record: session/1"
       },
       "FLOW-07": {
         "tag": "FAIL",
@@ -387,7 +387,7 @@
       },
       "DIV-02": {
         "tag": "SKIP",
-        "detail": "no committed next: on this lane (FLOW-02/03's territory)"
+        "detail": "no committed session record on this lane (FLOW-02's territory)"
       },
       "DIV-03": {
         "tag": "SKIP",
@@ -473,7 +473,7 @@
       },
       "DIV-02": {
         "tag": "SKIP",
-        "detail": "no committed next: on this lane (FLOW-02/03's territory)"
+        "detail": "no committed session record on this lane (FLOW-02's territory)"
       },
       "DIV-03": {
         "tag": "SKIP",
@@ -650,7 +650,7 @@
       },
       "DIV-02": {
         "tag": "SKIP",
-        "detail": "no committed next: on this lane (FLOW-02/03's territory)"
+        "detail": "no committed session record on this lane (FLOW-02's territory)"
       },
       "DIV-03": {
         "tag": "SKIP",
@@ -739,7 +739,7 @@
       },
       "DIV-02": {
         "tag": "SKIP",
-        "detail": "no committed next: on this lane (FLOW-02/03's territory)"
+        "detail": "no committed session record on this lane (FLOW-02's territory)"
       },
       "DIV-03": {
         "tag": "SKIP",
@@ -2578,7 +2578,7 @@
       },
       "FLOW-03": {
         "tag": "PASS",
-        "detail": "next: recorded (records/sessions/lane/feature-x/2026-07-01-090000-golden.md)"
+        "detail": "next: recorded — records/sessions/lane/feature-x/2026-07-01-090000-golden.md — chosen by record: session/1; the lane’s only session record"
       },
       "FLOW-04": {
         "tag": "PASS",
@@ -3326,7 +3326,7 @@
       },
       "FLOW-03": {
         "tag": "PASS",
-        "detail": "next: recorded (records/sessions/lane/7/2026-07-01-090000-golden.md)"
+        "detail": "next: recorded — records/sessions/lane/7/2026-07-01-090000-golden.md — chosen by record: session/1; the lane’s only session record"
       },
       "FLOW-04": {
         "tag": "PASS",
@@ -3334,7 +3334,7 @@
       },
       "FLOW-05": {
         "tag": "PASS",
-        "detail": "newest record records/sessions/lane/7/2026-07-01-090000-golden.md is at origin (as of the last fetch)"
+        "detail": "newest record records/sessions/lane/7/2026-07-01-090000-golden.md is at origin (as of the last fetch) — chosen by record: session/1"
       },
       "FLOW-06": {
         "tag": "SKIP",

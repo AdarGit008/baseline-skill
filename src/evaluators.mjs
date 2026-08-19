@@ -10,6 +10,7 @@ import { classifyPostureDiff } from './derive/posture.mjs'
 import { scan, loadAllowlist } from './scrub.mjs'
 import { loadClaims, CLAIM_RECORD_GLOB } from './claims.mjs'
 import { extractNext } from './facts/git.mjs'
+import { parseFrontmatter } from './records.mjs'
 import { deriveDivergence } from './derive/divergence.mjs'
 import { computeVendorLock, VENDOR_TREE, VENDOR_LOCK } from './gen.mjs'
 
@@ -40,7 +41,7 @@ function scopedPrClosers(w) {
 export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'descriptor-valid', 'records-append-only', 'records-scrub', 'records-one-home', 'vendored-lock', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'pr-closes-own-anchor', 'descriptor-change', 'merge-sister-dep', 'forge-protection', 'workflow-state'])
 
 export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
-  const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile } = repo
+  const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile } = repo
   // The lane rules diff against where the branch diverged: the descriptor-declared
   // default branch, preferring whichever of local/origin twin is NEWER (a stale
   // local default widens the branch diff with upstream-authored commits); an
@@ -63,12 +64,40 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
     if (!base) return { unprovable: `default branch '${DEFAULT_BRANCH}' not resolvable locally` }
     const added = gitDiffNames(`${base}...HEAD`, `records/sessions/${branch}/`, { addedOnly: true })
     if (added === null) return { unprovable: `diff ${base}...HEAD failed` }
-    const md = added.filter(f => f.endsWith('.md')).sort()
+    const md = added.filter(f => f.endsWith('.md'))
     if (!md.length) return null
-    const rel = md.at(-1)
-    const raw = gitCatFile('HEAD', rel) ?? read(rel)
-    return { rel, next: extractNext(raw || '') }
+    // Commit order first (oldest -> newest), so "newest" means newest-written and not
+    // last-in-the-alphabet (#54). The ordered read is over the SAME range, so it can only
+    // reorder what the diff already found; anything the reorder drops keeps its diff
+    // position, and a failed `git log` degrades to the old sort rather than refusing.
+    const ordered = gitAddedOrdered(`${base}..HEAD`, `records/sessions/${branch}/`)
+    const byCommit = ordered ? [...md].sort((a, b) => ordered.indexOf(a) - ordered.indexOf(b) || (a < b ? -1 : a > b ? 1 : 0)) : [...md].sort()
+    // Kind, then ordinal: `record: session/N` is what `baseline log` writes, and a
+    // `record: prereg` is not a session — it must not outrank the record that governs.
+    const seen = byCommit.map((rel, i) => {
+      const raw = gitCatFile('HEAD', rel) ?? read(rel) ?? ''
+      const kind = parseFrontmatter(raw).fields?.record ?? null
+      const m = /^session\/(\d+)$/.exec(kind || '')
+      return { rel, raw, kind, ord: m ? Number(m[1]) : null, seq: i }
+    })
+    const sessions = seen.filter(r => r.ord !== null)
+    // Highest ordinal wins; a tie (two lanes, one number) falls to commit order.
+    const pick = sessions.length
+      ? sessions.reduce((a, b) => (b.ord > a.ord || (b.ord === a.ord && b.seq > a.seq)) ? b : a)
+      : seen.at(-1)
+    const basis = sessions.length ? `record: session/${pick.ord}`
+      : ordered ? 'commit order (no record: ordinal on this lane)'
+        : 'filename sort (commit order unreadable)'
+    const skipped = seen.length - sessions.length
+    const note = sessions.length
+      ? `${sessions.length > 1 ? `session/${pick.ord} of ${sessions.length} record(s)` : 'the lane\u2019s only session record'}${skipped ? `; ${skipped} non-session record(s) not considered` : ''}`
+      : `${seen.length} record(s), none carrying a record: ordinal`
+    return { rel: pick.rel, next: extractNext(pick.raw || ''), basis, note, kind: pick.kind, count: seen.length }
   }
+  // How a FLOW/DIV finding names the record it read — which file, and on what basis it
+  // was chosen. The SKIP path needs this most: "no committed next:" without it reads as
+  // "there was nothing to read" (#54).
+  function logProvenance(log) { return `${log.rel} \u2014 chosen by ${log.basis}; ${log.note}` }
   // one clock (util.nowUTC): the override is parsed + ISO-normalized so a
   // non-ISO-but-parseable BASELINE_LOG_NOW can't turn expiry comparisons into
   // lexicographic garbage; unparseable falls back to the wall clock — a scoring
@@ -660,8 +689,8 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       if (log?.unprovable) return { ok: null, detail: `lane coupling not provable — ${log.unprovable}` }
       if (!log) return { ok: null, detail: `no committed session record on this lane yet (absence is FLOW-02's)` }
       return log.next
-        ? { ok: true, detail: `next: recorded (${log.rel})` }
-        : { ok: false, detail: `${log.rel} has an empty next: — record the one next step (baseline log ... --next "...")` }
+        ? { ok: true, detail: `next: recorded — ${logProvenance(log)}` }
+        : { ok: false, detail: `${log.rel} has an empty next: — record the one next step (baseline log ... --next "..."). Read as ${log.basis}; ${log.note}` }
     }
 
     if (k === 'lane-namespace') {
@@ -687,8 +716,8 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       if (!log) return { ok: null, detail: 'no committed session record on this lane yet — nothing to push' }
       if (!gitObjExists(`origin/${BRANCH}^{commit}`)) return { ok: null, detail: `origin/${BRANCH} unknown locally — push discipline not provable (push/fetch first)` }
       return gitBlobAt(`origin/${BRANCH}`, log.rel) !== null
-        ? { ok: true, detail: `newest record ${log.rel} is at origin (as of the last fetch)` }
-        : { ok: false, detail: `newest session record ${log.rel} exists locally but is absent at origin/${BRANCH} (as of the last fetch) — push the lane before pausing` }
+        ? { ok: true, detail: `newest record ${log.rel} is at origin (as of the last fetch) — chosen by ${log.basis}` }
+        : { ok: false, detail: `newest session record ${log.rel} exists locally but is absent at origin/${BRANCH} (as of the last fetch) — push the lane before pausing. Chosen by ${log.basis}` }
     }
 
     if (k === 'lane-lease') {
@@ -735,7 +764,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       const w = LANEWORLD()
       const log = committedLog(BRANCH)
       if (log?.unprovable) return { ok: null, detail: `divergence not provable — ${log.unprovable}` }
-      if (!log?.next) return { ok: null, detail: `no committed next: on this lane (FLOW-02/03's territory)` }
+      if (!log?.next) return { ok: null, detail: log ? `read ${logProvenance(log)} — it carries no next:, so there is no recorded plan to contradict (FLOW-03's territory)` : `no committed session record on this lane (FLOW-02's territory)` }
       const allRefs = issueRefs(log.next)
       if (!allRefs.length) return { ok: true, detail: 'next: names no issues — nothing to contradict' }
       if (!w.forge.available) return { ok: null, detail: `next: names #${allRefs.slice(0, DIV_REF_CAP).join(', #')} — states unknown (${w.forge.reason})` }

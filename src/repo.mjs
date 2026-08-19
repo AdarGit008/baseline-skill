@@ -106,6 +106,21 @@ export function indexRepo(REPO) {
     const args = ['diff', ...(noRenames ? ['--no-renames'] : []), '--name-only', '-z', ...(addedOnly ? ['--diff-filter=A'] : []), range, '--', ...(rel ? [rel] : ['.'])]
     try { return execFileSync('git', args, { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\0').filter(Boolean) } catch { return null }
   }
+  // Paths ADDED in a range, in COMMIT order (oldest first) rather than lexicographic —
+  // "the newest record" is a question a filename sort answers wrongly (#54). Dedup keeps
+  // the last occurrence, so an add/delete/re-add reads as the re-add. -> [paths] or null
+  // when the range doesn't resolve, which callers surface as "not provable", never as [].
+  function gitAddedOrdered(range, rel) {
+    const args = ['log', '--reverse', '--diff-filter=A', '--name-only', '--format=', '-z', range, '--', ...(rel ? [rel] : ['.'])]
+    let out
+    try { out = execFileSync('git', args, { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8') } catch { return null }
+    const seen = []
+    for (const f of out.split('\0').filter(Boolean)) {
+      const at = seen.indexOf(f); if (at !== -1) seen.splice(at, 1)
+      seen.push(f)
+    }
+    return seen
+  }
   // Blob id of a path at a ref -> sha string or null. Used by the append-only proof
   // to compare a record's current content against its content at introduction.
   function gitBlobAt(ref, rel) {
@@ -118,5 +133,5 @@ export function indexRepo(REPO) {
     try { return execFileSync('git', ['cat-file', 'blob', `${ref}:${rel}`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 256 * 1024 * 1024 }).toString('utf8') } catch { return null }
   }
 
-  return { REPO, FILES, TRACKED, HEAD, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitBlobAt, gitCatFile }
+  return { REPO, FILES, TRACKED, HEAD, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile }
 }

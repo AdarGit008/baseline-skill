@@ -98,6 +98,59 @@ function logRecord(w, lane, next) {
   ok(tag(out, 'FLOW-03').tag === 'FAIL' && /empty next:/.test(tag(out, 'FLOW-03').detail), 'FLOW-03 FAILs (blocker since M7a): a committed record with an empty next:')
 }
 
+// ---------- #54: the newest record is the newest RECORD, not the last filename ----------
+// Three selections, one mechanism. `named` writes an arbitrary file name + record kind so a
+// case can make the governing record sort FIRST — which is exactly what the old filename
+// sort got wrong (mcgyvr lane/231: a same-day prereg outranked the session that governs).
+const named = (w, lane, file, { record = 'session/1', next = '' } = {}) => {
+  const dir = path.join(w, 'records', 'sessions', lane); fs.mkdirSync(dir, { recursive: true })
+  const body = record.startsWith('session/')
+    ? `## Did\nwork\n\n## Left open\nnext: ${next}\n`
+    : '## Declared before dispatch\nthe prediction\n'
+  fs.writeFileSync(path.join(dir, file), `---\nrecord: ${record}\nlane: ${lane}\nagent: t\nstarted: 2026-07-01T09:00:00Z\n---\n\n${body}`)
+  git(w, 'add', '-A'); git(w, 'commit', '-qm', file)
+}
+
+// (a) a same-day PRE-REGISTRATION sorts last and must NOT be read as the session record
+{
+  const { w } = world('prereg-sorts-last')
+  git(w, 'checkout', '-q', '-b', 'lane/231')
+  named(w, 'lane/231', '2026-08-13-checks-under-the-gate.md', { record: 'session/3', next: 'build check 3' })
+  named(w, 'lane/231', '2026-08-13-positive-control-prereg.md', { record: 'prereg' })  // 'c' < 'p': sorts LAST
+  const out = checkJson(w)
+  ok(tag(out, 'FLOW-03').tag === 'PASS' && /session\/3/.test(tag(out, 'FLOW-03').detail),
+    'FLOW-03 reads the session record, not the later-sorting prereg (#54)')
+  ok(/not considered/.test(tag(out, 'FLOW-03').detail), 'FLOW-03 says how many non-session records it set aside (#54)')
+  ok(tag(out, 'DIV-02').tag !== 'SKIP', 'DIV-02 is no longer blinded by the wrong pick (#54)')
+}
+
+// (b) no `record:` ordinal anywhere -> COMMIT order decides, not the alphabet
+{
+  const { w } = world('commit-order-fallback')
+  git(w, 'checkout', '-q', '-b', 'lane/7')
+  const dir = path.join(w, 'records', 'sessions', 'lane/7'); fs.mkdirSync(dir, { recursive: true })
+  // written first, sorts LAST: 'z' > 'a'
+  fs.writeFileSync(path.join(dir, 'z-first-written.md'), '## Did\nwork\n\n## Left open\nnext: the stale plan\n')
+  git(w, 'add', '-A'); git(w, 'commit', '-qm', 'first')
+  fs.writeFileSync(path.join(dir, 'a-last-written.md'), '## Did\nwork\n\n## Left open\nnext: \n')
+  git(w, 'add', '-A'); git(w, 'commit', '-qm', 'second')
+  const out = checkJson(w)
+  ok(tag(out, 'FLOW-03').tag === 'FAIL' && /a-last-written\.md/.test(tag(out, 'FLOW-03').detail),
+    'FLOW-03 reads the last-COMMITTED record when no ordinal exists, though it sorts first (#54)')
+  ok(/commit order/.test(tag(out, 'FLOW-03').detail), 'FLOW-03 states the basis it selected on (#54)')
+}
+
+// (c) the ordinal beats commit order: session/2 committed BEFORE session/1
+{
+  const { w } = world('ordinal-beats-commit-order')
+  git(w, 'checkout', '-q', '-b', 'lane/7')
+  named(w, 'lane/7', 'a-second-session.md', { record: 'session/2', next: 'the live plan' })
+  named(w, 'lane/7', 'b-backfilled-first.md', { record: 'session/1', next: '' })  // committed later, ordinal lower
+  const out = checkJson(w)
+  ok(tag(out, 'FLOW-03').tag === 'PASS' && /session\/2/.test(tag(out, 'FLOW-03').detail),
+    'FLOW-03 prefers the highest record: ordinal over commit order (#54)')
+}
+
 // ---------- FLOW-05 WARN: origin has the lane but NOT the newest record (the real gap) ----------
 {
   const { w } = world('unpushed')

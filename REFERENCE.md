@@ -8,7 +8,7 @@ A **testable readiness standard** for new projects. Every lesson is a rule; a ze
 
 **v1** distilled 20 rules from three of the author's own repos. That sample was thin. **v2** pressure-tested v1 against the field's actual prior art — [OpenSSF Scorecard](GLOSSARY.md#openssf-scorecard), [SLSA](GLOSSARY.md#slsa), the [Twelve-Factor App](GLOSSARY.md#twelve-factor-app), Google's SRE books, [Diátaxis](GLOSSARY.md#diataxis), [Keep a Changelog](GLOSSARY.md#keep-a-changelog), [repolinter](GLOSSARY.md#repolinter), [Backstage/Cortex/OpsLevel](GLOSSARY.md#service-catalog), Stryker, and ~40 more sources — kept everything v1 had, and added what the field agreed v1 was missing. Each candidate was **adversarially verified** (is the source real? is it robot-checkable at rest? does it actually add over v1?) before it earned a place; 15 "looks-thorough-checks-nothing" candidates were dropped.
 
-**92 rules across 15 categories.** 26 blockers · 61 warnings · 5 sign-offs.
+**94 rules across 15 categories.** 28 blockers · 61 warnings · 5 sign-offs.
 
 ## Profiles — v2 stays sharp by only running what fits
 
@@ -58,10 +58,10 @@ These diagrams mirror the runner — they're its actual control flow, not a sket
 ```mermaid
 flowchart LR
   CFG["baseline.config.json — intent"] --> RES
-  RULES["rules/ — 92 rules (manifest: rules.json)"] --> EVAL
+  RULES["rules/ — 94 rules (manifest: rules.json)"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
-    IDX["file index + git helpers"] --> EVAL["~41 check evaluators"]
+    IDX["file index + git helpers"] --> EVAL["~45 check evaluators"]
     RES["config resolution"] --> EVAL
   end
   SO["records/judgments/ — the judgment ledger (sign-offs)"] --> EVAL
@@ -361,7 +361,7 @@ GOV-01/02 are **live asserts on the readable surface** since M6b (`forge-protect
 | COMM-02 | README exists with newcomer-critical sections | 🟡 warn | core |
 | COMM-03 | CHANGELOG present with an Unreleased section | 🟡 warn | core |
 
-### Context management (12)
+### Context management (13)
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
@@ -377,6 +377,7 @@ GOV-01/02 are **live asserts on the readable surface** since M6b (`forge-protect
 | CTX-11 | Docs don't lag the code they anchor | 🟡 warn | core |
 | CTX-12 | No hand-maintained status stamp (derive it instead) | 🔴 blocker | core |
 | CTX-13 | An amendment is declared at both ends | 🟡 warn | core |
+| CTX-14 | No two decision records claim the same number | 🔴 blocker | core |
 
 ### Claims discipline (8)
 
@@ -405,7 +406,7 @@ All CLAIM rules are opt-in (`makes_external_claims` / a register present) and ma
 
 REC-01/02/05 skip when no records are committed; REC-04 also cross-checks the ADR homes (`docs/decisions/`, `adr/`, `records/decisions/`), so it can fire on a true ADR-number duplication even without `records/`. REC-01/REC-02 are deterministic and stay warn — the M7 ruling kept them (the only ungated candidates; a severity-by-posture seam has no consumer — revive on a real demand for REC-02-at-admit); REC-03 (record schema conformance as a rule) is reserved.
 
-### Lane workflow (7) — M4c/M5c
+### Lane workflow (9) — M4c/M5c
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
@@ -416,8 +417,10 @@ REC-01/02/05 skip when no records are committed; REC-04 also cross-checks the AD
 | FLOW-05 | The newest session record is pushed (exists locally, absent at origin — threshold-free) | 🔴 blocker (promoted at M7a) | core |
 | FLOW-06 | A gated subject changes with its record in the same PR (DESC-03 preview) | 🟡 warn (heuristic ceiling) | core |
 | FLOW-07 | The lane's lease is live (fails **only** at derived ABANDONED — STALE is orient's nudge; COMPLETED is exempt) | 🔴 blocker (promoted at M7a) | core |
+| FLOW-08 | An open PR will close its own lane anchor (repo-wide — every open PR against its own head branch's anchor) | 🟡 warn | core |
+| FLOW-09 | The lane's new decision-record numbers aren't already claimed by another live lane | 🔴 blocker | core |
 
-All run **only** on a non-default branch of a repo declaring the lane family (`workflow: multi-lane` or `multi-lane-local` — the rule-declared `workflow` field is string-or-array since M5c); the engine's data-driven posture/branch gates make them unrepresentable elsewhere — no wallpaper warns, structurally. Under `multi-lane-local`, forge-dependent checks SKIP saying **"forge not consulted (multi-lane-local posture)"** — the posture named, never faked as unreachability. FLOW-01 consumes the descriptor `anchoring` knob: `off` skips, `relaxed` wants a parseable issue anchor in the ref name, `strict` also wants the anchor to resolve at the forge — open-ness is deliberately NOT checked here (that contradiction is DIV-01's, once, not twice).
+All run **only** on a non-default branch of a repo declaring the lane family (`workflow: multi-lane` or `multi-lane-local` — the rule-declared `workflow` field is string-or-array since M5c); the engine's data-driven posture/branch gates make them unrepresentable elsewhere — no wallpaper warns, structurally. Under `multi-lane-local`, forge-dependent checks SKIP saying **"forge not consulted (multi-lane-local posture)"** — the posture named, never faked as unreachability. FLOW-01 consumes the descriptor `anchoring` knob: `off` skips, `relaxed` wants a parseable issue anchor in the ref name, `strict` also wants the anchor to resolve at the forge — open-ness is deliberately NOT checked here (that contradiction is DIV-01's, once, not twice). FLOW-08 is the one repo-wide member (it reads every open PR, not this branch). FLOW-09 reserves the other scarce name a multi-lane repo has: `lane claim` makes the *issue* number an atomic ref transaction at origin, and the *decision-record* number had no reservation at all — two lanes could each author an ADR-0027 under different filenames, pass every check, and merge with no git conflict (#49). It reads what this lane INTRODUCES relative to the default branch against every other live lane's tree, over one bounded glob fetch, and names each lane it could not resolve rather than folding it into a pass; CTX-14 is the tree-local floor that keeps the collision from surviving where both lanes land.
 
 ### Divergence (3) — M5c
 

@@ -31,7 +31,7 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
 {
   const R = loadRules()
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'rules.json'), 'utf8'))
-  ok(R.rules.length === 92, `loader assembles 92 rules (got ${R.rules.length})`)
+  ok(R.rules.length === 94, `loader assembles 94 rules (got ${R.rules.length})`)
   ok((manifest.modules || []).length === 15, `manifest lists 15 modules (got ${(manifest.modules || []).length})`)
   ok(!('rules' in manifest), 'manifest itself carries no rules (they live in rules/)')
   ok(new Set(R.rules.map(r => r.id)).size === R.rules.length, 'rule ids unique across modules')
@@ -608,6 +608,52 @@ try {
     fs.writeFileSync(path.join(t57b, D, '0002-old.md'), '# ADR-0002 — old\n\nStatus: Superseded\nDate: 2026-08-01\n\n## Context\n\nNo forward link here.\n')
     sh(t57b, 'git', ['add', '-A']); sh(t57b, 'git', ['commit', '-qm', 'drop link'])
     ok(mk57b()(STAT, { id: 'CTX-02' }).ok === false, '#57 CTX-02: a superseded record with NO link still fails — the widening added a spelling, it did not relax the rule')
+  }
+
+  // ---- Issue #49 (a): the decision NUMBER is an identity, and nothing owned it ----
+  // Two lanes each authored an 0027 under different filenames. Each tree was clean, both
+  // merges were conflict-free, and the default branch ended with two ADR-0027s that no
+  // rule had an opinion about. CTX-14 is the floor: it cannot see the other lane, but it
+  // makes the collision unable to SURVIVE where both lanes land.
+  {
+    const t49 = mkrepo('main'); tmps.push(t49)
+    const D = 'docs/decisions'
+    fs.mkdirSync(path.join(t49, D), { recursive: true })
+    const cfg49 = { decision_globs: [D + '/*.md'] }
+    const mk49 = jdgs => makeEvalCheck({ repo: indexRepo(t49), cfg: cfg49, NO_EXEC: true, JDGS: {}, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    const UNIQ = { kind: 'adr-number-unique', globs_from_config: 'decision_globs' }
+    const adr49 = (n, title) => { fs.writeFileSync(path.join(t49, D, n), `# ADR-${n.slice(0, 4)} — ${title}\n\nStatus: Accepted\nDate: 2026-08-19\n\n## Context\n\nx\n`); sh(t49, 'git', ['add', '-A']); sh(t49, 'git', ['commit', '-qm', n]) }
+
+    adr49('0026-a.md', 'twenty six')
+    adr49('0027-run-identity-is-one-block.md', 'run identity')
+    ok(mk49([])(UNIQ, { id: 'CTX-14' }).ok === true, '#49 CTX-14: distinct numbers pass')
+    // the incident, reproduced: two files, one number, different filenames
+    adr49('0027-a-routing-policy-is-adopted.md', 'routing policy')
+    let r = mk49([])(UNIQ, { id: 'CTX-14' })
+    ok(r.ok === false && /1 decision number\(s\) claimed twice/.test(r.detail), '#49 CTX-14: two records claiming 0027 is a finding (both trees passed every rule before)')
+    ok(/0027 claimed by/.test(r.detail) && /0027-run-identity-is-one-block\.md/.test(r.detail) && /0027-a-routing-policy-is-adopted\.md/.test(r.detail), '#49 CTX-14: the finding names the number AND both files claiming it')
+    // adoption: renumbering breaks the citations pointing at the record, so the existing
+    // judgment route sanctions the collision — naming EITHER end names it (REC-01's route)
+    const JDG49 = over => ({ record: 'judgment/1', id: 'JDG-0049', kind: 'deviation', date: '2026-08-19', by: 'a', subject: D + '/0027-a-routing-policy-is-adopted.md', reason: 'renumbering breaks 14 citations; scheduled with the index rebuild', review_by: '2999-01-01', ...over })
+    r = mk49([JDG49()])(UNIQ, { id: 'CTX-14' })
+    ok(r.ok === true && /sanctioned by judgment/.test(r.detail) && /JDG-0049/.test(r.detail), '#49 CTX-14: an unexpired judgment naming ONE colliding file sanctions the collision')
+    ok(mk49([JDG49({ subject: D + '/0027-run-identity-is-one-block.md' })])(UNIQ, { id: 'CTX-14' }).ok === true, '#49 CTX-14: naming the OTHER end sanctions the same collision — a collision has two paths and no privileged one')
+    ok(mk49([JDG49({ review_by: '2000-01-01' })])(UNIQ, { id: 'CTX-14' }).ok === false, '#49 CTX-14: an EXPIRED judgment stops sanctioning — the review date a frozen allowlist never has')
+    ok(mk49([JDG49({ kind: 'break-glass' })])(UNIQ, { id: 'CTX-14' }).ok === false, '#49 CTX-14: break-glass is outage relief, not a sanction (SANCTION_KINDS, one home)')
+    // the repair, and the gap the sequence is left with — reported, never a finding
+    fs.rmSync(path.join(t49, D, '0027-a-routing-policy-is-adopted.md'))
+    fs.writeFileSync(path.join(t49, D, '0029-a-routing-policy-is-adopted.md'), '# ADR-0029 — routing policy\n\nStatus: Accepted\nDate: 2026-08-19\n\n## Context\n\nx\n')
+    sh(t49, 'git', ['add', '-A']); sh(t49, 'git', ['commit', '-qm', 'renumber'])
+    r = mk49([])(UNIQ, { id: 'CTX-14' })
+    ok(r.ok === true && /3 decision number\(s\) unique/.test(r.detail), `#49 CTX-14: renumbering to a free number resolves it (got ${r.detail})`)
+    ok(/gap\(s\) in the sequence \(not an error\): 0028/.test(r.detail), '#49 CTX-14: a hole in the sequence rides the PASS detail — worth seeing, never a verdict')
+    // a corpus whose filenames carry no number is not this rule's subject
+    const t49b = mkrepo('main'); tmps.push(t49b)
+    fs.mkdirSync(path.join(t49b, D), { recursive: true })
+    fs.writeFileSync(path.join(t49b, D, 'README.md'), '# index\n')
+    sh(t49b, 'git', ['add', '-A']); sh(t49b, 'git', ['commit', '-qm', 'index only'])
+    ok(makeEvalCheck({ repo: indexRepo(t49b), cfg: cfg49, NO_EXEC: true, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })(UNIQ, { id: 'CTX-14' }).ok === null,
+      '#49 CTX-14: an index-only decision dir is a SKIP, not a pass on nothing')
   }
 
   // ---- Issue #47: REC-01's sanctioned-edit route end-to-end through check.mjs ----

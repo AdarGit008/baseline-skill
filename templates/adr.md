@@ -28,6 +28,13 @@ parentheses is commentary, never a target.
 
 CTX-07 resolves every target in all four fields against the decision tree: a
 declaration naming a record that does not exist is a finding whatever the verb.
+
+THE NUMBER is this record's identity — every citation, and every field above,
+resolves to it. Two files carrying one number is CTX-14, a blocker: a citation to
+ADR-0027 arrives at whichever file sorted first. In a multi-lane repo, check the
+number is free across the OTHER live lanes before you write it (FLOW-09 does this
+on the branch; `baseline orient` lists the lanes) — two lanes can author the same
+number under different filenames and merge with no git conflict at all.
 -->
 
 ## Context

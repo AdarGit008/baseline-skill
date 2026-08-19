@@ -240,6 +240,37 @@
       "check": {
         "kind": "pr-closes-own-anchor"
       }
+    },
+    {
+      "id": "FLOW-09",
+      "title": "The lane's new decision-record numbers aren't already claimed by another live lane",
+      "category": "flow",
+      "severity": "blocker",
+      "applies_to": "all",
+      "workflow": [
+        "multi-lane",
+        "multi-lane-local"
+      ],
+      "branch_scope": "lane",
+      "source": "https://adr.github.io/",
+      "lesson": "FS2 the ref IS the claim — `lane claim` reserves the issue number atomically at origin; the decision-record number is the other scarce name in a multi-lane repo and had no reservation at all",
+      "rationale": "Two lanes each authored an 0027 under different filenames. Both trees were clean, both would merge with no git conflict, and the collision was caught only because a human mentioned in conversation that the other lane was in flight. This rule reads what THIS lane introduces relative to the default branch and asks whether a live lane already introduced the same number — the one moment the fix is still a rename. Introduction, not possession: a number shared with the default branch is history, and the same number at the same path across two lanes is one record reached twice. A COMPLETED lane cannot hold a reservation (its numbers are already on the default branch). Lanes whose objects the clone cannot resolve are counted and named, never folded into a pass.",
+      "fix": "Renumber this lane's record to the next free number before it lands — the other lane already holds that one. `baseline orient` lists the live lanes; if the other lane is dead, prune it (`baseline lane reclaim`) rather than merging a duplicate.",
+      "sources": [
+        "tree",
+        "history",
+        "forge"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check",
+        "admit"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "lane-adr-reservation",
+        "globs_from_config": "decision_globs"
+      }
     }
   ]
 }

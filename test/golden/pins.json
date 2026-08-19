@@ -153,6 +153,8 @@
       "            ↳ pattern not found (good)",
       "    SKIP      CTX-13    An amendment is declared at both ends",
       "            ↳ no numbered ADR files found",
+      "    SKIP      CTX-14    No two decision records claim the same number",
+      "            ↳ no numbered ADR files found",
       "",
       "  Claims discipline",
       "    SKIP      CLAIM-00  A claims register exists",
@@ -201,6 +203,8 @@
       "            ↳ workflow contract off (no valid baseline.repo.json)",
       "    SKIP      FLOW-08   An open PR will close its own lane anchor",
       "            ↳ workflow contract off (no valid baseline.repo.json)",
+      "    SKIP      FLOW-09   The lane's new decision-record numbers aren't already claimed by another live lane",
+      "            ↳ workflow contract off (no valid baseline.repo.json)",
       "",
       "  Divergence (cross-tier)",
       "    SKIP      DIV-01    Issue closed, lane still active",
@@ -216,7 +220,7 @@
       "    SKIP      DESC-02   A present descriptor is schema-valid",
       "            ↳ no baseline.repo.json — absence is DESC-01's finding",
       "",
-      "  Summary  34 pass · 0 fail · 10 warn · 4 sign-off · 42 n/a",
+      "  Summary  34 pass · 0 fail · 10 warn · 4 sign-off · 44 n/a",
       "  Readiness: 71%  (34/48 applicable)",
       "",
       "  ✓ no blockers.",
@@ -246,12 +250,12 @@
     "summary": {
       "refusals": 1,
       "blockers": 1,
-      "pass": 9,
+      "pass": 10,
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
       "skip": 4,
-      "total": 14
+      "total": 15
     },
     "rules": {
       "REC-01": {
@@ -289,6 +293,10 @@
       "FLOW-08": {
         "tag": "SKIP",
         "detail": "PR listing failed at the forge — closures unreadable (not \"no PRs\")"
+      },
+      "FLOW-09": {
+        "tag": "PASS",
+        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
       },
       "MERGE-02": {
         "tag": "PASS",
@@ -335,12 +343,12 @@
     "summary": {
       "refusals": 2,
       "blockers": 2,
-      "pass": 3,
+      "pass": 4,
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
       "skip": 9,
-      "total": 14
+      "total": 15
     },
     "rules": {
       "REC-01": {
@@ -378,6 +386,10 @@
       "FLOW-08": {
         "tag": "SKIP",
         "detail": "<forge unreachable> — PR closures unreadable"
+      },
+      "FLOW-09": {
+        "tag": "PASS",
+        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
       },
       "MERGE-02": {
         "tag": "PASS",
@@ -421,12 +433,12 @@
     "summary": {
       "refusals": 0,
       "blockers": 0,
-      "pass": 6,
+      "pass": 7,
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
       "skip": 7,
-      "total": 14
+      "total": 15
     },
     "rules": {
       "REC-01": {
@@ -464,6 +476,10 @@
       "FLOW-08": {
         "tag": "SKIP",
         "detail": "forge not consulted (JDG-only admission path) — PR closures unreadable"
+      },
+      "FLOW-09": {
+        "tag": "PASS",
+        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
       },
       "MERGE-02": {
         "tag": "PASS",
@@ -509,12 +525,12 @@
     "summary": {
       "refusals": 0,
       "blockers": 0,
-      "pass": 4,
+      "pass": 5,
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
       "skip": 10,
-      "total": 14
+      "total": 15
     },
     "rules": {
       "REC-01": {
@@ -552,6 +568,10 @@
       "FLOW-08": {
         "tag": "SKIP",
         "detail": "<forge unreachable> — PR closures unreadable"
+      },
+      "FLOW-09": {
+        "tag": "PASS",
+        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
       },
       "MERGE-02": {
         "tag": "PASS",
@@ -598,12 +618,12 @@
     "summary": {
       "refusals": 2,
       "blockers": 2,
-      "pass": 3,
+      "pass": 4,
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
       "skip": 9,
-      "total": 14
+      "total": 15
     },
     "rules": {
       "REC-01": {
@@ -641,6 +661,10 @@
       "FLOW-08": {
         "tag": "SKIP",
         "detail": "<forge unreachable> — PR closures unreadable"
+      },
+      "FLOW-09": {
+        "tag": "PASS",
+        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
       },
       "MERGE-02": {
         "tag": "FAIL",
@@ -687,12 +711,12 @@
     "summary": {
       "refusals": 2,
       "blockers": 1,
-      "pass": 4,
+      "pass": 5,
       "warn": 0,
       "diverged": 0,
       "signoff": 0,
       "skip": 9,
-      "total": 14
+      "total": 15
     },
     "rules": {
       "REC-01": {
@@ -731,6 +755,10 @@
         "tag": "SKIP",
         "detail": "<forge unreachable> — PR closures unreadable"
       },
+      "FLOW-09": {
+        "tag": "PASS",
+        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
+      },
       "MERGE-02": {
         "tag": "PASS",
         "detail": "no sister lanes known locally (as of the last fetch)"
@@ -765,8 +793,8 @@
       "warn": 9,
       "diverged": 0,
       "signoff": 2,
-      "skip": 68,
-      "total": 90
+      "skip": 70,
+      "total": 92
     },
     "rules": {
       "BUILD-01": {
@@ -882,6 +910,10 @@
         "detail": "pattern not found (good)"
       },
       "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-14": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
       },
@@ -1109,6 +1141,10 @@
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
+      "FLOW-09": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
@@ -1143,8 +1179,8 @@
       "warn": 14,
       "diverged": 0,
       "signoff": 3,
-      "skip": 62,
-      "total": 90
+      "skip": 64,
+      "total": 92
     },
     "rules": {
       "BUILD-01": {
@@ -1260,6 +1296,10 @@
         "detail": "pattern not found (good)"
       },
       "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-14": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
       },
@@ -1487,6 +1527,10 @@
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
+      "FLOW-09": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
@@ -1521,8 +1565,8 @@
       "warn": 6,
       "diverged": 0,
       "signoff": 1,
-      "skip": 75,
-      "total": 90
+      "skip": 77,
+      "total": 92
     },
     "rules": {
       "BUILD-01": {
@@ -1641,6 +1685,10 @@
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
       },
+      "CTX-14": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
       "CLAIM-00": {
         "tag": "SKIP",
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
@@ -1865,6 +1913,10 @@
         "tag": "SKIP",
         "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
       },
+      "FLOW-09": {
+        "tag": "SKIP",
+        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
@@ -1895,13 +1947,13 @@
       "core"
     ],
     "summary": {
-      "blockers": 3,
+      "blockers": 4,
       "pass": 7,
       "warn": 11,
       "diverged": 0,
       "signoff": 1,
-      "skip": 68,
-      "total": 90
+      "skip": 69,
+      "total": 92
     },
     "rules": {
       "BUILD-01": {
@@ -2020,6 +2072,10 @@
         "tag": "WARN",
         "detail": "1 one-way amendment(s): 0003-new.md amends ADR 0001; 0001-first.md carries no Amended-by"
       },
+      "CTX-14": {
+        "tag": "FAIL",
+        "detail": "1 decision number(s) claimed twice: 0006 claimed by 0006-numbering-again.md, 0006-numbering.md"
+      },
       "CLAIM-00": {
         "tag": "SKIP",
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
@@ -2244,6 +2300,10 @@
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
+      "FLOW-09": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
@@ -2274,12 +2334,12 @@
     ],
     "summary": {
       "blockers": 1,
-      "pass": 15,
+      "pass": 16,
       "warn": 8,
       "diverged": 0,
       "signoff": 1,
-      "skip": 65,
-      "total": 90
+      "skip": 66,
+      "total": 92
     },
     "rules": {
       "BUILD-01": {
@@ -2395,6 +2455,10 @@
         "detail": "pattern not found (good)"
       },
       "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-14": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
       },
@@ -2622,6 +2686,10 @@
         "tag": "SKIP",
         "detail": "<forge unreachable> — PR closures unreadable"
       },
+      "FLOW-09": {
+        "tag": "PASS",
+        "detail": "this lane introduces no decision record beyond 'main' — nothing to reserve"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "'lane/feature-x' carries no issue anchor — nothing to diverge from (FLOW-01's territory)"
@@ -2656,8 +2724,8 @@
       "warn": 7,
       "diverged": 0,
       "signoff": 0,
-      "skip": 71,
-      "total": 90
+      "skip": 73,
+      "total": 92
     },
     "rules": {
       "BUILD-01": {
@@ -2773,6 +2841,10 @@
         "detail": "pattern not found (good)"
       },
       "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-14": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
       },
@@ -3000,6 +3072,10 @@
         "tag": "SKIP",
         "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
       },
+      "FLOW-09": {
+        "tag": "SKIP",
+        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
@@ -3030,12 +3106,12 @@
     ],
     "summary": {
       "blockers": 2,
-      "pass": 19,
+      "pass": 20,
       "warn": 7,
       "diverged": 1,
       "signoff": 1,
-      "skip": 61,
-      "total": 90
+      "skip": 62,
+      "total": 92
     },
     "rules": {
       "BUILD-01": {
@@ -3151,6 +3227,10 @@
         "detail": "pattern not found (good)"
       },
       "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-14": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
       },
@@ -3378,6 +3458,10 @@
         "tag": "PASS",
         "detail": "no open PRs — nothing to warn about"
       },
+      "FLOW-09": {
+        "tag": "PASS",
+        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
+      },
       "DIV-01": {
         "tag": "DIVERGED",
         "detail": "lane lane/7 is claimed but its anchor #7 is closed — \"The anchored issue (closed under the lane)\" — the resolution path: reopen #7 if the work is genuinely unfinished, or merge/close-and-prune the lane if it is done"
@@ -3412,8 +3496,8 @@
       "warn": 21,
       "diverged": 0,
       "signoff": 3,
-      "skip": 54,
-      "total": 90
+      "skip": 56,
+      "total": 92
     },
     "rules": {
       "BUILD-01": {
@@ -3529,6 +3613,10 @@
         "detail": "pattern not found (good)"
       },
       "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-14": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
       },
@@ -3756,6 +3844,10 @@
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
+      "FLOW-09": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
@@ -3791,8 +3883,8 @@
       "warn": 10,
       "diverged": 0,
       "signoff": 4,
-      "skip": 42,
-      "total": 90
+      "skip": 44,
+      "total": 92
     },
     "rules": {
       "BUILD-01": {
@@ -3908,6 +4000,10 @@
         "detail": "pattern not found (good)"
       },
       "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-14": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
       },
@@ -4132,6 +4228,10 @@
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
       "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-09": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
@@ -4385,8 +4485,8 @@
       "fail": 4,
       "diverged": 0,
       "signoff": 3,
-      "skip": 46,
-      "rules": 78,
+      "skip": 47,
+      "rules": 79,
       "jdg": {
         "records": 1,
         "swept": 1,
@@ -4417,8 +4517,8 @@
       "warn": 14,
       "diverged": 0,
       "signoff": 3,
-      "skip": 55,
-      "total": 90
+      "skip": 57,
+      "total": 92
     },
     "rules": {
       "BUILD-01": {
@@ -4534,6 +4634,10 @@
         "detail": "pattern not found (good)"
       },
       "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-14": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
       },
@@ -4761,6 +4865,10 @@
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
+      "FLOW-09": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
       "DIV-01": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
@@ -4795,8 +4903,8 @@
       "warn": 10,
       "diverged": 0,
       "signoff": 1,
-      "skip": 70,
-      "total": 90
+      "skip": 72,
+      "total": 92
     },
     "rules": {
       "BUILD-01": {
@@ -4912,6 +5020,10 @@
         "detail": "pattern not found (good)"
       },
       "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
+      },
+      "CTX-14": {
         "tag": "SKIP",
         "detail": "no numbered ADR files found"
       },
@@ -5136,6 +5248,10 @@
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },
       "FLOW-08": {
+        "tag": "SKIP",
+        "detail": "workflow contract off (no valid baseline.repo.json)"
+      },
+      "FLOW-09": {
         "tag": "SKIP",
         "detail": "workflow contract off (no valid baseline.repo.json)"
       },

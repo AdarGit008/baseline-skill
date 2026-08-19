@@ -1,34 +1,43 @@
-# Ship — Issue #57
+# Ship — Issue #49
 
-Ready. Rank 4 of the #52 backlog, and the last of the four. It went in wider than filed:
-the issue is that amendment edges are unchecked, and reading them properly turned up a
-blocker-severity false positive on the repo's own ADR template.
+Ready. The last open issue on the board, and the one #57's ship note pointed at.
 
 ## Ship criteria
 
-- [x] `Amends:` / `Amended-by:` are read — by a parser, a rule, and a schema field
-- [x] Every declared edge resolves against the tree, whatever the verb
-- [x] A wrapped declaration is read whole; parenthesised commentary declares nothing
-- [x] A one-way amendment is reported, naming both records
-- [x] A dangling amendment is reported once, by CTX-07 only
-- [x] A corpus with history adopts through the existing judgment route, with expiry
-- [x] `Superseded-by: ADR-NNNN` — the shipped template's spelling — is a forward link
-- [x] Nothing that passed before now fails: the phrase fallback survives
-- [x] One reader for relations, statuses and header fields
-- [x] Every re-pinned row accounted for; no other verdict moves
-- [x] Full suite green; self-check green; no blockers
+- [x] Two lanes authoring the same decision number is a finding **on the lane**, naming
+      the other lane and both filenames
+- [x] It still fires on the merge order that shipped the incident — first lane landed,
+      second lane checking
+- [x] Two conflict-free merges cannot put two ADR-0027s on the default branch silently
+- [x] A rename introduces a path, not a number
+- [x] A lane branched off a lane is one record reached twice, not a second claim
+- [x] A COMPLETED lane holds no reservation
+- [x] A lane the clone cannot read is counted and named, never folded into a pass
+- [x] A gap in the sequence is reported and is not a verdict
+- [x] A corpus that cannot renumber without breaking citations adopts through the
+      existing ledger route, with an expiry
+- [x] Every re-pinned row accounted for; no pre-existing verdict moved
+- [x] Full suite green; self-check green; no blockers on this repo
 
-## The gap this closes, in the words of the repo that had it
+## The gap this closes, in the words of the issue
 
-> None of these was found by a check. Every one was found by a person or an agent
-> re-reading.
+> It was caught by a human mentioning in conversation that the other lane was in flight.
+> That is the whole detection mechanism today.
 
-18 amendment edges, 15 of them one-way, on a 36-ADR corpus — against 4 supersede-shaped
-edges, which were the only ones any rule looked at.
+Both branches passed. Both would merge with no git conflict. The paths differed, so git
+had nothing to say, and no rule read the number.
+
+## The adjacent finding
+
+The issue's second half — `baseline gate` producing different results on the `push` and
+`pull_request` events, leaving the lane rules inert on the event that guards the merge —
+was filed and shipped separately as **#55** (`da7c56a`, "resolve the lane from the CI
+event, so the merge gate runs at the merge"). Nothing further is owed here; the flow
+suite's `#55` block is the standing proof.
 
 ## Next
 
-The #52 backlog is empty. **#49** — two lanes can author the same decision-record
-number, and nothing reports it — is the remaining open issue, and it shares this one's
-substrate: a header parser that reads the whole declaration. It was filed as adjacent
-and separable, and it still is.
+The board is empty. If a follow-up is wanted, the honest candidate is the one FLOW-09
+deliberately does not do: **allocate** a decision-record number the way `lane claim`
+allocates an issue number — an atomic ref transaction at origin, so two agents cannot
+take `0027` in the first place rather than both discovering it afterwards.

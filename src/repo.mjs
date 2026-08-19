@@ -96,14 +96,16 @@ export function indexRepo(REPO) {
     return events
   }
   // Files changed on this branch since it diverged (merge-base semantics), optionally
-  // restricted to a path scope and to added-only. -> [paths] or null when the range
-  // doesn't resolve (missing base ref, not a repo). -z: unquoted, NUL-separated.
+  // restricted to a path scope, to added-only, or to deleted-only (what the lane REMOVED
+  // since it branched — how #49 tells a renamed decision record apart from a second one).
+  // -> [paths] or null when the range doesn't resolve (missing base ref, not a repo).
+  // -z: unquoted, NUL-separated.
   // noRenames (M6a): rename detection collapses D+A into R and --name-only then prints
   // only the post-image name — `git mv baseline.repo.json away.json` would read as
   // "descriptor untouched" to DESC-03. Admit's range reads disable detection so a
   // renamed-away gated file is honestly a delete + an add.
-  function gitDiffNames(range, rel, { addedOnly = false, noRenames = false } = {}) {
-    const args = ['diff', ...(noRenames ? ['--no-renames'] : []), '--name-only', '-z', ...(addedOnly ? ['--diff-filter=A'] : []), range, '--', ...(rel ? [rel] : ['.'])]
+  function gitDiffNames(range, rel, { addedOnly = false, deletedOnly = false, noRenames = false } = {}) {
+    const args = ['diff', ...(noRenames ? ['--no-renames'] : []), '--name-only', '-z', ...(addedOnly ? ['--diff-filter=A'] : deletedOnly ? ['--diff-filter=D'] : []), range, '--', ...(rel ? [rel] : ['.'])]
     try { return execFileSync('git', args, { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\0').filter(Boolean) } catch { return null }
   }
   // Paths ADDED in a range, in COMMIT order (oldest first) rather than lexicographic —
@@ -133,5 +135,12 @@ export function indexRepo(REPO) {
     try { return execFileSync('git', ['cat-file', 'blob', `${ref}:${rel}`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 256 * 1024 * 1024 }).toString('utf8') } catch { return null }
   }
 
-  return { REPO, FILES, TRACKED, HEAD, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile }
+  // Every tracked path at a ref -> string[] or null on any failure. The tree AS OF a
+  // commit, which is what "what does the default branch already carry" means when the
+  // worktree is a lane's (#49). null is uninspectable, never an empty tree.
+  function gitLsTree(ref) {
+    try { return execFileSync('git', ['ls-tree', '-r', '--name-only', ref], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\n').filter(Boolean) } catch { return null }
+  }
+
+  return { REPO, FILES, TRACKED, HEAD, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile, gitLsTree }
 }

@@ -1,64 +1,79 @@
-# Tasks — Issue #57
+# Tasks — Issue #49
 
-- [x] Task 1: one reader for what a decision record declares
-  - Acceptance: `adrHeaderFields` walks the header once — a field ends at the next
-    FIELD, not the next newline — and `adrEdges` turns it into four integer lists.
-    Parenthesised commentary is stripped before numbers are read; `none`/`n/a`/`-`
-    declare nothing; the legacy inline `Status: Superseded by ADR-0003` folds in.
-  - Verify: the issue's own wrapped declaration reads `[17, 19]`, not `[19]` and not
-    `[5, 17, 19]`; the golden corpus's inline form still reads `[3]` ✓
-  - Files: `src/records.mjs`
-
-- [x] Task 2: the storage form matches the rules
-  - Acceptance: `parseAdrHeader` routes through the same walk and carries
-    `amends`/`amended_by`; `record.adr.schema.json` and `templates/adr.md` carry them
-    too, and the template's comment teaches the amendment ceremony next to the
-    supersede one.
-  - Verify: `templates/adr.md`'s extracted header still validates, now with both new
-    fields present ✓
-  - Files: `src/records.mjs`, `schema/record.adr.schema.json`, `templates/adr.md`
-
-- [x] Task 3: CTX-07 resolves every declared edge
-  - Acceptance: all four verbs resolved against the decision tree, the finding names
-    the verb (`0021-bench.md amends ADR 0019 (no such file)`), and the pass detail
-    counts what it checked. Self-reference still resolves against OTHER files only.
-  - Verify: the #57 repro's dangling `0019` is reported and the resolving `0017` is
-    not; `4 declared edge(s) resolve` once `0019` exists ✓
+- [x] Task 1: the floor — CTX-14, one number, one record
+  - Acceptance: `adr-number-unique` groups the corpus by the number parsed off each
+    filename and fails on any number claimed twice, naming the number and every file
+    claiming it. A hole in the sequence rides the PASS detail and is never a verdict.
+    An unexpired `sign-off`/`deviation`/`risk-acceptance` whose glob `subject` matches
+    *either* colliding path sanctions the collision; an expired one stops.
+  - Verify: the issue's same-tree repro scores `CTX-14 FAIL — 0009 claimed by 0009-a.md,
+    0009-b.md` where every rule passed before; renumbering to `0029` passes and reports
+    `gap(s) in the sequence (not an error): 0028` ✓
   - Files: `src/evaluators.mjs`, `rules/ctx.json`
 
-- [x] Task 4: CTX-13, and the adoption route that is not a new mechanism
-  - Acceptance: a one-way amendment is a warn naming both records; a dangling one is
-    left to CTX-07; an unexpired sanctioning judgment whose glob `subject` matches the
-    declaring record clears it, and an expired one stops clearing it.
-  - Verify: 7 assertions covering the finding, the no-double-report guard, the
-    both-ends PASS, and three sanction cases ✓
-  - Files: `src/evaluators.mjs`, `rules/ctx.json`, `test/records/run.mjs`
+- [x] Task 2: the lane world reads lane TREES, not just lane refs
+  - Acceptance: `laneObjects()` — lazy and memoized like the world itself, one bounded
+    glob fetch into `LANES_PRIV` (laneRefsGit's refspec), per-ref resolution falling back
+    to `refs/remotes/origin/*`, `files(ref)` answering `null` for uninspectable and never
+    `[]`. No live fetch under replay; resolution still answers from local refs, so the
+    suite exercises the rule without a round trip.
+  - Verify: the flow suite's replay world resolves nothing for a lane that was never
+    pushed here, and FLOW-09 SKIPs saying so ✓
+  - Files: `src/facts/index.mjs`
 
-- [x] Task 5: the blocker-severity false positive found on the way
-  - Acceptance: `Superseded-by: ADR-0003` — the spelling `templates/adr.md` ships — is
-    a forward link to CTX-02 and a resolvable edge to CTX-07. `\s*` never matched the
-    hyphen, so a record following this repo's own template was reported as misdirecting
-    a reader. The phrase fallback stays, so nothing that passed before now fails.
-  - Verify: the pre-fix runner scores that fixture **CTX-02 FAIL**; this one PASSes,
-    and a superseded record with no link at all still fails ✓
-  - Files: `src/evaluators.mjs`, `test/records/run.mjs`
+- [x] Task 3: two git reads the rule needs
+  - Acceptance: `gitLsTree(ref)` — every tracked path at a commit, `null` on failure.
+    `gitDiffNames(range, rel, { deletedOnly })` — what this lane REMOVED since it
+    branched, which is what separates a rename from a second record.
+  - Verify: a `git mv` of a decision record does not read as a collision, while a lane
+    that merely branched before the record landed does ✓
+  - Files: `src/repo.mjs`
 
-- [x] Task 6: proof, and the negative control
-  - Acceptance: 18 assertions in the records suite. The pre-fix runner is checked out
-    in a worktree and scored against the same two fixtures.
-  - Verify: pre-fix `CTX-02 PASS · CTX-07 PASS` (no CTX-13) on the repro → post-fix
-    `CTX-02 PASS · CTX-07 WARN · CTX-13 WARN`; pre-fix `CTX-02 FAIL` on the template
-    fixture → post-fix PASS ✓
+- [x] Task 4: the catch — FLOW-09, the number is reserved across live lanes
+  - Acceptance: introduction measured by **path**; a collision reported against the
+    default branch and against every other live lane, naming both filenames and the
+    lane's derived state; COMPLETED lanes excluded; a lane branched off a lane sharing
+    the same path exempt; a renamed record exempt; unresolvable lanes counted and named,
+    and all-unresolvable a labeled SKIP.
+  - Verify: on the two-lane repro the second lane FAILs naming `lane/265` and both
+    filenames, exit 1, while `CTX-14` PASSes on that same tree — the incident, exactly.
+    After `lane/265` merges, the same lane FAILs against `origin/main` ✓
+  - Files: `src/evaluators.mjs`, `rules/flow.json`
+
+- [x] Task 5: proof for the floor
+  - Acceptance: 10 assertions in `test/records/run.mjs` — distinct numbers pass, the
+    incident is a finding naming both files, either sanction end clears it, an expired
+    judgment stops clearing it, `break-glass` is not a sanction, the repair passes with
+    the gap note, and an index-only decision dir is a SKIP rather than a pass on nothing.
+  - Verify: `node test/records/run.mjs` ✓
   - Files: `test/records/run.mjs`
 
-- [x] Task 7: account for every moved row
-  - Acceptance: the docs-repo fixture gains a real one-way amendment; the re-pin is
-    12 fixtures × (one CTX-13 SKIP row, total 89→90), docs-repo's CTX-13 WARN and its
-    CTX-07 detail, reconcile-repo's rule count, and the scorecard's two lines. No
-    other verdict moves.
-  - Verify: golden re-pinned and clean at 18 fixtures / 1094 verdicts; records ·
-    golden · orient · facts · lane · flow · admit · reconcile · gen all exit 0;
-    self-check green; self-score has no blockers and SKIPs all three ADR rules ✓
-  - Files: `test/fixtures/docs-repo/docs/decisions/0003-new.md.golden`,
-    `test/golden/pins.json`, `CHANGELOG.md`, `README.md`, `SKILL.md`, `REFERENCE.md`,
-    `docs/assets/evaluate-stack-{light,dark}.svg`, `tasks/todo.md`
+- [x] Task 6: proof for the catch
+  - Acceptance: 11 assertions in `test/flow/run.mjs` across a two-lane world on a local
+    bare origin under `multi-lane-local` (forge closed — the rule is a git-plane question
+    end to end): first claim, second claim, the finding's shape, exit 1, CTX-14's
+    blindness on that tree, the post-merge order, CTX-14 going red once both merge, a free
+    number, the rename, a lane branched off a lane, and the unreadable-lane SKIP.
+  - Verify: `node test/flow/run.mjs` ✓
+  - Files: `test/flow/run.mjs`
+
+- [x] Task 7: the golden corpus, and every row accounted for
+  - Acceptance: `docs-repo` gains `0006-numbering.md` + `0006-numbering-again.md` — the
+    duplicate pair, both `Accepted`, no edges, so only CTX-14 moves. Re-pin captures 18
+    fixtures / 1122 verdicts.
+  - Verify: the pin diff is **36 changed entries, all of them new rows**. Every fixture
+    gains a `CTX-14` and a `FLOW-09` row; `docs-repo.CTX-14` is the one FAIL (blockers
+    3 → 4); the six `admit-*` fixtures gain only `FLOW-09` (CTX-14's contexts are
+    check/reconcile). **No pre-existing verdict changed tag or detail.** ✓
+  - Files: `test/fixtures/docs-repo/docs/decisions/0006-*.md.golden`,
+    `test/golden/pins.json`
+
+- [x] Task 8: the counts the docs assert
+  - Acceptance: 94 rules (28 blockers · 61 warnings · 5 sign-offs) across README, SKILL,
+    REFERENCE and both evaluate-stack SVGs; the CTX table row, the FLOW table rows
+    (FLOW-08 was missing from it before this branch) and the two category counts.
+    Drive-by: the documented check-kind count said 41 while the set held 43 before this
+    branch and 45 after.
+  - Verify: `node check.mjs --self-check` reports 94 rules and a consistent set ✓
+  - Files: `README.md`, `SKILL.md`, `REFERENCE.md`, `docs/assets/evaluate-stack-*.svg`,
+    `src/evaluators.mjs`, `test/records/run.mjs`

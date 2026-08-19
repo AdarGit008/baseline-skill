@@ -9,6 +9,7 @@ import { DESCRIPTOR_FILE, DESCRIPTOR_SCHEMA } from './descriptor.mjs'
 import { classifyPostureDiff } from './derive/posture.mjs'
 import { scan, loadAllowlist } from './scrub.mjs'
 import { loadClaims, CLAIM_RECORD_GLOB } from './claims.mjs'
+import { adrEdges } from './records.mjs'
 import { extractNext, diagnoseNext } from './facts/git.mjs'
 import { parseFrontmatter } from './records.mjs'
 import { deriveDivergence } from './derive/divergence.mjs'
@@ -22,6 +23,15 @@ const DIV_REF_CAP = 20 // a hostile next: line with dozens of #N must not fan ou
 // gate semantics, never record-edit or descriptor approval (the DESC-03 reasoning,
 // applied to both valves). One home, or the two consumers drift.
 const SANCTION_KINDS = ['sign-off', 'deviation', 'risk-acceptance']
+
+// The decision graph's four declared edges, in the order a finding should read them,
+// with the verb each one prints (#57). Supersedes/Superseded-by is the terminal
+// relation; Amends/Amended-by is the live one.
+const ADR_EDGE_VERBS = [['supersedes', 'supersedes'], ['superseded_by', 'is superseded by'], ['amends', 'amends'], ['amended_by', 'is amended by']]
+// A decision file's own number, from its filename — the identity CTX-07 has always
+// resolved against ('0003-new.md' -> 3, so '0003', 'ADR-3' and '3' are one decision).
+// Two files sharing a number is #49's subject, not this one's: the first wins here.
+function adrFileNumber(f) { const m = (f.split('/').pop() || '').match(/\d{1,4}/); return m ? parseInt(m[0], 10) : null }
 
 // The AUTHORITATIVE closing set per open PR: forge closingIssuesReferences (the sidebar
 // link + keyword-derived entries — a superset of the body-text regex), with the body
@@ -38,7 +48,7 @@ function scopedPrClosers(w) {
 }
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'descriptor-valid', 'records-append-only', 'records-scrub', 'records-one-home', 'vendored-lock', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'pr-closes-own-anchor', 'descriptor-change', 'merge-sister-dep', 'forge-protection', 'workflow-state'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'adr-backlink', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'descriptor-valid', 'records-append-only', 'records-scrub', 'records-one-home', 'vendored-lock', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'pr-closes-own-anchor', 'descriptor-change', 'merge-sister-dep', 'forge-protection', 'workflow-state'])
 
 export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
   const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile } = repo
@@ -269,24 +279,82 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
         const t = read(f) || ''
         const st = statusOf(t)
         if (!st || !allowed.test(st)) { bad.push(`${f.split('/').pop()}: no/invalid Status`); continue }
-        if (/superseded|deprecated|replaced/i.test(st) && !/supersed(ed)?\s*by|replaced\s*by|→\s*adr|see\s+adr/i.test(t)) bad.push(`${f.split('/').pop()}: superseded w/o forward link`)
+        // #57: the presence test used to be a phrase grep, and `\s*` does not match a
+        // hyphen — so `Superseded-by: ADR-0003`, THE FORM templates/adr.md ships and
+        // tells authors to fill in, read as no forward link at all. A record that
+        // followed this repo's own template was reported as misdirecting a reader.
+        // The declared edge is now the primary answer (adrEdges — the same reader
+        // CTX-07 and CTX-13 resolve); the old phrase stays as a fallback so a prose
+        // link with no resolvable number keeps passing exactly as it did.
+        if (/superseded|deprecated|replaced/i.test(st) && !adrEdges(t).superseded_by.length && !/supersed(ed)?\s*by|replaced\s*by|→\s*adr|see\s+adr/i.test(t)) bad.push(`${f.split('/').pop()}: superseded w/o forward link`)
       }
       return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') : `${files.length} decision doc(s) ok` }
     }
 
+    // #57: the decision graph has four declared edges and this resolved ONE of them —
+    // and only in its spaced prose spelling. `Amends:`/`Amended-by:` were read by no
+    // rule at all, which is the wrong half to skip: supersession is terminal (the
+    // reader is sent elsewhere and the dead end is loud), amendment is what a decision
+    // does when part of it survives, so the amended record stays the one a citation
+    // arrives at. A declaration naming a record that does not exist is a finding
+    // whatever the verb — the same sentence this rule always had, over the whole graph.
     if (k === 'adr-forward-link') {
       const files = match(cfg[c.globs_from_config]).filter(isAdrFile); if (!files.length) return { ok: null, detail: 'no numbered ADR files found' }
-      const bad = []
+      const bad = []; let edges = 0
       for (const f of files) {
-        const t = read(f) || ''
-        const sm = t.match(/supersed(?:ed)?\s*by[^\n]*?(?:adr[- ]?)?(\d{1,4})/i)
-        if (!sm) continue
-        const n = sm[1]
-        const padded = new Set([n, n.padStart(2, '0'), n.padStart(3, '0'), n.padStart(4, '0')])
-        const found = files.some(g => { const base = g.split('/').pop(); const nums = base.match(/\d{1,4}/); return nums && (padded.has(nums[0]) || padded.has(String(parseInt(nums[0], 10)))) && g !== f })
-        if (!found) bad.push(`${f.split('/').pop()} → ADR ${n} (no such file)`)
+        const e = adrEdges(read(f) || '')
+        for (const [rel, verb] of ADR_EDGE_VERBS) {
+          for (const n of e[rel]) {
+            edges++
+            // Resolve against every OTHER decision file: a record that names its own
+            // number is not evidence that the number exists (the pre-#57 rule's
+            // `g !== f`, kept verbatim).
+            if (!files.some(g => g !== f && adrFileNumber(g) === n)) bad.push(`${f.split('/').pop()} ${verb} ADR ${String(n).padStart(4, '0')} (no such file)`)
+          }
+        }
       }
-      return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') : `forward-links resolve` }
+      return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') : `${edges} declared edge(s) resolve` }
+    }
+
+    // CTX-13 (#57): an amendment declared at ONE end only. The record that WAS amended
+    // is the one a reader arrives at from a citation, and it is the one that does not
+    // know it has been corrected — a live decision graph's most common broken edge,
+    // and one no check saw before. Deliberately narrow: only edges whose target
+    // EXISTS are compared (a dangling `Amends:` is CTX-07's finding, and reporting it
+    // twice would make one defect read as two), only the amendment pair is required
+    // both ways (CTX-02 already governs what a superseded record owes), and nothing
+    // is said about ordering — a record may amend one authored the same day.
+    // Adoption: a corpus with history will light up, so this is a warn AND the
+    // existing judgment route sanctions a named record — an unexpired sign-off /
+    // deviation / risk-acceptance whose glob `subject` matches the DECLARING record's
+    // path (SANCTION_KINDS, REC-01's route since #47). Deleting the judgment is how a
+    // repair is proved; `review_by` is the expiry a frozen allowlist never has.
+    if (k === 'adr-backlink') {
+      const files = match(cfg[c.globs_from_config]).filter(isAdrFile); if (!files.length) return { ok: null, detail: 'no numbered ADR files found' }
+      const byNum = new Map()
+      for (const f of files) { const n = adrFileNumber(f); if (n != null && !byNum.has(n)) byNum.set(n, { file: f, edges: adrEdges(read(f) || '') }) }
+      const oneWay = []; let paired = 0
+      for (const f of files) {
+        const self = adrFileNumber(f); if (self == null) continue
+        const e = byNum.get(self)?.file === f ? byNum.get(self).edges : adrEdges(read(f) || '')
+        const base = f.split('/').pop()
+        for (const n of e.amends) {
+          const t = byNum.get(n); if (!t || t.file === f) continue
+          if (t.edges.amended_by.includes(self)) { paired++; continue }
+          oneWay.push({ path: f, text: `${base} amends ADR ${String(n).padStart(4, '0')}; ${t.file.split('/').pop()} carries no Amended-by` })
+        }
+        for (const n of e.amended_by) {
+          const t = byNum.get(n); if (!t || t.file === f) continue
+          if (t.edges.amends.includes(self)) continue
+          oneWay.push({ path: f, text: `${base} says ADR ${String(n).padStart(4, '0')} amends it; ${t.file.split('/').pop()} carries no Amends` })
+        }
+      }
+      const sanctionsOf = p => (JUDGMENTS || []).filter(j => SANCTION_KINDS.includes(j.kind) && j.review_by >= TODAY && globMatcher(j.subject).test(p)).map(j => j.id)
+      const sanctioned = [], unexplained = []
+      for (const o of oneWay) { const ids = sanctionsOf(o.path); if (ids.length) sanctioned.push({ text: o.text, by: ids.join(', ') }); else unexplained.push(o) }
+      if (!oneWay.length) return { ok: true, detail: paired ? `${paired} amendment edge(s) declared at both ends` : 'no amendment edges declared' }
+      if (!unexplained.length) return { ok: true, detail: `${sanctioned.length} one-way amendment(s) sanctioned by judgment: ` + sanctioned.map(s => `${s.text} [${s.by}]`).join('; ') }
+      return { ok: false, detail: `${unexplained.length} one-way amendment(s): ` + unexplained.slice(0, 3).map(o => o.text).join('; ') + (unexplained.length > 3 ? ` (+${unexplained.length - 3})` : '') + (sanctioned.length ? ` — ${sanctioned.length} sanctioned (${sanctioned.map(s => s.by).join(', ')})` : '') }
     }
 
     if (k === 'config-nonempty') { const v = cfg[c.path]; const ne = nonEmpty(v); return { ok: ne, detail: ne ? 'declared' : `config.${c.path} empty` } }

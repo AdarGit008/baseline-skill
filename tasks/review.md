@@ -1,70 +1,46 @@
-# Review — Issue #55
+# Review — Issue #57
 
-## What changed
+## What changed, and why each piece is there
 
-One derivation of lane identity, `resolveLane()` in `src/probe.mjs`, called by both
-merge-time surfaces. `check` gained the environment fallback it never had; `admit` lost
-its inline `|| process.env.GITHUB_HEAD_REF` and gained the `GITHUB_REF_NAME` leg;
-`reconcile` kept its refusal and now names what it is refusing.
+| Piece | Why |
+|---|---|
+| `adrHeaderFields` / `adrEdges` (`src/records.mjs`) | There was no *reader* of a decision record's relations, so every consumer invented one: `parseAdrHeader` grabbed two fields with a single-line regex, CTX-07 grepped the document for one phrase, CTX-02 grepped for four. One walk, one opinion. |
+| CTX-07 widened | Its own sentence ("a declared link resolves to a file that exists") applied to one verb out of four. |
+| CTX-13 added | The relation a live decision graph mostly uses had no check at all. |
+| CTX-02 routed through the parser | Found while implementing: `\s*` does not match a hyphen, so the template's own `Superseded-by:` was invisible — a **blocker**-severity false positive on a correctly-authored record. |
+| schema + template | The rules and the machine-read header must agree on what a record declares, and the template is where an author learns the ceremony. |
+| rule-count docs + SVGs | Already stale at 91-documented-as-90 before this branch; this change would have made it two off. |
 
-## What the review caught
+## Where the reach was deliberately stopped
 
-- **Two weak assertions in the first draft of the flow cases.** One carried a dead
-  `bare[0] === undefined` conjunct that asserted nothing about the subject. The other
-  was written as `SKIP || lane === '7/merge'` — true under either branch, so it could
-  not fail. Both rewritten. The second rewrite found the real fact: on a `pull_request`
-  GitHub sets `GITHUB_REF_TYPE=branch` *and* `GITHUB_REF_NAME=N/merge`, so the type
-  guard alone would accept `7/merge` as a lane. What actually prevents it is **order** —
-  `GITHUB_HEAD_REF` is read first and is set on no other event. The test now asserts
-  that, and the comment says it.
-- **The golden re-pin (planned Task 7) turned out to be unnecessary.** Keeping the basis
-  on one run-level line rather than in each rule's detail meant 18 fixtures verified
-  identical with no re-pin. A plan step that dissolves is worth more than one that lands.
+- **CTX-13 stays silent on a dangling `Amends:`.** That is CTX-07's finding. Reporting
+  it in both places would make one defect read as two and teach the reader to discount
+  the count.
+- **No supersede back-link requirement.** CTX-02 already governs what a superseded
+  record owes; adding a second obligation is a widening the issue does not ask for.
+- **No cycle or ordering check.** A same-day amendment is legitimate; the issue says so
+  and a naive cycle check would light it up.
+- **No new allowlist file.** The judgment ledger already means "sanctioned, not an
+  offence", and it expires. A frozen constant would be a second mechanism for one job.
+- **The phrase fallback survives in CTX-02.** A prose forward link with no resolvable
+  number passed before and passes now. Tightening that is a separate argument with a
+  separate blast radius.
 
-## What CI caught that local runs could not
+## The one thing a reviewer should push on
 
-The first push went red on two `records` assertions — `detached HEAD (a CI checkout)
-SKIPs lane rules, honestly` and its FLOW-06 twin — that pass locally and always had.
-The cause was the fix itself, not the fixture: a GitHub Actions job exports
-`GITHUB_HEAD_REF` to **every** step, and a suite scoring a temp fixture inherited it, so
-`resolveLane` labeled an unrelated repository with this PR's branch. The environment was
-being read as a global fact when it is a fact about **one checkout**.
-
-`envSpeaksFor` is the correction: where `GITHUB_WORKSPACE` is set and this repo is not at
-or under it, the event describes somebody else's tree and is refused. *At or under*, not
-equal — `actions/checkout` with a `path:` puts the repo in a subdirectory of the
-workspace, and that is still the checkout the event describes.
-
-Two harness lessons rode along. `test/admit/run.mjs` already stripped `GITHUB_HEAD_REF`
-with a comment naming this exact hazard; its list simply predated the other four
-variables. `test/flow/run.mjs` stripped nothing, and under a simulated CI env three of
-the new #55 cases failed for reasons that had nothing to do with the code under test —
-an ambient `GITHUB_HEAD_REF` outranking the `GITHUB_REF_NAME` the case meant to exercise.
-Both harnesses now build one clean slate and re-inject explicitly, and the full suite was
-re-run **under a simulated CI env** as well as locally.
-
-The regression case for it is in the flow suite: an event whose `GITHUB_WORKSPACE` is a
-different repo names no lane here.
-
-## Residual risk, accepted
-
-- A stale exported `GITHUB_HEAD_REF` names a lane on a detached local checkout *when no
-  `GITHUB_WORKSPACE` contradicts it*. Bounded: it applies only where the answer was
-  previously `null` (SKIP), and the report names the variable it believed rather than
-  presenting the lane as observed fact.
-- A job that scores a repository **nested under** its own workspace (a vendored or
-  submodule tree) would have the outer event's branch applied to it. Accepted in favour
-  of not breaking `actions/checkout` with a `path:`, which is the common configuration;
-  the nested-scoring one is not.
-- On `pull_request` the rules read the merge result, not the lane tip. Named on the
-  lane line and in `REFERENCE.md`. A future rule that needs the tip specifically must
-  ask for it rather than assume `HEAD` is it — recorded here so it is not rediscovered.
+`adrEdges` treats any `Key: value` line in the header as a field boundary, which means a
+continuation line containing a colon in prose (`Amends: ADR-0019, and ADR-0017 — note:
+the D5 figure only`) truncates the declaration at `note:`. The alternative — indentation
+alone as the continuation signal — breaks the unindented wrap the corpus actually
+writes. The current rule loses an edge in a case nobody has written; the alternative
+loses edges in the case that produced the issue. Named here rather than hidden.
 
 ## Verification
 
-- flow: 13 new assertions pass; 9 fail against the pre-fix resolver (`git stash`
-  control). The 4 that pass either way are over-reach guards — bare detached and tag
-  push must keep SKIPping, and do.
-- golden: 18 fixtures identical to pins. Zero verdict changes, zero detail changes.
-- full suite (records, golden, orient, facts, lane, flow, admit, reconcile, gen): green.
-- self-check green; self-score 96%, no blockers.
+- 18 new assertions in `test/records/run.mjs`.
+- Negative control against a worktree of `main`: the repro scores `CTX-02 PASS ·
+  CTX-07 PASS` (no CTX-13) pre-fix and `PASS · WARN · WARN` post-fix; the
+  template-form fixture scores **`CTX-02 FAIL`** pre-fix and `PASS` post-fix.
+- Golden re-pinned: 18 fixtures, 1094 verdicts, every moved row accounted for in
+  `tasks/todo.md` Task 7.
+- Full suite green; `--self-check` green; self-score has no blockers.

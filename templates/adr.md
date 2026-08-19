@@ -3,15 +3,31 @@
 Status: Accepted
 Supersedes: none
 Superseded-by: none
+Amends: none
+Amended-by: none
 Date: 2026-07-04
 
 <!--
-Status ∈ Proposed | Accepted | Superseded | Deprecated | Rejected.
-When a later decision reverses this one, in the SAME commit:
+Status ∈ Proposed | Accepted | Superseded | Deprecated | Rejected | Amended.
+
+REVERSED — a later decision replaces this one. In the SAME commit:
   1) set this file's Status to "Superseded"
   2) fill "Superseded-by: ADR-00YY"
   3) add "Supersedes: ADR-000X" to the new ADR.
-The baseline gate (CTX-02) fails if a Superseded/Deprecated record has no forward link.
+CTX-02 fails if a Superseded/Deprecated record has no forward link.
+
+CORRECTED — a later decision withdraws part of this one and the rest still stands.
+Amendment, not supersession, is what most decisions do to each other. In the SAME
+commit:
+  1) add "Amends: ADR-000X (what it changes)" to the new ADR
+  2) add "Amended-by: ADR-00YY" HERE.
+CTX-13 reports an amendment declared at one end only — a reader arriving at this
+record from a citation is exactly the reader who cannot see the correction. Both
+fields take a comma-separated list and may wrap onto the next line; text in
+parentheses is commentary, never a target.
+
+CTX-07 resolves every target in all four fields against the decision tree: a
+declaration naming a record that does not exist is a finding whatever the verb.
 -->
 
 ## Context

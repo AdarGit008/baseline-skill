@@ -139,7 +139,7 @@
       "            ↳ 3 doc(s), links resolve",
       "    SKIP      CTX-06    Long-lived docs carry a freshness contract",
       "            ↳ config.freshness_globs empty (opt-in)",
-      "    SKIP      CTX-07    Superseded ADRs link forward to a file that exists",
+      "    SKIP      CTX-07    Every declared decision edge resolves to a file that exists",
       "            ↳ no numbered ADR files found",
       "    SKIP      CTX-08    Generated files carry a 'DO NOT EDIT' provenance marker",
       "            ↳ no files to scan",
@@ -151,6 +151,8 @@
       "            ↳ no docs declare a frontmatter sources: list (opt-in)",
       "    PASS      CTX-12    No hand-maintained status stamp (derive it instead)",
       "            ↳ pattern not found (good)",
+      "    SKIP      CTX-13    An amendment is declared at both ends",
+      "            ↳ no numbered ADR files found",
       "",
       "  Claims discipline",
       "    SKIP      CLAIM-00  A claims register exists",
@@ -214,7 +216,7 @@
       "    SKIP      DESC-02   A present descriptor is schema-valid",
       "            ↳ no baseline.repo.json — absence is DESC-01's finding",
       "",
-      "  Summary  34 pass · 0 fail · 10 warn · 4 sign-off · 41 n/a",
+      "  Summary  34 pass · 0 fail · 10 warn · 4 sign-off · 42 n/a",
       "  Readiness: 71%  (34/48 applicable)",
       "",
       "  ✓ no blockers.",
@@ -763,8 +765,8 @@
       "warn": 9,
       "diverged": 0,
       "signoff": 2,
-      "skip": 67,
-      "total": 89
+      "skip": 68,
+      "total": 90
     },
     "rules": {
       "BUILD-01": {
@@ -878,6 +880,10 @@
       "CTX-12": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
+      },
+      "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
       },
       "CLAIM-00": {
         "tag": "PASS",
@@ -1137,8 +1143,8 @@
       "warn": 14,
       "diverged": 0,
       "signoff": 3,
-      "skip": 61,
-      "total": 89
+      "skip": 62,
+      "total": 90
     },
     "rules": {
       "BUILD-01": {
@@ -1252,6 +1258,10 @@
       "CTX-12": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
+      },
+      "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -1511,8 +1521,8 @@
       "warn": 6,
       "diverged": 0,
       "signoff": 1,
-      "skip": 74,
-      "total": 89
+      "skip": 75,
+      "total": 90
     },
     "rules": {
       "BUILD-01": {
@@ -1626,6 +1636,10 @@
       "CTX-12": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
+      },
+      "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -1883,11 +1897,11 @@
     "summary": {
       "blockers": 3,
       "pass": 7,
-      "warn": 10,
+      "warn": 11,
       "diverged": 0,
       "signoff": 1,
       "skip": 68,
-      "total": 89
+      "total": 90
     },
     "rules": {
       "BUILD-01": {
@@ -1980,7 +1994,7 @@
       },
       "CTX-07": {
         "tag": "PASS",
-        "detail": "forward-links resolve"
+        "detail": "2 declared edge(s) resolve"
       },
       "CTX-08": {
         "tag": "WARN",
@@ -2001,6 +2015,10 @@
       "CTX-12": {
         "tag": "FAIL",
         "detail": "matched in 1 file(s): docs/start-here.md"
+      },
+      "CTX-13": {
+        "tag": "WARN",
+        "detail": "1 one-way amendment(s): 0003-new.md amends ADR 0001; 0001-first.md carries no Amended-by"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -2260,8 +2278,8 @@
       "warn": 8,
       "diverged": 0,
       "signoff": 1,
-      "skip": 64,
-      "total": 89
+      "skip": 65,
+      "total": 90
     },
     "rules": {
       "BUILD-01": {
@@ -2375,6 +2393,10 @@
       "CTX-12": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
+      },
+      "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -2634,8 +2656,8 @@
       "warn": 7,
       "diverged": 0,
       "signoff": 0,
-      "skip": 70,
-      "total": 89
+      "skip": 71,
+      "total": 90
     },
     "rules": {
       "BUILD-01": {
@@ -2749,6 +2771,10 @@
       "CTX-12": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
+      },
+      "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -3008,8 +3034,8 @@
       "warn": 7,
       "diverged": 1,
       "signoff": 1,
-      "skip": 60,
-      "total": 89
+      "skip": 61,
+      "total": 90
     },
     "rules": {
       "BUILD-01": {
@@ -3123,6 +3149,10 @@
       "CTX-12": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
+      },
+      "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -3382,8 +3412,8 @@
       "warn": 21,
       "diverged": 0,
       "signoff": 3,
-      "skip": 53,
-      "total": 89
+      "skip": 54,
+      "total": 90
     },
     "rules": {
       "BUILD-01": {
@@ -3497,6 +3527,10 @@
       "CTX-12": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
+      },
+      "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -3757,8 +3791,8 @@
       "warn": 10,
       "diverged": 0,
       "signoff": 4,
-      "skip": 41,
-      "total": 89
+      "skip": 42,
+      "total": 90
     },
     "rules": {
       "BUILD-01": {
@@ -3872,6 +3906,10 @@
       "CTX-12": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
+      },
+      "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -4347,8 +4385,8 @@
       "fail": 4,
       "diverged": 0,
       "signoff": 3,
-      "skip": 45,
-      "rules": 77,
+      "skip": 46,
+      "rules": 78,
       "jdg": {
         "records": 1,
         "swept": 1,
@@ -4379,8 +4417,8 @@
       "warn": 14,
       "diverged": 0,
       "signoff": 3,
-      "skip": 54,
-      "total": 89
+      "skip": 55,
+      "total": 90
     },
     "rules": {
       "BUILD-01": {
@@ -4494,6 +4532,10 @@
       "CTX-12": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
+      },
+      "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
       },
       "CLAIM-00": {
         "tag": "SKIP",
@@ -4753,8 +4795,8 @@
       "warn": 10,
       "diverged": 0,
       "signoff": 1,
-      "skip": 69,
-      "total": 89
+      "skip": 70,
+      "total": 90
     },
     "rules": {
       "BUILD-01": {
@@ -4868,6 +4910,10 @@
       "CTX-12": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
+      },
+      "CTX-13": {
+        "tag": "SKIP",
+        "detail": "no numbered ADR files found"
       },
       "CLAIM-00": {
         "tag": "SKIP",

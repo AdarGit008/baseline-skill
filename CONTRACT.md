@@ -33,6 +33,23 @@ subject glob-matches the path is *sanctioned* and excluded from the finding;
 `break-glass` never sanctions (it is outage relief), and an expired tombstone stops
 sanctioning.
 
+### Decision records — the number is the identity
+
+`ADR-NNNN` is what every citation and every relation field resolves to, so the number
+is a **scarce name**, not a label. Two files carrying one number is a blocker (CTX-14):
+a citation to ADR-0027 arrives at whichever file sorted first. Unlike a session record
+— collision-free by construction, see below — a decision number is a counter, and a
+counter needs a claim.
+
+In a multi-lane repo, take the number **only after checking it is free across the other
+live lanes**. Two lanes can author `0027-a.md` and `0027-b.md`, pass every check on
+their own trees, and merge with no git conflict at all; that is how this rule was
+found. FLOW-09 makes that check on the branch, and `baseline orient` lists the lanes to
+make it by hand. If a landed corpus already carries a duplicate and renumbering would
+break the citations pointing at it, that is a judgment — an unexpired
+`sign-off`/`risk-acceptance`/`deviation` whose subject glob-matches *either* colliding
+file sanctions the collision, on the same terms as the append-only tombstone above.
+
 ### Session records (by hand)
 
 Filename: `<YYYY-MM-DD>-<HHMMSS>-<agent>.md` (UTC, agent slug `[a-z0-9-]`) under

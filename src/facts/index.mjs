@@ -102,6 +102,46 @@ export function gatherLaneFacts(repo, forge, namespace, { enrich = true, default
   return got
 }
 
+// The lane world reads lane REFS; #49's reservation rule needs the lane TREES — what
+// another live lane has already introduced. Lazy and memoized for the same reason the
+// world itself is: a run whose reservation rule never fires must not pay for it.
+//
+// One bounded glob fetch into LANES_PRIV (laneRefsGit's refspec, so a single-branch
+// clone and a concurrent fetch are both safe), then per-ref resolution preferring what
+// we just fetched, falling back to the clone's remote-tracking ref. Under replay the
+// fetch is skipped — fixtures are the whole world there — and resolution still answers
+// from local refs, so the suite exercises the rule without a live round trip.
+//
+//   -> { fetched, reason, resolve(ref) -> a readable git ref | null,
+//        files(ref) -> [paths] | null }
+export function makeLaneObjects(repo, namespace) {
+  let state = null
+  return () => {
+    if (state) return state
+    if (!namespace) return (state = { fetched: false, reason: 'no lanes.namespace declared', resolve: () => null, files: () => null })
+    const replay = !!process.env.BASELINE_FORGE_REPLAY
+    const fetched = replay ? false : run('git', ['-C', repo.REPO, 'fetch', 'origin', `+refs/heads/${namespace}:${LANES_PRIV}${namespace}`], { timeout: 60000 }) !== null
+    const reason = replay ? 'forge replay — no live fetch; reading refs the clone already holds'
+      : fetched ? null : 'lane fetch failed (origin unreachable?) — reading refs the clone already holds'
+    const has = r => run('git', ['-C', repo.REPO, 'rev-parse', '--verify', '--quiet', r + '^{commit}']) !== null
+    const seen = new Map()
+    const resolve = ref => {
+      if (seen.has(ref)) return seen.get(ref)
+      const hit = [LANES_PRIV + ref, 'refs/remotes/origin/' + ref].find(has) || null
+      seen.set(ref, hit)
+      return hit
+    }
+    // One bounded ls-tree per lane. The lane list is already capped at LANE_PAGE, so the
+    // fan-out is capped with it; a failed listing answers null (uninspectable), never [].
+    const files = ref => {
+      const r = resolve(ref); if (!r) return null
+      const out = run('git', ['-C', repo.REPO, 'ls-tree', '-r', '--name-only', r], { timeout: 30000 })
+      return out === null ? null : out.split('\n').filter(Boolean)
+    }
+    return (state = { fetched, reason, resolve, files })
+  }
+}
+
 // The LAZY lane-world for `check` (M5c — the plumbing the FLOW/DIV rules evaluate
 // through): probe + forge + lane gathering + lease derivation, computed ONCE on first
 // demand and only then — a single-lane repo, an off-posture run, or a rule set with
@@ -147,6 +187,7 @@ export function makeLaneWorld(repo, descriptor, { forgeClosed = null, probe = un
       issueState, issueStates,
       prsOpen: () => forge.prsOpen(),
       prsOpenOrNull: () => forge.prsOpenOrNull(), // null when the query FAILED (vs [] when closed)
+      laneObjects: makeLaneObjects(repo, ns),
     }
     return world
   }

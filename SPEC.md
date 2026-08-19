@@ -1,105 +1,121 @@
-# Spec: Issue #57 — the decision graph's amendment edges must be read by a rule
+# Spec: Issue #49 — the decision-record number is a scarce name, and nothing reserved it
 
 ## Objective
 
-Two ADR checks read the **supersede** relation and only that. `adr-status` (CTX-02)
-demands a forward link when the status matches `superseded|deprecated|replaced`;
-`adr-forward-link` (CTX-07) resolves exactly one pattern, `Supersed(ed) by … NNNN`.
-`Amends:` and `Amended-by:` are read by no rule, no kind, and no schema check — so an
-ADR declaring `Amends: ADR-0019` where no ADR-0019 exists passes both, and the record
-that *was* amended never learns it was.
+Two lanes of the same repo each authored a decision record numbered **0027**, under
+different filenames:
 
-That is the wrong half of the graph to check. Supersession is terminal: the reader is
-sent elsewhere and the dead end is loud. Amendment is what a decision does when part of
-it survives, so the amended record stays the one a citation arrives at — and it is the
-one that does not know it has been corrected. The corpus that produced this issue
-(`AdarGit008/mcgyvr`, 36 ADRs) carries **18 amendment edges to 4 supersede-shaped ones,
-and 15 of the 18 are declared in one direction only**.
+- `lane/265` — `docs/decisions/0027-run-identity-is-one-block-and-an-unreadable-field-is-a-refusal.md`
+- `lane/282` — `docs/decisions/0027-a-routing-policy-is-adopted-only-if-it-is-inspectable-here-and-measured-here.md`
 
-Read every declared edge, resolve it against the tree, and report an amendment declared
-at one end only.
+Both branches passed `baseline check` — correctly, because neither tree contained a
+duplicate. Both would merge into the default branch with **no git conflict**, because
+the paths differ. The result on `main` would be two ADR-0027s, and nothing anywhere
+would have reported it. It was caught by a human mentioning in conversation that the
+other lane was in flight. That is the whole detection mechanism today.
+
+The model is already in the repo: **a lane claims a scarce name before using it.**
+`lane claim` is an atomic ref transaction at origin precisely so two agents cannot claim
+one issue. The issue number is protected that way. The decision-record number is the
+other scarce name in a multi-lane repo, and it is unprotected.
 
 ### Success criteria
 
-- The #57 repro inverts: `Amends: ADR-0019 (D5 sizing), ADR-0017 (…)` reports the
-  dangling `0019` — and reports `0017` as amended-by-nobody — where both checks passed.
-- A wrapped declaration is read whole: the second target on a continuation line counts.
-- Parenthesised commentary never declares an edge (`(D5 sizing)` is not ADR-5).
-- `Supersedes: none` / `Amended-by: n/a` declare nothing.
-- The legacy inline form `Status: Superseded by ADR-0003` still resolves — CTX-07's
-  existing verdicts do not move.
-- The **hyphenated field form the shipped template writes** — `Superseded-by: ADR-0003`
-  — resolves too, in both rules. See below: it never did.
-- A repo with history can reach clean without back-filling: the one-way finding is a
-  `warn`, and the existing judgment route (`kind: deviation`, glob `subject`) sanctions
-  a named record, with removing the judgment the proof of repair.
-- The ADR header schema and template carry the two new fields, so the machine-read
-  header and the rules agree on what a decision record declares.
+- The issue's own repro inverts. On a two-lane world, the second lane's `0027` is a
+  **finding on that lane**, naming the lane that already holds the number and both
+  filenames — while both trees stay individually clean, which is the whole incident.
+- The collision cannot **survive** where it lands: two conflict-free merges put two
+  ADR-0027s on the default branch, and the gate there turns red.
+- The merge order that actually shipped it is covered. When the first lane lands
+  *before* the second one checks, no live lane holds `0027` any more — the default
+  branch does. A rule that reads "what number is new to me" goes quiet exactly there.
+- A **rename** is not a second claim: moving `0027-a.md` to `0027-b.md` introduces a
+  path, not a number.
+- A lane branched **off another lane** shares its parent's record at the *same path* —
+  one record reached twice, never a collision.
+- A lane whose objects the clone cannot resolve is **counted and named**, never folded
+  into a pass.
+- A gap in the sequence is **reported and is not a finding**.
+- A corpus that already carries a duplicate can reach clean without renumbering, through
+  the ledger route the repo already has — with an expiry date.
 
 ## The fork, as decided
 
 Three choices the issue leaves open; recorded here before code (#52's plan requires it).
 
-**1. Widen CTX-07, add one rule — do not add a family.** Resolving a declared edge is
-CTX-07's own sentence with a wider subject, so the four verbs go into the existing kind.
-Whether an amendment is declared at *both* ends is a different question with a different
-severity and a different adoption story, so it is **CTX-13** (`adr-backlink`), not a
-second meaning bolted onto CTX-07's detail string.
+**1. Two rules, in the two families whose subjects they are — not one widened rule.**
+The issue offers CTX-02 or FLOW and asks for a ruling. Both, because they are two
+different sentences:
 
-**2. The allowlist is the judgment ledger, not a new frozen file.** mcgyvr's shape is a
-`MISSING_BACKPOINTERS` constant in a test. This repo already has one home for
-"sanctioned, not an offence" — an unexpired `sign-off`/`deviation`/`risk-acceptance`
-whose glob `subject` matches the path (`SANCTION_KINDS`, REC-01's route since #47).
-Reusing it buys expiry (a frozen list never lapses; `review_by` does) and costs nothing
-new to learn. Same trade-off as REC-01's tombstone: the `subject` is a glob, so
-`docs/decisions/**` would sanction the whole corpus including future one-way edges —
-that breadth is the author's call and the rule's `fix` says so.
+- **CTX-14** (`adr-number-unique`, blocker, context) is a property of *a corpus at
+  rest*: one number, one record. It is posture-independent, tree-local, needs no forge
+  and no other lane, and holds on the default branch — which is where the collision
+  ends up.
+- **FLOW-09** (`lane-adr-reservation`, blocker, flow) is a property of *concurrent
+  lanes*: this lane must not take a name a live lane already took. It is
+  workflow-gated, branch-scoped, and reads through `LANEWORLD` like every other lane
+  rule.
 
-**2a. CTX-02 reads the same parser (found while implementing).** Both rules match
-`supersed(ed)?\s*by`, where `\s*` does not match a hyphen — so `Superseded-by: ADR-0003`,
-**the form `templates/adr.md` ships and tells authors to fill in**, is invisible to both.
-A record that follows this repo's own template and correctly names its replacement is
-reported by CTX-02 (severity *blocker*) as "superseded w/o forward link", and CTX-07
-never resolves the link it does have. That is in scope rather than a separate issue: the
-issue's own sentence is that both kinds read the supersede relation and only that, and
-the honest correction is that they did not read it correctly either. Leaving CTX-02 on a
-grep while CTX-07 reads `adrEdges` would re-create the two-readers defect this plan
-condemns, one rule apart.
+Bolting the second meaning onto CTX-02's detail string would put a cross-lane
+reservation finding under a rule titled "Every decision record carries a Status", which
+is the CTX-13 argument from #57, one issue later.
 
-**3. Amendment only, both ways; supersession keeps CTX-02.** `Amends` ⇄ `Amended-by` is
-the pair CTX-13 checks. Requiring a `Supersedes:` back-link would be a widening the
-issue does not ask for, and CTX-02 already governs the superseded record's obligation.
+**2. INTRODUCED is measured by path, not by number.** The obvious reading of the issue —
+"the decision-record numbers each lane introduces relative to the default branch" — is
+by number, and it is wrong on the merge order that produced the incident. Once `lane/265`
+merges, `0027` *is* on the default branch, so `lane/282` introduces no new number and the
+duplicate sails through. A lane adds a *file*; whether its number is free is the
+question. FLOW-09 therefore reports two collisions with one sentence: against another
+live lane, and against the default branch this lane is about to merge into.
+
+**3. Adoption is the judgment ledger, at blocker severity.** Renumbering a decision
+record **breaks the citations that point at it**, so a corpus that already carries a
+duplicate may rationally keep it — this is a stronger reason for the sanction route than
+CTX-13 had, not a weaker one. An unexpired `sign-off`/`deviation`/`risk-acceptance`
+whose glob `subject` matches **either** colliding file clears it (`SANCTION_KINDS`,
+REC-01's route since #47); deleting the judgment is how a repair is proved, and
+`review_by` is the expiry a frozen allowlist never has. Naming either end names the
+collision: a collision has two paths and no privileged one.
 
 ### Stated limits
 
-- **CTX-13 checks edges whose target exists.** A dangling `Amends:` is CTX-07's
-  finding; reporting it twice would make one defect read as two.
-- **Numbers, not paths.** An edge resolves against the *number* parsed from a decision
-  filename, which is how CTX-07 has always resolved. Two files sharing a number is
-  #49's subject and stays there.
-- **Same-day amendments are legitimate.** No cycle or ordering check is attempted; a
-  record may amend one authored the same day, and CTX-13 says nothing about it.
-- **`Amended-by:` is not required to exist as a field.** Absence on the target *is* the
-  finding; the rule never rewrites the target.
+- **CTX-14 cannot see the other lane.** That is FLOW-09's job. CTX-14 is the floor: it
+  guarantees the collision does not survive on the branch where both lanes land, which
+  the issue calls "strictly better than nothing".
+- **Numbers, not content.** Two records with the same number are a collision even if
+  they are byte-identical, and two records with different numbers are not a collision
+  even if they decide the same thing. Identity here is what every consumer reads —
+  CTX-07's edge resolution, CTX-13's pairing, a human following "see ADR-0027".
+- **A gap is not a finding.** A missing `0027` rides CTX-14's PASS detail. A retracted
+  draft and a number reserved on a lane that never landed both look like this, and
+  neither is an error.
+- **Reported once per number.** A number already reported against the default branch is
+  not repeated per lane. The one exception is a lane that *renamed* the base's holder:
+  it clears the base finding and can still collide with a lane that authored a second
+  record under that number.
+- **The forge is not consulted.** FLOW-09 is a git-plane question end to end; under
+  `multi-lane-local` it works with the forge closed, and the behavioural suite proves
+  it there.
 
 ## Scope
 
-**In**: `adrEdges()` in `src/records.mjs` (wrapped fields, paren-stripped, four verbs) ·
-CTX-02's forward-link test routed through it ·
-`parseAdrHeader` + `schema/record.adr.schema.json` + `templates/adr.md` gain
-`amends`/`amended_by` · `adr-forward-link` widened · new `adr-backlink` kind and CTX-13
-in `rules/ctx.json` · records-suite cases · docs-repo fixture gains an amendment pair ·
-golden re-pin.
+**In**: `adr-number-unique` kind + **CTX-14** in `rules/ctx.json` (with the gap note and
+the sanction route) · `lane-adr-reservation` kind + **FLOW-09** in `rules/flow.json` ·
+`laneObjects()` on the lane world (`src/facts/index.mjs`) — one bounded glob fetch,
+lazy and memoized like the world itself · `gitLsTree` and `gitDiffNames`'
+`deletedOnly` in `src/repo.mjs` · records-suite cases for CTX-14 · flow-suite cases for
+FLOW-09 · docs-repo fixture gains a duplicate pair · golden re-pin · rule-count docs.
 
-**Out**: #49's number collisions · a generated decision index · cycle/ordering checks ·
-requiring supersede back-links · `CONTRACT.md`'s decision-record procedure beyond the
-template's comment.
+**Out**: a `lane claim`-style *pre*-reservation of numbers at origin (this rule detects,
+it does not allocate) · renumbering automation · a generated decision index · the
+issue's adjacent CI-event finding, which landed as **#55**.
 
 ## Tech stack / commands
 
 ```
-repro (#57):   see the issue — scratch repo, two ADRs, one dangling Amends:
+repro (#49):   see the issue — two lanes, one number, two filenames, no git conflict
 records suite: node test/records/run.mjs
+flow suite:    node test/flow/run.mjs
 golden:        node test/golden/run.mjs --verify   (re-pin: --capture)
 full suite:    node test/{records,golden,orient,facts,lane,flow,admit,reconcile,gen}/run.mjs
 self-check:    node check.mjs --self-check

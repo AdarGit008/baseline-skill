@@ -7,6 +7,45 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 ## [Unreleased]
 
 ### Added
+- **CTX-14 — no two decision records claim the same number (issue #49)**: a new
+  deterministic blocker over the identity every consumer of the corpus reads off a
+  filename. Two lanes of one repo each authored an **ADR-0027** under a different
+  filename; both trees were clean, both passed `baseline check`, and both would merge
+  into the default branch with **no git conflict** — because the paths differ. The
+  result on `main` would be two ADR-0027s, and nothing anywhere would have reported it.
+  It was caught by a human mentioning in conversation that the other lane was in flight.
+  CTX-14 is the floor: it cannot see the other lane, but it guarantees the collision
+  cannot *survive* — whichever side merges second turns the gate red where both lanes
+  land. The finding names the number and every file claiming it. A **gap** in the
+  sequence rides the PASS detail and is deliberately not a verdict (a retracted draft
+  and a number reserved on a lane that never landed both look like this). Adoption goes
+  through the existing ledger route, and matters more here than it did for CTX-13:
+  renumbering a record **breaks the citations that point at it**, so a corpus that
+  already carries a duplicate may rationally keep it — an unexpired
+  `sign-off`/`deviation`/`risk-acceptance` whose glob `subject` matches **either**
+  colliding file sanctions it (`SANCTION_KINDS`, REC-01's route since #47), deleting it
+  is how a repair is proved, and `review_by` is the expiry a frozen allowlist never has.
+- **FLOW-09 — the lane's new decision-record numbers aren't already claimed by another
+  live lane (issue #49)**: the reservation the repo was missing. `lane claim` makes the
+  *issue* number an atomic ref transaction at origin precisely so two agents cannot claim
+  one; the *decision-record* number is the other scarce name in a multi-lane repo and had
+  no protection at all. FLOW-09 reads what this lane INTRODUCES relative to the default
+  branch and reports it against every other live lane's tree — the one moment the fix is
+  still a rename. Introduction is measured **by path, not by number**: read by number,
+  the rule would go quiet on exactly the merge order that shipped the incident (once the
+  first lane lands, `0027` *is* on the default branch, so the second lane introduces no
+  new number), so the finding covers both a live lane and the default branch this lane is
+  about to merge into. A **rename** introduces a path and not a number; a lane branched
+  **off another lane** shares its parent's record at the same path — one record reached
+  twice, never a collision; a **COMPLETED** lane holds no reservation, because its
+  numbers are already on the default branch. Blocker, posture-gated to `multi-lane` /
+  `multi-lane-local` and branch-scoped like the rest of the family, and a git-plane
+  question end to end — the behavioural suite proves it with the forge closed. Every lane
+  whose objects the clone cannot resolve is **counted and named**; all of them unreadable
+  is a labeled SKIP carrying why, never a pass. The lane world grew `laneObjects()` for
+  it: lazy and memoized like the world itself, one bounded glob fetch into the private
+  lane namespace, falling back to the clone's remote-tracking refs and skipping the fetch
+  under replay.
 - **CTX-13 — an amendment is declared at both ends (issue #57)**: a new deterministic
   warn over the relation the decision graph actually uses. Supersession is terminal —
   the reader is sent elsewhere and the dead end is loud. Amendment is what a decision
@@ -30,6 +69,12 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   `test/` corpus (which carries intentional fake secrets exercising SEC-01).
 
 ### Fixed
+- **The documented check-kind count was stale (drive-by, issue #49)**: `README.md`,
+  `REFERENCE.md`, both evaluate-stack SVGs and `src/evaluators.mjs`'s own header said
+  **41 check kinds** while the set held 43 before this branch. Corrected to 45 alongside
+  the rule count, which moves to **94 rules (28 blockers · 61 warnings · 5 sign-offs)**.
+  `REFERENCE.md`'s lane-workflow table was also missing **FLOW-08** entirely; it is
+  listed now, with its repo-wide scope named.
 - **CTX-07 resolves every declared decision edge, not one verb (issue #57)**: the rule's
   own sentence is that a declared forward link must resolve to a file that exists, and it
   applied that to exactly one pattern — `Supersed(ed) by … NNNN`, matched anywhere in the

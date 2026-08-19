@@ -382,6 +382,86 @@ const named = (w, lane, file, { record = 'session/1', next = '' } = {}) => {
   ok(out.exitCode === 0, 'the merged lane checkout exits 0 — no promotion hostage')
 }
 
+// ---------- #49: the decision-record number is reserved across live lanes ----------
+// Two lanes each authored an 0027 under different filenames. Both trees were clean, both
+// would merge with NO git conflict, and the only detection was a human mentioning in
+// conversation that the other lane was in flight. multi-lane-local throughout: the whole
+// rule is a git-plane question, and the posture proves it needs no forge.
+{
+  const { w } = world('reserve', { desc: { workflow: 'multi-lane-local', anchoring: 'off' } })
+  const D = 'docs/decisions'
+  const adr = (branch, file, title) => {
+    fs.mkdirSync(path.join(w, D), { recursive: true })
+    fs.writeFileSync(path.join(w, D, file), `# ADR-${file.slice(0, 4)} — ${title}\n\nStatus: Accepted\nDate: 2026-08-19\n\n## Context\n\nx\n`)
+    git(w, 'add', '-A'); git(w, 'commit', '-qm', `${branch}: ${file}`); git(w, 'push', '-q', 'origin', branch)
+  }
+  const f09 = out => tag(out, 'FLOW-09')
+
+  git(w, 'checkout', '-q', '-b', 'lane/265'); logRecord(w, 'lane/265', 'y')
+  adr('lane/265', '0027-run-identity-is-one-block.md', 'run identity')
+  ok(f09(checkJson(w)).tag === 'PASS' && /no other live lane/.test(f09(checkJson(w)).detail),
+    'FLOW-09: the first lane to claim 0027 passes — there is nobody to collide with yet')
+
+  git(w, 'checkout', '-q', '-b', 'lane/282', 'main'); logRecord(w, 'lane/282', 'y')
+  adr('lane/282', '0027-a-routing-policy-is-adopted.md', 'routing policy')
+  let out = checkJson(w)
+  ok(f09(out).tag === 'FAIL' && /0027/.test(f09(out).detail) && /lane\/265/.test(f09(out).detail),
+    `FLOW-09: the second lane's 0027 is reported, naming the lane that already holds it (got ${f09(out).tag}: ${f09(out).detail})`)
+  ok(/0027-a-routing-policy-is-adopted\.md/.test(f09(out).detail) && /0027-run-identity-is-one-block\.md/.test(f09(out).detail),
+    'FLOW-09: the finding names BOTH filenames — the collision is invisible in the numbers alone')
+  ok(out.exitCode === 1, 'FLOW-09 is a blocker: the lane that would ship the duplicate exits 1')
+  ok(tag(out, 'CTX-14').tag === 'PASS', "FLOW-09's collision is invisible to CTX-14 on this tree — neither lane holds a local duplicate (that is the whole incident)")
+
+  // the merge order that actually shipped it: lane/265 lands FIRST, so by the time
+  // lane/282 checks, 0027 is on the default branch and no live lane holds it. Reading
+  // "introduces" by NUMBER would go quiet here — exactly where it must not.
+  git(w, 'checkout', '-q', 'main'); git(w, 'merge', '-q', '--no-ff', '--no-edit', 'lane/265'); git(w, 'push', '-q', 'origin', 'main')
+  git(w, 'push', '-q', '-d', 'origin', 'lane/265')
+  git(w, 'checkout', '-q', 'lane/282')
+  out = checkJson(w)
+  ok(f09(out).tag === 'FAIL' && /origin\/main/.test(f09(out).detail),
+    `FLOW-09: after the other lane MERGED, the collision is reported against the default branch itself (got ${f09(out).tag}: ${f09(out).detail})`)
+
+  // and the floor holds where the collision lands: merge both and CTX-14 turns main red
+  git(w, 'checkout', '-q', 'main'); git(w, 'merge', '-q', '--no-ff', '--no-edit', 'lane/282'); git(w, 'push', '-q', 'origin', 'main')
+  out = checkJson(w)
+  ok(tag(out, 'CTX-14').tag === 'FAIL' && /0027 claimed by/.test(tag(out, 'CTX-14').detail),
+    'CTX-14: two conflict-free merges put two ADR-0027s on main, and the default branch goes red instead of shipping them silently')
+
+  // the repair, and the two shapes that must NOT read as a claim
+  git(w, 'checkout', '-q', '-b', 'lane/300', 'main'); logRecord(w, 'lane/300', 'y')
+  adr('lane/300', '0028-free.md', 'a free number')
+  ok(f09(checkJson(w)).tag === 'PASS', 'FLOW-09: a lane taking a free number passes')
+  git(w, 'checkout', '-q', '-b', 'lane/400', 'main'); logRecord(w, 'lane/400', 'y')
+  git(w, 'mv', path.join(D, '0027-run-identity-is-one-block.md'), path.join(D, '0027-run-identity.md'))
+  git(w, 'commit', '-qm', 'rename 0027'); git(w, 'push', '-q', 'origin', 'lane/400')
+  ok(f09(checkJson(w)).tag === 'FAIL' && !/lane\/300/.test(f09(checkJson(w)).detail),
+    'FLOW-09: a RENAME introduces a path, not a number — the lane that renamed 0027 is not reported against the record it renamed')
+  git(w, 'checkout', '-q', '-b', 'lane/500', 'lane/300'); logRecord(w, 'lane/500', 'z'); git(w, 'push', '-q', 'origin', 'lane/500')
+  const off = checkJson(w)
+  ok(f09(off).tag === 'PASS' && !/lane\/300/.test(f09(off).detail || ''),
+    `FLOW-09: a lane branched OFF another lane shares 0028 at the SAME path — one record reached twice, not a second claim (got ${f09(off).tag}: ${f09(off).detail})`)
+}
+
+// ---------- #49: a lane the clone cannot read is NAMED, never folded into a pass ----------
+{
+  const { w, replayDir } = world('reserve-blind', {
+    replay: {
+      // the forge advertises a lane that was never pushed here — its objects are
+      // unreachable, which must read as "not inspectable", not as "no collision"
+      'lane-refs-refs_heads_lane_.json': { data: { repository: { refs: { pageInfo: { hasNextPage: false }, nodes: [{ name: '999', target: { oid: '0'.repeat(40), committedDate: '2026-08-19T00:00:00Z', message: 'claim lane/999: issue #999\n\nBaseline-Issue: #999\nBaseline-Agent: t', associatedPullRequests: { nodes: [] } } }] } } } },
+      'issue-999.json': { number: 999, state: 'open', title: 'elsewhere' },
+    },
+  })
+  git(w, 'checkout', '-q', '-b', 'lane/1'); logRecord(w, 'lane/1', 'y')
+  fs.mkdirSync(path.join(w, 'docs/decisions'), { recursive: true })
+  fs.writeFileSync(path.join(w, 'docs/decisions/0027-mine.md'), '# ADR-0027 — mine\n\nStatus: Accepted\nDate: 2026-08-19\n\n## Context\n\nx\n')
+  git(w, 'add', '-A'); git(w, 'commit', '-qm', 'adr'); git(w, 'push', '-q', 'origin', 'lane/1')
+  const r = tag(checkJson(w, { replayDir }), 'FLOW-09')
+  ok(r.tag === 'SKIP' && /none of the 1 other live lane\(s\) is inspectable locally/.test(r.detail || '') && /no live fetch/.test(r.detail || ''),
+    `FLOW-09: when every other live lane is unreadable the verdict is a labeled SKIP carrying WHY, never a pass (got ${r.tag}: ${r.detail})`)
+}
+
 // ---------- #55: the lane rules run on the event that gates the merge ----------
 // `actions/checkout` leaves refs/pull/N/merge DETACHED on a pull_request, so a gate that
 // reads the checkout alone was n/a on exactly the event a branch-protection ruleset

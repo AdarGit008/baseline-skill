@@ -1,4 +1,4 @@
-// The ~41 declarative check kinds. makeEvalCheck(ctx) closes over the repo index,
+// The ~45 declarative check kinds. makeEvalCheck(ctx) closes over the repo index,
 // resolved config, and run flags; evalCheck(c, rule) -> {ok:true|false|null, detail, soft?, signoff?}.
 // ok:null means "not evaluable here" and always tags SKIP — one broken rule can't take down the run.
 import path from 'node:path'
@@ -30,7 +30,9 @@ const SANCTION_KINDS = ['sign-off', 'deviation', 'risk-acceptance']
 const ADR_EDGE_VERBS = [['supersedes', 'supersedes'], ['superseded_by', 'is superseded by'], ['amends', 'amends'], ['amended_by', 'is amended by']]
 // A decision file's own number, from its filename — the identity CTX-07 has always
 // resolved against ('0003-new.md' -> 3, so '0003', 'ADR-3' and '3' are one decision).
-// Two files sharing a number is #49's subject, not this one's: the first wins here.
+// Two files sharing a number is CTX-14's finding (#49); the edge rules keep resolving
+// against the first, because an edge to a twice-claimed number has no better answer
+// than the collision itself — reported once, where it is the subject.
 function adrFileNumber(f) { const m = (f.split('/').pop() || '').match(/\d{1,4}/); return m ? parseInt(m[0], 10) : null }
 
 // The AUTHORITATIVE closing set per open PR: forge closingIssuesReferences (the sidebar
@@ -48,10 +50,10 @@ function scopedPrClosers(w) {
 }
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'adr-backlink', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'descriptor-valid', 'records-append-only', 'records-scrub', 'records-one-home', 'vendored-lock', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'pr-closes-own-anchor', 'descriptor-change', 'merge-sister-dep', 'forge-protection', 'workflow-state'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'adr-backlink', 'adr-number-unique', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'descriptor-valid', 'records-append-only', 'records-scrub', 'records-one-home', 'vendored-lock', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'lane-adr-reservation', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'pr-closes-own-anchor', 'descriptor-change', 'merge-sister-dep', 'forge-protection', 'workflow-state'])
 
 export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
-  const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile } = repo
+  const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile, gitLsTree } = repo
   // The lane rules diff against where the branch diverged: the descriptor-declared
   // default branch, preferring whichever of local/origin twin is NEWER (a stale
   // local default widens the branch diff with upstream-authored commits); an
@@ -355,6 +357,44 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       if (!oneWay.length) return { ok: true, detail: paired ? `${paired} amendment edge(s) declared at both ends` : 'no amendment edges declared' }
       if (!unexplained.length) return { ok: true, detail: `${sanctioned.length} one-way amendment(s) sanctioned by judgment: ` + sanctioned.map(s => `${s.text} [${s.by}]`).join('; ') }
       return { ok: false, detail: `${unexplained.length} one-way amendment(s): ` + unexplained.slice(0, 3).map(o => o.text).join('; ') + (unexplained.length > 3 ? ` (+${unexplained.length - 3})` : '') + (sanctioned.length ? ` — ${sanctioned.length} sanctioned (${sanctioned.map(s => s.by).join(', ')})` : '') }
+    }
+
+    // CTX-14 (#49): the decision-record NUMBER is a scarce name, and nothing owned it.
+    // Two lanes each authored an 0027 under different filenames; both trees were clean,
+    // both merges were conflict-free, and `main` ended with two ADR-0027s that no check
+    // had an opinion about. This is the floor: it cannot see the other lane (that is
+    // FLOW-09's), but it guarantees the collision does not SURVIVE — whichever side
+    // merges second turns the default branch red instead of shipping a silent duplicate.
+    //
+    // Numbers, not paths: `0027-a.md` and `0027-b.md` are one decision's identity claimed
+    // twice, which is exactly how CTX-07/CTX-13 resolve an edge — a citation to ADR-0027
+    // arrives at whichever file sorted first.
+    //
+    // Adoption: renumbering a record BREAKS the citations that point at it, so a corpus
+    // that already carries a duplicate may rationally keep it. The existing judgment route
+    // sanctions it — an unexpired sign-off / deviation / risk-acceptance whose glob
+    // `subject` matches EITHER colliding file (naming one end names the collision), with
+    // deleting the judgment the proof of repair. Same route as REC-01 and CTX-13.
+    if (k === 'adr-number-unique') {
+      const files = match(cfg[c.globs_from_config]).filter(isAdrFile); if (!files.length) return { ok: null, detail: 'no numbered ADR files found' }
+      const byNum = new Map()
+      for (const f of files) { const n = adrFileNumber(f); if (n == null) continue; if (!byNum.has(n)) byNum.set(n, []); byNum.get(n).push(f) }
+      if (!byNum.size) return { ok: null, detail: `${files.length} decision doc(s), none carrying a number in the filename` }
+      const pad = n => String(n).padStart(4, '0')
+      const dupes = [...byNum.entries()].filter(([, fs]) => fs.length > 1).sort((a, b) => a[0] - b[0])
+        .map(([n, fs]) => ({ n, files: fs, text: `${pad(n)} claimed by ${fs.map(f => f.split('/').pop()).join(', ')}` }))
+      // A gap is not an error — it is worth seeing (a retracted draft, or a number
+      // reserved on a lane that never landed). It rides the detail, never the verdict.
+      const nums = [...byNum.keys()].sort((a, b) => a - b)
+      const gaps = []
+      for (let i = nums[0]; i < nums.at(-1); i++) if (!byNum.has(i)) gaps.push(pad(i))
+      const gapNote = gaps.length ? ` · gap(s) in the sequence (not an error): ${gaps.slice(0, 5).join(', ')}${gaps.length > 5 ? ` (+${gaps.length - 5})` : ''}` : ''
+      if (!dupes.length) return { ok: true, detail: `${nums.length} decision number(s) unique across ${files.length} record(s)${gapNote}` }
+      const sanctionsOf = paths => [...new Set(paths.flatMap(p => (JUDGMENTS || []).filter(j => SANCTION_KINDS.includes(j.kind) && j.review_by >= TODAY && globMatcher(j.subject).test(p)).map(j => j.id)))]
+      const sanctioned = [], unexplained = []
+      for (const d of dupes) { const ids = sanctionsOf(d.files); if (ids.length) sanctioned.push({ text: d.text, by: ids.join(', ') }); else unexplained.push(d) }
+      if (!unexplained.length) return { ok: true, detail: `${sanctioned.length} duplicate number(s) sanctioned by judgment: ` + sanctioned.map(s => `${s.text} [${s.by}]`).join('; ') + gapNote }
+      return { ok: false, detail: `${unexplained.length} decision number(s) claimed twice: ` + unexplained.slice(0, 3).map(d => d.text).join('; ') + (unexplained.length > 3 ? ` (+${unexplained.length - 3})` : '') + (sanctioned.length ? ` — ${sanctioned.length} sanctioned (${sanctioned.map(s => s.by).join(', ')})` : '') }
     }
 
     if (k === 'config-nonempty') { const v = cfg[c.path]; const ne = nonEmpty(v); return { ok: ne, detail: ne ? 'declared' : `config.${c.path} empty` } }
@@ -869,6 +909,93 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       const prov = me.source === 'git' ? ' · git plane, committer clock (low confidence)' : ''
       if (me.state === 'ABANDONED') return { ok: false, detail: `lease ABANDONED (${Math.floor((me.age_ms ?? 0) / DAY)}d idle of ttl ${w.ttl})${prov} — renew (push work) or hand it over (baseline lane reclaim)` }
       return { ok: true, detail: `lease ${me.state} (${Math.floor((me.age_ms ?? 0) / 3600000)}h idle of ttl ${w.ttl})${prov}` }
+    }
+
+    // FLOW-09 (#49): the decision-record number is the OTHER scarce name in a multi-lane
+    // repo. `lane claim` makes the issue number an atomic reservation at origin precisely
+    // so two agents cannot claim one; the ADR number had no such protection, so two lanes
+    // each authored an 0027, each tree was clean, and neither merge conflicted. CTX-14 is
+    // the floor that stops it surviving on the default branch; this is the rule that sees
+    // it while both lanes are still open — the only place it can still be cheap to fix.
+    //
+    // INTRODUCES is a file this lane ADDS (see below for why it is measured by path and
+    // not by number). Two lanes introducing the same number at the SAME path is one record
+    // reached two ways — a lane branched off a lane — and not a collision. The finding is
+    // one number, two paths, and either another lane or the default branch itself.
+    //
+    // Degradation is per-lane and counted, never silent: a lane whose objects the clone
+    // cannot resolve is named in the detail, so "no collisions" never quietly means "I
+    // could read one of the four".
+    if (k === 'lane-adr-reservation') {
+      if (nonResidentLane()) return { ok: null, detail: `'${BRANCH}' is a declared-family / non-namespace branch — number reservation n/a (placement is FLOW-04's)` }
+      const w = LANEWORLD()
+      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
+      const base = baseRef()
+      if (!base) return { ok: null, detail: `default branch '${DEFAULT_BRANCH}' not resolvable locally — what this lane INTRODUCES is underivable` }
+      const atBase = gitLsTree(base)
+      if (atBase === null) return { ok: null, detail: `could not list '${base}' — what this lane introduces is underivable` }
+      const globs = asArr(cfg[c.globs_from_config]).map(globMatcher)
+      const decisions = paths => paths.filter(f => globs.some(g => g.test(f))).filter(isAdrFile)
+      const numOf = paths => { const m = new Map(); for (const f of paths) { const n = adrFileNumber(f); if (n != null && !m.has(n)) m.set(n, f) } return m }
+      const pad = n => String(n).padStart(4, '0')
+
+      const baseDecisions = decisions(atBase)
+      const baseNums = numOf(baseDecisions)
+      const mine = decisions(match(cfg[c.globs_from_config]))
+      // INTRODUCED is by PATH, not by number: a file this lane adds. Defining it by number
+      // would make the rule blind on the merge order that actually shipped the incident —
+      // the second lane checking AFTER the first one merged already sees 0027 on the
+      // default branch, so "a number the base doesn't have" is empty and the duplicate
+      // sails through. A lane adds a file; whether its number is free is the question.
+      const baseSet = new Set(baseDecisions)
+      const introduced = mine.filter(f => !baseSet.has(f)).map(f => [adrFileNumber(f), f]).filter(([n]) => n != null)
+      if (!introduced.length) return { ok: true, detail: `this lane introduces no decision record beyond '${base}' — nothing to reserve` }
+      const mineTxt = [...new Set(introduced.map(([n]) => pad(n)))].sort().join(', ')
+
+      // A RENAME is not a second claim: a lane that moved `0027-a.md` to `0027-b.md`
+      // introduces a path, not a number. What separates it from a genuine duplicate is
+      // whether THIS lane removed the base's holder — not whether the holder is absent
+      // from this tree, which is also true of the merge order that shipped the incident
+      // (the second lane branched before the first one's record landed on the default
+      // branch, so it never held the file it is about to duplicate). null degrades to
+      // "deleted nothing", which reports rather than hides.
+      const removed = new Set(gitDiffNames(`${base}...HEAD`, null, { deletedOnly: true, noRenames: true }) || [])
+      const hits = [], reportedVsBase = new Set()
+      // 1. against the default branch itself — the collision that merging this lane
+      //    would CREATE, which CTX-14 would then find on the default branch, too late.
+      for (const [n, f] of introduced) {
+        const held = baseNums.get(n)
+        if (!held || held === f || removed.has(held)) continue
+        reportedVsBase.add(n)
+        hits.push(`${pad(n)} — this lane's ${f.split('/').pop()} vs '${base}' already carrying ${held.split('/').pop()}`)
+      }
+      // 2. against every other live lane. A COMPLETED lane's numbers are already on the
+      //    default branch (that is what COMPLETED means), so case 1 has them; it cannot
+      //    hold a second reservation. Degradation is per-lane and counted — a lane the
+      //    clone cannot resolve is named, never folded into a pass.
+      const others = w.lanes.filter(l => l.ref !== BRANCH && l.state !== 'COMPLETED')
+      const objs = others.length ? w.laneObjects() : null
+      const blind = []
+      for (const l of others) {
+        const files = objs.files(l.ref)
+        if (files === null) { blind.push(l.ref); continue }
+        const theirs = numOf(decisions(files))
+        for (const [n, f] of introduced) {
+          const t = theirs.get(n)
+          // same path = one record two lanes can see (a lane branched off a lane), not a
+          // second claim. A number case 1 ALREADY reported is not repeated — but a number
+          // the base merely holds is not enough to suppress this: a lane that RENAMED the
+          // base's holder clears case 1 and still collides with a lane that authored a
+          // second record under that number.
+          if (!t || t === f || reportedVsBase.has(n) || removed.has(t)) continue // removed: the record THIS lane renamed, seen at its old path
+          hits.push(`${pad(n)} — this lane's ${f.split('/').pop()} vs ${l.ref}'s ${t.split('/').pop()}${l.state ? ` (lane ${l.state})` : ''}`)
+        }
+      }
+      const blindNote = blind.length ? ` · ${blind.length} lane(s) not inspectable (${blind.slice(0, 3).join(', ')}${blind.length > 3 ? ` +${blind.length - 3}` : ''}${objs?.reason ? `; ${objs.reason}` : ''})` : ''
+      if (hits.length) return { ok: false, detail: `${hits.length} decision number(s) already claimed: ` + hits.slice(0, 3).join('; ') + (hits.length > 3 ? ` (+${hits.length - 3})` : '') + blindNote }
+      if (others.length && blind.length === others.length) return { ok: null, detail: `introduces ${mineTxt}, free against '${base}'; none of the ${others.length} other live lane(s) is inspectable locally${objs?.reason ? ` — ${objs.reason}` : ''}` }
+      if (!others.length) return { ok: true, detail: `introduces ${mineTxt}; free against '${base}', and no other live lane to collide with${w.source ? '' : ` (lanes underived: ${w.reason})`}` }
+      return { ok: true, detail: `introduces ${mineTxt}; unclaimed across '${base}' and ${others.length - blind.length} other live lane(s)${blindNote}` }
     }
 
     // ---- DIV kinds: all three route their classification through deriveDivergence (the

@@ -21,11 +21,41 @@ its inline `|| process.env.GITHUB_HEAD_REF` and gained the `GITHUB_REF_NAME` leg
   on one run-level line rather than in each rule's detail meant 18 fixtures verified
   identical with no re-pin. A plan step that dissolves is worth more than one that lands.
 
+## What CI caught that local runs could not
+
+The first push went red on two `records` assertions — `detached HEAD (a CI checkout)
+SKIPs lane rules, honestly` and its FLOW-06 twin — that pass locally and always had.
+The cause was the fix itself, not the fixture: a GitHub Actions job exports
+`GITHUB_HEAD_REF` to **every** step, and a suite scoring a temp fixture inherited it, so
+`resolveLane` labeled an unrelated repository with this PR's branch. The environment was
+being read as a global fact when it is a fact about **one checkout**.
+
+`envSpeaksFor` is the correction: where `GITHUB_WORKSPACE` is set and this repo is not at
+or under it, the event describes somebody else's tree and is refused. *At or under*, not
+equal — `actions/checkout` with a `path:` puts the repo in a subdirectory of the
+workspace, and that is still the checkout the event describes.
+
+Two harness lessons rode along. `test/admit/run.mjs` already stripped `GITHUB_HEAD_REF`
+with a comment naming this exact hazard; its list simply predated the other four
+variables. `test/flow/run.mjs` stripped nothing, and under a simulated CI env three of
+the new #55 cases failed for reasons that had nothing to do with the code under test —
+an ambient `GITHUB_HEAD_REF` outranking the `GITHUB_REF_NAME` the case meant to exercise.
+Both harnesses now build one clean slate and re-inject explicitly, and the full suite was
+re-run **under a simulated CI env** as well as locally.
+
+The regression case for it is in the flow suite: an event whose `GITHUB_WORKSPACE` is a
+different repo names no lane here.
+
 ## Residual risk, accepted
 
-- A stale exported `GITHUB_HEAD_REF` names a lane on a detached local checkout. Bounded:
-  it applies only where the answer was previously `null` (SKIP), and the report names
-  the variable it believed rather than presenting the lane as observed fact.
+- A stale exported `GITHUB_HEAD_REF` names a lane on a detached local checkout *when no
+  `GITHUB_WORKSPACE` contradicts it*. Bounded: it applies only where the answer was
+  previously `null` (SKIP), and the report names the variable it believed rather than
+  presenting the lane as observed fact.
+- A job that scores a repository **nested under** its own workspace (a vendored or
+  submodule tree) would have the outer event's branch applied to it. Accepted in favour
+  of not breaking `actions/checkout` with a `path:`, which is the common configuration;
+  the nested-scoring one is not.
 - On `pull_request` the rules read the merge result, not the lane tip. Named on the
   lane line and in `REFERENCE.md`. A future rule that needs the tip specifically must
   ask for it rather than assume `HEAD` is it — recorded here so it is not rediscovered.

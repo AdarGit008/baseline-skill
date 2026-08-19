@@ -27,8 +27,10 @@ const GITENV = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_A
 // review_by comparisons, and CI's pull_request events set GITHUB_HEAD_REF for every
 // step — which admit deliberately reads on detached HEAD, so the detached-HEAD assert
 // below would read the LEAKED branch. Strip them all; tests re-inject explicitly.
+// GITHUB_WORKSPACE joined the list at #55: resolveLane refuses an event whose workspace
+// is a different repo, so a leaked one would silence a re-injected GITHUB_HEAD_REF.
 const CLEAN_ENV = { ...process.env }
-for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'BASELINE_GOV_ADMIN', 'GITHUB_HEAD_REF']) delete CLEAN_ENV[k]
+for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'BASELINE_GOV_ADMIN', 'GITHUB_HEAD_REF', 'GITHUB_REF_NAME', 'GITHUB_REF_TYPE', 'GITHUB_EVENT_NAME', 'GITHUB_WORKSPACE']) delete CLEAN_ENV[k]
 const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...CLEAN_ENV, ...GITENV } }).trim()
 const cli = (cwd, args, env = {}) => spawnSync(process.execPath, [BASELINE, ...args], { cwd, encoding: 'utf8', env: { ...CLEAN_ENV, ...GITENV, ...env } })
 const admitJson = (cwd, args = [], env = {}) => {

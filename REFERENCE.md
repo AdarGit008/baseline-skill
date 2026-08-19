@@ -243,7 +243,11 @@ derivation, `resolveLane()` in `src/probe.mjs`: the checked-out branch (which al
 wins — no stale exported variable can redirect a local run), else `GITHUB_HEAD_REF` (set
 on the pull_request event and no other), else `GITHUB_REF_NAME` **only** under
 `GITHUB_REF_TYPE=branch` (a release tag is not a lane), else null — and null still SKIPs,
-because a bisect is not a lane. A lane the checkout could not name is the weaker claim, so
+because a bisect is not a lane. The event is believed only for **the workspace it describes**: where `GITHUB_WORKSPACE`
+is set and this repo is not at or under it, the environment names somebody else's
+checkout and is refused (CI caught this on #55's own PR — a suite scoring a temp fixture
+inherited the job's `GITHUB_HEAD_REF` and labeled an unrelated repo with the PR's branch).
+A lane the checkout could not name is the weaker claim, so
 the run says so once above the rule rows (`lane <name> resolved from GITHUB_HEAD_REF
 (pull_request event) …`) and carries `lane: { name, basis, event }` in `--json`; no rule's
 detail string changes. The stated limit rides that line: on a `pull_request` the tree is

@@ -48,3 +48,10 @@
 - [ ] Task 8 (next): #56 — REC-01 scores an append identically to a rewrite
 
 - [x] Task 9: document the resolution order and its limit (`REFERENCE.md`)
+
+- [x] Task 10: the guard CI taught us — `envSpeaksFor`
+  - Acceptance: an event whose `GITHUB_WORKSPACE` is a different repo names no lane;
+    a repo at or under the workspace still resolves (custom `actions/checkout` path).
+  - Verify: the two `records` assertions reproduce on the pre-guard code under a
+    simulated CI env and pass with it; whole suite re-run under that env ✓
+  - Files: `src/probe.mjs`, `test/flow/run.mjs`, `test/admit/run.mjs`

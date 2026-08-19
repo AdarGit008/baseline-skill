@@ -61,18 +61,39 @@ export function laneRefsGit(REPO, namespace) {
   return { lanes, truncated }
 }
 
-// The `## Left open` -> `next:` line of a session log (mirrors the session-log guard).
-export function extractNext(md) {
+// The `## Left open` -> `next:` line of a session log (mirrors the session-log guard),
+// and WHY it came back empty. Three different states used to answer to one `null`, and
+// FLOW-03 reported all three as the third (#50) — telling an author whose `next:` is
+// written and full that it is empty. The section IS the requirement; the finding is the
+// only place a reader learns it, so the parser hands the reason up rather than the bare
+// value. `extractNext` keeps the old shape for every caller that only wants the string.
+//   cause: 'ok' | 'no-section' (no `## Left open` heading anywhere — the `next:` is never
+//          looked at) | 'no-line' (heading, no `next:` under it) | 'blank' (`next:` under
+//          the heading with nothing after it — the only case the old message described)
+//   stray: 1-based line of a filled-in `next:` living OUTSIDE the section, or null. This
+//          is the misleading case: the author wrote a real next step, in the place a
+//          reader looks for it, just not inside the section that is read.
+export function diagnoseNext(md) {
   const lines = String(md).split('\n')
   const start = lines.findIndex(l => /^##\s+Left open\b/i.test(l))
-  if (start === -1) return null
-  for (let i = start + 1; i < lines.length; i++) {
-    if (/^##\s/.test(lines[i])) break
-    const m = lines[i].match(/^\s*next:\s*(.*)$/i)
-    if (m) return m[1].trim() || null
+  let end = lines.length
+  if (start !== -1) {
+    for (let i = start + 1; i < lines.length; i++) if (/^##\s/.test(lines[i])) { end = i; break }
+    for (let i = start + 1; i < end; i++) {
+      const m = lines[i].match(/^\s*next:\s*(.*)$/i)
+      if (m) {
+        const v = m[1].trim()
+        return v ? { next: v, cause: 'ok', stray: null } : { next: null, cause: 'blank', stray: null }
+      }
+    }
   }
-  return null
+  // Only searched when the section yielded no `next:` line at all — a blank one under the
+  // heading is already an accurate finding and needs no elsewhere-hunt.
+  const at = lines.findIndex((l, i) => (start === -1 || i < start || i >= end) && /^\s*next:\s*\S/i.test(l))
+  return { next: null, cause: start === -1 ? 'no-section' : 'no-line', stray: at === -1 ? null : at + 1 }
 }
+
+export function extractNext(md) { return diagnoseNext(md).next }
 
 // Newest local session log for a branch -> { rel, next } or null. Hostile-tree-safe: a
 // directory or dangling symlink named `*.md` must not throw (readdirSync withFileTypes

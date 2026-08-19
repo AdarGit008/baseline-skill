@@ -12,7 +12,7 @@ import { loadRules } from '../../src/rules.mjs'
 import { RECORD_KINDS, validateRecord, parseFrontmatter, renderFrontmatter, parseAdrHeader } from '../../src/records.mjs'
 import { evaluateJudgment, evalCondition, loadJudgments } from '../../src/jdg.mjs'
 import { scan, findingId, DETERMINISTIC_SOURCES } from '../../src/scrub.mjs'
-import { extractNext, newestLocalLog, gitFacts } from '../../src/facts/git.mjs'
+import { extractNext, diagnoseNext, newestLocalLog, gitFacts } from '../../src/facts/git.mjs'
 import { runRules } from '../../src/engine.mjs'
 import { makeEvalCheck } from '../../src/evaluators.mjs'
 import { indexRepo } from '../../src/repo.mjs'
@@ -145,6 +145,17 @@ try {
   const written = fs.readFileSync(path.join(t1, rel1), 'utf8')
   ok(validateRecord('session', parseFrontmatter(written).fields).length === 0, 'written record validates against its own schema')
   ok(extractNext(written) === 'wire CI', 'orient contract: extractNext reads the next: back')
+  // #50: three states used to answer to one null, and the finding described one of them.
+  ok(diagnoseNext(written).cause === 'ok', 'diagnoseNext calls a read next: ok')
+  const noSection = '# S\n\n## Did\nwork\n\nnext: the one next step\n'
+  ok(diagnoseNext(noSection).next === null && diagnoseNext(noSection).cause === 'no-section' && diagnoseNext(noSection).stray === 6,
+    'diagnoseNext: no section -> no-section, pointing at the top-level next: it did not read (#50)')
+  ok(diagnoseNext('# S\n\n## Did\nwork\n').cause === 'no-section' && diagnoseNext('# S\n\n## Did\nwork\n').stray === null,
+    'diagnoseNext: no section and no next: anywhere -> no stray to point at (#50)')
+  ok(diagnoseNext('## Left open\nnothing\n').cause === 'no-line', 'diagnoseNext: section without a next: line -> no-line (#50)')
+  ok(diagnoseNext('## Left open\nnext:   \n').cause === 'blank', 'diagnoseNext: a blank value is the one case the old message described (#50)')
+  ok(diagnoseNext('## Left open\nnext:\n\n## After\nnext: not this one\n').cause === 'blank',
+    'diagnoseNext: the section ends at the next heading — a later next: is not smuggled in (#50)')
   ok(newestLocalLog({ REPO: t1 }, 'lane/alpha').next === 'wire CI', 'orient contract: newestLocalLog resolves lane -> next')
   const r1b = sh(t1, process.execPath, [BASELINE, 'log', '--repo', t1, '-m', 'again same second'], NOW)
   ok(r1b.code === 2 && /already exists/.test(r1b.out), 'same second + agent refuses loudly (O_EXCL, no counters)')

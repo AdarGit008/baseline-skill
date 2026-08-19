@@ -104,6 +104,40 @@ function logRecord(w, lane, next) {
   ok(tag(out, 'FLOW-03').tag === 'FAIL' && /empty next:/.test(tag(out, 'FLOW-03').detail), 'FLOW-03 FAILs (blocker since M7a): a committed record with an empty next:')
 }
 
+// ---------- #50: FLOW-03 names WHICH empty state it found, not always the third ----------
+// `null` from the parser used to mean three things and the finding described one of them.
+// A record whose next: is written and full — just outside the section that is read — was
+// told its next: was empty, and the requirement it missed was named nowhere.
+const rawRecord = (w, lane, body) => {
+  const dir = path.join(w, 'records', 'sessions', lane); fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, '2026-07-01-090000-t.md'), `---\nrecord: session/1\nlane: ${lane}\nagent: t\nstarted: 2026-07-01T09:00:00Z\n---\n\n${body}`)
+  git(w, 'add', '-A'); git(w, 'commit', '-qm', 'session record')
+}
+{ // (a) the incident: no `## Left open` heading, a real next: trailing the document
+  const { w } = world('next-no-section')
+  git(w, 'checkout', '-q', '-b', 'lane/7')
+  rawRecord(w, 'lane/7', '# Session\n\n## Did\nwork\n\nnext: land the identity changes\n')
+  const d = tag(checkJson(w), 'FLOW-03')
+  ok(d.tag === 'FAIL' && /no '## Left open' section/.test(d.detail), "FLOW-03 names the missing '## Left open' section (#50)")
+  ok(/outside the section/.test(d.detail) && /line 13\b/.test(d.detail), 'FLOW-03 points at the filled-in next: it did not read, by line (#50)')
+  ok(!/empty next:/.test(d.detail), 'FLOW-03 no longer calls a filled-in next: empty (#50)')
+}
+{ // (b) no heading and no next: anywhere — same cause, nothing to point at
+  const { w } = world('next-no-section-bare')
+  git(w, 'checkout', '-q', '-b', 'lane/7')
+  rawRecord(w, 'lane/7', '# Session\n\n## Did\nwork\n')
+  const d = tag(checkJson(w), 'FLOW-03')
+  ok(d.tag === 'FAIL' && /no '## Left open' section/.test(d.detail) && !/outside the section/.test(d.detail),
+    'FLOW-03 reports the missing section with no stray parenthetical when there is no next: at all (#50)')
+}
+{ // (c) the heading is there, the line is not
+  const { w } = world('next-no-line')
+  git(w, 'checkout', '-q', '-b', 'lane/7')
+  rawRecord(w, 'lane/7', '# Session\n\n## Did\nwork\n\n## Left open\nnothing written here\n')
+  const d = tag(checkJson(w), 'FLOW-03')
+  ok(d.tag === 'FAIL' && /has no next: line/.test(d.detail), "FLOW-03 distinguishes a section with no next: line (#50)")
+}
+
 // ---------- #54: the newest record is the newest RECORD, not the last filename ----------
 // Three selections, one mechanism. `named` writes an arbitrary file name + record kind so a
 // case can make the governing record sort FIRST — which is exactly what the old filename

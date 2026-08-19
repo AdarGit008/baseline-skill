@@ -2550,7 +2550,7 @@
       },
       "REC-01": {
         "tag": "WARN",
-        "detail": "1 mutation(s): <sha> edited records/sessions/main/2026-06-30-100000-golden.md"
+        "detail": "1 mutation(s) (1 extended): <sha> inserted into records/sessions/main/2026-06-30-100000-golden.md"
       },
       "REC-02": {
         "tag": "PASS",

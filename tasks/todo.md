@@ -1,57 +1,39 @@
-# Tasks — Issue #55
+# Tasks — Issue #56
 
-- [x] Task 1: decide the fork, in the issue, before code
-  - Acceptance: #55 carries the chosen resolution order and why option (2) was declined.
-  - Verify: comment on #55, posted before the first commit on this branch ✓
-  - Files: none in-tree
+- [x] Task 1: classify an `M` event instead of reporting it flat
+  - Acceptance: `records-append-only` reads the blob at the mutating commit and
+    classifies it against the record's introduction — `appended` (introduced lines
+    still at the front, in order), `extended` (all still there, in order, insertions
+    between), `rewritten` (an introduced line gone or restated). Line-wise prefix,
+    not string-wise. An unreadable blob on either side stays `edited`.
+  - Verify: the issue's repro prints `2 mutation(s) (1 rewritten · 1 appended)` ✓
+  - Files: `src/evaluators.mjs`
 
-- [x] Task 2: `resolveLane(repo, env)`
-  - Acceptance: checkout wins; else `GITHUB_HEAD_REF`; else `GITHUB_REF_NAME` under
-    `GITHUB_REF_TYPE=branch`; else null. Returns the basis with the name.
-  - Verify: 9 flow assertions, all failing on the pre-fix resolver ✓
-  - Files: `src/probe.mjs`
+- [x] Task 2: the finding leads with the class tally and the lossy examples
+  - Acceptance: detail reads `N mutation(s) (<tally>): …`; the three printed examples
+    sort rewrites/disposals ahead of the lossless classes.
+  - Verify: 10 assertions in the records suite; 7 fail against the pre-fix evaluator
+    (the other 3 are over-reach guards — #47's sanction route, which must not move) ✓
+  - Files: `src/evaluators.mjs`, `test/records/run.mjs`
 
-- [x] Task 3: both merge-time surfaces call it
-  - Acceptance: `check.mjs` BRANCH and `admit.mjs` BRANCH derive from one function;
-    no inline `process.env.GITHUB_HEAD_REF` survives outside `probe.mjs`.
-  - Verify: `grep -rn GITHUB_HEAD_REF src/ *.mjs` → probe.mjs + reconcile's comment ✓
-  - Files: `check.mjs`, `src/admit.mjs`
+- [x] Task 3: the third class the two-way split could not carry
+  - Acceptance: a mid-file insertion is `extended`, not `appended` and not `rewritten`
+    — the issue's own golden fixture is exactly that edit, and calling it a rewrite
+    would put benign edits back in the bucket the rule is trying to empty.
+  - Verify: `flow-repo` re-pins to `1 mutation(s) (1 extended): … inserted into …` ✓
+  - Files: `src/evaluators.mjs`, `test/records/run.mjs`, `test/golden/pins.json`
 
-- [x] Task 4: the refusal is documented against the helper
-  - Acceptance: `reconcile.mjs`'s comment names `resolveLane` and why it declines it;
-    `probe.mjs` names `reconcile` as the deliberate dissenter.
-  - Verify: both comments name the other site ✓
-  - Files: `src/probe.mjs`, `src/reconcile.mjs`
+- [x] Task 4: the documentation half — the glob subject covers a class
+  - Acceptance: REC-01's `fix` says the judgment `subject` is a glob, so a corpus
+    re-pinned per sweep wants ONE standing deviation on `records/corpora/**`, and
+    names the three edit classes; `lesson` carries the split.
+  - Verify: `node check.mjs --self-check` green; an assertion proves one glob
+    deviation sanctions three sweep appends at once ✓
+  - Files: `rules/rec.json`, `test/records/run.mjs`
 
-- [x] Task 5: the run says which basis it resolved on
-  - Acceptance: human report prints a lane line when basis ≠ checkout, naming the
-    variable, the event, and that the tree is the merge result; `--json` carries
-    `lane: { name, basis, event }`.
-  - Verify: repro prints the lane line; golden shows zero detail changes ✓
-  - Files: `check.mjs`, `src/report.mjs`
-
-- [x] Task 6: regression cases
-  - Acceptance: detached+`GITHUB_HEAD_REF` evaluates the family; both events agree on
-    one commit; checkout beats env; `N/merge` and a tag push are not lanes; bare
-    detached still SKIPs.
-  - Verify: 13 new assertions pass; 9 of them fail under `git stash` control (the
-    other 4 are over-reach guards — they SKIP correctly either way) ✓
-  - Files: `test/flow/run.mjs`
-
-- [x] Task 7: re-pin the golden corpus — NOT NEEDED
-  - Acceptance: no rule's verdict changes.
-  - Verify: `node test/golden/run.mjs --verify` → 18 fixtures identical to pins, no
-    re-pin at all. The lane line prints only where the basis is not the checkout, and
-    no fixture resolves from the environment ✓
-  - Files: none
-
-- [ ] Task 8 (next): #56 — REC-01 scores an append identically to a rewrite
-
-- [x] Task 9: document the resolution order and its limit (`REFERENCE.md`)
-
-- [x] Task 10: the guard CI taught us — `envSpeaksFor`
-  - Acceptance: an event whose `GITHUB_WORKSPACE` is a different repo names no lane;
-    a repo at or under the workspace still resolves (custom `actions/checkout` path).
-  - Verify: the two `records` assertions reproduce on the pre-guard code under a
-    simulated CI env and pass with it; whole suite re-run under that env ✓
-  - Files: `src/probe.mjs`, `test/flow/run.mjs`, `test/admit/run.mjs`
+- [x] Task 5: nothing else moved
+  - Acceptance: one golden pin changes, and it is the fixture that names itself the
+    REC-01 mutation; the full suite is green.
+  - Verify: records · golden · orient · facts · lane · flow · admit · reconcile · gen
+    all exit 0 ✓
+  - Files: `CHANGELOG.md`, `tasks/todo.md`

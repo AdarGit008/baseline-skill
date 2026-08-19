@@ -10,7 +10,7 @@ import path from 'node:path'
 import { makeOpt, makeOptAll } from './src/util.mjs'
 import { loadRules } from './src/rules.mjs'
 import { indexRepo } from './src/repo.mjs'
-import { laneOrNull } from './src/probe.mjs'
+import { resolveLane } from './src/probe.mjs'
 import { resolveConfig } from './src/config.mjs'
 import { CHECK_KINDS, makeEvalCheck } from './src/evaluators.mjs'
 import { makeLaneWorld } from './src/facts/index.mjs'
@@ -41,10 +41,15 @@ const { cfg, DEFAULTS, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, JDGS, JUDGMENTS, DE
 if (SELF_CHECK) process.exit(runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }))
 
 // Lane identity for the M4c branch-scoped rules: lane = branch name (the FS2 seam
-// log/orient already use), with detached HEAD honestly null — a CI checkout or a
-// bisect is not a lane. The default branch is the descriptor's declared one only;
-// undeclared stays null and the branch gate SKIPs rather than guessing 'main'.
-const BRANCH = laneOrNull(repo)
+// log/orient already use), falling back to the CI event where the checkout is detached
+// and the event names a branch (#55: on a pull_request `actions/checkout` leaves
+// refs/pull/N/merge detached, and reading the checkout alone made every lane rule n/a on
+// the one event a branch-protection ruleset requires). Still nothing — a bisect, a
+// hand-detached local tree — is honestly null and the branch gate SKIPs. The default
+// branch is the descriptor's declared one only; undeclared stays null and the gate SKIPs
+// rather than guessing 'main'.
+const LANE = resolveLane(repo)
+const BRANCH = LANE.lane
 const DEFAULT_BRANCH = (DESCRIPTOR.valid && DESCRIPTOR.data.ground_truth_boundary?.default_branch) || null
 
 // The lane world (M5c): the capability-probe + forge-facts plumbing the FLOW/DIV rules
@@ -56,5 +61,5 @@ const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS, DESCRIPTO
 const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH })
 
 process.exit(JSON_OUT
-  ? reportJson({ results, REPO, cfg, ACTIVE, HEAD: repo.HEAD })
-  : reportHuman({ results, REPO, cfg, ACTIVE, HEAD: repo.HEAD, version: RULES.version, color }))
+  ? reportJson({ results, REPO, cfg, ACTIVE, HEAD: repo.HEAD, lane: LANE })
+  : reportHuman({ results, REPO, cfg, ACTIVE, HEAD: repo.HEAD, version: RULES.version, color, lane: LANE }))

@@ -342,6 +342,46 @@ const named = (w, lane, file, { record = 'session/1', next = '' } = {}) => {
   ok(out.exitCode === 0, 'the merged lane checkout exits 0 — no promotion hostage')
 }
 
+// ---------- #55: the lane rules run on the event that gates the merge ----------
+// `actions/checkout` leaves refs/pull/N/merge DETACHED on a pull_request, so a gate that
+// reads the checkout alone was n/a on exactly the event a branch-protection ruleset
+// requires. The whole branch-scoped family is the subject, not one rule.
+const LANE_FAMILY = ['FLOW-02', 'FLOW-03', 'FLOW-04', 'DIV-02']
+{
+  const { w } = world('prevent', { desc: { workflow: 'multi-lane-local', anchoring: 'off' } })
+  git(w, 'checkout', '-q', '-b', 'lane/1'); logRecord(w, 'lane/1', 'y'); git(w, 'push', '-q', 'origin', 'lane/1')
+  const push = checkJson(w) // the branch IS checked out: the push-event shape
+  git(w, 'checkout', '-q', '--detach', 'HEAD') // what actions/checkout does on pull_request
+
+  const bare = checkJson(w)
+  for (const id of LANE_FAMILY) ok(tag(bare, id).tag === 'SKIP' && /no branch resolved/.test(tag(bare, id).detail),
+    `${id}: a detached checkout with NO CI event still SKIPs — a bisect is not a lane`)
+
+  const pr = checkJson(w, { env: { GITHUB_HEAD_REF: 'lane/1', GITHUB_EVENT_NAME: 'pull_request' } })
+  for (const id of LANE_FAMILY) ok(tag(pr, id).tag === tag(push, id).tag && tag(pr, id).tag !== 'SKIP',
+    `${id}: pull_request and push agree on one commit (push ${tag(push, id).tag} / pr ${tag(pr, id).tag}) — the merge gate evaluates the lane`)
+  ok(pr.lane?.name === 'lane/1' && pr.lane.basis === 'GITHUB_HEAD_REF' && pr.lane.event === 'pull_request',
+    `the run names the lane and the basis it resolved on (got ${JSON.stringify(pr.lane)})`)
+  ok(push.lane?.basis === 'checkout', 'a checked-out branch reports basis=checkout, not an environment claim')
+
+  // On a pull_request GITHUB_REF_NAME is the useless 'N/merge' AND its REF_TYPE is
+  // 'branch', so the type guard alone would not save it — what saves it is order:
+  // HEAD_REF is consulted first and is set on no other event.
+  const merge = checkJson(w, { env: { GITHUB_HEAD_REF: 'lane/1', GITHUB_REF_TYPE: 'branch', GITHUB_REF_NAME: '7/merge', GITHUB_EVENT_NAME: 'pull_request' } })
+  ok(merge.lane?.name === 'lane/1' && merge.lane.basis === 'GITHUB_HEAD_REF', `a PR's 'N/merge' REF_NAME never wins — HEAD_REF is read first (got ${JSON.stringify(merge.lane)})`)
+  const tagpush = checkJson(w, { env: { GITHUB_REF_TYPE: 'tag', GITHUB_REF_NAME: 'v1.2.3', GITHUB_EVENT_NAME: 'push' } })
+  for (const id of LANE_FAMILY) ok(tag(tagpush, id).tag === 'SKIP', `${id}: a tag push is not a lane (REF_TYPE=tag is refused)`)
+  const detpush = checkJson(w, { env: { GITHUB_REF_TYPE: 'branch', GITHUB_REF_NAME: 'lane/1', GITHUB_EVENT_NAME: 'push' } })
+  ok(detpush.lane?.basis === 'GITHUB_REF_NAME' && tag(detpush, 'FLOW-02').tag === 'PASS', 'a push-event run that checked out detached resolves from GITHUB_REF_NAME')
+  const junk = checkJson(w, { env: { GITHUB_HEAD_REF: '   ', GITHUB_EVENT_NAME: 'pull_request' } })
+  ok(junk.lane?.name == null && tag(junk, 'FLOW-02').tag === 'SKIP', 'an environment naming nothing resolves to null, never to a lane called ""')
+
+  // the checkout always wins: a stale exported HEAD_REF cannot redirect a real branch
+  git(w, 'checkout', '-q', 'lane/1')
+  const stale = checkJson(w, { env: { GITHUB_HEAD_REF: 'lane/999', GITHUB_EVENT_NAME: 'pull_request' } })
+  ok(stale.lane?.name === 'lane/1' && stale.lane.basis === 'checkout', 'the checked-out branch beats the environment (stale GITHUB_HEAD_REF ignored)')
+}
+
 for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })
 console.log(fails ? `\n✗ ${fails} FLOW/DIV check(s) failed\n` : '\n✓ FLOW/DIV behavioral matrix pass\n')
 process.exit(fails ? 1 : 0)

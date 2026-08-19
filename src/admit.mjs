@@ -32,7 +32,7 @@ import path from 'node:path'
 import { makeOpt, makeOptAll, nowUTC, sanitizeTTY, globMatcher, issueOf } from './util.mjs'
 import { loadRules } from './rules.mjs'
 import { indexRepo } from './repo.mjs'
-import { laneOrNull, run } from './probe.mjs'
+import { resolveLane, run } from './probe.mjs'
 import { resolveConfig } from './config.mjs'
 import { makeEvalCheck } from './evaluators.mjs'
 import { makeLaneWorld } from './facts/index.mjs'
@@ -159,7 +159,10 @@ export function runAdmit(argv) {
   const jdgOnly = jdgReliefs.length > 0
 
   // ---- the admit world the rules evaluate through ----
-  const BRANCH = laneOrNull(repo) || process.env.GITHUB_HEAD_REF || null
+  // one derivation with check's branch gate (src/probe.mjs resolveLane): admit read the
+  // checkout then GITHUB_HEAD_REF inline, check read the checkout alone, and the two
+  // merge-time surfaces disagreeing about what lane a PR is on is #55's defect
+  const BRANCH = resolveLane(repo).lane
   const DEFAULT_BRANCH = declared || targetRef.replace(/^origin\//, '')
   const ns = DESCRIPTOR.data.lanes?.namespace || null
   let sisters = [], sistersCapped = false

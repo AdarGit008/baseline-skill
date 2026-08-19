@@ -1,18 +1,28 @@
-# Ship — Issue #54
+# Ship — Issue #55
 
-Ready. The rank-1 finding from the #52 backlog is fixed at its single source: one
-selector, three consumers (FLOW-03, FLOW-05, DIV-02).
+Ready. Rank 2 of the #52 backlog, and the one whose blast radius was the merge gate
+itself: the branch-scoped rules now evaluate on the event a branch-protection ruleset
+requires, and the two events agree on one commit.
 
 ## Ship criteria
 
-- [x] The lane's newest record is selected by something other than filename sort
-- [x] A later-written record that sorts earlier is still read (regression case)
-- [x] DIV-02 can no longer be silently blinded by the wrong pick
-- [x] Every finding names the record it read and the basis it chose on
-- [x] No verdict changes in the golden corpus — details only
+- [x] `pull_request` and `push` return the same verdicts for one commit
+- [x] A checked-out branch always beats the environment
+- [x] A tag push and a PR's `N/merge` ref are never mistaken for a lane
+- [x] A genuinely detached local checkout still SKIPs, unchanged
+- [x] `check` and `admit` derive lane identity from one function
+- [x] `reconcile`'s refusal is preserved and documented at both ends
+- [x] Every run states the lane and the basis it resolved on
+- [x] Zero verdict and zero detail changes in the golden corpus
 - [x] Full suite green; self-check green; no blockers
+
+## Both mcgyvr incidents, closed
+
+- *Green PR, red push* (`lane/282`, 2026-08-16): the PR run now evaluates FLOW-04.
+- *Red push, blocked PR* (`lane/91`, 2026-08-01): the two runs can no longer disagree
+  by event, so the ruleset's by-name context count stops deadlocking.
 
 ## Next
 
-Task 7: #55 — every lane rule is inert on the `pull_request` event. Rank 2 of the
-#52 backlog, and the one whose blast radius is the merge gate itself.
+Task 8: #56 — REC-01 scores an append identically to a rewrite, so a repair and a
+falsification read the same. Rank 3 of the #52 backlog.

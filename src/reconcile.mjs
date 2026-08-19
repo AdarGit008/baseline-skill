@@ -265,7 +265,9 @@ export function runReconcile(argv) {
 
   // ---- 1. the engine at context 'reconcile' (BRANCH is the default branch — never
   // GITHUB_HEAD_REF: a miswired pull_request job must not evaluate a PR branch
-  // while claiming to revalidate main) ----
+  // while claiming to revalidate main. So reconcile is the ONE surface that does not
+  // call probe.mjs's resolveLane, which check and admit share since #55 — the dissent
+  // is deliberate and documented at both ends, not an oversight) ----
   const LANEWORLD = makeLaneWorld(repo, DESCRIPTOR, { probe: pf })
   const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JDGS, JUDGMENTS, DESCRIPTOR, BRANCH: BRANCH_NAME, DEFAULT_BRANCH: declared || BRANCH_NAME, LANEWORLD })
   const RULES = loadRules()

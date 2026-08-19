@@ -14,15 +14,15 @@ export function makeColor(JSON_OUT) {
 // One predicate, every counting seam (both reports here, admit's leg (b)).
 export const isBlocking = x => x.r.severity === 'blocker' && (x.tag === 'FAIL' || x.tag === 'DIVERGED')
 
-export function reportJson({ results, REPO, cfg, ACTIVE, HEAD }) {
-  const out = { repo: REPO, project_type: cfg.project_type, profiles: [...ACTIVE], head: HEAD, results: results.map(x => ({ id: x.r.id, category: x.r.category, severity: x.r.severity, profile: x.r.profile || 'core', tag: x.tag, detail: x.detail })) }
+export function reportJson({ results, REPO, cfg, ACTIVE, HEAD, lane = null }) {
+  const out = { repo: REPO, project_type: cfg.project_type, profiles: [...ACTIVE], head: HEAD, ...(lane ? { lane: { name: lane.lane, basis: lane.basis, event: lane.event } } : {}), results: results.map(x => ({ id: x.r.id, category: x.r.category, severity: x.r.severity, profile: x.r.profile || 'core', tag: x.tag, detail: x.detail })) }
   const blockers = results.filter(isBlocking).length
   out.summary = { blockers, pass: results.filter(x => x.tag === 'PASS').length, warn: results.filter(x => x.tag === 'WARN').length, diverged: results.filter(x => x.tag === 'DIVERGED').length, signoff: results.filter(x => x.tag === 'SIGN-OFF').length, skip: results.filter(x => x.tag === 'SKIP').length, total: results.length }
   console.log(JSON.stringify(out, null, 2))
   return blockers ? 1 : 0
 }
 
-export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color }) {
+export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color, lane = null }) {
   const TAG = { PASS: color(32, 'PASS'), FAIL: color(31, 'FAIL'), WARN: color(33, 'WARN'), DIVERGED: color(31, 'DIVERGED'), SKIP: color(90, 'SKIP'), 'SIGN-OFF': color(35, 'SIGN-OFF') }
   // pad to the widest tag (DIVERGED/SIGN-OFF = 8) by VISIBLE width — color the tag, then
   // append spaces, so the id column aligns in both TTY (ANSI-wrapped) and pipe modes; the
@@ -34,6 +34,13 @@ export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color }
   // overwrites a printed FAIL with fake PASS (--json is unaffected; JSON escapes them)
   const S = sanitizeTTY
   console.log(`\n  project-baseline v${version}  ·  ${path.basename(REPO)}  ·  type=${cfg.project_type}  ·  profiles=[${[...ACTIVE].join(',')}]  ·  HEAD=${HEAD || 'n/a'}\n`)
+  // A lane the CHECKOUT could not name is a weaker claim than a checked-out branch, and
+  // the difference is a property of the RUN, not of any one rule (#55) — so it is stated
+  // once, here, and no rule's detail string has to carry it. Silent on the ordinary case:
+  // basis 'checkout' is what every local run and every push-with-branch run resolves on.
+  if (lane && lane.lane && lane.basis && lane.basis !== 'checkout') {
+    console.log(`  ${color(33, 'lane')} ${S(lane.lane)} resolved from ${lane.basis}${lane.event ? ` (${S(lane.event)} event)` : ''} — the checkout is detached, so the lane rules read the tree that IS checked out (on a pull_request, the merge result), not the lane tip\n`)
+  }
   for (const cat of Object.keys(CATS)) {
     const rows = results.filter(x => x.r.category === cat); if (!rows.length) continue
     console.log('  ' + color(1, CATS[cat]))

@@ -35,6 +35,44 @@ export function laneOrNull(repo) {
   return l && l !== '(detached)' ? l : null
 }
 
+// A ref name a lane may actually be called: non-empty, one token, not the detached
+// sentinel, not an option-looking string. An environment naming a lane `HEAD` or ''
+// is naming nothing, and must degrade to the honest null rather than to a lane.
+const refName = v => {
+  const s = String(v ?? '').trim()
+  return s && s !== 'HEAD' && !/\s/.test(s) && !s.startsWith('-') ? s : null
+}
+
+// Lane identity for the MERGE-TIME surfaces (check, admit): the checkout's branch, or —
+// when the checkout cannot name one — the CI event that can. `actions/checkout` leaves
+// refs/pull/N/merge DETACHED on a pull_request by design (#55), so a gate that reads the
+// checkout alone is n/a on precisely the event a branch-protection ruleset requires: the
+// merge gate does not run at the merge. Returns the basis with the name — a lane resolved
+// from the environment is a weaker claim than a checked-out branch and every surface that
+// reports it says which it had.
+//
+// The checkout ALWAYS wins: the environment is consulted only where there is no branch at
+// all, so a stale exported GITHUB_HEAD_REF cannot redirect a local run.
+//
+// `reconcile` deliberately does NOT call this (src/reconcile.mjs) — its subject is the
+// default branch, and a miswired pull_request job must not evaluate a PR branch while
+// claiming to revalidate main. That dissent is a decision; keep it documented at both ends.
+export function resolveLane(repo, env = process.env) {
+  const l = laneOrNull(repo)
+  if (l) return { lane: l, basis: 'checkout', event: null }
+  // pull_request: GITHUB_HEAD_REF is the PR's head branch and is set on no other event,
+  // so it needs no event guard. (GITHUB_REF_NAME here would be the useless 'N/merge'.)
+  const head = refName(env.GITHUB_HEAD_REF)
+  if (head) return { lane: head, basis: 'GITHUB_HEAD_REF', event: env.GITHUB_EVENT_NAME || 'pull_request' }
+  // push with a detached checkout. GITHUB_REF_NAME is a TAG's name on a tag push, so only
+  // a REF_TYPE of 'branch' qualifies — a release tag is not a lane.
+  if (env.GITHUB_REF_TYPE === 'branch') {
+    const name = refName(env.GITHUB_REF_NAME)
+    if (name) return { lane: name, basis: 'GITHUB_REF_NAME', event: env.GITHUB_EVENT_NAME || 'push' }
+  }
+  return { lane: null, basis: null, event: null }
+}
+
 // One derivation of agent identity for every writer (log's record frontmatter, lane
 // claim's trailer): explicit flag > BASELINE_AGENT > git user.name > 'agent', slugged.
 // Two writers deriving different names would silently break the lane⇄agent join.

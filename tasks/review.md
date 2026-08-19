@@ -1,37 +1,40 @@
-# Review — Issue #54
+# Review — Issue #55
 
 ## What changed
 
-| File | Change |
-|------|--------|
-| `src/repo.mjs` | `gitAddedOrdered(range, rel)` — added paths in commit order |
-| `src/evaluators.mjs` | `committedLog` selects by record kind + ordinal, then commit order; `logProvenance()`; three detail strings |
-| `test/flow/run.mjs` | three cases, six assertions |
-| `test/golden/pins.json` | re-pinned: 9 detail diffs, 0 verdict changes |
+One derivation of lane identity, `resolveLane()` in `src/probe.mjs`, called by both
+merge-time surfaces. `check` gained the environment fallback it never had; `admit` lost
+its inline `|| process.env.GITHUB_HEAD_REF` and gained the `GITHUB_REF_NAME` leg;
+`reconcile` kept its refusal and now names what it is refusing.
 
-## The one thing worth arguing about
+## What the review caught
 
-A lane carrying **only** non-session records still selects one, by commit order, and
-FLOW-03 can then fire "empty next:" on a pre-registration. That is unchanged from
-before and it is deliberate: FLOW-02's presence definition counts every added `.md`, so
-a selector that refused to pick would produce "a record is present" and "no record to
-read" from one tree. Narrowing FLOW-02 is a separate issue; this one would have hidden
-the question rather than answered it.
+- **Two weak assertions in the first draft of the flow cases.** One carried a dead
+  `bare[0] === undefined` conjunct that asserted nothing about the subject. The other
+  was written as `SKIP || lane === '7/merge'` — true under either branch, so it could
+  not fail. Both rewritten. The second rewrite found the real fact: on a `pull_request`
+  GitHub sets `GITHUB_REF_TYPE=branch` *and* `GITHUB_REF_NAME=N/merge`, so the type
+  guard alone would accept `7/merge` as a lane. What actually prevents it is **order** —
+  `GITHUB_HEAD_REF` is read first and is set on no other event. The test now asserts
+  that, and the comment says it.
+- **The golden re-pin (planned Task 7) turned out to be unnecessary.** Keeping the basis
+  on one run-level line rather than in each rule's detail meant 18 fixtures verified
+  identical with no re-pin. A plan step that dissolves is worth more than one that lands.
+
+## Residual risk, accepted
+
+- A stale exported `GITHUB_HEAD_REF` names a lane on a detached local checkout. Bounded:
+  it applies only where the answer was previously `null` (SKIP), and the report names
+  the variable it believed rather than presenting the lane as observed fact.
+- On `pull_request` the rules read the merge result, not the lane tip. Named on the
+  lane line and in `REFERENCE.md`. A future rule that needs the tip specifically must
+  ask for it rather than assume `HEAD` is it — recorded here so it is not rediscovered.
 
 ## Verification
 
-- #54's own repro, run against the patched checker: FLOW-03 PASS naming
-  `record: session/3`, DIV-02 no longer SKIP.
-- Negative control: the six new assertions all **fail** with `src/` stashed — they test
-  the fix, not the harness.
-- Golden: 18 fixtures, 1083 rule verdicts, 9 changed details, **0 changed verdicts**.
-- Full suite green: records · golden · orient · facts · lane · flow · admit ·
-  reconcile · gen.
-- `node check.mjs --self-check` green. Self-score 96%, no blockers (the 1 warn is
-  SEC-05, pre-existing and unrelated).
-
-## Not done here
-
-- #50 — where `next:` sits *inside* the chosen file. The other half of FLOW-03's
-  selection problem, still open.
-- FLOW-02's presence definition, per the argument above.
+- flow: 13 new assertions pass; 9 fail against the pre-fix resolver (`git stash`
+  control). The 4 that pass either way are over-reach guards — bare detached and tag
+  push must keep SKIPping, and do.
+- golden: 18 fixtures identical to pins. Zero verdict changes, zero detail changes.
+- full suite (records, golden, orient, facts, lane, flow, admit, reconcile, gen): green.
+- self-check green; self-score 96%, no blockers.

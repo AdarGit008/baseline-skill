@@ -25,6 +25,31 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   old string-or-null shape for the four callers that only want the value. Whether a
   top-level `next:` should be *accepted* is left alone deliberately: requiring the section
   is a real discipline, and the issue asked for the finding to say so, not to relax it.
+- **REC-01 tells an append apart from a rewrite (issue #56)**: `records-append-only`
+  built its mutation list from git's name-status alone, so `M` was the whole story — a
+  commit that only added lines and one that rewrote existing ones were the same event to
+  the rule, both reported as `edited`. Every example line in the finding could be
+  additive while the count read like 23 falsifications, and for a repo whose corpus is
+  re-pinned per measurement run the number grows by one per sweep *by construction* — a
+  warn that only rises is a warn nobody reads. The evaluator now reads the blob at each
+  mutating commit and classifies it against the record's introduction: **appended** (the
+  introduced lines still there, in order, at the front), **extended** (all still there,
+  in order, with new lines woven between them), **rewritten** (an introduced line is gone
+  or reads differently — the only class that lost information). The finding leads with
+  its tally — `2 mutation(s) (1 rewritten · 1 appended)` — and sorts the rewrites to the
+  front of the three examples it prints, so the one worth opening is not buried under
+  appends. The prefix test is line-wise, not string-wise (`line one` → `line oneX` is a
+  rewrite); classification is against the *introduction*, so appending onto an
+  already-rewritten record stays rewritten; the introduction remains the SET of add-blobs
+  and the best class across that set wins; an unreadable blob on either side degrades to
+  the old undifferentiated `edited` rather than guessing. The issue framed this as a
+  two-way append/rewrite split — **extended** is the third class the corpus forced: a
+  mid-file insertion loses nothing, and calling it either "appended" or "rewritten" would
+  put benign edits back in the bucket the rule is trying to empty. Whether a lossless
+  edit should still count is deliberately unchanged: it does (a record's meaning can
+  change by addition alone), and the tombstone route disposes of a class wholesale —
+  REC-01's `fix` now says that the judgment `subject` is a **glob**, so a corpus re-pinned
+  every sweep wants one standing `deviation` on `records/corpora/**`, not one per sweep.
 - **REC-01's sanctioned-edit route now resolves (issue #47)**: the rule's `fix` told an
   author to "record a JDG and leave the tombstone," but the evaluator never read the
   ledger, so a sanctioned edit was scored identically to a rewrite and the warn could

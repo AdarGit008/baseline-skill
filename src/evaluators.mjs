@@ -488,27 +488,84 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       // sanctioned, not an offence. The tombstone makes the rule's own `fix` true:
       // an author reaches clean without rewriting history. break-glass never
       // sanctions (see SANCTION_KINDS); an expired tombstone stops sanctioning.
-      const mutations = [] // { path, text } — path is what a tombstone names
-      for (const e of mdr) mutations.push({ path: e.to || e.path, text: `${e.sha.slice(0, 7)} ${e.status === 'M' ? 'edited' : e.status === 'D' ? 'deleted' : 'renamed'} ${e.to || e.path}` })
+      // Issue #56: an `M` event is not one event class, and the finding used to say
+      // `edited` for all of them. The question the reader actually has is whether the
+      // edit LOST anything, so classify by what survived from the introduction:
+      //   appended  — the introduced lines are still there, in order, at the FRONT
+      //   extended  — all still there, in order, but with new lines woven between them
+      //   rewritten — an introduced line is gone or reads differently: the lossy one
+      // All three remain findings (a record's meaning can change by addition alone, and
+      // the tombstone route disposes of a whole class at once), but the count names the
+      // classes and the examples lead with the rewrites. The issue framed this as a
+      // two-way split; a mid-file insertion is neither an append nor a loss, and calling
+      // it either would put the benign edits back in the bucket this rule is trying to
+      // empty. Deterministic — two blob reads per event, memoized per path; an unreadable
+      // blob on either side stays the old undifferentiated `edited`, never a guess.
+      const recLines = s => { const a = s.split('\n'); if (a.length && a[a.length - 1] === '') a.pop(); return a }
+      // Prefix, LINE-wise, not string-wise: `line one` -> `line oneX` starts with the
+      // introduction as a string while having restated the only line the record carried.
+      const isPrefix = (a, b) => {
+        if (a.length > b.length) return false
+        for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+        return true
+      }
+      // Every introduced line still present, in order — insertions allowed anywhere.
+      const isSubseq = (a, b) => {
+        let i = 0
+        for (const line of b) { if (i < a.length && a[i] === line) i++ }
+        return i === a.length
+      }
+      const editClass = (intro, now) => {
+        if (intro === now) return 'appended'
+        const a = recLines(intro), b = recLines(now)
+        return isPrefix(a, b) ? 'appended' : isSubseq(a, b) ? 'extended' : 'rewritten'
+      }
+      const introCache = new Map() // path -> [content at each add] (lazy: only mutated paths)
+      const introTexts = p => {
+        if (!introCache.has(p)) introCache.set(p, adds.filter(e => e.path === p).map(e => gitCatFile(e.sha, p)).filter(t => t != null))
+        return introCache.get(p)
+      }
+      // Introduction is the SET of add-blobs (see above), so extending ANY of them is an
+      // append — the two-lanes-added-the-same-record case must not read as a rewrite.
+      // The BEST class across the add-blob set: the record is only rewritten if it is
+      // rewritten with respect to every introduction it could have had.
+      const RANK_BEST = ['appended', 'extended', 'rewritten']
+      const classOf = (p, text) => {
+        if (text == null) return null
+        const intros = introTexts(p); if (!intros.length) return null
+        return intros.map(t => editClass(t, text)).sort((x, y) => RANK_BEST.indexOf(x) - RANK_BEST.indexOf(y))[0]
+      }
+      const VERB = { appended: 'appended to', extended: 'inserted into', rewritten: 'rewrote', edited: 'edited', deleted: 'deleted', renamed: 'renamed' }
+      const mutations = [] // { path, cls, text } — path is what a tombstone names
+      for (const e of mdr) {
+        const cls = e.status === 'M' ? (classOf(e.path, gitCatFile(e.sha, e.path)) || 'edited') : e.status === 'D' ? 'deleted' : 'renamed'
+        mutations.push({ path: e.to || e.path, cls, text: `${e.sha.slice(0, 7)} ${VERB[cls]} ${e.to || e.path}` })
+      }
       const touched = new Set(mdr.map(e => e.path))
       const addBlobs = new Map() // path -> Set of blob shas at each add
       for (const e of adds) { const b = gitBlobAt(e.sha, e.path); if (b) { if (!addBlobs.has(e.path)) addBlobs.set(e.path, new Set()); addBlobs.get(e.path).add(b) } }
       for (const [p, blobs] of addBlobs) {
-        if (!current.has(p)) { if (!mdr.some(e => (e.status === 'D' || e.status === 'R') && e.path === p)) mutations.push({ path: p, text: `${p} vanished with no recorded delete (merge-hidden?)` }); continue }
+        if (!current.has(p)) { if (!mdr.some(e => (e.status === 'D' || e.status === 'R') && e.path === p)) mutations.push({ path: p, cls: 'vanished', text: `${p} vanished with no recorded delete (merge-hidden?)` }); continue }
         if (touched.has(p)) continue // already reported above
         const now = gitBlobAt('HEAD', p)
-        if (now && blobs.size && !blobs.has(now)) mutations.push({ path: p, text: `${p} content differs from its introduction with no recorded edit (merge-hidden?)` })
+        if (now && blobs.size && !blobs.has(now)) mutations.push({ path: p, cls: classOf(p, gitCatFile('HEAD', p)) || 'edited', text: `${p} content differs from its introduction with no recorded edit (merge-hidden?)` })
       }
       const sanctionsOf = path => (JUDGMENTS || []).filter(j => SANCTION_KINDS.includes(j.kind) && j.review_by >= TODAY && globMatcher(j.subject).test(path)).map(j => j.id)
       const sanctioned = [], unexplained = []
       for (const m of mutations) {
         const ids = sanctionsOf(m.path)
         if (ids.length) sanctioned.push({ text: m.text, by: ids.join(', ') })
-        else unexplained.push(m.text)
+        else unexplained.push(m)
       }
+      // Loss-of-information first, so the three examples the detail prints are the three
+      // worth opening — an append-heavy ledger used to bury its one rewrite (#56).
+      const CLASS_ORDER = ['rewritten', 'deleted', 'vanished', 'renamed', 'edited', 'extended', 'appended']
+      const rank = m => { const i = CLASS_ORDER.indexOf(m.cls); return i === -1 ? CLASS_ORDER.length : i }
+      const worst = [...unexplained].sort((a, b) => rank(a) - rank(b))
+      const tally = list => CLASS_ORDER.filter(c => list.some(m => m.cls === c)).map(c => `${list.filter(m => m.cls === c).length} ${c}`).join(' · ')
       if (!mutations.length) return { ok: true, detail: `${current.size} record(s), history append-only` }
       if (!unexplained.length) return { ok: true, detail: `${sanctioned.length} mutation(s) sanctioned by judgment: ` + sanctioned.map(s => `${s.text} [${s.by}]`).join('; ') }
-      return { ok: false, detail: `${unexplained.length} mutation(s): ` + unexplained.slice(0, 3).join('; ') + (unexplained.length > 3 ? ` (+${unexplained.length - 3})` : '') + (sanctioned.length ? ` — ${sanctioned.length} sanctioned (${sanctioned.map(s => s.by).join(', ')})` : '') }
+      return { ok: false, detail: `${unexplained.length} mutation(s) (${tally(unexplained)}): ` + worst.slice(0, 3).map(m => m.text).join('; ') + (worst.length > 3 ? ` (+${worst.length - 3})` : '') + (sanctioned.length ? ` — ${sanctioned.length} sanctioned (${sanctioned.map(s => s.by).join(', ')})` : '') }
     }
 
     if (k === 'records-scrub') {

@@ -346,7 +346,7 @@ try {
     ok(mk()(AO, { id: 'REC-01' }).ok === true, 'REC-01: append-only history passes')
     fs.appendFileSync(path.join(t10, rec), 'edited\n'); sh(t10, 'git', ['add', '-A']); sh(t10, 'git', ['commit', '-qm', 'edit'])
     let r = mk()(AO, { id: 'REC-01' })
-    ok(r.ok === false && /edited/.test(r.detail), 'REC-01: an edit to a committed record is a mutation finding')
+    ok(r.ok === false && /1 mutation/.test(r.detail) && /appended to/.test(r.detail), 'REC-01: an edit to a committed record is a mutation finding (#56: a pure append is NAMED an append)')
     sh(t10, 'git', ['mv', rec, rec.replace('-a.md', '-b.md')]); sh(t10, 'git', ['commit', '-qm', 'rename'])
     r = mk()(AO, { id: 'REC-01' })
     ok(r.ok === false && /renamed/.test(r.detail) && /^2 mutation/.test(r.detail) && !/vanished/.test(r.detail), 'REC-01: a rename is ONE mutation finding (the R event is its own disposal — no bogus merge-hidden line)')
@@ -423,6 +423,68 @@ try {
     ok(r.ok === false && /^1 mutation/.test(r.detail) && /sanctioned/.test(r.detail), '#47: one sanctioned + one unexplained -> counts ONLY the unexplained and names the sanction')
     r = mkE([JDGE(recA, 'JDG-0001'), JDGE(recB, 'JDG-0002')])(AO, { id: 'REC-01' })
     ok(r.ok === true && /2 mutation\(s\) sanctioned/.test(r.detail), '#47: all sanctioned -> PASS naming both judgments')
+
+    // ---- Issue #56: an append and a rewrite are different events, and the finding says so ----
+    // The count used to read `23 mutation(s)` with three `edited` lines that were all
+    // additive; a repair and a falsification were indistinguishable, and the number only
+    // ever grew. Both still count — the classes are what the reader needed.
+    const t10f = mkrepo('main'); tmps.push(t10f)
+    const w = (rel, body) => { fs.mkdirSync(path.join(t10f, path.dirname(rel)), { recursive: true }); fs.writeFileSync(path.join(t10f, rel), body) }
+    const commit = m => { sh(t10f, 'git', ['add', '-A']); sh(t10f, 'git', ['commit', '-qm', m]) }
+    const mkF = () => makeEvalCheck({ repo: indexRepo(t10f), cfg: {}, NO_EXEC: true, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    w('records/notes.md', 'line one\n')
+    w('records/claims/CLM-0001.json', '{"id":"CLM-0001","statement":"x"}\n')
+    w('records/tail.md', 'no trailing newline')
+    commit('records land')
+    w('records/notes.md', 'line one\nline two appended\n')                       // pure append
+    w('records/claims/CLM-0001.json', '{"id":"CLM-0001","statement":"REWRITTEN"}\n') // rewrite
+    commit('one append, one rewrite')
+    r = mkF()(AO, { id: 'REC-01' })
+    ok(r.ok === false && /^2 mutation\(s\) \(1 rewritten · 1 appended\)/.test(r.detail), '#56: the count names the classes — the reader sees which one lost information')
+    ok(/rewrote records\/claims\/CLM-0001\.json/.test(r.detail) && /appended to records\/notes\.md/.test(r.detail), '#56: the verb is per-event — `rewrote` vs `appended to`, never a flat `edited`')
+    ok(r.detail.indexOf('rewrote') < r.detail.indexOf('appended to'), '#56: the rewrite leads the examples — the detail prints only three, and appends must not bury the one to open')
+    // extending the LAST line is a rewrite, not an append: a line-prefix test, not a
+    // string-prefix one (`line one` -> `line oneX` starts with the introduction).
+    w('records/tail.md', 'no trailing newlineX\n')
+    commit('extend the last line')
+    r = mkF()(AO, { id: 'REC-01' })
+    ok(/2 rewritten/.test(r.detail) && /rewrote records\/tail\.md/.test(r.detail), '#56: extending the final line is a REWRITE — the introduced line no longer reads the same')
+    // and appending BELOW an already-rewritten record stays rewritten: the class is
+    // measured against the introduction, not against the previous edit.
+    fs.appendFileSync(path.join(t10f, 'records/claims/CLM-0001.json'), '\n')
+    commit('append after a rewrite')
+    r = mkF()(AO, { id: 'REC-01' })
+    ok(/3 rewritten/.test(r.detail) && !/2 appended/.test(r.detail), '#56: an append onto an already-rewritten record is still a rewrite — measured against the introduction')
+    // A mid-file insertion loses nothing but is not an append — its own class, so the
+    // benign edits do not land back in the bucket the rule is trying to empty. Measured
+    // against the INTRODUCTION, so this needs a record introduced with more than one
+    // line: inserting below the only line a record ever had IS an append.
+    const t10h = mkrepo('main'); tmps.push(t10h)
+    fs.mkdirSync(path.join(t10h, 'records'), { recursive: true })
+    const multi = path.join(t10h, 'records/multi.md')
+    fs.writeFileSync(multi, '## Did\na\n\n## Left open\nnext: y\n')
+    sh(t10h, 'git', ['add', '-A']); sh(t10h, 'git', ['commit', '-qm', 'r1'])
+    const mkH = () => makeEvalCheck({ repo: indexRepo(t10h), cfg: {}, NO_EXEC: true, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    fs.writeFileSync(multi, '## Did\na\nb inserted\n\n## Left open\nnext: y\n')
+    sh(t10h, 'git', ['commit', '-qam', 'insert in the middle'])
+    r = mkH()(AO, { id: 'REC-01' })
+    ok(r.ok === false && /^1 mutation\(s\) \(1 extended\)/.test(r.detail) && /inserted into records\/multi\.md/.test(r.detail), '#56: a mid-file insertion is EXTENDED — every introduced line still there, in order, just not at the front')
+    fs.writeFileSync(multi, '## Did\na\nb inserted\n\n## Left open\nnext: CHANGED\n')
+    sh(t10h, 'git', ['commit', '-qam', 'restate the next'])
+    r = mkH()(AO, { id: 'REC-01' })
+    ok(/^2 mutation\(s\) \(1 rewritten · 1 extended\)/.test(r.detail) && r.detail.indexOf('rewrote') < r.detail.indexOf('inserted into'), '#56: rewrites lead the examples — extended sorts with the lossless classes, behind the one that lost information')
+
+    // a lane appending to a record it did not introduce is the common, benign case
+    const t10g = mkrepo('main'); tmps.push(t10g)
+    fs.mkdirSync(path.join(t10g, 'records/corpora'), { recursive: true })
+    fs.writeFileSync(path.join(t10g, 'records/corpora/golden.json'), '{"a":1}\n')
+    sh(t10g, 'git', ['add', '-A']); sh(t10g, 'git', ['commit', '-qm', 'corpus'])
+    for (const n of [2, 3, 4]) { fs.appendFileSync(path.join(t10g, 'records/corpora/golden.json'), `{"a":${n}}\n`); sh(t10g, 'git', ['add', '-A']); sh(t10g, 'git', ['commit', '-qm', `sweep ${n}`]) }
+    r = makeEvalCheck({ repo: indexRepo(t10g), cfg: {}, NO_EXEC: true, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })(AO, { id: 'REC-01' })
+    ok(r.ok === false && /^3 mutation\(s\) \(3 appended\)/.test(r.detail), '#56: a re-pinned corpus reads as 3 appended — the monotonic warn now says what it is')
+    // the glob subject the rule's `fix` now names disposes of that whole class at once
+    r = makeEvalCheck({ repo: indexRepo(t10g), cfg: {}, NO_EXEC: true, JDGS: {}, JUDGMENTS: [{ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-07-01', by: 'a', subject: 'records/corpora/**', reason: 're-pinned per sweep', review_by: '2999-01-01' }], DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })(AO, { id: 'REC-01' })
+    ok(r.ok === true && /3 mutation\(s\) sanctioned/.test(r.detail), '#56: ONE standing glob deviation sanctions the whole class — not one tombstone per sweep')
 
     // ---- Issue #47: the subject is attacker-influenced text that rides into the matcher ----
     // A glob like `**a**a**a…` compiled to `^.*a.*a.*a…$` backtracked exponentially: 892ms

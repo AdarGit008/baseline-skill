@@ -56,12 +56,13 @@
   - Verify: `git diff --stat main` shows docs + `tasks/` only ✓
   - Files: `SPEC.md`, `tasks/plan.md`, `tasks/todo.md`, `tasks/review.md`, `tasks/ship.md`
 
-- [ ] Task 10 (next session): file the surviving drafts and post the two comments
+- [x] Task 10: file the surviving drafts and post the two comments
   - Acceptance: one issue per finding the owner keeps, each linked from #52's table.
-  - Verify: #52's table has an issue number in every filed row.
+  - Verify: #52's table carries #54 (F1), #55 (F2), #56 (F3), #57 (F4) in the Issue
+    column; the corroboration comments are posted on #49 and #50 ✓
   - Files: none in-tree
 
-- [ ] Task 11 (next session): take F1
+- [ ] Task 11 (next): take F1 — #54
   - Acceptance: FLOW-03/05 and DIV-02 select the lane's newest record by something
     other than filename sort; the fork is decided in the issue before code is written.
   - Verify: `node test/flow/run.mjs` gains a case where a later-written record sorts

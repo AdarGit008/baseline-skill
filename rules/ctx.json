@@ -120,14 +120,14 @@
     },
     {
       "id": "CTX-07",
-      "title": "Superseded ADRs link forward to a file that exists",
+      "title": "Every declared decision edge resolves to a file that exists",
       "category": "context",
       "severity": "warn",
       "applies_to": "all",
       "source": "https://adr.github.io/",
-      "lesson": "CTX-5 forward-supersede link must resolve",
-      "rationale": "CTX-02 checks a superseded ADR HAS a forward link; this checks the link actually resolves to a present replacement file.",
-      "fix": "When you mark an ADR 'Superseded by NNNN', ensure a decision file numbered NNNN exists.",
+      "lesson": "CTX-5 a declared decision edge must resolve — whatever the verb",
+      "rationale": "CTX-02 checks a superseded ADR HAS a forward link; this checks that every edge a record declares — Supersedes, Superseded-by, Amends, Amended-by — actually resolves to a present decision file. A reader who follows 'Amends: ADR-0019' to nothing concludes the corpus is incomplete, not that the pointer is wrong.",
+      "fix": "Make each named target exist, or drop the declaration. Both directions of both relations count; a list may wrap onto the next line and text in parentheses is commentary, never a target ('Amends: ADR-0019 (D5 sizing)' declares one edge, to 0019).",
       "sources": [
         "tree"
       ],
@@ -270,6 +270,30 @@
         "pattern": "^\\s*last[-_]verified\\s*[:=]",
         "flags": "im",
         "mode": "absent"
+      }
+    },
+    {
+      "id": "CTX-13",
+      "title": "An amendment is declared at both ends",
+      "category": "context",
+      "severity": "warn",
+      "applies_to": "all",
+      "source": "https://adr.github.io/",
+      "lesson": "CTX-5 the amended record is the one a citation arrives at — it must know it was corrected",
+      "rationale": "Supersession is terminal: the reader is sent elsewhere and the dead end is loud. Amendment is what a decision does when part of it survives, so the amended record stays reachable and stays cited — and a one-way 'Amends:' leaves it silently standing on a premise a later record withdrew. Measured on a 36-ADR corpus: 18 amendment edges to 4 supersede-shaped ones, and 15 of the 18 declared in one direction only, none of them found by a check.",
+      "fix": "In the same commit as the amendment, write both ends: 'Amends: ADR-000X (what it changes)' on the new record and 'Amended-by: ADR-00YY' on the amended one. A corpus with history that cannot back-fill today records a judgment instead — `baseline jdg new --kind deviation --subject \"docs/decisions/00XX-*.md\" --reason \"…\" --review-by <date>` — and deleting it is how the repair is proved. The subject is a GLOB, so a corpus-wide subject sanctions future one-way edges too; scope it to the records you mean.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check",
+        "reconcile"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "adr-backlink",
+        "globs_from_config": "decision_globs"
       }
     }
   ]

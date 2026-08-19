@@ -8,7 +8,7 @@ A **testable readiness standard** for new projects. Every lesson is a rule; a ze
 
 **v1** distilled 20 rules from three of the author's own repos. That sample was thin. **v2** pressure-tested v1 against the field's actual prior art — [OpenSSF Scorecard](GLOSSARY.md#openssf-scorecard), [SLSA](GLOSSARY.md#slsa), the [Twelve-Factor App](GLOSSARY.md#twelve-factor-app), Google's SRE books, [Diátaxis](GLOSSARY.md#diataxis), [Keep a Changelog](GLOSSARY.md#keep-a-changelog), [repolinter](GLOSSARY.md#repolinter), [Backstage/Cortex/OpsLevel](GLOSSARY.md#service-catalog), Stryker, and ~40 more sources — kept everything v1 had, and added what the field agreed v1 was missing. Each candidate was **adversarially verified** (is the source real? is it robot-checkable at rest? does it actually add over v1?) before it earned a place; 15 "looks-thorough-checks-nothing" candidates were dropped.
 
-**90 rules across 15 categories.** 26 blockers · 59 warnings · 5 sign-offs.
+**92 rules across 15 categories.** 26 blockers · 61 warnings · 5 sign-offs.
 
 ## Profiles — v2 stays sharp by only running what fits
 
@@ -58,7 +58,7 @@ These diagrams mirror the runner — they're its actual control flow, not a sket
 ```mermaid
 flowchart LR
   CFG["baseline.config.json — intent"] --> RES
-  RULES["rules/ — 90 rules (manifest: rules.json)"] --> EVAL
+  RULES["rules/ — 92 rules (manifest: rules.json)"] --> EVAL
   REPO["target repo: files + git"] --> IDX
   subgraph ENGINE["check.mjs (zero-dependency)"]
     IDX["file index + git helpers"] --> EVAL["~41 check evaluators"]
@@ -361,7 +361,7 @@ GOV-01/02 are **live asserts on the readable surface** since M6b (`forge-protect
 | COMM-02 | README exists with newcomer-critical sections | 🟡 warn | core |
 | COMM-03 | CHANGELOG present with an Unreleased section | 🟡 warn | core |
 
-### Context management (11)
+### Context management (12)
 
 | ID | Rule | Severity | Profile |
 |---|---|---|---|
@@ -370,12 +370,13 @@ GOV-01/02 are **live asserts on the readable surface** since M6b (`forge-protect
 | CTX-04 | No frozen/consolidated doc without regeneration or supersede banners | ✍️ sign-off | core |
 | CTX-05 | No broken internal doc links | 🔴 blocker | core |
 | CTX-06 | Long-lived docs carry a freshness contract | 🟡 warn | core |
-| CTX-07 | Superseded ADRs link forward to a file that exists | 🟡 warn | core |
+| CTX-07 | Every declared decision edge resolves to a file that exists | 🟡 warn | core |
 | CTX-08 | Generated files carry a 'DO NOT EDIT' provenance marker | 🟡 warn | core |
 | CTX-09 | Required grounding docs exist and are non-empty | 🟡 warn | core |
 | CTX-10 | Code symbols/paths named in docs still resolve | 🟡 warn | advanced |
 | CTX-11 | Docs don't lag the code they anchor | 🟡 warn | core |
 | CTX-12 | No hand-maintained status stamp (derive it instead) | 🔴 blocker | core |
+| CTX-13 | An amendment is declared at both ends | 🟡 warn | core |
 
 ### Claims discipline (8)
 

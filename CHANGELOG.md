@@ -7,11 +7,60 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 ## [Unreleased]
 
 ### Added
+- **CTX-13 — an amendment is declared at both ends (issue #57)**: a new deterministic
+  warn over the relation the decision graph actually uses. Supersession is terminal —
+  the reader is sent elsewhere and the dead end is loud. Amendment is what a decision
+  does when part of it survives, so the amended record stays reachable and stays cited,
+  and a one-way `Amends:` leaves it standing on a premise a later record withdrew. On
+  the 36-ADR corpus that produced the issue: 18 amendment edges to 4 supersede-shaped
+  ones, 15 of the 18 declared in one direction only, and none of them found by a check.
+  CTX-13 reports the pairs declared at one end, naming both records. It is deliberately
+  narrow — only edges whose target *exists* are compared (a dangling `Amends:` is
+  CTX-07's finding, and reporting it twice would make one defect read as two), only the
+  amendment pair is required both ways (CTX-02 governs what a superseded record owes),
+  and nothing is said about ordering, so a same-day amendment is legitimate. A corpus
+  with history adopts through the existing judgment route rather than a new allowlist
+  file: an unexpired `sign-off`/`deviation`/`risk-acceptance` whose glob `subject`
+  matches the declaring record sanctions the edge (REC-01's route since #47), deleting
+  the judgment is how the repair is proved, and `review_by` is the expiry a frozen list
+  never has. The `subject` is a glob, so a corpus-wide subject sanctions future one-way
+  edges too — the rule's `fix` says so.
 - **CI secret-scan gate (SEC-12)**: `gitleaks` wired into `ci.yml` as a server-side
   complement to the pre-push scrub hook, with a `.gitleaks.toml` that allowlists the
   `test/` corpus (which carries intentional fake secrets exercising SEC-01).
 
 ### Fixed
+- **CTX-07 resolves every declared decision edge, not one verb (issue #57)**: the rule's
+  own sentence is that a declared forward link must resolve to a file that exists, and it
+  applied that to exactly one pattern — `Supersed(ed) by … NNNN`, matched anywhere in the
+  document. `Amends:` and `Amended-by:` were read by no rule, no check kind and no schema
+  field, so an ADR declaring `Amends: ADR-0019` where no ADR-0019 exists passed. All four
+  verbs are now resolved, and the detail counts what it checked (`4 declared edge(s)
+  resolve`) instead of asserting `forward-links resolve`. Two parsing facts came from the
+  corpus that hit this: a declaration **wraps** — `Amends: ADR-0019 (D5 sizing),
+  ADR-0017 (…)` puts its second target on a continuation line, and a first-line grep
+  counted 11 edges in a corpus that had 18 — so a field now ends at the next *field*, not
+  the next newline; and parenthesised commentary **never** declares an edge, so `(D5
+  sizing)` is not ADR-5. `none`/`n/a`/`-`/empty declare nothing, per target and for the
+  whole value.
+- **`Superseded-by: ADR-NNNN` was invisible to both ADR rules (issue #57, found while
+  implementing)**: CTX-02 and CTX-07 both matched `supersed(ed)?\s*by`, and `\s*` does not
+  match a hyphen. The hyphenated field form is the one `templates/adr.md` ships and
+  instructs authors to fill in — so a record that followed this repo's own template and
+  correctly named its replacement was reported by **CTX-02, at blocker severity**, as
+  "superseded w/o forward link", and CTX-07 never resolved the link it did have. Both
+  rules now read the declared edge through one parser; the old phrase match survives as a
+  fallback, so a prose link with no resolvable number keeps passing exactly as before and
+  no existing verdict moves. Relations, statuses and header fields are now read by a
+  single walk — `adrHeaderFields`/`adrEdges` in `src/records.mjs`, the file that already
+  owned the ADR header's storage form — so `parseAdrHeader`, CTX-02, CTX-07 and CTX-13
+  cannot disagree about what a record declares or where a declaration ends. The ADR
+  schema and template carry `Amends:`/`Amended-by:` to match.
+- **The documented rule count was stale (drive-by)**: `README.md`, `SKILL.md`,
+  `REFERENCE.md` and the two evaluate-stack SVGs said **90 rules** while the loader
+  assembled 91 — the figure had not moved since M7c. Corrected to **92** (26 blockers ·
+  61 warnings · 5 sign-offs) with CTX-13 included, and `REFERENCE.md`'s context section
+  now lists it.
 - **FLOW-03 now names which empty state it found (issue #50)**: `extractNext` is a
   `## Left open` *section* parser, and returned `null` for three different situations —
   no section anywhere, a section with no `next:` line, and a `next:` with a blank value.

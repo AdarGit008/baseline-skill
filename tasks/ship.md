@@ -1,28 +1,34 @@
-# Ship — Issue #55
+# Ship — Issue #57
 
-Ready. Rank 2 of the #52 backlog, and the one whose blast radius was the merge gate
-itself: the branch-scoped rules now evaluate on the event a branch-protection ruleset
-requires, and the two events agree on one commit.
+Ready. Rank 4 of the #52 backlog, and the last of the four. It went in wider than filed:
+the issue is that amendment edges are unchecked, and reading them properly turned up a
+blocker-severity false positive on the repo's own ADR template.
 
 ## Ship criteria
 
-- [x] `pull_request` and `push` return the same verdicts for one commit
-- [x] A checked-out branch always beats the environment
-- [x] A tag push and a PR's `N/merge` ref are never mistaken for a lane
-- [x] A genuinely detached local checkout still SKIPs, unchanged
-- [x] `check` and `admit` derive lane identity from one function
-- [x] `reconcile`'s refusal is preserved and documented at both ends
-- [x] Every run states the lane and the basis it resolved on
-- [x] Zero verdict and zero detail changes in the golden corpus
+- [x] `Amends:` / `Amended-by:` are read — by a parser, a rule, and a schema field
+- [x] Every declared edge resolves against the tree, whatever the verb
+- [x] A wrapped declaration is read whole; parenthesised commentary declares nothing
+- [x] A one-way amendment is reported, naming both records
+- [x] A dangling amendment is reported once, by CTX-07 only
+- [x] A corpus with history adopts through the existing judgment route, with expiry
+- [x] `Superseded-by: ADR-NNNN` — the shipped template's spelling — is a forward link
+- [x] Nothing that passed before now fails: the phrase fallback survives
+- [x] One reader for relations, statuses and header fields
+- [x] Every re-pinned row accounted for; no other verdict moves
 - [x] Full suite green; self-check green; no blockers
 
-## Both mcgyvr incidents, closed
+## The gap this closes, in the words of the repo that had it
 
-- *Green PR, red push* (`lane/282`, 2026-08-16): the PR run now evaluates FLOW-04.
-- *Red push, blocked PR* (`lane/91`, 2026-08-01): the two runs can no longer disagree
-  by event, so the ruleset's by-name context count stops deadlocking.
+> None of these was found by a check. Every one was found by a person or an agent
+> re-reading.
+
+18 amendment edges, 15 of them one-way, on a 36-ADR corpus — against 4 supersede-shaped
+edges, which were the only ones any rule looked at.
 
 ## Next
 
-Task 8: #56 — REC-01 scores an append identically to a rewrite, so a repair and a
-falsification read the same. Rank 3 of the #52 backlog.
+The #52 backlog is empty. **#49** — two lanes can author the same decision-record
+number, and nothing reports it — is the remaining open issue, and it shares this one's
+substrate: a header parser that reads the whole declaration. It was filed as adjacent
+and separable, and it still is.

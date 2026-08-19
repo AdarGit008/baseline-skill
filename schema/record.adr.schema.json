@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/AdarGit008/baseline-skill/schema/record.adr.schema.json",
   "title": "decision record — extracted header of records/decisions/ADR-NNNN.md",
-  "description": "ADRs stay markdown (templates/adr.md): rationale and rejected alternatives exist in no diff, and prose is their natural form. This schema binds the machine-read header lines ('Status:' / 'Date:' / 'Supersedes:' / 'Superseded-by:', extracted by src/records.mjs with statuses lowercased) — the fields CTX-02/CTX-03 already enforce semantically. V1 ADR homes (docs/decisions/, docs/adr/) remain valid via decision_globs; records/decisions/ is the V2 home.",
+  "description": "ADRs stay markdown (templates/adr.md): rationale and rejected alternatives exist in no diff, and prose is their natural form. This schema binds the machine-read header lines ('Status:' / 'Date:' / 'Supersedes:' / 'Superseded-by:' / 'Amends:' / 'Amended-by:', extracted by src/records.mjs with statuses lowercased and continuation lines folded in) — the fields CTX-02/CTX-07/CTX-13 enforce semantically. Values stay free text ('none', 'ADR-0019 (D5 sizing), ADR-0017'): the storage form is what an author writes, and records.mjs' adrEdges is the one reader that turns it into edges. V1 ADR homes (docs/decisions/, docs/adr/) remain valid via decision_globs; records/decisions/ is the V2 home.",
   "type": "object",
   "additionalProperties": false,
   "required": ["status", "date"],
@@ -24,6 +24,14 @@
     "superseded_by": {
       "type": "string",
       "description": "The ADR that reversed this one ('none' or 'ADR-NNNN') — the forward link CTX-02 requires on superseded records."
+    },
+    "amends": {
+      "type": "string",
+      "description": "The ADR(s) this one corrects without replacing ('none', or 'ADR-NNNN' — comma-separated, parenthesised commentary allowed). Amendment is the relation a live decision graph mostly uses: part of the amended record survives, so a reader still arrives at it. CTX-07 resolves each target; CTX-13 wants the other end to say so."
+    },
+    "amended_by": {
+      "type": "string",
+      "description": "The ADR(s) that corrected this one ('none' or 'ADR-NNNN') — the back-link CTX-13 requires, and the only thing that tells a reader arriving at this record that part of it has been withdrawn."
     }
   }
 }

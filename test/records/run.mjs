@@ -9,7 +9,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { loadRules } from '../../src/rules.mjs'
-import { RECORD_KINDS, validateRecord, parseFrontmatter, renderFrontmatter, parseAdrHeader } from '../../src/records.mjs'
+import { RECORD_KINDS, validateRecord, parseFrontmatter, renderFrontmatter, parseAdrHeader, adrEdges } from '../../src/records.mjs'
 import { evaluateJudgment, evalCondition, loadJudgments } from '../../src/jdg.mjs'
 import { scan, findingId, DETERMINISTIC_SOURCES } from '../../src/scrub.mjs'
 import { extractNext, diagnoseNext, newestLocalLog, gitFacts } from '../../src/facts/git.mjs'
@@ -31,7 +31,7 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
 {
   const R = loadRules()
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'rules.json'), 'utf8'))
-  ok(R.rules.length === 91, `loader assembles 91 rules (got ${R.rules.length})`)
+  ok(R.rules.length === 92, `loader assembles 92 rules (got ${R.rules.length})`)
   ok((manifest.modules || []).length === 15, `manifest lists 15 modules (got ${(manifest.modules || []).length})`)
   ok(!('rules' in manifest), 'manifest itself carries no rules (they live in rules/)')
   ok(new Set(R.rules.map(r => r.id)).size === R.rules.length, 'rule ids unique across modules')
@@ -539,6 +539,75 @@ try {
     ok(r.ok === false && /two homes/.test(r.detail), 'REC-04: session narrative in both records/sessions and docs/session-log is flagged')
     fs.rmSync(path.join(t11, 'docs/session-log'), { recursive: true })
     ok(mk11()(OH, { id: 'REC-04' }).ok === true, 'REC-04: unique ids, one home — clean')
+  }
+
+
+  // ---- Issue #57: the decision graph's amendment edges — read, resolved, paired ----
+  // Before this, `Amends:`/`Amended-by:` were read by no rule, no kind and no schema
+  // check, and the ONE relation that was read was read by two different greps —
+  // neither of which matched `Superseded-by:`, the spelling templates/adr.md ships.
+  {
+    // the reader (adrEdges): wrapping, commentary, 'none', and both supersede spellings
+    const wrapped = '# ADR-0021 — the bench obligation\n\nStatus: Accepted\nSupersedes: none\nAmends: ADR-0019 (D5 sizing),\n  ADR-0017 (what it obliges the bench to do)\nAmended-by: n/a\nDate: 2026-08-11\n\n## Context\n\nx\n'
+    const e = adrEdges(wrapped)
+    ok(JSON.stringify(e.amends) === '[17,19]', `#57: a WRAPPED declaration is read whole — both targets (got ${JSON.stringify(e.amends)})`)
+    ok(!e.amends.includes(5), '#57: parenthesised commentary declares no edge — "(D5 sizing)" is not ADR-5')
+    ok(e.supersedes.length === 0 && e.amended_by.length === 0, "#57: 'none' and 'n/a' declare nothing (the template ships 'Supersedes: none' — not an edge to ADR-0)")
+    ok(adrEdges('# 0002\n\nStatus: Superseded by ADR-0003\n').superseded_by[0] === 3, '#57: the legacy inline form (Status: Superseded by ADR-0003) still resolves — the golden corpus pins it')
+    ok(adrEdges('# 0002\n\nStatus: Superseded\nSuperseded-by: ADR-0003\n').superseded_by[0] === 3, "#57: the HYPHENATED field form resolves — `\\s*` never matched a hyphen, so templates/adr.md's own spelling was invisible to both ADR rules")
+    const hdr = parseAdrHeader(wrapped)
+    ok(hdr.amends === 'ADR-0019 (D5 sizing), ADR-0017 (what it obliges the bench to do)' && hdr.amended_by === 'n/a', '#57: parseAdrHeader carries the amendment fields, folded across the wrap (one walk, shared with adrEdges)')
+    ok(validateRecord('adr', hdr).length === 0, '#57: the amendment fields validate against record.adr.schema.json')
+
+    // the rules, against a real tree
+    const t57 = mkrepo('main'); tmps.push(t57)
+    const D = 'docs/decisions'
+    fs.mkdirSync(path.join(t57, D), { recursive: true })
+    const adr = (n, body) => { fs.writeFileSync(path.join(t57, D, n), body); sh(t57, 'git', ['add', '-A']); sh(t57, 'git', ['commit', '-qm', n]) }
+    const cfg57 = { decision_globs: [D + '/*.md'] }
+    const mk57 = jdgs => makeEvalCheck({ repo: indexRepo(t57), cfg: cfg57, NO_EXEC: true, JDGS: {}, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    const FWD = { kind: 'adr-forward-link', globs_from_config: 'decision_globs' }
+    const BACK = { kind: 'adr-backlink', globs_from_config: 'decision_globs' }
+    const STAT = { kind: 'adr-status', globs_from_config: 'decision_globs' }
+
+    adr('0017-floor.md', '# ADR-0017 — the floor is the product\n\nStatus: Accepted\nSupersedes: none\nSuperseded-by: none\nDate: 2026-08-09\n\n## Context\n\nx\n')
+    adr('0021-bench.md', '# ADR-0021 — the bench obligation\n\nStatus: Accepted\nAmends: ADR-0019 (D5 sizing), ADR-0017 (what it obliges)\nDate: 2026-08-11\n\n## Context\n\nx\n')
+    let r = mk57([])(FWD, { id: 'CTX-07' })
+    ok(r.ok === false && /0021-bench\.md amends ADR 0019/.test(r.detail) && /no such file/.test(r.detail), '#57 CTX-07: a dangling `Amends:` is a finding naming the verb and the target (it PASSED before — only "Supersed(ed) by" was resolved)')
+    ok(!/ADR 0017/.test(r.detail), '#57 CTX-07: the edge that DOES resolve is not reported')
+    r = mk57([])(BACK, { id: 'CTX-13' })
+    ok(r.ok === false && /1 one-way amendment/.test(r.detail) && /0021-bench\.md amends ADR 0017/.test(r.detail) && /0017-floor\.md carries no Amended-by/.test(r.detail), '#57 CTX-13: an amendment declared at one end only is a finding naming BOTH records')
+    ok(!/ADR 0019/.test(r.detail), "#57 CTX-13: a DANGLING amends is CTX-07's finding, not reported twice here")
+
+    // the sanction route — the same one REC-01 uses (#47), so a corpus with history adopts
+    const JDG57 = over => ({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-08-11', by: 'a', subject: D + '/0021-bench.md', reason: 'back-fill scheduled with the index rebuild', review_by: '2999-01-01', ...over })
+    r = mk57([JDG57()])(BACK, { id: 'CTX-13' })
+    ok(r.ok === true && /sanctioned by judgment/.test(r.detail) && /JDG-0001/.test(r.detail), '#57 CTX-13: an unexpired deviation naming the declaring record sanctions the one-way edge')
+    r = mk57([JDG57({ review_by: '2000-01-01' })])(BACK, { id: 'CTX-13' })
+    ok(r.ok === false && /1 one-way amendment/.test(r.detail), '#57 CTX-13: an EXPIRED judgment stops sanctioning — the review date is what a frozen allowlist never has')
+    r = mk57([JDG57({ subject: D + '/**' })])(BACK, { id: 'CTX-13' })
+    ok(r.ok === true && /sanctioned/.test(r.detail), '#57 CTX-13: a glob subject sanctions (the breadth the rule fix warns about — corpus-wide covers future edges too)')
+
+    // the repair: both ends declared, and the target exists
+    adr('0019-sizing.md', '# ADR-0019 — D5 sizing\n\nStatus: Amended\nAmended-by: ADR-0021\nDate: 2026-08-10\n\n## Context\n\nx\n')
+    fs.writeFileSync(path.join(t57, D, '0017-floor.md'), '# ADR-0017 — the floor is the product\n\nStatus: Amended\nSupersedes: none\nSuperseded-by: none\nAmended-by: ADR-0021\nDate: 2026-08-09\n\n## Context\n\nx\n')
+    sh(t57, 'git', ['add', '-A']); sh(t57, 'git', ['commit', '-qm', 'back-links'])
+    r = mk57([])(FWD, { id: 'CTX-07' })
+    ok(r.ok === true && /4 declared edge\(s\) resolve/.test(r.detail), `#57 CTX-07: with 0019 present every declared edge resolves, and the detail COUNTS them (got ${r.detail})`)
+    r = mk57([])(BACK, { id: 'CTX-13' })
+    ok(r.ok === true && /2 amendment edge\(s\) declared at both ends/.test(r.detail), `#57 CTX-13: both ends declared — PASS naming the paired count (got ${r.detail})`)
+
+    // CTX-02: the template's own spelling is a forward link (it was not, at blocker severity)
+    const t57b = mkrepo('main'); tmps.push(t57b)
+    fs.mkdirSync(path.join(t57b, D), { recursive: true })
+    const mk57b = () => makeEvalCheck({ repo: indexRepo(t57b), cfg: cfg57, NO_EXEC: true, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    fs.writeFileSync(path.join(t57b, D, '0003-new.md'), '# ADR-0003 — the replacement\n\nStatus: Accepted\nDate: 2026-08-12\n\n## Context\n\nx\n')
+    fs.writeFileSync(path.join(t57b, D, '0002-old.md'), '# ADR-0002 — old\n\nStatus: Superseded\nSuperseded-by: ADR-0003\nDate: 2026-08-01\n\n## Context\n\nx\n')
+    sh(t57b, 'git', ['add', '-A']); sh(t57b, 'git', ['commit', '-qm', 'adrs'])
+    ok(mk57b()(STAT, { id: 'CTX-02' }).ok === true, "#57 CTX-02: `Superseded-by: ADR-0003` IS a forward link — a record following templates/adr.md was reported as misdirecting a reader, at blocker severity")
+    fs.writeFileSync(path.join(t57b, D, '0002-old.md'), '# ADR-0002 — old\n\nStatus: Superseded\nDate: 2026-08-01\n\n## Context\n\nNo forward link here.\n')
+    sh(t57b, 'git', ['add', '-A']); sh(t57b, 'git', ['commit', '-qm', 'drop link'])
+    ok(mk57b()(STAT, { id: 'CTX-02' }).ok === false, '#57 CTX-02: a superseded record with NO link still fails — the widening added a spelling, it did not relax the rule')
   }
 
   // ---- Issue #47: REC-01's sanctioned-edit route end-to-end through check.mjs ----

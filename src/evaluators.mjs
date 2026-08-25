@@ -11,6 +11,7 @@ import { classifyPostureDiff } from './derive/posture.mjs'
 import { scan, loadAllowlist } from './scrub.mjs'
 import { loadClaims, CLAIM_RECORD_GLOB } from './claims.mjs'
 import { adrEdges } from './records.mjs'
+import { pluginSpec, probePlugin, gitMatches, expectationWord, pluginLogRel, writePluginLog, removePluginLog } from './plugins.mjs'
 
 // The judgment kinds that can SANCTION a finding: a one-way amendment (CTX-13) or a
 // twice-claimed decision number (CTX-14) covered by a judgment naming the record's
@@ -31,7 +32,7 @@ const ADR_EDGE_VERBS = [['supersedes', 'supersedes'], ['superseded_by', 'is supe
 function adrFileNumber(f) { const m = (f.split('/').pop() || '').match(/\d{1,4}/); return m ? parseInt(m[0], 10) : null }
 
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'command', 'adr-status', 'adr-forward-link', 'adr-backlink', 'adr-number-unique', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'descriptor', 'descriptor-valid', 'records-scrub', 'descriptor-change', 'forge-protection', 'workflow-state'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'command', 'adr-status', 'adr-forward-link', 'adr-backlink', 'adr-number-unique', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'descriptor', 'descriptor-valid', 'records-scrub', 'descriptor-change', 'forge-protection', 'workflow-state', 'plugin-presence'])
 
 export function makeEvalCheck({ repo, cfg, NO_EXEC, JUDGMENTS = null, DESCRIPTOR, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
   const { REPO, FILES, match, read, readText, readRaw, gitCommitISO, gitCatFile } = repo
@@ -319,7 +320,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JUDGMENTS = null, DESCRIPTOR
     }
 
     if (k === 'md-links') {
-      const files = match(globsOf(c))
+      const files = match(globsOf(c), { tracked: !!c.tracked_only })
       if (!files.length) return { ok: null, detail: 'no docs to scan' }
       const linkRe = /\[[^\]]*\]\(([^)]+)\)/g
       const broken = []
@@ -640,6 +641,57 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JUDGMENTS = null, DESCRIPTOR
         return { ok: false, detail: `${DESCRIPTOR_FILE} changed with no same-range judgment${weakNote}${hint} — baseline jdg new --kind deviation --subject "${DESCRIPTOR_FILE}" --reason "why the posture changed" --review-by <date>, in this PR` }
       }
       return { ok: true, detail: `descriptor change carries ${jdgs[0].record.id} (subject ${DESCRIPTOR_FILE}, review by ${jdgs[0].record.review_by})${weakNote}` }
+    }
+
+    // ---- v3 §11 the plugin boundary (D6–D10, V38–V41) — the PLUG family's one kind. ----
+
+    if (k === 'plugin-presence') {
+      // Metadata only (D7): the probe asks whether the artifact exists, what it is, how old
+      // it is and what git says of it — never what is in it. Never ok:null — an absent
+      // plugin is a WARN naming the install command (D8), and the command is printed, not
+      // run (D6). On WARN the log under .baseline/log/<PREFIX>.log records the path, the
+      // config values with their source and git's answer (D10); a PASS removes a stale one.
+      const name = String(c.plugin || '')
+      const spec = pluginSpec(cfg, name)
+      const install = String(c.install || '').trim()
+      if (!spec) return { ok: false, detail: `rule names an unknown plugin '${name}' — the plugin table knows none by that name` }
+      const p = probePlugin(REPO, name, spec)
+      const envName = spec.env || null
+      const where = spec.path ? spec.path : `$${envName || 'plugins.' + name + '.path'} (unset)`
+      const expect = expectationWord(spec.ignored)
+      const logRel = pluginLogRel(rule.id)
+      const stamp = (nowUTC() ?? new Date()).toISOString()
+      const logLines = (verdict, why) => [
+        `${rule.id} — ${name} plugin presence probe (baseline check, ${stamp})`,
+        `repo: ${REPO}`,
+        `path: ${spec.path ?? `(unset — ${envName ? `${envName} not set and ` : ''}no plugins.${name}.path in baseline.config.json)`} (source: ${spec.source?.path || 'default'}${spec.path && p.abs ? `; resolved: ${p.abs}` : ''})`,
+        `ignored: ${spec.ignored} (source: ${spec.source?.ignored || 'default'} — ${spec.source?.ignored === 'config' ? 'baseline.config.json plugins.' + name + '.ignored' : 'the default; no plugins.' + name + '.ignored in config'})`,
+        `present: ${p.present ? `yes — ${p.kind}, mtime ${p.mtime}` : 'no'}`,
+        `git: ${p.present ? (p.git === 'outside' ? 'not asked — the path is outside the repo' : p.git === null ? 'no answer (not a git repository, or git unavailable)' : `${p.git} (git ls-files --error-unmatch; git check-ignore -q)`) : 'not asked — nothing to ask about'}`,
+        `verdict: ${verdict} — ${why}`,
+      ]
+      const warn = (detail, why) => {
+        const log = writePluginLog(REPO, rule.id, logLines('WARN', why))
+        return { ok: false, detail, ...(log ? { log } : {}) }
+      }
+      if (!p.present) {
+        return warn(`${name} not found at ${where} — install: ${install}`, `${name} artifact absent at ${where}; install: ${install}`)
+      }
+      if (p.git === 'outside') {
+        removePluginLog(REPO, rule.id)
+        return { ok: true, detail: `${name} present at ${p.abs} (${p.kind}, mtime ${p.mtime}; outside the repo, so git was not asked)` }
+      }
+      if (p.git === null) {
+        return warn(`${name} present at ${spec.path} but git could not say whether it is ${expect} (not a git repository, or git unavailable) — config expects ${expect}`, `git gave no answer; config expects ${expect}`)
+      }
+      if (gitMatches(p.git, spec.ignored)) {
+        removePluginLog(REPO, rule.id)
+        return { ok: true, detail: `${name} present at ${spec.path} (${p.kind}, ${p.git} by git as configured, mtime ${p.mtime})` }
+      }
+      const found = p.git === 'untracked' ? 'untracked (neither tracked nor ignored)' : p.git
+      return warn(
+        `${name} present at ${spec.path} but config says ${expect}, git says ${found} — set plugins.${name}.ignored in baseline.config.json or change .gitignore`,
+        `config says ${expect} (source: ${spec.source?.ignored || 'default'}), git says ${found}`)
     }
 
     return { ok: null, detail: 'unknown check kind: ' + k }

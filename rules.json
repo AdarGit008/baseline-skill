@@ -28,6 +28,7 @@
     "rules/repro.json",
     "rules/ops.json",
     "rules/rec.json",
-    "rules/desc.json"
+    "rules/desc.json",
+    "rules/plug.json"
   ]
 }

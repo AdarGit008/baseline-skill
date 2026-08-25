@@ -70,8 +70,13 @@
       "    PASS      REC-02-landed-records-scrub-clean        Landed records are scrub-clean  ↳ 20 file(s) scrub-clean at HEAD",
       "    PASS      REC-05-push-time-secret-gate             Records are covered by a push-time secret gate  ↳ matched in 1 file(s)",
       "",
-      "  Summary  36 pass · 0 fail · 8 warn",
-      "  Readiness: 82%  (36/44 evaluated)",
+      "  Plugins",
+      "    WARN      PLUG-01-tdd-pi                           tdd-pi artifact present and tracked  ↳ tdd-pi not found at tdd.json — install: npm i -g tdd-pi · log: .baseline/log/PLUG-01.log",
+      "    WARN      PLUG-02-graphify                         graphify graph present and gitignored  ↳ graphify not found at graphify-out — install: pip install graphify · log: .baseline/log/PLUG-02.log",
+      "    WARN      PLUG-03-okf-rag                          okf-rag bundle present  ↳ okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag · log: .baseline/log/PLUG-03.log",
+      "",
+      "  Summary  36 pass · 0 fail · 11 warn",
+      "  Readiness: 77%  (36/47 evaluated)",
       "",
       "  ✓ no blockers.",
       "",
@@ -278,10 +283,10 @@
     "summary": {
       "blockers": 3,
       "pass": 9,
-      "warn": 9,
+      "warn": 12,
       "fail": 3,
       "diverged": 0,
-      "total": 21
+      "total": 24
     },
     "rules": {
       "CTX-03-sources-of-truth-declared": {
@@ -411,6 +416,18 @@
       "REC-05-push-time-secret-gate": {
         "tag": "WARN",
         "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+      },
+      "PLUG-01-tdd-pi": {
+        "tag": "WARN",
+        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      },
+      "PLUG-02-graphify": {
+        "tag": "WARN",
+        "detail": "graphify not found at graphify-out — install: pip install graphify"
+      },
+      "PLUG-03-okf-rag": {
+        "tag": "WARN",
+        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
       }
     }
   },
@@ -421,10 +438,10 @@
     "summary": {
       "blockers": 2,
       "pass": 8,
-      "warn": 15,
+      "warn": 18,
       "fail": 2,
       "diverged": 0,
-      "total": 25
+      "total": 28
     },
     "rules": {
       "BUILD-01-dependency-manifest-present": {
@@ -602,6 +619,18 @@
       "REC-05-push-time-secret-gate": {
         "tag": "WARN",
         "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+      },
+      "PLUG-01-tdd-pi": {
+        "tag": "WARN",
+        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      },
+      "PLUG-02-graphify": {
+        "tag": "WARN",
+        "detail": "graphify not found at graphify-out — install: pip install graphify"
+      },
+      "PLUG-03-okf-rag": {
+        "tag": "WARN",
+        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
       }
     }
   },
@@ -612,10 +641,10 @@
     "summary": {
       "blockers": 0,
       "pass": 7,
-      "warn": 7,
+      "warn": 10,
       "fail": 0,
       "diverged": 0,
-      "total": 14
+      "total": 17
     },
     "rules": {
       "CTX-03-sources-of-truth-declared": {
@@ -717,6 +746,18 @@
       "REC-05-push-time-secret-gate": {
         "tag": "WARN",
         "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+      },
+      "PLUG-01-tdd-pi": {
+        "tag": "WARN",
+        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      },
+      "PLUG-02-graphify": {
+        "tag": "WARN",
+        "detail": "graphify not found at graphify-out — install: pip install graphify"
+      },
+      "PLUG-03-okf-rag": {
+        "tag": "WARN",
+        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
       }
     }
   },
@@ -730,10 +771,10 @@
     "summary": {
       "blockers": 4,
       "pass": 8,
-      "warn": 11,
+      "warn": 14,
       "fail": 4,
       "diverged": 0,
-      "total": 23
+      "total": 26
     },
     "rules": {
       "CTX-02-decision-status-links-forward": {
@@ -855,6 +896,18 @@
       "REC-05-push-time-secret-gate": {
         "tag": "WARN",
         "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+      },
+      "PLUG-01-tdd-pi": {
+        "tag": "WARN",
+        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      },
+      "PLUG-02-graphify": {
+        "tag": "WARN",
+        "detail": "graphify not found at graphify-out — install: pip install graphify"
+      },
+      "PLUG-03-okf-rag": {
+        "tag": "WARN",
+        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
       }
     }
   },
@@ -865,10 +918,10 @@
     "summary": {
       "blockers": 0,
       "pass": 7,
-      "warn": 7,
+      "warn": 10,
       "fail": 0,
       "diverged": 0,
-      "total": 14
+      "total": 17
     },
     "rules": {
       "CTX-03-sources-of-truth-declared": {
@@ -970,6 +1023,18 @@
       "REC-05-push-time-secret-gate": {
         "tag": "WARN",
         "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+      },
+      "PLUG-01-tdd-pi": {
+        "tag": "WARN",
+        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      },
+      "PLUG-02-graphify": {
+        "tag": "WARN",
+        "detail": "graphify not found at graphify-out — install: pip install graphify"
+      },
+      "PLUG-03-okf-rag": {
+        "tag": "WARN",
+        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
       }
     }
   },
@@ -980,10 +1045,10 @@
     "summary": {
       "blockers": 6,
       "pass": 6,
-      "warn": 22,
+      "warn": 25,
       "fail": 6,
       "diverged": 0,
-      "total": 34
+      "total": 37
     },
     "rules": {
       "BUILD-01-dependency-manifest-present": {
@@ -1161,6 +1226,18 @@
       "REC-05-push-time-secret-gate": {
         "tag": "WARN",
         "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+      },
+      "PLUG-01-tdd-pi": {
+        "tag": "WARN",
+        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      },
+      "PLUG-02-graphify": {
+        "tag": "WARN",
+        "detail": "graphify not found at graphify-out — install: pip install graphify"
+      },
+      "PLUG-03-okf-rag": {
+        "tag": "WARN",
+        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
       }
     }
   },
@@ -1173,10 +1250,10 @@
     "summary": {
       "blockers": 0,
       "pass": 36,
-      "warn": 8,
+      "warn": 11,
       "fail": 0,
       "diverged": 0,
-      "total": 44
+      "total": 47
     },
     "rules": {
       "BUILD-01-dependency-manifest-present": {
@@ -1386,6 +1463,18 @@
       "REC-05-push-time-secret-gate": {
         "tag": "PASS",
         "detail": "matched in 1 file(s)"
+      },
+      "PLUG-01-tdd-pi": {
+        "tag": "WARN",
+        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      },
+      "PLUG-02-graphify": {
+        "tag": "WARN",
+        "detail": "graphify not found at graphify-out — install: pip install graphify"
+      },
+      "PLUG-03-okf-rag": {
+        "tag": "WARN",
+        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
       }
     }
   },
@@ -1643,10 +1732,10 @@
     "summary": {
       "blockers": 1,
       "pass": 18,
-      "warn": 14,
+      "warn": 17,
       "fail": 1,
       "diverged": 0,
-      "total": 33
+      "total": 36
     },
     "rules": {
       "BUILD-01-dependency-manifest-present": {
@@ -1852,6 +1941,18 @@
       "REC-05-push-time-secret-gate": {
         "tag": "WARN",
         "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+      },
+      "PLUG-01-tdd-pi": {
+        "tag": "WARN",
+        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      },
+      "PLUG-02-graphify": {
+        "tag": "WARN",
+        "detail": "graphify not found at graphify-out — install: pip install graphify"
+      },
+      "PLUG-03-okf-rag": {
+        "tag": "WARN",
+        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
       }
     }
   }

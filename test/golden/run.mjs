@@ -36,7 +36,7 @@ const GIT_ENV = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOS
 // not silently drift the pins the checker subprocess derives — or, under --capture, bless
 // wrong ones. Strip them from the inherited env; the harness re-injects BASELINE_FORGE_REPLAY
 // per-manifest exactly where a fixture wants it. (BASELINE_GOLDEN_CHECK stays a real knob.)
-for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'BASELINE_GOV_ADMIN', 'GITHUB_HEAD_REF']) delete GIT_ENV[k]
+for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'BASELINE_GOV_ADMIN', 'BASELINE_OKF_BUNDLE', 'GITHUB_HEAD_REF']) delete GIT_ENV[k]
 // Override the runner under test (e.g. point at a pristine V1 monolith to prove a
 // candidate runner reproduces the same pins): BASELINE_GOLDEN_CHECK=/path/check.mjs
 const CHECK_UNDER_TEST = process.env.BASELINE_GOLDEN_CHECK || CHECK

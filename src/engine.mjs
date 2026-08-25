@@ -72,7 +72,11 @@ export function runRules({
     // gate that must be argued as an adoption path, on the record, like BUILD-05.
     else if (res.soft) tag = 'WARN'
     else tag = r.severity === 'blocker' ? 'FAIL' : 'WARN'
-    results.push({ r, tag, detail: res.detail })
+    // row-level extras an evaluator attaches ride through to the report when present (a
+    // PLUG WARN's repo-relative `log`, a `fix`) — never as empty keys
+    const row = { r, tag, detail: res.detail }
+    for (const k of ['log', 'fix']) if (res[k] != null) row[k] = res[k]
+    results.push(row)
   }
   return results
 }

@@ -12,6 +12,12 @@ import { loadDescriptor } from './descriptor.mjs'
 import { loadJudgments } from './jdg.mjs'
 import { asArr } from './util.mjs'
 import { TOOLS } from './selfcheck.mjs'
+import { PLUGIN_DEFAULTS, resolvePlugins, pluginPathsInRepo } from './repo.mjs'
+
+// v3 §11 D9: the plugin table (tdd-pi, graphify, okf-rag → artifact path + gitignore
+// expectation) is defined on the tree seam, because the index must exclude those paths
+// before any config exists; it is re-exported here so config readers have one name for it.
+export { PLUGIN_DEFAULTS, resolvePlugins }
 
 export function detectType(repo) {
   const { FILES } = repo
@@ -53,6 +59,9 @@ export function buildDefaults(repo) {
     profiles: [],          // packs to activate (v3 §5); `packs` is the alias, --profile <pack> the CLI form
     packs: [],
     want: [],              // tools declared present-by-intent (v3 §6 V20): overrides the tool gate and the type gate
+    // v3 §11 D9: the three plugin artifacts — where each lives and whether git is expected
+    // to ignore it. baseline.config.json `plugins` (keyed by plugin name) overrides per key.
+    plugins: resolvePlugins(),
   }
 }
 
@@ -89,6 +98,14 @@ export function resolveConfig(repo, { cliConfigPath = null, profileArgs = [], de
   const WANT_UNKNOWN = wantAll.filter(t => !TOOLS.includes(t))
   cfg.want = [...WANT]
 
+  // v3 §11 D9: the plugin table, resolved from the DEFAULTS and the EXPLICIT `plugins`
+  // overrides (a config that never mentions `plugins` inherits the resolved defaults, so
+  // the defaults are never re-read as if the user had typed them). The index already
+  // excludes the in-repo config's paths; a --config file may add one it could not see.
+  const PLUGINS = resolvePlugins(EXPLICIT.has('plugins') ? cfg.plugins : {})
+  cfg.plugins = PLUGINS
+  if (typeof repo.excludePaths === 'function') repo.excludePaths(pluginPathsInRepo(repo.REPO, PLUGINS))
+
   // Kept for the callers that still read the claims gate by name (admit/reconcile thread
   // them into runRules): the claims pack IS the gate now, and there is no second reason.
   const CLAIMS_ACTIVE = ACTIVE_PACKS.has('claims')
@@ -104,5 +121,5 @@ export function resolveConfig(repo, { cliConfigPath = null, profileArgs = [], de
   // selection (JDGS) left with the manual rules it satisfied (v3 D11).
   const JUDGMENTS = loadJudgments(repo.REPO).records
 
-  return { cfg, DEFAULTS, EXPLICIT, ACTIVE_PACKS, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, TOOLS_PRESENT, WANT, WANT_UNKNOWN, JUDGMENTS, DESCRIPTOR }
+  return { cfg, DEFAULTS, EXPLICIT, ACTIVE_PACKS, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, TOOLS_PRESENT, WANT, WANT_UNKNOWN, PLUGINS, JUDGMENTS, DESCRIPTOR }
 }

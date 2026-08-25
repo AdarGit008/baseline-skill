@@ -1,0 +1,76 @@
+{
+  "rules": [
+    {
+      "id": "PLUG-01-tdd-pi",
+      "title": "tdd-pi artifact present and tracked",
+      "category": "plugins",
+      "severity": "warn",
+      "applies_to": "all",
+      "source": "v3 PLAN §11 D6–D10 — the plugin boundary; the tdd-pi plugin's tdd.json is the test-discipline evidence a repo commits",
+      "lesson": "A plugin is known by its artifact, not by its data: baseline asks whether tdd.json is there and whether git tracks it, and never opens it — the file's schema, its covers[] and its source commit are tdd-pi's own business (D7).",
+      "rationale": "One always-on WARN per plugin (D8): absence is named once, with the install command, and never changes the exit code. When the artifact is present the one further question is git's (D9): tdd.json is committed evidence, so the default expects it tracked, and a config-vs-git disagreement is the finding. Every WARN leaves .baseline/log/PLUG-01.log recording the path inspected, the config values used and git's answer (D10).",
+      "fix": "Install the plugin and run it once so tdd.json lands at the repo root (the install command in the finding is a placeholder for the plugin's own instructions), then commit tdd.json. A different location or gitignore policy is declared in baseline.config.json: {\"plugins\": {\"tdd-pi\": {\"path\": \"tools/tdd.json\", \"ignored\": false}}}.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "plugin-presence",
+        "plugin": "tdd-pi",
+        "install": "npm i -g tdd-pi"
+      }
+    },
+    {
+      "id": "PLUG-02-graphify",
+      "title": "graphify graph present and gitignored",
+      "category": "plugins",
+      "severity": "warn",
+      "applies_to": "all",
+      "source": "v3 PLAN §11 D6–D10 — the plugin boundary; graphify's graphify-out/ is a derived knowledge graph, rebuilt from the tree",
+      "lesson": "The graph is a plugin artifact: the only questions baseline asks are whether graphify-out/ is there, how old it is, and whether git ignores it. `Built from commit:` is a line in a file graphify owns, and reading it would make the verdict depend on the plugin's format (D7).",
+      "rationale": "One always-on WARN per plugin (D8): an absent graph is named once, with the install command, and never changes the exit code. When present, the one further question is git's (D9): a derived store belongs in .gitignore, so the default expects it ignored, and a tracked graphify-out/ is the finding (config says ignored, git says tracked). Every WARN leaves .baseline/log/PLUG-02.log recording the path inspected, the config values used and git's answer (D10).",
+      "fix": "Install the plugin and build the graph so graphify-out/ exists (the install command in the finding is a placeholder for the plugin's own instructions), and add graphify-out/ to .gitignore. A different location or gitignore policy is declared in baseline.config.json: {\"plugins\": {\"graphify\": {\"path\": \"graphify-out\", \"ignored\": true}}}.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "plugin-presence",
+        "plugin": "graphify",
+        "install": "pip install graphify"
+      }
+    },
+    {
+      "id": "PLUG-03-okf-rag",
+      "title": "okf-rag bundle present",
+      "category": "plugins",
+      "severity": "warn",
+      "applies_to": "all",
+      "source": "v3 PLAN §11 D6–D10 — the plugin boundary; okf-rag's bundle is the concept store `baseline explain` addresses by concept id, at $BASELINE_OKF_BUNDLE",
+      "lesson": "The bundle is addressed by path or env and never read during check: no verdict depends on a retrieval (§1 V3), and the audit `explain --audit` resolves by filename alone. Presence, kind, age and git state are the whole question (D7).",
+      "rationale": "One always-on WARN per plugin (D8): an unset or missing bundle is named once, with the install command, and never changes the exit code. The bundle usually lives outside the repo, and a path outside the repo is not asked the gitignore question at all (D9); a bundle kept inside the repo is a derived store, so the default expects it ignored. Every WARN leaves .baseline/log/PLUG-03.log recording the path inspected, the config values used and git's answer (D10).",
+      "fix": "Install the plugin (the install command in the finding is a placeholder for the plugin's own instructions), export BASELINE_OKF_BUNDLE=<dir> pointing at its bundle, or declare the path in baseline.config.json: {\"plugins\": {\"okf-rag\": {\"path\": \"/abs/path/to/bundle\", \"ignored\": true}}}. `baseline gen okf-concepts` stages the per-rule concepts the bundle is built from.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "plugin-presence",
+        "plugin": "okf-rag",
+        "install": "npm i -g okf-rag"
+      }
+    }
+  ]
+}

@@ -23,10 +23,11 @@ finding id, and a true false-positive is cleared with a dated judgment:
 push again. `git push --no-verify` skips this hook; repos using `core.hooksPath`
 (husky et al.) must install into that directory; scanning covers `records/`
 (+ `.baseline/cache/` presence) in the pushed range — server-side push protection is
-the layer that cannot be skipped. REC-05 PASSes on at-rest evidence of a push-time
-gate: gitleaks-class config, or this hook committed into the repo's `hooks/`. GitHub
-push protection satisfies the same intent but is only assertable live at M6 (its
-forge rules), so at rest it alone still warns.
+the layer that cannot be skipped. `.baseline/log/` (the per-run logs a plugin WARN
+leaves, v3 §11 D10) is gitignored beside `.baseline/cache/` and never reaches a pushed
+range. REC-05 PASSes on at-rest evidence of a push-time gate: gitleaks-class config, or
+this hook committed into the repo's `hooks/`. GitHub push protection satisfies the same
+intent but is only assertable live at M6 (its forge rules), so at rest it alone still warns.
 
 ## Wire it into Claude Code
 

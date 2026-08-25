@@ -7,13 +7,68 @@ import { asArr, globMatcher, parseDate } from './util.mjs'
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.turbo', 'coverage', '.next', '__pycache__', 'vendor', '.venv', 'venv'])
 
-function walk(dir, base = dir, out = []) {
+// ---------------------------------------------------------------- the plugin boundary (v3 §11 D7/D9)
+// The three plugin artifacts are the one part of the tree baseline may LOCATE but never
+// OPEN: the index leaves them out of FILES and TRACKED, so no `**` glob (SEC-01, REC-02,
+// CTX-05) ever reads tdd.json or a page under graphify-out/. The table lives on the tree
+// seam because the walk needs it before any config is resolved, and config resolution
+// needs the walk (project_type is detected from FILES) — config.mjs re-exports it.
+//   path     repo-relative unless absolute; okf-rag's default is the env var, or null
+//   ignored  the gitignore EXPECTATION the PLUG rule compares git's answer against
+// baseline.config.json `plugins` (keyed by plugin name) overrides per key; a config path
+// beats the env var. Every resolved entry records where each value came from (`source`),
+// so the WARN log can say "default" or "config" honestly.
+export const PLUGIN_DEFAULTS = Object.freeze({
+  'tdd-pi': Object.freeze({ path: 'tdd.json', ignored: false }),
+  graphify: Object.freeze({ path: 'graphify-out', ignored: true }),
+  'okf-rag': Object.freeze({ path: null, ignored: true, env: 'BASELINE_OKF_BUNDLE' }),
+})
+export function resolvePlugins(overrides = {}, env = process.env) {
+  const out = {}
+  for (const [name, d] of Object.entries(PLUGIN_DEFAULTS)) {
+    const o = overrides && typeof overrides === 'object' && overrides[name] && typeof overrides[name] === 'object' ? overrides[name] : {}
+    let p = d.path, pathSource = 'default'
+    if (d.env && typeof env?.[d.env] === 'string' && env[d.env].trim()) { p = env[d.env].trim(); pathSource = 'env' }
+    if (typeof o.path === 'string' && o.path.trim()) { p = o.path.trim(); pathSource = 'config' }
+    const explicitIgnored = typeof o.ignored === 'boolean'
+    out[name] = {
+      path: p,
+      ignored: explicitIgnored ? o.ignored : d.ignored,
+      source: { path: pathSource, ignored: explicitIgnored ? 'config' : 'default' },
+      ...(d.env ? { env: d.env } : {}),
+    }
+  }
+  return out
+}
+/** A plugin path as the index spells it — posix, repo-relative — or null when it is
+ *  absolute-outside the repo (the okf bundle usually is) or the repo root itself. */
+export function repoRelative(REPO, p) {
+  if (typeof p !== 'string' || !p) return null
+  const rel = path.relative(path.resolve(REPO), path.resolve(REPO, p))
+  if (!rel || rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel)) return null
+  return rel.split(path.sep).join('/')
+}
+/** The configured artifact paths that sit INSIDE the repo — what the index excludes. */
+export function pluginPathsInRepo(REPO, PLUGINS) {
+  return Object.values(PLUGINS || {}).map(e => repoRelative(REPO, e?.path)).filter(Boolean)
+}
+// The in-repo config's `plugins` key, read light (no config resolution yet) so the walk
+// can exclude a configured path; resolveConfig re-resolves with --config and calls
+// repo.excludePaths() for anything it adds. `.baseline/` is baseline's own scratch (cache, log,
+// proposed) and never evidence.
+function inRepoPluginOverrides(REPO) {
+  try { const j = JSON.parse(fs.readFileSync(path.join(REPO, 'baseline.config.json'), 'utf8')); return j && typeof j.plugins === 'object' ? j.plugins : {} } catch { return {} }
+}
+const BASELINE_DIR = '.baseline'
+
+function walk(dir, base = dir, out = [], skip = () => false) {
   let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }) } catch { return out }
   for (const e of ents) {
     if (SKIP_DIRS.has(e.name)) continue
     const full = path.join(dir, e.name)
     const rel = path.relative(base, full).split(path.sep).join('/')
-    if (e.isDirectory()) walk(full, base, out)
+    if (skip(rel)) continue
+    if (e.isDirectory()) walk(full, base, out, skip)
     else out.push(rel)
   }
   return out
@@ -33,17 +88,34 @@ export function liteRepo(REPO) {
   }
 }
 
-export function indexRepo(REPO) {
-  const FILES = walk(REPO)
+export function indexRepo(REPO, { plugins = null } = {}) {
+  // v3 §11 D7: the plugin artifacts and .baseline/ are outside the index — from the walk
+  // AND from the tracked pool, so a committed tdd.json is no more evidence than an
+  // ignored one. Path-anchored (root-level), unlike the by-name SKIP_DIRS.
+  const PLUGINS = plugins || resolvePlugins(inRepoPluginOverrides(REPO))
+  const EXCLUDED = new Set([BASELINE_DIR, ...pluginPathsInRepo(REPO, PLUGINS)])
+  const excluded = rel => { for (const x of EXCLUDED) if (rel === x || rel.startsWith(x + '/')) return true; return false }
+  const FILES = walk(REPO, REPO, [], excluded)
 
   // git-tracked set (for tracked_only checks); null when not a git repo.
   // -z: NUL-separated, unquoted — core.quotePath C-quotes non-ASCII names, and a
   // quoted string never matches the fs-walked FILES spelling (a café.md record
   // would silently fall out of every tracked_only scan, including REC-02's).
   let TRACKED = null
-  try { TRACKED = new Set(execFileSync('git', ['ls-files', '-z'], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\0').filter(Boolean)) } catch {}
+  try { TRACKED = new Set(execFileSync('git', ['ls-files', '-z'], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\0').filter(f => f && !excluded(f))) } catch {}
   let HEAD = null
   try { HEAD = execSync('git rev-parse --short HEAD', { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() } catch {}
+
+  // Widen the exclusion after the fact — resolveConfig calls this with the plugin paths
+  // a --config file (invisible to the walk) may have added. Idempotent; in place, so the
+  // FILES/TRACKED references evaluators already hold see the narrower index.
+  function excludePaths(rels) {
+    const fresh = asArr(rels).filter(r => typeof r === 'string' && r && !EXCLUDED.has(r))
+    if (!fresh.length) return
+    for (const r of fresh) EXCLUDED.add(r)
+    const kept = FILES.filter(f => !excluded(f)); FILES.splice(0, FILES.length, ...kept)
+    if (TRACKED) for (const f of [...TRACKED]) if (excluded(f)) TRACKED.delete(f)
+  }
 
   // match globs against the repo, with optional tracked-only, allow (exclude) and exclude_globs
   function match(globs, { tracked = false, exclude = [], excludeGlobs = [] } = {}) {
@@ -142,5 +214,5 @@ export function indexRepo(REPO) {
     try { return execFileSync('git', ['ls-tree', '-r', '--name-only', ref], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\n').filter(Boolean) } catch { return null }
   }
 
-  return { REPO, FILES, TRACKED, HEAD, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile, gitLsTree }
+  return { REPO, FILES, TRACKED, HEAD, PLUGINS, excludePaths, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile, gitLsTree }
 }

@@ -97,7 +97,9 @@ export function humanRows(results, color) {
   for (const cat of cats) {
     const group = rows.filter(x => x.r.category === cat); if (!group.length) continue
     lines.push('  ' + color(1, CATS[cat] ?? String(cat)))
-    for (const x of group) lines.push(`    ${tagCell(x.tag)} ${String(x.r.id).padEnd(IDW)} ${S(x.r.title)}  ${color(90, '↳ ' + oneLine(x.detail))}`)
+    // a row that left a log (a PLUG WARN, D10) names it on the same line as its id, so a
+    // reader who filters by id sees the finding and where the probe's record is
+    for (const x of group) lines.push(`    ${tagCell(x.tag)} ${String(x.r.id).padEnd(IDW)} ${S(x.r.title)}  ${color(90, '↳ ' + oneLine(x.detail) + (x.log ? ` · log: ${oneLine(String(x.log))}` : ''))}`)
     lines.push('')
   }
   return lines

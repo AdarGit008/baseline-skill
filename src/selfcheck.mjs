@@ -7,7 +7,9 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
   const problems = []
   const typeSet = new Set(TYPES)
   const profileKeys = new Set(Object.keys(RULES.profiles || {}))
-  const sevOk = new Set(['blocker', 'warn', 'manual'])
+  // the two severities the engine routes: blocker → FAIL (exit code), anything else → WARN.
+  // 'manual' (the sign-off ledger) left with its five rules (v3 §11 D11).
+  const sevOk = new Set(['blocker', 'warn'])
   const catKeys = new Set(Object.keys(CATS))
   const ids = new Set()
   const expand = r => r.applies_to === 'all' ? TYPES : (Array.isArray(r.applies_to) ? r.applies_to : [])
@@ -33,21 +35,16 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     if (!sevOk.has(r.severity)) problems.push(`${curId}: invalid severity '${r.severity}'`)
     if (!catKeys.has(r.category)) problems.push(`${curId}: unknown category '${r.category}'`)
     if (r.requires !== undefined && !(r.requires in DEFAULTS)) problems.push(`${curId}: 'requires' names unknown config key '${r.requires}'`)
-    // M4c posture/branch gates are data: a rule may declare the workflow(s) it needs
-    // and/or that it only runs on a lane (non-default) branch — values are closed sets,
-    // and branch_scope REQUIRES workflow: a lane rule without a posture gate would run
-    // on every non-default branch of every undeclared repo (the wallpaper-warn class the
-    // M4 ruling forbids) — "no wallpaper warns is structural" is a law, not a habit.
-    // String-or-array since M5c (a rule may serve a posture FAMILY); the value set is
-    // read from the descriptor schema itself — lockstep by construction, not by habit.
+    // M4c posture gates are data: a rule may declare the workflow(s) it needs — the value
+    // set is read from the descriptor schema itself (lockstep by construction, not by
+    // habit); string-or-array since M5c (a rule may serve a posture FAMILY). The lane
+    // branch gate (branch_scope) left with the FLOW/DIV/MERGE families (v3 §3).
     if (r.workflow !== undefined) {
       const wfEnum = DESCRIPTOR_SCHEMA.properties?.workflow?.enum || []
       const wfs = Array.isArray(r.workflow) ? r.workflow : [r.workflow]
       if (!wfs.length) problems.push(`${curId}: workflow must be a value or non-empty array from the descriptor schema enum`)
       for (const w of wfs) if (!wfEnum.includes(w)) problems.push(`${curId}: workflow '${w}' is not in the descriptor schema enum {${wfEnum.join('|')}}`)
     }
-    if (r.branch_scope !== undefined && r.branch_scope !== 'lane') problems.push(`${curId}: branch_scope must be 'lane' (got '${r.branch_scope}')`)
-    if (r.branch_scope !== undefined && r.workflow === undefined) problems.push(`${curId}: branch_scope requires a workflow declaration — a lane rule must be posture-gated (no wallpaper warns)`)
     // M4c review ruling: the CLAIM family is uniformly opt-in — a claims rule
     // without the family gate would fire on repos that never opted into claims
     // discipline (the CLAIM-06 wallpaper class, fixed once, kept fixed here).
@@ -79,12 +76,13 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
 
   // M3c: rule-metadata invariants. Every rule declares which planes it reads (sources), what it does
   // when a source is unreachable (on_unreachable), the contexts it runs in, and its certainty — and
-  // two structural laws hold (the STRATA graft): a blocker must be deterministic, a sign-off must be
-  // judgment. Plus layering: a readiness rule may not consume FLOW facts (inert until M5 adds 'flow').
+  // one structural law holds (the STRATA graft): a blocker must be deterministic. The sign-off half
+  // of the graft (severity 'manual' ⇔ certainty 'judgment') left with the ledger (v3 §11 D11), and
+  // the lane-only laws (branch_scope × reconcile, no 'flow' source) with the lane families (v3 §3).
   const SRC = new Set(['tree', 'history', 'forge', 'exec'])
   const CTXV = new Set(['check', 'admit', 'reconcile'])
   const UNR = new Set(['skip', 'fail', 'stale-ok'])
-  const CERT = new Set(['deterministic', 'heuristic', 'judgment'])
+  const CERT = new Set(['deterministic', 'heuristic'])
   for (const r of RULES.rules) {
     const id = r.id || '(no id)'
     if (!Array.isArray(r.sources) || !r.sources.length || !r.sources.every(s => SRC.has(s))) problems.push(`${id}: sources must be a non-empty subset of {${[...SRC].join('|')}}`)
@@ -92,19 +90,6 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     if (!Array.isArray(r.contexts) || !r.contexts.length || !r.contexts.every(c => CTXV.has(c))) problems.push(`${id}: contexts must be a non-empty subset of {${[...CTXV].join('|')}}`)
     if (!CERT.has(r.certainty)) problems.push(`${id}: certainty must be one of {${[...CERT].join('|')}}`)
     if (r.severity === 'blocker' && r.certainty !== 'deterministic') problems.push(`${id}: blocker must be deterministic (got '${r.certainty}') — a blocker can't rest on a heuristic/judgment`)
-    // M7a: the div⇒warn (M5c) and merge⇒warn (M6a) laws LIFTED with the promotion —
-    // the counting seams (report.isBlocking, shared by check's exits and admit's
-    // leg (b)) now treat blocker-severity DIVERGED as failing, so the dead path
-    // those laws pinned shut no longer exists. The general blocker⇒deterministic
-    // law above covers the promoted set.
-    // M6b: reconcile runs ON the default branch — a lane-scoped rule there is
-    // unrepresentable (the branch gate would SKIP it on every single run, the exact
-    // wallpaper class the context gate exists to kill). Exclusion is structural:
-    // declaring both is an integrity error, not a permanent SKIP row.
-    if (r.branch_scope === 'lane' && Array.isArray(r.contexts) && r.contexts.includes('reconcile')) problems.push(`${id}: branch_scope 'lane' cannot declare context 'reconcile' — reconcile runs on the default branch, where lane rules are unrepresentable (exclusion, not a wallpaper SKIP)`)
-    if (r.severity === 'manual' && r.certainty !== 'judgment') problems.push(`${id}: sign-off (manual) must be certainty 'judgment' (got '${r.certainty}')`)
-    if (r.certainty === 'judgment' && r.severity !== 'manual') problems.push(`${id}: certainty 'judgment' must route to a sign-off (severity 'manual', got '${r.severity}')`)
-    if (Array.isArray(r.sources) && r.sources.includes('flow')) problems.push(`${id}: readiness rules may not consume 'flow' facts (layering invariant)`)
   }
   // coverage matrix: applicable rules per type, split by profile
   const profOf = r => r.profile || 'core'
@@ -121,7 +106,7 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
   const activeN = descProps.filter(f => /^M\d/.test(FIELD_CONSUMERS[f] || '')).length
   console.log(`  Descriptor — ${descProps.length} schema field(s): ${activeN} active, ${descProps.length - activeN} reserved for later modules; every field has a declared consumer (S7).\n`)
   const cBy = c => RULES.rules.filter(r => r.certainty === c).length
-  console.log(`  Metadata — every rule declares sources/on_unreachable/contexts/certainty; certainty: ${cBy('deterministic')} deterministic, ${cBy('heuristic')} heuristic, ${cBy('judgment')} judgment. Laws: blocker⇒deterministic, sign-off⇒judgment.\n`)
+  console.log(`  Metadata — every rule declares sources/on_unreachable/contexts/certainty; certainty: ${[...CERT].map(c => `${cBy(c)} ${c}`).join(', ')}. Law: blocker⇒deterministic.\n`)
   if (problems.length) {
     console.log(color(31, `  ✗ ${problems.length} integrity problem(s):`))
     for (const p of problems.slice(0, 60)) console.log('    - ' + p)

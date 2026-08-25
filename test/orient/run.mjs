@@ -53,8 +53,12 @@ r = orient(['--json'], bare)
 let j = null; try { j = JSON.parse(r.out) } catch {}
 ok(!!j && j.planes.forge.available === false && j.forgeAvailable === false, '--json: valid; forge unavailable')
 
-// 5 — M5b lane lines from the GIT PLANE alone (forge down, origin = a local bare repo):
-// claimed lanes appear with state/age/agent even with no PR and no forge (C31)
+// 5 — lane lines from the GIT PLANE alone (forge down, origin = a local bare repo):
+// claimed lanes appear with state/age/agent even with no PR and no forge (C31).
+// The `lane claim` verb is gone (v3 §3 V10); a claim is what it always was at origin —
+// an empty commit on the default branch's tip carrying the Baseline-Issue/Baseline-Agent
+// trailers, pushed as refs/heads/<namespace with the issue substituted>. Written here
+// with plain git so the lane VIEW (facts/git laneRefsGit -> derive/lanes) stays covered.
 const IDENT = { GIT_AUTHOR_NAME: 'T', GIT_AUTHOR_EMAIL: 't@t.t', GIT_COMMITTER_NAME: 'T', GIT_COMMITTER_EMAIL: 't@t.t' }
 const LANE_DESC = { schema_version: 1, type: 'node', lifecycle: 'experimental', maturity: 'prototype', workflow: 'multi-lane', anchoring: 'strict', ground_truth_boundary: { default_branch: 'main' }, lanes: { namespace: 'lane/*', lease_ttl: '7d' }, join_keys: ['Baseline-Agent', 'Baseline-Issue'] }
 function mkLaneWorld(desc) {
@@ -76,22 +80,30 @@ const w = mkLaneWorld(LANE_DESC)
 // lease states are arithmetic, not wall-clock luck (real-now claims vs the absolute
 // dates in checks 6/8/9 would drift a day further out of range every real day)
 const CLAIM_T0 = '2026-07-14T09:00:00Z'
-const claim = (n, agent) => execFileSync(NODE, [BASELINE, 'lane', 'claim', String(n), '--agent', agent], { cwd: w.clone, env: { ...NOFORGE, ...IDENT, GIT_AUTHOR_DATE: CLAIM_T0, GIT_COMMITTER_DATE: CLAIM_T0 }, encoding: 'utf8' })
-claim(7, 'alice'); claim(9, 'bob')
+function claimLane(clone, n, agent, at = CLAIM_T0) {
+  const env = { ...process.env, ...IDENT, GIT_AUTHOR_DATE: at, GIT_COMMITTER_DATE: at }
+  const g = (...a) => execFileSync('git', ['-C', clone, ...a], { env, encoding: 'utf8' }).trim()
+  g('fetch', '-q', 'origin', 'main')
+  const [base, tree] = g('log', '-1', '--format=%H %T', 'refs/remotes/origin/main').split(' ')
+  const sha = g('commit-tree', tree, '-p', base, '-m', `claim lane/${n}: issue #${n}\n\nBaseline-Issue: #${n}\nBaseline-Agent: ${agent}`)
+  g('push', '-q', 'origin', `${sha}:refs/heads/lane/${n}`)
+  return sha
+}
+claimLane(w.clone, 7, 'alice'); claimLane(w.clone, 9, 'bob')
 r = orient([], w.clone, { BASELINE_LOG_NOW: CLAIM_T0 })
 ok(r.code === 0, 'lanes(git plane): exit 0')
 ok(/## Lanes \(`lane\/\*` · ttl 7d\)/.test(r.out), 'lanes section headlines the namespace + ttl')
 ok(/● `lane\/7` → #7 — LIVE · just now · agent alice · no PR yet/.test(r.out), `fresh claim renders LIVE with agent, PR-less lane APPEARS (got: ${(r.out.match(/● .*lane\/7.*/) || ['<missing>'])[0]})`)
 ok(/git plane, committer clock \(low confidence\)/.test(r.out), 'git-plane freshness label rides the line')
 
-// 6 — time-travel 8d: ABANDONED headlines first with the reclaim recipe
+// 6 — time-travel 8d: ABANDONED headlines first
 r = orient([], w.clone, { BASELINE_LOG_NOW: '2026-07-22T09:00:00Z' })
-ok(/✗ `lane\/7` → #7 — ABANDONED/.test(r.out) && /reclaimable: {2}baseline lane reclaim 7/.test(r.out), 'abandoned lane names the reclaim recipe')
+ok(/✗ `lane\/7` → #7 — ABANDONED/.test(r.out), 'an 8d-idle lane on a 7d ttl renders ABANDONED')
 
 // 7 — multi-lane-local: the forge sections carry the POSTURE, never fake unreachability;
 // lanes still derive (git plane is the posture's normal mode)
 const w2 = mkLaneWorld({ ...LANE_DESC, workflow: 'multi-lane-local' })
-execFileSync(NODE, [BASELINE, 'lane', 'claim', '3', '--agent', 'solo'], { cwd: w2.clone, env: { ...NOFORGE, ...IDENT }, encoding: 'utf8' })
+claimLane(w2.clone, 3, 'solo', new Date().toISOString())
 r = orient([], w2.clone)
 ok(r.code === 0 && /forge not consulted \(multi-lane-local posture\)/.test(r.out), 'multi-lane-local: sections name the posture')
 ok(/● `lane\/3` → #3 — LIVE/.test(r.out), 'multi-lane-local: lanes derive from the git plane alone')

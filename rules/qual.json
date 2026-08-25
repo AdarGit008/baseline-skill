@@ -153,13 +153,13 @@
         "kind": "any-of",
         "checks": [
           {
-            "kind": "json-field",
+            "kind": "grep",
             "globs": [
               "tsconfig.json",
               "tsconfig.base.json"
             ],
-            "path": "compilerOptions.strict",
-            "assert": "true"
+            "pattern": "\"strict\"\\s*:\\s*true",
+            "mode": "present"
           },
           {
             "kind": "grep",

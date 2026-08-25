@@ -271,12 +271,12 @@
         "kind": "any-of",
         "checks": [
           {
-            "kind": "json-field",
+            "kind": "grep",
             "globs": [
               "package.json"
             ],
-            "path": "scripts.test",
-            "assert": "nonempty"
+            "pattern": "\"scripts\"\\s*:\\s*\\{[^}]*\"test\"\\s*:\\s*\"[^\"]+\"",
+            "mode": "present"
           },
           {
             "kind": "grep",

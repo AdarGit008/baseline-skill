@@ -5,7 +5,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { loadDescriptor } from './descriptor.mjs'
-import { loadJudgments, selectSignoffs } from './jdg.mjs'
+import { loadJudgments } from './jdg.mjs'
 import { CLAIM_RECORD_GLOB } from './claims.mjs'
 
 export function detectType(repo) {
@@ -24,7 +24,7 @@ export function buildDefaults(repo) {
     bootstrap_command: null,
     command_timeout_ms: 600000,
     claims_file: 'docs/CLAIMS.json',
-    decision_globs: ['docs/decisions/*.md', 'docs/adr/*.md', 'adr/*.md', 'docs/decisions/**/*.md', 'records/decisions/*.md'], // records/decisions/ is CONTRACT.md's V2 decision home — REC-04's cross-check must see it
+    decision_globs: ['docs/decisions/*.md', 'docs/adr/*.md', 'adr/*.md', 'docs/decisions/**/*.md', 'records/decisions/*.md'], // records/decisions/ is CONTRACT.md's V2 decision home — CTX-14's id cross-check must see it
     doc_globs: ['**/*.md'],
     sources_of_truth: {},
     prior_art_recheck_days: 90,
@@ -72,17 +72,13 @@ export function resolveConfig(repo, { cliConfigPath = null, profileArgs = [], de
   if (cfg.project_type === 'service') ACTIVE.add('service')
   for (const p of (cfg.profiles || [])) ACTIVE.add(p)
 
-  // The unified ledger (M4b, sole path since M7b): kind=sign-off judgments satisfy
-  // manual rules by subject. ONE loader and ONE selection rule (jdg.mjs) —
-  // schema-valid records only, so a malformed review_by can never read as
-  // signed-forever while `jdg check` calls the same file INVALID. The legacy
-  // signoff.json dual-read retired with M7's contraction (MIGRATION.md re-mints
-  // surviving entries as records). Expiry is judged at evaluation time.
-  // The SAME parse also surfaces as JUDGMENTS (the full schema-valid list) for the
-  // rules that read beyond sign-offs — REC-01's tombstone sanctions a mutation by
-  // subject (issue #47), DESC-03 matches added judgments by subject at admit.
+  // The unified ledger (M4b, sole path since M7b): ONE loader (jdg.mjs) — schema-
+  // valid records only, so a malformed record can never read as a live sanction
+  // while `jdg check` calls the same file INVALID. JUDGMENTS is the full schema-
+  // valid list for the rules that read sanctions by subject (the corpus/manifest
+  // deviation reads, DESC-03's added-judgment match at admit). The sign-off
+  // selection (JDGS) left with the manual rules it satisfied (v3 D11).
   const JUDGMENTS = loadJudgments(repo.REPO).records
-  const JDGS = selectSignoffs(JUDGMENTS)
 
-  return { cfg, DEFAULTS, EXPLICIT, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, JDGS, JUDGMENTS, DESCRIPTOR }
+  return { cfg, DEFAULTS, EXPLICIT, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, JUDGMENTS, DESCRIPTOR }
 }

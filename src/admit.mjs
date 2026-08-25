@@ -110,7 +110,7 @@ export function runAdmit(argv) {
   }
   if (!DESCRIPTOR.present) return usage(`no ${DESCRIPTOR_FILE} at ${targetRef} — admit judges by the target's declared posture (FS1); adopt a descriptor on the target branch first`)
   if (!DESCRIPTOR.valid) return usage(`${DESCRIPTOR_FILE} at ${targetRef} is invalid (${DESCRIPTOR.errors.slice(0, 2).join('; ')}) — fix it on the target branch; a broken target posture cannot judge anything`)
-  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, JDGS, JUDGMENTS } = cfgRes
+  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, JUDGMENTS } = cfgRes
 
   // ---- C35 staleness: command-level, before any rule ----
   const HEADSHA = g('rev-parse', 'HEAD')
@@ -179,7 +179,7 @@ export function runAdmit(argv) {
     }
   }
   // 64MB buffer: a big range's commit bodies overflowing run()'s 1MB default would
-  // silently drop every Baseline-Stacked-On declaration → false MERGE-02 warns
+  // silently drop every Baseline-Stacked-On declaration the admit world carries
   const trailerRaw = run('git', ['-C', REPO, 'log', '--format=%B', `${targetTip}..HEAD`], { maxBuffer: 64 * 1024 * 1024 }) || ''
   const stackedOn = [...trailerRaw.matchAll(/^Baseline-Stacked-On:[ \t]*(\S+)[ \t]*$/gm)].map(m => m[1])
   let headDescriptor = { present: false, valid: false, data: null, errors: [] }
@@ -200,9 +200,9 @@ export function runAdmit(argv) {
   // NO_EXEC: no exec-kind rule declares admit context (BUILD-05 is check's crown); the
   // fallback binding re-runs the check required check at the merge-relevant SHA instead
   // (F8 as ruled — the crown never runs twice per SHA because it never runs here at all)
-  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JDGS, JUDGMENTS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD, ADMITWORLD })
+  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JUDGMENTS, DESCRIPTOR, DEFAULT_BRANCH, LANEWORLD, ADMITWORLD })
   const RULES = loadRules()
-  const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, context: 'admit' })
+  const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, context: 'admit' })
 
   // ---- provenance (M6c): the inputs_digest receipt — REFUSAL-INERT by contract.
   // Assembly never touches refusals/results/summary; every lost source digests as
@@ -238,15 +238,15 @@ export function runAdmit(argv) {
   // class rides the refusal line (one predicate with the report exits: isBlocking).
   // EXCEPT under the JDG-only admission path: M6a's ruled promise is that a pure
   // judgment-additions range ADMITS from tree+history alone — its shape PRECLUDES
-  // a session record, so a promoted lane-discipline blocker (FLOW-02 on the relief
-  // branch) must never re-create the circularity the path exists to break. DESC-03
+  // a session record, so a promoted blocker on the relief branch must never
+  // re-create the circularity the path exists to break. DESC-03
   // cannot fire there by construction (the descriptor is not in a jdg-only diff);
   // promoted findings still ride the output as rows, refusing nothing.
   const blockerFails = jdgOnly ? [] : results.filter(isBlocking)
   for (const x of blockerFails) refusals.push(`${x.r.id}${x.tag === 'DIVERGED' ? ' (DIVERGED)' : ''}: ${x.detail}`)
   const refused = refusals.length > 0
   const n = t => results.filter(x => x.tag === t).length
-  const summary = { refusals: refusals.length, blockers: blockerFails.length, pass: n('PASS'), warn: n('WARN'), diverged: n('DIVERGED'), signoff: n('SIGN-OFF'), skip: n('SKIP'), total: results.length }
+  const summary = { refusals: refusals.length, blockers: blockerFails.length, pass: n('PASS'), warn: n('WARN'), diverged: n('DIVERGED'), skip: n('SKIP'), total: results.length }
 
   if (JSON_OUT) {
     console.log(JSON.stringify({
@@ -261,7 +261,7 @@ export function runAdmit(argv) {
   }
 
   const S = sanitizeTTY
-  const TAG = { PASS: color(32, 'PASS'), FAIL: color(31, 'FAIL'), WARN: color(33, 'WARN'), DIVERGED: color(31, 'DIVERGED'), SKIP: color(90, 'SKIP'), 'SIGN-OFF': color(35, 'SIGN-OFF') }
+  const TAG = { PASS: color(32, 'PASS'), FAIL: color(31, 'FAIL'), WARN: color(33, 'WARN'), DIVERGED: color(31, 'DIVERGED'), SKIP: color(90, 'SKIP') }
   const TAGW = 8
   const tagCell = t => TAG[t] + ' '.repeat(Math.max(1, TAGW - t.length + 1))
   console.log(`\n  baseline admit v${RULES.version}  ·  ${path.basename(REPO)}  ·  HEAD ${HEADSHA.slice(0, 7)}${BRANCH ? ` (${S(BRANCH)})` : ''} → ${S(targetRef)} @ ${targetTip.slice(0, 7)}\n`)

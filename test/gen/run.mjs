@@ -210,64 +210,6 @@ console.log('\n# remedy — the vendored-consumer (in-repo) form\n')
   } finally { process.argv[1] = orig }
 }
 
-// ---------- gen lock (M7c) — the vendored-tree pin ----------
-{
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gen-lock-')); tmps.push(dir)
-  git(dir, 'init', '-q', '-b', 'main')
-  // no vendored tree: pinning nothing is a failed intent, exit 1, canonical path named
-  let r = cli(dir, ['lock'])
-  ok(r.status === 1 && /no vendored tree at tools\/baseline\//.test(r.stderr), 'lock: absent tree → exit 1 naming the canonical location')
-  // tree without a version: refuse — the lock names the version it pins
-  fs.mkdirSync(path.join(dir, 'tools/baseline'), { recursive: true })
-  fs.writeFileSync(path.join(dir, 'tools/baseline/check.mjs'), 'fake\n')
-  r = cli(dir, ['lock'])
-  ok(r.status === 2 && /no readable string version/.test(r.stderr), 'lock: version-less tree → exit 2 naming rules.json')
-  // happy path: {version, tree_hash} exactly, 64-hex, trailing newline
-  fs.writeFileSync(path.join(dir, 'tools/baseline/rules.json'), '{ "version": "3.1.4" }\n')
-  r = cli(dir, ['lock'])
-  const lockRaw = fs.readFileSync(path.join(dir, 'tools/baseline.lock.json'), 'utf8')
-  const lock = JSON.parse(lockRaw)
-  ok(r.status === 0 && lock.version === '3.1.4' && /^[0-9a-f]{64}$/.test(lock.tree_hash) && Object.keys(lock).length === 2 && lockRaw.endsWith('\n'), 'lock: writes exactly {version, tree_hash}, hex-64, newline-terminated')
-  // deterministic + idempotent: second run says up to date, bytes untouched
-  r = cli(dir, ['lock'])
-  ok(r.status === 0 && /up to date/.test(r.stdout) && fs.readFileSync(path.join(dir, 'tools/baseline.lock.json'), 'utf8') === lockRaw, 'lock: idempotent — second run is byte-stable and says so')
-  // the lock never hashes itself: writing it must not change the recomputed hash
-  const again = cli(dir, ['lock'])
-  ok(again.status === 0 && /up to date/.test(again.stdout), 'lock: the lock file lives BESIDE the tree — writing it does not skew the hash')
-  // a vendored edit re-pins to a NEW hash on an explicit rerun
-  fs.appendFileSync(path.join(dir, 'tools/baseline/check.mjs'), 'edited\n')
-  r = cli(dir, ['lock'])
-  const lock2 = JSON.parse(fs.readFileSync(path.join(dir, 'tools/baseline.lock.json'), 'utf8'))
-  ok(r.status === 0 && /pinned/.test(r.stdout) && lock2.tree_hash !== lock.tree_hash, 'lock: an explicit re-pin captures the changed tree under a new hash')
-  // overwrite law, lock flavor: a foreign file squatting the canonical path refuses
-  fs.writeFileSync(path.join(dir, 'tools/baseline.lock.json'), '{"note":"hand-written"}\n')
-  r = cli(dir, ['lock'])
-  ok(r.status === 2 && /refusing to overwrite/.test(r.stderr) && fs.readFileSync(path.join(dir, 'tools/baseline.lock.json'), 'utf8') === '{"note":"hand-written"}\n', 'lock: a non-lock file at the lock path is refused and untouched')
-  fs.rmSync(path.join(dir, 'tools/baseline.lock.json'))
-  // panel (lock-seam): the pin's pool is a FULL walk — the repo walker's
-  // SKIP_DIRS must not be a rider channel inside the vendored tree
-  cli(dir, ['lock'])
-  const cleanHash = JSON.parse(fs.readFileSync(path.join(dir, 'tools/baseline.lock.json'), 'utf8')).tree_hash
-  fs.mkdirSync(path.join(dir, 'tools/baseline/node_modules'), { recursive: true })
-  fs.writeFileSync(path.join(dir, 'tools/baseline/node_modules/rider.js'), 'evil\n')
-  r = cli(dir, ['lock'])
-  const riderHash = JSON.parse(fs.readFileSync(path.join(dir, 'tools/baseline.lock.json'), 'utf8')).tree_hash
-  ok(r.status === 0 && riderHash !== cleanHash, 'lock: a file under node_modules INSIDE the vendored tree IS hashed — no SKIP_DIRS rider channel')
-  fs.rmSync(path.join(dir, 'tools/baseline/node_modules'), { recursive: true })
-  // panel (lock-seam): a numeric rules.json version must refuse at the WRITER —
-  // the old predicate wrote a lock the verifier rejects and the recipe then
-  // refused to overwrite (deadlock)
-  fs.writeFileSync(path.join(dir, 'tools/baseline/rules.json'), '{ "version": 3 }\n')
-  r = cli(dir, ['lock'])
-  ok(r.status === 2 && /no readable string version/.test(r.stderr), 'lock: a non-string version refuses at the writer — no write-then-reject deadlock')
-  fs.writeFileSync(path.join(dir, 'tools/baseline/rules.json'), '{ "version": "3.1.4" }\n')
-  // panel (lock-seam): symlinks are unhashable — the writer refuses, naming them
-  fs.symlinkSync('/nonexistent-target', path.join(dir, 'tools/baseline/dangler'))
-  r = cli(dir, ['lock'])
-  ok(r.status === 2 && /cannot be hashed/.test(r.stderr) && /dangler \(symlink\)/.test(r.stderr), 'lock: a symlink in the tree refuses at the writer, named (a tree that cannot be fully read cannot be pinned honestly)')
-  fs.unlinkSync(path.join(dir, 'tools/baseline/dangler'))
-}
-
 // ---------- the records/** pool union (M7c) — log→regen→commit in ONE pass ----------
 {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gen-union-')); tmps.push(dir)

@@ -24,7 +24,7 @@
       "    WARN      BUILD-07  A single documented bootstrap entrypoint exists",
       "            ↳ none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml",
       "    PASS      BUILD-08  Standard task commands are declared machine-readably",
-      "            ↳ package.json: scripts.test set",
+      "            ↳ matched in 1 file(s)",
       "    PASS      BUILD-09  Bootstrap is idempotent (safe to re-run)",
       "            ↳ exit 0 x2: node -e \"process.exit(0)\"",
       "    PASS      BUILD-10  CI actually invokes the test suite",
@@ -36,7 +36,7 @@
       "    PASS      QUAL-02   A formatter is configured",
       "            ↳ .prettierrc",
       "    PASS      QUAL-03   Type-checking is strict where supported",
-      "            ↳ tsconfig.json: compilerOptions.strict=true",
+      "            ↳ matched in 1 file(s)",
       "    PASS      QUAL-04   The linter is actually enforced (run in CI or pre-commit)",
       "            ↳ matched in 1 file(s)",
       "",
@@ -45,16 +45,10 @@
       "            ↳ test/basic.test.js",
       "    PASS      TEST-02   Failure paths are tested (negative tests)",
       "            ↳ matched in 1 file(s)",
-      "    SIGN-OFF  TEST-03   Red-on-arrival guards for 'must-never-exist' invariants",
-      "            ↳ no sign-off recorded",
-      "    SIGN-OFF  TEST-04   Acceptance criteria reconciled against reference code",
-      "            ↳ no sign-off recorded",
-      "    WARN      TEST-05   Mutation testing, if used, is gated",
-      "            ↳ no sign-off recorded",
-      "    SIGN-OFF  TEST-06   Flaky-test quarantine is disciplined",
-      "            ↳ no sign-off recorded",
+      "    SKIP      TEST-05   Mutation testing, if used, is gated",
+      "            ↳ no files to scan",
       "    WARN      TEST-07   A coverage floor is declared and enforced",
-      "            ↳ pattern not found | jest.coverageThreshold not satisfied in package.json",
+      "            ↳ pattern not found | pattern not found",
       "",
       "  Security & supply-chain",
       "    PASS      SEC-01    No high-signal secrets committed",
@@ -133,8 +127,6 @@
       "            ↳ no numbered ADR files found",
       "    WARN      CTX-03    Sources of truth are declared",
       "            ↳ config.sources_of_truth empty",
-      "    SIGN-OFF  CTX-04    No frozen/consolidated doc without regeneration or supersede banners",
-      "            ↳ no sign-off recorded",
       "    PASS      CTX-05    No broken internal doc links",
       "            ↳ 3 doc(s), links resolve",
       "    SKIP      CTX-06    Long-lived docs carry a freshness contract",
@@ -167,52 +159,16 @@
       "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
       "    SKIP      CLAIM-04  Citations resolve and support the claim",
       "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
-      "    SKIP      CLAIM-05  Wedge and moat are stated and pressure-tested",
-      "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
       "    SKIP      CLAIM-06  Specs of record carry explicit acceptance criteria",
       "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
       "    SKIP      CLAIM-07  Claims live in per-claim records, not the legacy monolith",
       "            ↳ claims opt-in (no register; set makes_external_claims:true to enable)",
       "",
       "  Records & ledger",
-      "    SKIP      REC-01    Committed records are append-only",
-      "            ↳ no committed records under records/ yet",
       "    SKIP      REC-02    Landed records are scrub-clean",
       "            ↳ no committed records to scan",
-      "    SKIP      REC-04    Every record fact has one home",
-      "            ↳ no records to cross-check",
       "    SKIP      REC-05    Records are covered by a push-time secret gate",
       "            ↳ n/a (committed records not present)",
-      "    SKIP      REC-06    The vendored baseline tree is pinned and un-skewed",
-      "            ↳ no vendored tree at tools/baseline/ — nothing to pin",
-      "",
-      "  Lane workflow",
-      "    SKIP      FLOW-01   The lane anchors to a real issue",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
-      "    SKIP      FLOW-02   A lane branch carries its own session record",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
-      "    SKIP      FLOW-03   The lane's session record has a filled-in next:",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
-      "    SKIP      FLOW-04   The branch sits in a declared family",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
-      "    SKIP      FLOW-05   The newest session record is pushed",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
-      "    SKIP      FLOW-06   A gated subject changes with its record in the same PR",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
-      "    SKIP      FLOW-07   The lane's lease is live",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
-      "    SKIP      FLOW-08   An open PR will close its own lane anchor",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
-      "    SKIP      FLOW-09   The lane's new decision-record numbers aren't already claimed by another live lane",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
-      "",
-      "  Divergence (cross-tier)",
-      "    SKIP      DIV-01    Issue closed, lane still active",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
-      "    SKIP      DIV-02    Recorded next: points at a closed issue",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
-      "    SKIP      DIV-03    An open PR closes an already-closed issue",
-      "            ↳ workflow contract off (no valid baseline.repo.json)",
       "",
       "  Repo descriptor",
       "    WARN      DESC-01   Repo descriptor present",
@@ -220,8 +176,8 @@
       "    SKIP      DESC-02   A present descriptor is schema-valid",
       "            ↳ no baseline.repo.json — absence is DESC-01's finding",
       "",
-      "  Summary  34 pass · 0 fail · 10 warn · 4 sign-off · 44 n/a",
-      "  Readiness: 71%  (34/48 applicable)",
+      "  Summary  34 pass · 0 fail · 9 warn · 29 n/a",
+      "  Readiness: 79%  (34/43 applicable)",
       "",
       "  ✓ no blockers.",
       "",
@@ -229,9 +185,9 @@
     ]
   },
   "admit-degraded-forge": {
-    "exitCode": 1,
+    "exitCode": 0,
     "command": "admit",
-    "verdict": "REFUSED",
+    "verdict": "ADMITTED",
     "staleness": {
       "ancestor": true,
       "stale": false,
@@ -241,78 +197,23 @@
     "jdgOnly": false,
     "jdgRelief": null,
     "breakGlass": null,
-    "refusals": [
-      "FLOW-07: lease ABANDONED (<N>d idle of ttl <N>d) — renew (push work) or hand it over (baseline lane reclaim)"
-    ],
+    "refusals": [],
     "target": {
       "ref": "origin/main"
     },
     "summary": {
-      "refusals": 1,
-      "blockers": 1,
-      "pass": 10,
+      "refusals": 0,
+      "blockers": 0,
+      "pass": 2,
       "warn": 0,
       "diverged": 0,
-      "signoff": 0,
-      "skip": 4,
-      "total": 15
+      "skip": 0,
+      "total": 2
     },
     "rules": {
-      "REC-01": {
-        "tag": "PASS",
-        "detail": "1 record(s), history append-only"
-      },
       "REC-02": {
         "tag": "PASS",
         "detail": "1 record(s) scrub-clean at HEAD"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "anchor #7 state unresolvable (missing issue or query failed) — strict anchoring not provable, never guessed"
-      },
-      "FLOW-02": {
-        "tag": "PASS",
-        "detail": "1 session record(s) ride this lane"
-      },
-      "FLOW-03": {
-        "tag": "PASS",
-        "detail": "next: recorded — records/sessions/lane/7/2026-01-01-1200-golden.md — chosen by record: session/1; the lane’s only session record"
-      },
-      "FLOW-04": {
-        "tag": "PASS",
-        "detail": "'lane/7' sits in declared family 'lane/*'"
-      },
-      "FLOW-05": {
-        "tag": "PASS",
-        "detail": "newest record records/sessions/lane/7/2026-01-01-1200-golden.md is at origin (as of the last fetch) — chosen by record: session/1"
-      },
-      "FLOW-07": {
-        "tag": "FAIL",
-        "detail": "lease ABANDONED (<N>d idle of ttl <N>d) — renew (push work) or hand it over (baseline lane reclaim)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "PR listing failed at the forge — closures unreadable (not \"no PRs\")"
-      },
-      "FLOW-09": {
-        "tag": "PASS",
-        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
-      },
-      "MERGE-02": {
-        "tag": "PASS",
-        "detail": "no sister lanes known locally (as of the last fetch)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "anchor #7 state unresolvable — divergence not provable, never guessed"
-      },
-      "DIV-02": {
-        "tag": "PASS",
-        "detail": "next: names no issues — nothing to contradict"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "PR listing failed at the forge — closures unreadable (not \"no PRs\")"
       },
       "DESC-03": {
         "tag": "PASS",
@@ -334,78 +235,24 @@
     "jdgRelief": null,
     "breakGlass": null,
     "refusals": [
-      "FLOW-02: no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\"",
       "DESC-03: baseline.repo.json changed with no same-range judgment — WEAKENING: workflow: 'multi-lane' → 'single-lane' (down-ladder); anchoring: 'strict' → 'off' (down-ladder) — baseline jdg new --kind deviation --subject \"baseline.repo.json\" --reason \"why the posture changed\" --review-by <date>, in this PR"
     ],
     "target": {
       "ref": "origin/main"
     },
     "summary": {
-      "refusals": 2,
-      "blockers": 2,
-      "pass": 4,
+      "refusals": 1,
+      "blockers": 1,
+      "pass": 0,
       "warn": 0,
       "diverged": 0,
-      "signoff": 0,
-      "skip": 9,
-      "total": 15
+      "skip": 1,
+      "total": 2
     },
     "rules": {
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "no committed records under records/ yet"
-      },
       "REC-02": {
         "tag": "SKIP",
         "detail": "no committed records to scan"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "anchor #7 unverifiable (<forge unreachable>) — strict anchoring not provable"
-      },
-      "FLOW-02": {
-        "tag": "FAIL",
-        "detail": "no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\""
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane yet (absence is FLOW-02's)"
-      },
-      "FLOW-04": {
-        "tag": "PASS",
-        "detail": "'lane/7' sits in declared family 'lane/*'"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane yet — nothing to push"
-      },
-      "FLOW-07": {
-        "tag": "PASS",
-        "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "<forge unreachable> — PR closures unreadable"
-      },
-      "FLOW-09": {
-        "tag": "PASS",
-        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
-      },
-      "MERGE-02": {
-        "tag": "PASS",
-        "detail": "no sister lanes known locally (as of the last fetch)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "anchor #7 state unknown (<forge unreachable>) — divergence not provable"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane (FLOW-02's territory)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "<forge unreachable> — PR closures unreadable"
       },
       "DESC-03": {
         "tag": "FAIL",
@@ -433,69 +280,16 @@
     "summary": {
       "refusals": 0,
       "blockers": 0,
-      "pass": 7,
+      "pass": 2,
       "warn": 0,
       "diverged": 0,
-      "signoff": 0,
-      "skip": 7,
-      "total": 15
+      "skip": 0,
+      "total": 2
     },
     "rules": {
-      "REC-01": {
-        "tag": "PASS",
-        "detail": "1 record(s), history append-only"
-      },
       "REC-02": {
         "tag": "PASS",
         "detail": "1 record(s) scrub-clean at HEAD"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "anchor #7 unverifiable (forge not consulted (JDG-only admission path)) — strict anchoring not provable"
-      },
-      "FLOW-02": {
-        "tag": "FAIL",
-        "detail": "no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\""
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane yet (absence is FLOW-02's)"
-      },
-      "FLOW-04": {
-        "tag": "PASS",
-        "detail": "'lane/7' sits in declared family 'lane/*'"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane yet — nothing to push"
-      },
-      "FLOW-07": {
-        "tag": "PASS",
-        "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "forge not consulted (JDG-only admission path) — PR closures unreadable"
-      },
-      "FLOW-09": {
-        "tag": "PASS",
-        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
-      },
-      "MERGE-02": {
-        "tag": "PASS",
-        "detail": "no sister lanes known locally (as of the last fetch)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "anchor #7 state unknown (forge not consulted (JDG-only admission path)) — divergence not provable"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane (FLOW-02's territory)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "forge not consulted (JDG-only admission path) — PR closures unreadable"
       },
       "DESC-03": {
         "tag": "PASS",
@@ -525,166 +319,20 @@
     "summary": {
       "refusals": 0,
       "blockers": 0,
-      "pass": 5,
+      "pass": 1,
       "warn": 0,
       "diverged": 0,
-      "signoff": 0,
-      "skip": 10,
-      "total": 15
+      "skip": 1,
+      "total": 2
     },
     "rules": {
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "shallow clone — history truncated, append-only not provable"
-      },
       "REC-02": {
         "tag": "PASS",
         "detail": "1 record(s) scrub-clean at HEAD"
       },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "anchor #7 unverifiable (<forge unreachable>) — strict anchoring not provable"
-      },
-      "FLOW-02": {
-        "tag": "SKIP",
-        "detail": "diff origin/main...HEAD failed — lane coupling not provable"
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "lane coupling not provable — diff origin/main...HEAD failed"
-      },
-      "FLOW-04": {
-        "tag": "PASS",
-        "detail": "'lane/7' sits in declared family 'lane/*'"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "push discipline not provable — diff origin/main...HEAD failed"
-      },
-      "FLOW-07": {
-        "tag": "PASS",
-        "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "<forge unreachable> — PR closures unreadable"
-      },
-      "FLOW-09": {
-        "tag": "PASS",
-        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
-      },
-      "MERGE-02": {
-        "tag": "PASS",
-        "detail": "no sister lanes known locally (as of the last fetch)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "anchor #7 state unknown (<forge unreachable>) — divergence not provable"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "divergence not provable — diff origin/main...HEAD failed"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "<forge unreachable> — PR closures unreadable"
-      },
       "DESC-03": {
         "tag": "SKIP",
         "detail": "diff origin/main...HEAD failed — change scope unreadable (admit refuses on this as gating-source loss)"
-      }
-    }
-  },
-  "admit-sister-dep": {
-    "exitCode": 1,
-    "command": "admit",
-    "verdict": "REFUSED",
-    "staleness": {
-      "ancestor": true,
-      "stale": false,
-      "indeterminate": false,
-      "shallow": false
-    },
-    "jdgOnly": false,
-    "jdgRelief": null,
-    "breakGlass": null,
-    "refusals": [
-      "FLOW-02: no session record for lane 'lane/8' — write one: baseline log -m \"...\" --next \"...\"",
-      "MERGE-02: HEAD contains unmerged commits from lane/9 — land/rebase first, or declare the stack: trailer 'Baseline-Stacked-On: lane/9'"
-    ],
-    "target": {
-      "ref": "origin/main"
-    },
-    "summary": {
-      "refusals": 2,
-      "blockers": 2,
-      "pass": 4,
-      "warn": 0,
-      "diverged": 0,
-      "signoff": 0,
-      "skip": 9,
-      "total": 15
-    },
-    "rules": {
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "no committed records under records/ yet"
-      },
-      "REC-02": {
-        "tag": "SKIP",
-        "detail": "no committed records to scan"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "anchor #8 unverifiable (<forge unreachable>) — strict anchoring not provable"
-      },
-      "FLOW-02": {
-        "tag": "FAIL",
-        "detail": "no session record for lane 'lane/8' — write one: baseline log -m \"...\" --next \"...\""
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane yet (absence is FLOW-02's)"
-      },
-      "FLOW-04": {
-        "tag": "PASS",
-        "detail": "'lane/8' sits in declared family 'lane/*'"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane yet — nothing to push"
-      },
-      "FLOW-07": {
-        "tag": "PASS",
-        "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "<forge unreachable> — PR closures unreadable"
-      },
-      "FLOW-09": {
-        "tag": "PASS",
-        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
-      },
-      "MERGE-02": {
-        "tag": "FAIL",
-        "detail": "HEAD contains unmerged commits from lane/9 — land/rebase first, or declare the stack: trailer 'Baseline-Stacked-On: lane/9'"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "anchor #8 state unknown (<forge unreachable>) — divergence not provable"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane (FLOW-02's territory)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "<forge unreachable> — PR closures unreadable"
-      },
-      "DESC-03": {
-        "tag": "PASS",
-        "detail": "descriptor untouched in origin/main...HEAD"
       }
     }
   },
@@ -702,78 +350,24 @@
     "jdgRelief": null,
     "breakGlass": null,
     "refusals": [
-      "stale: origin/main @ <sha> is not an ancestor of HEAD — re-derive at an up-to-date SHA (merge/rebase the target, then rerun; the up-to-date branch-protection requirement is this refusal's forge-side twin)",
-      "FLOW-02: no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\""
+      "stale: origin/main @ <sha> is not an ancestor of HEAD — re-derive at an up-to-date SHA (merge/rebase the target, then rerun; the up-to-date branch-protection requirement is this refusal's forge-side twin)"
     ],
     "target": {
       "ref": "origin/main"
     },
     "summary": {
-      "refusals": 2,
-      "blockers": 1,
-      "pass": 5,
+      "refusals": 1,
+      "blockers": 0,
+      "pass": 1,
       "warn": 0,
       "diverged": 0,
-      "signoff": 0,
-      "skip": 9,
-      "total": 15
+      "skip": 1,
+      "total": 2
     },
     "rules": {
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "no committed records under records/ yet"
-      },
       "REC-02": {
         "tag": "SKIP",
         "detail": "no committed records to scan"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "anchor #7 unverifiable (<forge unreachable>) — strict anchoring not provable"
-      },
-      "FLOW-02": {
-        "tag": "FAIL",
-        "detail": "no session record for lane 'lane/7' — write one: baseline log -m \"...\" --next \"...\""
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane yet (absence is FLOW-02's)"
-      },
-      "FLOW-04": {
-        "tag": "PASS",
-        "detail": "'lane/7' sits in declared family 'lane/*'"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane yet — nothing to push"
-      },
-      "FLOW-07": {
-        "tag": "PASS",
-        "detail": "lease LIVE (<N>h idle of ttl <N>d) · git plane, committer clock (low confidence)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "<forge unreachable> — PR closures unreadable"
-      },
-      "FLOW-09": {
-        "tag": "PASS",
-        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
-      },
-      "MERGE-02": {
-        "tag": "PASS",
-        "detail": "no sister lanes known locally (as of the last fetch)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "anchor #7 state unknown (<forge unreachable>) — divergence not provable"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "no committed session record on this lane (FLOW-02's territory)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "<forge unreachable> — PR closures unreadable"
       },
       "DESC-03": {
         "tag": "PASS",
@@ -792,9 +386,8 @@
       "pass": 8,
       "warn": 9,
       "diverged": 0,
-      "signoff": 2,
-      "skip": 70,
-      "total": 92
+      "skip": 52,
+      "total": 72
     },
     "rules": {
       "BUILD-01": {
@@ -845,19 +438,7 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "TEST-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
       "TEST-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-06": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -872,10 +453,6 @@
       "CTX-03": {
         "tag": "WARN",
         "detail": "config.sources_of_truth empty"
-      },
-      "CTX-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded — legacy signoff.json is no longer read; re-mint: baseline jdg new (MIGRATION.md)"
       },
       "CTX-05": {
         "tag": "PASS",
@@ -936,10 +513,6 @@
       "CLAIM-04": {
         "tag": "WARN",
         "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
-      },
-      "CLAIM-05": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded — legacy signoff.json is no longer read; re-mint: baseline jdg new (MIGRATION.md)"
       },
       "CLAIM-06": {
         "tag": "PASS",
@@ -1089,73 +662,13 @@
         "tag": "SKIP",
         "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
       },
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "no committed records under records/ yet"
-      },
       "REC-02": {
         "tag": "SKIP",
         "detail": "no committed records to scan"
       },
-      "REC-04": {
-        "tag": "SKIP",
-        "detail": "no records to cross-check"
-      },
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
-      },
-      "REC-06": {
-        "tag": "SKIP",
-        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-04": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-07": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-09": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
       },
       "DESC-01": {
         "tag": "WARN",
@@ -1178,9 +691,8 @@
       "pass": 8,
       "warn": 14,
       "diverged": 0,
-      "signoff": 3,
-      "skip": 64,
-      "total": 92
+      "skip": 47,
+      "total": 72
     },
     "rules": {
       "BUILD-01": {
@@ -1213,7 +725,7 @@
       },
       "BUILD-08": {
         "tag": "WARN",
-        "detail": "scripts.test not satisfied in package.json"
+        "detail": "pattern not found"
       },
       "BUILD-09": {
         "tag": "SKIP",
@@ -1231,19 +743,7 @@
         "tag": "SKIP",
         "detail": "no files to scan"
       },
-      "TEST-03": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
-      },
-      "TEST-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
-      },
       "TEST-05": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "TEST-06": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
@@ -1258,10 +758,6 @@
       "CTX-03": {
         "tag": "WARN",
         "detail": "config.sources_of_truth empty"
-      },
-      "CTX-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
       },
       "CTX-05": {
         "tag": "PASS",
@@ -1320,10 +816,6 @@
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-04": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-05": {
         "tag": "SKIP",
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
@@ -1437,7 +929,7 @@
       },
       "REPRO-02": {
         "tag": "WARN",
-        "detail": "none of: .tool-versions, .nvmrc, .node-version, .python-version, mise.toml | engines.node not satisfied in package.json"
+        "detail": "none of: .tool-versions, .nvmrc, .node-version, .python-version, mise.toml | pattern not found"
       },
       "REPRO-03": {
         "tag": "SKIP",
@@ -1475,73 +967,13 @@
         "tag": "SKIP",
         "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
       },
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "no committed records under records/ yet"
-      },
       "REC-02": {
         "tag": "SKIP",
         "detail": "no committed records to scan"
       },
-      "REC-04": {
-        "tag": "SKIP",
-        "detail": "no records to cross-check"
-      },
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
-      },
-      "REC-06": {
-        "tag": "SKIP",
-        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-04": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-07": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-09": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
       },
       "DESC-01": {
         "tag": "PASS",
@@ -1564,9 +996,8 @@
       "pass": 8,
       "warn": 6,
       "diverged": 0,
-      "signoff": 1,
-      "skip": 77,
-      "total": 92
+      "skip": 58,
+      "total": 72
     },
     "rules": {
       "BUILD-01": {
@@ -1617,19 +1048,7 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "TEST-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
       "TEST-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-06": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -1644,10 +1063,6 @@
       "CTX-03": {
         "tag": "WARN",
         "detail": "config.sources_of_truth empty"
-      },
-      "CTX-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
       },
       "CTX-05": {
         "tag": "PASS",
@@ -1709,10 +1124,6 @@
         "tag": "SKIP",
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
-      "CLAIM-05": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
       "CLAIM-06": {
         "tag": "SKIP",
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
@@ -1861,73 +1272,13 @@
         "tag": "SKIP",
         "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
       },
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "no committed records under records/ yet"
-      },
       "REC-02": {
         "tag": "SKIP",
         "detail": "no committed records to scan"
       },
-      "REC-04": {
-        "tag": "SKIP",
-        "detail": "no records to cross-check"
-      },
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
-      },
-      "REC-06": {
-        "tag": "SKIP",
-        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-02": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-04": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-07": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-09": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
       },
       "DESC-01": {
         "tag": "PASS",
@@ -1951,9 +1302,8 @@
       "pass": 7,
       "warn": 11,
       "diverged": 0,
-      "signoff": 1,
-      "skip": 69,
-      "total": 92
+      "skip": 50,
+      "total": 72
     },
     "rules": {
       "BUILD-01": {
@@ -2004,19 +1354,7 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "TEST-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
       "TEST-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-06": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -2031,10 +1369,6 @@
       "CTX-03": {
         "tag": "PASS",
         "detail": "declared"
-      },
-      "CTX-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded — legacy signoff.json is no longer read; re-mint: baseline jdg new (MIGRATION.md)"
       },
       "CTX-05": {
         "tag": "FAIL",
@@ -2096,10 +1430,6 @@
         "tag": "SKIP",
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
-      "CLAIM-05": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
       "CLAIM-06": {
         "tag": "SKIP",
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
@@ -2248,73 +1578,13 @@
         "tag": "SKIP",
         "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
       },
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "no committed records under records/ yet"
-      },
       "REC-02": {
         "tag": "SKIP",
         "detail": "no committed records to scan"
       },
-      "REC-04": {
-        "tag": "SKIP",
-        "detail": "no records to cross-check"
-      },
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
-      },
-      "REC-06": {
-        "tag": "SKIP",
-        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-04": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-07": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-09": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
       },
       "DESC-01": {
         "tag": "WARN",
@@ -2326,392 +1596,6 @@
       }
     }
   },
-  "flow-repo": {
-    "exitCode": 1,
-    "project_type": "docs",
-    "profiles": [
-      "core"
-    ],
-    "summary": {
-      "blockers": 1,
-      "pass": 16,
-      "warn": 8,
-      "diverged": 0,
-      "signoff": 1,
-      "skip": 66,
-      "total": 92
-    },
-    "rules": {
-      "BUILD-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-06": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-07": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-08": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-09": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-10": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-06": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-07": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "CTX-02": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CTX-03": {
-        "tag": "WARN",
-        "detail": "config.sources_of_truth empty"
-      },
-      "CTX-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
-      },
-      "CTX-05": {
-        "tag": "PASS",
-        "detail": "3 doc(s), links resolve"
-      },
-      "CTX-06": {
-        "tag": "SKIP",
-        "detail": "config.freshness_globs empty (opt-in)"
-      },
-      "CTX-07": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CTX-08": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "CTX-09": {
-        "tag": "SKIP",
-        "detail": "config.grounding_docs empty (opt-in)"
-      },
-      "CTX-10": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "CTX-11": {
-        "tag": "SKIP",
-        "detail": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "CTX-12": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "CTX-13": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CTX-14": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CLAIM-00": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-01": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-02": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-03": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-04": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-05": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-06": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-07": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "SEC-01": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "SEC-02": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-03": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "SEC-04": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "SEC-05": {
-        "tag": "WARN",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
-      },
-      "SEC-06": {
-        "tag": "WARN",
-        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
-      },
-      "SEC-07": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-08": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-09": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-10": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-11": {
-        "tag": "SKIP",
-        "detail": "no workflow files"
-      },
-      "SEC-12": {
-        "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
-      },
-      "SEC-13": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-14": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "GOV-01": {
-        "tag": "SKIP",
-        "detail": "protection unreadable (<forge unreachable>)"
-      },
-      "GOV-02": {
-        "tag": "SKIP",
-        "detail": "protection unreadable (<forge unreachable>)"
-      },
-      "GOV-03": {
-        "tag": "WARN",
-        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
-      },
-      "COMM-01": {
-        "tag": "PASS",
-        "detail": "LICENSE"
-      },
-      "COMM-02": {
-        "tag": "WARN",
-        "detail": "README.md too short (<400 chars)"
-      },
-      "COMM-03": {
-        "tag": "WARN",
-        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
-      },
-      "QUAL-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "QUAL-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "QUAL-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "QUAL-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-06": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-07": {
-        "tag": "SKIP",
-        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
-      },
-      "REC-01": {
-        "tag": "WARN",
-        "detail": "1 mutation(s) (1 extended): <sha> inserted into records/sessions/main/2026-06-30-100000-golden.md"
-      },
-      "REC-02": {
-        "tag": "PASS",
-        "detail": "2 record(s) scrub-clean at HEAD"
-      },
-      "REC-04": {
-        "tag": "PASS",
-        "detail": "every record fact has one home"
-      },
-      "REC-05": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "REC-06": {
-        "tag": "SKIP",
-        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
-      },
-      "FLOW-01": {
-        "tag": "FAIL",
-        "detail": "branch 'lane/feature-x' carries no issue anchor under 'lane/*' — claim lanes: baseline lane claim <issue>"
-      },
-      "FLOW-02": {
-        "tag": "PASS",
-        "detail": "1 session record(s) ride this lane"
-      },
-      "FLOW-03": {
-        "tag": "PASS",
-        "detail": "next: recorded — records/sessions/lane/feature-x/2026-07-01-090000-golden.md — chosen by record: session/1; the lane’s only session record"
-      },
-      "FLOW-04": {
-        "tag": "PASS",
-        "detail": "'lane/feature-x' sits in declared family 'lane/*'"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "origin/lane/feature-x unknown locally — push discipline not provable (push/fetch first)"
-      },
-      "FLOW-06": {
-        "tag": "WARN",
-        "detail": "baseline.repo.json changed with no judgment record in the same range (DESC-03 preview)"
-      },
-      "FLOW-07": {
-        "tag": "SKIP",
-        "detail": "lanes underived: <forge unreachable>; origin unreachable (ls-remote failed)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "<forge unreachable> — PR closures unreadable"
-      },
-      "FLOW-09": {
-        "tag": "PASS",
-        "detail": "this lane introduces no decision record beyond 'main' — nothing to reserve"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "'lane/feature-x' carries no issue anchor — nothing to diverge from (FLOW-01's territory)"
-      },
-      "DIV-02": {
-        "tag": "PASS",
-        "detail": "next: names no issues — nothing to contradict"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "<forge unreachable> — PR closures unreadable"
-      },
-      "DESC-01": {
-        "tag": "PASS",
-        "detail": "type=docs · production/released · workflow=multi-lane · anchoring=relaxed"
-      },
-      "DESC-02": {
-        "tag": "PASS",
-        "detail": "baseline.repo.json schema-valid (schema_version 1)"
-      }
-    }
-  },
   "jdg-repo": {
     "exitCode": 0,
     "project_type": "docs",
@@ -2720,12 +1604,11 @@
     ],
     "summary": {
       "blockers": 0,
-      "pass": 12,
+      "pass": 9,
       "warn": 7,
       "diverged": 0,
-      "signoff": 0,
-      "skip": 73,
-      "total": 92
+      "skip": 56,
+      "total": 72
     },
     "rules": {
       "BUILD-01": {
@@ -2776,19 +1659,7 @@
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
-      "TEST-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
       "TEST-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-06": {
         "tag": "SKIP",
         "detail": "n/a for docs"
       },
@@ -2803,10 +1674,6 @@
       "CTX-03": {
         "tag": "WARN",
         "detail": "config.sources_of_truth empty"
-      },
-      "CTX-04": {
-        "tag": "PASS",
-        "detail": "JDG-0001 by adar 2026-07-05 (review by 2099-12-31)"
       },
       "CTX-05": {
         "tag": "PASS",
@@ -2865,10 +1732,6 @@
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-04": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-05": {
         "tag": "SKIP",
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
@@ -3020,463 +1883,17 @@
         "tag": "SKIP",
         "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
       },
-      "REC-01": {
-        "tag": "PASS",
-        "detail": "1 record(s), history append-only"
-      },
       "REC-02": {
         "tag": "PASS",
         "detail": "1 record(s) scrub-clean at HEAD"
       },
-      "REC-04": {
-        "tag": "PASS",
-        "detail": "every record fact has one home"
-      },
       "REC-05": {
         "tag": "WARN",
         "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
-      },
-      "REC-06": {
-        "tag": "SKIP",
-        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-02": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-04": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-07": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "FLOW-09": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "workflow=single-lane (rule needs multi-lane|multi-lane-local)"
       },
       "DESC-01": {
         "tag": "PASS",
         "detail": "type=docs · production/prototype · workflow=single-lane · anchoring=off"
-      },
-      "DESC-02": {
-        "tag": "PASS",
-        "detail": "baseline.repo.json schema-valid (schema_version 1)"
-      }
-    }
-  },
-  "lanes-repo": {
-    "exitCode": 1,
-    "project_type": "docs",
-    "profiles": [
-      "core"
-    ],
-    "summary": {
-      "blockers": 2,
-      "pass": 20,
-      "warn": 7,
-      "diverged": 1,
-      "signoff": 1,
-      "skip": 62,
-      "total": 92
-    },
-    "rules": {
-      "BUILD-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-06": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-07": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-08": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-09": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-10": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-06": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-07": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "CTX-02": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CTX-03": {
-        "tag": "WARN",
-        "detail": "config.sources_of_truth empty"
-      },
-      "CTX-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
-      },
-      "CTX-05": {
-        "tag": "PASS",
-        "detail": "2 doc(s), links resolve"
-      },
-      "CTX-06": {
-        "tag": "SKIP",
-        "detail": "config.freshness_globs empty (opt-in)"
-      },
-      "CTX-07": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CTX-08": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "CTX-09": {
-        "tag": "SKIP",
-        "detail": "config.grounding_docs empty (opt-in)"
-      },
-      "CTX-10": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "CTX-11": {
-        "tag": "SKIP",
-        "detail": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "CTX-12": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "CTX-13": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CTX-14": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CLAIM-00": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-01": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-02": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-03": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-04": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-05": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-06": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-07": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "SEC-01": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "SEC-02": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-03": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "SEC-04": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "SEC-05": {
-        "tag": "WARN",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
-      },
-      "SEC-06": {
-        "tag": "WARN",
-        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
-      },
-      "SEC-07": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-08": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-09": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-10": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-11": {
-        "tag": "SKIP",
-        "detail": "no workflow files"
-      },
-      "SEC-12": {
-        "tag": "SKIP",
-        "detail": "n/a (no applicable target)"
-      },
-      "SEC-13": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-14": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "GOV-01": {
-        "tag": "SKIP",
-        "detail": "protection unreadable (no branch-rules replay fixture)"
-      },
-      "GOV-02": {
-        "tag": "SKIP",
-        "detail": "protection unreadable (no branch-rules replay fixture)"
-      },
-      "GOV-03": {
-        "tag": "WARN",
-        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
-      },
-      "COMM-01": {
-        "tag": "PASS",
-        "detail": "LICENSE"
-      },
-      "COMM-02": {
-        "tag": "WARN",
-        "detail": "README.md too short (<400 chars)"
-      },
-      "COMM-03": {
-        "tag": "WARN",
-        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
-      },
-      "QUAL-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "QUAL-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "QUAL-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "QUAL-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-06": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-07": {
-        "tag": "SKIP",
-        "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
-      },
-      "REC-01": {
-        "tag": "PASS",
-        "detail": "1 record(s), history append-only"
-      },
-      "REC-02": {
-        "tag": "PASS",
-        "detail": "1 record(s) scrub-clean at HEAD"
-      },
-      "REC-04": {
-        "tag": "PASS",
-        "detail": "every record fact has one home"
-      },
-      "REC-05": {
-        "tag": "WARN",
-        "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
-      },
-      "REC-06": {
-        "tag": "SKIP",
-        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
-      },
-      "FLOW-01": {
-        "tag": "PASS",
-        "detail": "anchored to #7 (closed)"
-      },
-      "FLOW-02": {
-        "tag": "PASS",
-        "detail": "1 session record(s) ride this lane"
-      },
-      "FLOW-03": {
-        "tag": "PASS",
-        "detail": "next: recorded — records/sessions/lane/7/2026-07-01-090000-golden.md — chosen by record: session/1; the lane’s only session record"
-      },
-      "FLOW-04": {
-        "tag": "PASS",
-        "detail": "'lane/7' sits in declared family 'lane/*'"
-      },
-      "FLOW-05": {
-        "tag": "PASS",
-        "detail": "newest record records/sessions/lane/7/2026-07-01-090000-golden.md is at origin (as of the last fetch) — chosen by record: session/1"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "no gated subject changed on this branch"
-      },
-      "FLOW-07": {
-        "tag": "FAIL",
-        "detail": "lease ABANDONED (<N>d idle of ttl <N>d) — renew (push work) or hand it over (baseline lane reclaim)"
-      },
-      "FLOW-08": {
-        "tag": "PASS",
-        "detail": "no open PRs — nothing to warn about"
-      },
-      "FLOW-09": {
-        "tag": "PASS",
-        "detail": "this lane introduces no decision record beyond 'origin/main' — nothing to reserve"
-      },
-      "DIV-01": {
-        "tag": "DIVERGED",
-        "detail": "lane lane/7 is claimed but its anchor #7 is closed — \"The anchored issue (closed under the lane)\" — the resolution path: reopen #7 if the work is genuinely unfinished, or merge/close-and-prune the lane if it is done"
-      },
-      "DIV-02": {
-        "tag": "PASS",
-        "detail": "next:'s issue reference(s) #8 are open or unresolved — no contradiction proven"
-      },
-      "DIV-03": {
-        "tag": "PASS",
-        "detail": "no open PRs — nothing to diverge"
-      },
-      "DESC-01": {
-        "tag": "PASS",
-        "detail": "type=docs · production/released · workflow=multi-lane · anchoring=strict"
       },
       "DESC-02": {
         "tag": "PASS",
@@ -3495,9 +1912,8 @@
       "pass": 6,
       "warn": 21,
       "diverged": 0,
-      "signoff": 3,
-      "skip": 56,
-      "total": 92
+      "skip": 39,
+      "total": 72
     },
     "rules": {
       "BUILD-01": {
@@ -3530,7 +1946,7 @@
       },
       "BUILD-08": {
         "tag": "WARN",
-        "detail": "scripts.test not satisfied in package.json"
+        "detail": "pattern not found"
       },
       "BUILD-09": {
         "tag": "SKIP",
@@ -3548,19 +1964,7 @@
         "tag": "SKIP",
         "detail": "no files to scan"
       },
-      "TEST-03": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
-      },
-      "TEST-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
-      },
       "TEST-05": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "TEST-06": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
@@ -3575,10 +1979,6 @@
       "CTX-03": {
         "tag": "WARN",
         "detail": "config.sources_of_truth empty"
-      },
-      "CTX-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
       },
       "CTX-05": {
         "tag": "FAIL",
@@ -3637,10 +2037,6 @@
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-04": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-05": {
         "tag": "SKIP",
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
@@ -3792,73 +2188,13 @@
         "tag": "SKIP",
         "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
       },
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "no committed records under records/ yet"
-      },
       "REC-02": {
         "tag": "SKIP",
         "detail": "no committed records to scan"
       },
-      "REC-04": {
-        "tag": "SKIP",
-        "detail": "no records to cross-check"
-      },
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
-      },
-      "REC-06": {
-        "tag": "SKIP",
-        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-04": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-07": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-09": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
       },
       "DESC-01": {
         "tag": "WARN",
@@ -3880,11 +2216,10 @@
     "summary": {
       "blockers": 0,
       "pass": 34,
-      "warn": 10,
+      "warn": 9,
       "diverged": 0,
-      "signoff": 4,
-      "skip": 44,
-      "total": 92
+      "skip": 29,
+      "total": 72
     },
     "rules": {
       "BUILD-01": {
@@ -3917,7 +2252,7 @@
       },
       "BUILD-08": {
         "tag": "PASS",
-        "detail": "package.json: scripts.test set"
+        "detail": "matched in 1 file(s)"
       },
       "BUILD-09": {
         "tag": "PASS",
@@ -3935,25 +2270,13 @@
         "tag": "PASS",
         "detail": "matched in 1 file(s)"
       },
-      "TEST-03": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
-      },
-      "TEST-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
-      },
       "TEST-05": {
-        "tag": "WARN",
-        "detail": "no sign-off recorded"
-      },
-      "TEST-06": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
+        "tag": "SKIP",
+        "detail": "no files to scan"
       },
       "TEST-07": {
         "tag": "WARN",
-        "detail": "pattern not found | jest.coverageThreshold not satisfied in package.json"
+        "detail": "pattern not found | pattern not found"
       },
       "CTX-02": {
         "tag": "SKIP",
@@ -3962,10 +2285,6 @@
       "CTX-03": {
         "tag": "WARN",
         "detail": "config.sources_of_truth empty"
-      },
-      "CTX-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
       },
       "CTX-05": {
         "tag": "PASS",
@@ -4024,10 +2343,6 @@
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-04": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-05": {
         "tag": "SKIP",
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
@@ -4129,7 +2444,7 @@
       },
       "QUAL-03": {
         "tag": "PASS",
-        "detail": "tsconfig.json: compilerOptions.strict=true"
+        "detail": "matched in 1 file(s)"
       },
       "QUAL-04": {
         "tag": "PASS",
@@ -4179,73 +2494,13 @@
         "tag": "SKIP",
         "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
       },
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "no committed records under records/ yet"
-      },
       "REC-02": {
         "tag": "SKIP",
         "detail": "no committed records to scan"
       },
-      "REC-04": {
-        "tag": "SKIP",
-        "detail": "no records to cross-check"
-      },
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
-      },
-      "REC-06": {
-        "tag": "SKIP",
-        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-04": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-07": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-09": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
       },
       "DESC-01": {
         "tag": "WARN",
@@ -4480,13 +2735,12 @@
       "actions": 11,
       "delivered": 11,
       "failed": 0,
-      "pass": 10,
+      "pass": 8,
       "warn": 15,
       "fail": 4,
       "diverged": 0,
-      "signoff": 3,
-      "skip": 47,
-      "rules": 79,
+      "skip": 43,
+      "rules": 70,
       "jdg": {
         "records": 1,
         "swept": 1,
@@ -4516,9 +2770,8 @@
       "pass": 17,
       "warn": 14,
       "diverged": 0,
-      "signoff": 3,
-      "skip": 57,
-      "total": 92
+      "skip": 40,
+      "total": 72
     },
     "rules": {
       "BUILD-01": {
@@ -4551,7 +2804,7 @@
       },
       "BUILD-08": {
         "tag": "PASS",
-        "detail": "package.json: scripts.test set"
+        "detail": "matched in 1 file(s)"
       },
       "BUILD-09": {
         "tag": "SKIP",
@@ -4569,19 +2822,7 @@
         "tag": "WARN",
         "detail": "pattern not found"
       },
-      "TEST-03": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
-      },
-      "TEST-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
-      },
       "TEST-05": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "TEST-06": {
         "tag": "SKIP",
         "detail": "profile 'advanced' off"
       },
@@ -4596,10 +2837,6 @@
       "CTX-03": {
         "tag": "WARN",
         "detail": "config.sources_of_truth empty"
-      },
-      "CTX-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
       },
       "CTX-05": {
         "tag": "PASS",
@@ -4658,10 +2895,6 @@
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
       "CLAIM-04": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-05": {
         "tag": "SKIP",
         "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
       },
@@ -4775,7 +3008,7 @@
       },
       "REPRO-02": {
         "tag": "WARN",
-        "detail": "none of: .tool-versions, .nvmrc, .node-version, .python-version, mise.toml | engines.node not satisfied in package.json"
+        "detail": "none of: .tool-versions, .nvmrc, .node-version, .python-version, mise.toml | pattern not found"
       },
       "REPRO-03": {
         "tag": "SKIP",
@@ -4813,459 +3046,13 @@
         "tag": "SKIP",
         "detail": "no reconcile workflow in .github/workflows/ — the cron is not wired (nothing to be alive)"
       },
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "no committed records under records/ yet"
-      },
       "REC-02": {
         "tag": "SKIP",
         "detail": "no committed records to scan"
       },
-      "REC-04": {
-        "tag": "SKIP",
-        "detail": "no records to cross-check"
-      },
       "REC-05": {
         "tag": "SKIP",
         "detail": "n/a (committed records not present)"
-      },
-      "REC-06": {
-        "tag": "SKIP",
-        "detail": "no vendored tree at tools/baseline/ — nothing to pin"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-04": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-07": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-09": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DESC-01": {
-        "tag": "WARN",
-        "detail": "no baseline.repo.json — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset"
-      },
-      "DESC-02": {
-        "tag": "SKIP",
-        "detail": "no baseline.repo.json — absence is DESC-01's finding"
-      }
-    }
-  },
-  "vendored-repo": {
-    "exitCode": 1,
-    "project_type": "docs",
-    "profiles": [
-      "core"
-    ],
-    "summary": {
-      "blockers": 1,
-      "pass": 8,
-      "warn": 10,
-      "diverged": 0,
-      "signoff": 1,
-      "skip": 72,
-      "total": 92
-    },
-    "rules": {
-      "BUILD-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-06": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-07": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-08": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-09": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "BUILD-10": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-06": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "TEST-07": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "CTX-02": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CTX-03": {
-        "tag": "WARN",
-        "detail": "config.sources_of_truth empty"
-      },
-      "CTX-04": {
-        "tag": "SIGN-OFF",
-        "detail": "no sign-off recorded"
-      },
-      "CTX-05": {
-        "tag": "PASS",
-        "detail": "1 doc(s), links resolve"
-      },
-      "CTX-06": {
-        "tag": "SKIP",
-        "detail": "config.freshness_globs empty (opt-in)"
-      },
-      "CTX-07": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CTX-08": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "CTX-09": {
-        "tag": "SKIP",
-        "detail": "config.grounding_docs empty (opt-in)"
-      },
-      "CTX-10": {
-        "tag": "SKIP",
-        "detail": "profile 'advanced' off"
-      },
-      "CTX-11": {
-        "tag": "SKIP",
-        "detail": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "CTX-12": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "CTX-13": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CTX-14": {
-        "tag": "SKIP",
-        "detail": "no numbered ADR files found"
-      },
-      "CLAIM-00": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-01": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-02": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-03": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-04": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-05": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-06": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "CLAIM-07": {
-        "tag": "SKIP",
-        "detail": "claims opt-in (no register; set makes_external_claims:true to enable)"
-      },
-      "SEC-01": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "SEC-02": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-03": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "SEC-04": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "SEC-05": {
-        "tag": "WARN",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc | pattern not found"
-      },
-      "SEC-06": {
-        "tag": "WARN",
-        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
-      },
-      "SEC-07": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-08": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-09": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-10": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-11": {
-        "tag": "PASS",
-        "detail": "1 workflow(s) least-privilege"
-      },
-      "SEC-12": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "SEC-13": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "SEC-14": {
-        "tag": "SKIP",
-        "detail": "no files to scan"
-      },
-      "GOV-01": {
-        "tag": "SKIP",
-        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
-      },
-      "GOV-02": {
-        "tag": "SKIP",
-        "detail": "default branch undeclared (set ground_truth_boundary.default_branch) — protection has no subject"
-      },
-      "GOV-03": {
-        "tag": "WARN",
-        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
-      },
-      "COMM-01": {
-        "tag": "FAIL",
-        "detail": "none of: LICENSE, LICENSE.*, LICENCE, LICENCE.*, COPYING"
-      },
-      "COMM-02": {
-        "tag": "WARN",
-        "detail": "README.md too short (<400 chars)"
-      },
-      "COMM-03": {
-        "tag": "WARN",
-        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
-      },
-      "QUAL-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "QUAL-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "QUAL-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "QUAL-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "REPRO-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-01": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-02": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-03": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-04": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-05": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-06": {
-        "tag": "SKIP",
-        "detail": "n/a for docs"
-      },
-      "OPS-07": {
-        "tag": "WARN",
-        "detail": "baseline-reconcile.yml: disabled_inactivity at the forge — the cron files nothing while disabled (GitHub's 60-day auto-disable); re-enable: gh workflow enable baseline-reconcile.yml"
-      },
-      "REC-01": {
-        "tag": "SKIP",
-        "detail": "no committed records under records/ yet"
-      },
-      "REC-02": {
-        "tag": "SKIP",
-        "detail": "no committed records to scan"
-      },
-      "REC-04": {
-        "tag": "SKIP",
-        "detail": "no records to cross-check"
-      },
-      "REC-05": {
-        "tag": "SKIP",
-        "detail": "n/a (committed records not present)"
-      },
-      "REC-06": {
-        "tag": "WARN",
-        "detail": "vendored tree skews from its lock: lock pins 2.4.0 (<sha>), tree is 2.4.1 (<sha>) — re-vendor to match, or re-pin deliberately: baseline gen lock"
-      },
-      "FLOW-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-04": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-05": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-06": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-07": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-08": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "FLOW-09": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-01": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-02": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
-      },
-      "DIV-03": {
-        "tag": "SKIP",
-        "detail": "workflow contract off (no valid baseline.repo.json)"
       },
       "DESC-01": {
         "tag": "WARN",

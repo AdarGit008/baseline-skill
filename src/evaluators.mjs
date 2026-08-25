@@ -1,27 +1,22 @@
-// The ~45 declarative check kinds. makeEvalCheck(ctx) closes over the repo index,
-// resolved config, and run flags; evalCheck(c, rule) -> {ok:true|false|null, detail, soft?, signoff?}.
+// The declarative check kinds (CHECK_KINDS is the registry; --self-check derives the
+// count). makeEvalCheck(ctx) closes over the repo index, resolved config, and run flags;
+// evalCheck(c, rule) -> {ok:true|false|null, detail, soft?}.
 // ok:null means "not evaluable here" and always tags SKIP — one broken rule can't take down the run.
 import path from 'node:path'
 import fs from 'node:fs'
 import { execSync } from 'node:child_process'
-import { DAY, asArr, parseDate, daysAgo, getPath, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE, nowUTC, globMatcher, issueOf, refs as issueRefs, closes as issueCloses } from './util.mjs'
+import { DAY, asArr, parseDate, daysAgo, reOf, nonEmpty, stripLineComment, isAdrFile, statusOf, FRONTMATTER_RE, nowUTC, globMatcher } from './util.mjs'
 import { DESCRIPTOR_FILE, DESCRIPTOR_SCHEMA } from './descriptor.mjs'
 import { classifyPostureDiff } from './derive/posture.mjs'
 import { scan, loadAllowlist } from './scrub.mjs'
 import { loadClaims, CLAIM_RECORD_GLOB } from './claims.mjs'
 import { adrEdges } from './records.mjs'
-import { extractNext, diagnoseNext } from './facts/git.mjs'
-import { parseFrontmatter } from './records.mjs'
-import { deriveDivergence } from './derive/divergence.mjs'
-import { computeVendorLock, VENDOR_TREE, VENDOR_LOCK } from './gen.mjs'
 
-const DIV_REF_CAP = 20 // a hostile next: line with dozens of #N must not fan out a forge query each
-
-// The judgment kinds that can SANCTION a change: REC-01's tombstone (an edited
-// record covered by a judgment naming its path) and DESC-03's descriptor-change
-// approval. break-glass is deliberately absent — it is outage relief with its own
-// gate semantics, never record-edit or descriptor approval (the DESC-03 reasoning,
-// applied to both valves). One home, or the two consumers drift.
+// The judgment kinds that can SANCTION a finding: a one-way amendment (CTX-13) or a
+// twice-claimed decision number (CTX-14) covered by a judgment naming the record's
+// path, and DESC-03's descriptor-change approval. break-glass is deliberately absent —
+// it is outage relief with its own gate semantics, never record or descriptor approval
+// (the DESC-03 reasoning, applied to every valve). One home, or the consumers drift.
 const SANCTION_KINDS = ['sign-off', 'deviation', 'risk-acceptance']
 
 // The decision graph's four declared edges, in the order a finding should read them,
@@ -35,100 +30,13 @@ const ADR_EDGE_VERBS = [['supersedes', 'supersedes'], ['superseded_by', 'is supe
 // than the collision itself — reported once, where it is the subject.
 function adrFileNumber(f) { const m = (f.split('/').pop() || '').match(/\d{1,4}/); return m ? parseInt(m[0], 10) : null }
 
-// The AUTHORITATIVE closing set per open PR: forge closingIssuesReferences (the sidebar
-// link + keyword-derived entries — a superset of the body-text regex), with the body
-// regex as the fallback when the forge query FAILS. forgeCloses is null when the query
-// failed; a failed query must never read as "closes nothing" (the body regex still
-// answers). One home for div-closes-closed (DIV-03) and pr-closes-own-anchor (FLOW-08).
-function scopedPrClosers(w) {
-  const prs = w.prsOpenOrNull() // null-honest: a FAILED query must not read as "no PRs"
-  if (prs === null) return null
-  return prs.map(pr => {
-    const { closes, forge, body } = w.forge.prClosers(pr)
-    return { number: pr.number, branch: pr.headRefName, closes, forgeCloses: forge, bodyCloses: body }
-  })
-}
-
 // Every check kind evalCheck() knows how to run. --self-check flags any rule referencing one not in here.
-export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'json-field', 'command', 'adr-status', 'adr-forward-link', 'adr-backlink', 'adr-number-unique', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'signoff', 'descriptor', 'descriptor-valid', 'records-append-only', 'records-scrub', 'records-one-home', 'vendored-lock', 'branch-session-record', 'branch-atomicity', 'lane-anchor', 'lane-next-filled', 'lane-namespace', 'lane-record-pushed', 'lane-lease', 'lane-adr-reservation', 'div-anchor-closed', 'div-next-closed', 'div-closes-closed', 'pr-closes-own-anchor', 'descriptor-change', 'merge-sister-dep', 'forge-protection', 'workflow-state'])
+export const CHECK_KINDS = new Set(['any-of', 'implies', 'workflow-permissions', 'doc-code-age', 'any-file', 'grep', 'file-contains', 'command', 'adr-status', 'adr-forward-link', 'adr-backlink', 'adr-number-unique', 'config-nonempty', 'required-files', 'doc-freshness', 'md-links', 'path-integrity', 'version-consistency', 'dockerfile-digest', 'claims-field', 'claims-citations', 'descriptor', 'descriptor-valid', 'records-scrub', 'descriptor-change', 'forge-protection', 'workflow-state'])
 
-export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESCRIPTOR, BRANCH = null, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
-  const { REPO, FILES, HEAD, match, read, readText, readRaw, gitCommitISO, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile, gitLsTree } = repo
-  // The lane rules diff against where the branch diverged: the descriptor-declared
-  // default branch, preferring whichever of local/origin twin is NEWER (a stale
-  // local default widens the branch diff with upstream-authored commits); an
-  // undeclared or unresolvable base is a SKIP (never a guess against a wrong base).
-  function baseRef() {
-    if (!DEFAULT_BRANCH) return null
-    const local = gitObjExists(`${DEFAULT_BRANCH}^{commit}`) ? DEFAULT_BRANCH : null
-    const remote = gitObjExists(`origin/${DEFAULT_BRANCH}^{commit}`) ? `origin/${DEFAULT_BRANCH}` : null
-    if (local && remote) return gitIsAncestor(local, remote) === 0 ? remote : local
-    return local || remote
-  }
-  // The newest session record COMMITTED on this lane (added in base...HEAD, exactly
-  // FLOW-02's presence definition) — its committed-blob content, so an uncommitted draft
-  // in the worktree can't make FLOW-03/05/DIV-02 contradict FLOW-02 ("no record" +
-  // "empty next:" + "unpushed" for one file that isn't committed). ->
-  //   { rel, next } committed record found · null no committed record (FLOW-02's finding)
-  //   · { unprovable: reason } base unresolvable (all three then SKIP the same way).
-  function committedLog(branch) {
-    const base = baseRef()
-    if (!base) return { unprovable: `default branch '${DEFAULT_BRANCH}' not resolvable locally` }
-    const added = gitDiffNames(`${base}...HEAD`, `records/sessions/${branch}/`, { addedOnly: true })
-    if (added === null) return { unprovable: `diff ${base}...HEAD failed` }
-    const md = added.filter(f => f.endsWith('.md'))
-    if (!md.length) return null
-    // Commit order first (oldest -> newest), so "newest" means newest-written and not
-    // last-in-the-alphabet (#54). The ordered read is over the SAME range, so it can only
-    // reorder what the diff already found; anything the reorder drops keeps its diff
-    // position, and a failed `git log` degrades to the old sort rather than refusing.
-    const ordered = gitAddedOrdered(`${base}..HEAD`, `records/sessions/${branch}/`)
-    const byCommit = ordered ? [...md].sort((a, b) => ordered.indexOf(a) - ordered.indexOf(b) || (a < b ? -1 : a > b ? 1 : 0)) : [...md].sort()
-    // Kind, then ordinal: `record: session/N` is what `baseline log` writes, and a
-    // `record: prereg` is not a session — it must not outrank the record that governs.
-    const seen = byCommit.map((rel, i) => {
-      const raw = gitCatFile('HEAD', rel) ?? read(rel) ?? ''
-      const kind = parseFrontmatter(raw).fields?.record ?? null
-      const m = /^session\/(\d+)$/.exec(kind || '')
-      return { rel, raw, kind, ord: m ? Number(m[1]) : null, seq: i }
-    })
-    const sessions = seen.filter(r => r.ord !== null)
-    // Highest ordinal wins; a tie (two lanes, one number) falls to commit order.
-    const pick = sessions.length
-      ? sessions.reduce((a, b) => (b.ord > a.ord || (b.ord === a.ord && b.seq > a.seq)) ? b : a)
-      : seen.at(-1)
-    const basis = sessions.length ? `record: session/${pick.ord}`
-      : ordered ? 'commit order (no record: ordinal on this lane)'
-        : 'filename sort (commit order unreadable)'
-    const skipped = seen.length - sessions.length
-    const note = sessions.length
-      ? `${sessions.length > 1 ? `session/${pick.ord} of ${sessions.length} record(s)` : 'the lane\u2019s only session record'}${skipped ? `; ${skipped} non-session record(s) not considered` : ''}`
-      : `${seen.length} record(s), none carrying a record: ordinal`
-    // The diagnosis rides along, not just the value: FLOW-03 needs to say WHICH of the
-    // three empty states it found (#50).
-    const diag = diagnoseNext(pick.raw || '')
-    return { rel: pick.rel, next: diag.next, diag, basis, note, kind: pick.kind, count: seen.length }
-  }
-  // How a FLOW/DIV finding names the record it read — which file, and on what basis it
-  // was chosen. The SKIP path needs this most: "no committed next:" without it reads as
-  // "there was nothing to read" (#54).
-  function logProvenance(log) { return `${log.rel} \u2014 chosen by ${log.basis}; ${log.note}` }
-  // one clock (util.nowUTC): the override is parsed + ISO-normalized so a
-  // non-ISO-but-parseable BASELINE_LOG_NOW can't turn expiry comparisons into
-  // lexicographic garbage; unparseable falls back to the wall clock — a scoring
-  // run degrades to real time rather than crashing or silently lying
+export function makeEvalCheck({ repo, cfg, NO_EXEC, JUDGMENTS = null, DESCRIPTOR, DEFAULT_BRANCH = null, LANEWORLD = null, ADMITWORLD = null }) {
+  const { REPO, FILES, match, read, readText, readRaw, gitCommitISO, gitCatFile } = repo
   const TODAY = (nowUTC() ?? new Date()).toISOString().slice(0, 10)
   function globsOf(c) { return c.globs_from_config ? cfg[c.globs_from_config] : (c.file_from_config ? cfg[c.file_from_config] : c.globs) }
-
-  // Lane-residency (M5c review): the per-lane discipline (FLOW-01/02/03/05) is for LANES —
-  // branches in the namespace. A declared-family branch (release/*, adopt/*) is a
-  // legitimate non-lane: FLOW-04 confirms its placement and NOTHING else applies, so it
-  // isn't wallpapered with anchor/record/push warns it can never satisfy. A stray outside
-  // every family is FLOW-04's single finding (placement), not four. Only fires the SKIP
-  // when a namespace IS declared and the branch is non-resident; no namespace → the M4c
-  // behavior (these rules already handle an absent namespace themselves).
-  const laneNs = DESCRIPTOR?.valid ? DESCRIPTOR.data?.lanes?.namespace : null
-  const nonResidentLane = () => BRANCH && laneNs && !globMatcher(laneNs).test(BRANCH)
 
   function evalCheck(c, rule) {
     const k = c.kind
@@ -246,21 +154,6 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       return { ok: false, detail: short.length ? `${short[0]} too short (<${c.min_len} chars)` : `${files[0]} present but missing required content` }
     }
 
-    if (k === 'json-field') {
-      const files = match(globsOf(c))
-      if (!files.length) return { ok: null, detail: 'no ' + asArr(globsOf(c)).slice(0, 2).join('/') + ' present' }
-      for (const f of files) {
-        const t = read(f); if (!t) continue
-        let data; try { data = JSON.parse(t) } catch { return { ok: false, detail: `${f} is not valid JSON` } }
-        const v = getPath(data, c.path)
-        if (c.assert === 'true') { if (v === true) return { ok: true, detail: `${f}: ${c.path}=true` } }
-        else if (c.assert === 'nonempty') { if (nonEmpty(v)) return { ok: true, detail: `${f}: ${c.path} set` } }
-        else if (c.assert === 'present') { if (v !== undefined && v !== null) return { ok: true, detail: `${f}: ${c.path} present` } }
-        else if (c.equals !== undefined) { if (v === c.equals) return { ok: true, detail: `${f}: ${c.path}=${v}` } }
-      }
-      return { ok: false, detail: `${c.path} not satisfied in ${files.slice(0, 2).join(', ')}` }
-    }
-
     if (k === 'command') {
       const cmd = cfg[c.run_from_config]
       if (!cmd) return { ok: false, soft: true, detail: `no ${c.run_from_config} configured — the crown check can't run; set it in baseline.config.json` }
@@ -329,7 +222,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
     // Adoption: a corpus with history will light up, so this is a warn AND the
     // existing judgment route sanctions a named record — an unexpired sign-off /
     // deviation / risk-acceptance whose glob `subject` matches the DECLARING record's
-    // path (SANCTION_KINDS, REC-01's route since #47). Deleting the judgment is how a
+    // path (SANCTION_KINDS, the route #47 opened). Deleting the judgment is how a
     // repair is proved; `review_by` is the expiry a frozen allowlist never has.
     if (k === 'adr-backlink') {
       const files = match(cfg[c.globs_from_config]).filter(isAdrFile); if (!files.length) return { ok: null, detail: 'no numbered ADR files found' }
@@ -362,8 +255,8 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
     // CTX-14 (#49): the decision-record NUMBER is a scarce name, and nothing owned it.
     // Two lanes each authored an 0027 under different filenames; both trees were clean,
     // both merges were conflict-free, and `main` ended with two ADR-0027s that no check
-    // had an opinion about. This is the floor: it cannot see the other lane (that is
-    // FLOW-09's), but it guarantees the collision does not SURVIVE — whichever side
+    // had an opinion about. This is the floor: it cannot see the other lane, but it
+    // guarantees the collision does not SURVIVE — whichever side
     // merges second turns the default branch red instead of shipping a silent duplicate.
     //
     // Numbers, not paths: `0027-a.md` and `0027-b.md` are one decision's identity claimed
@@ -374,7 +267,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
     // that already carries a duplicate may rationally keep it. The existing judgment route
     // sanctions it — an unexpired sign-off / deviation / risk-acceptance whose glob
     // `subject` matches EITHER colliding file (naming one end names the collision), with
-    // deleting the judgment the proof of repair. Same route as REC-01 and CTX-13.
+    // deleting the judgment the proof of repair. Same route as CTX-13.
     if (k === 'adr-number-unique') {
       const files = match(cfg[c.globs_from_config]).filter(isAdrFile); if (!files.length) return { ok: null, detail: 'no numbered ADR files found' }
       const byNum = new Map()
@@ -556,126 +449,6 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') : `${claims.length} claim(s) ok` }
     }
 
-    if (k === 'signoff') {
-      // the unified ledger (M4b; the ONLY path since M7b — the legacy signoff.json
-      // read retired with the contraction): a kind=sign-off JDG whose subject is
-      // this rule id satisfies it while unexpired — a lapsed one is honestly NOT
-      // signed. MIGRATION.md re-mints surviving V1 entries as records.
-      const j = JDGS && JDGS[rule.id]
-      if (j) {
-        if (j.review_by < TODAY) return { ok: false, detail: `sign-off ${j.id} lapsed (review_by ${j.review_by}) — re-judge: baseline jdg new`, signoff: true }
-        return { ok: true, detail: `${j.id} by ${j.by} ${j.date} (review by ${j.review_by})` }
-      }
-      // parity with the claims pointer: a V1 repo staring at "no sign-off recorded"
-      // with its old ledger sitting right there deserves the migration named
-      if (FILES.includes('.project-baseline/signoff.json')) return { ok: false, detail: 'no sign-off recorded — legacy signoff.json is no longer read; re-mint: baseline jdg new (MIGRATION.md)', signoff: true }
-      return { ok: false, detail: 'no sign-off recorded', signoff: true }
-    }
-
-    if (k === 'records-append-only') {
-      // REC-01 (C12/CF7): prove from history that committed records were never edited.
-      // Layer 1: any modify/delete/rename event under the scope is a finding (MDR).
-      // Layer 2 (the evil-merge holes MDR can't see, because plain `git log` shows no
-      // file changes for merge commits): (a) a path that was Added but neither exists
-      // now nor has a D/R disposal event vanished inside a merge; (b) a still-present
-      // path with no M/R event whose HEAD blob matches NO add-blob was edited inside
-      // a merge. "Introduction" is deliberately the SET of add-blobs across full
-      // history (--full-history: a side-branch-only add is invisible to the default
-      // simplified walk, and two lanes adding the same path then resolving to one
-      // side must not read as an edit). Deterministic; shallow history is a SKIP.
-      const scope = c.path || 'records/'
-      if (!HEAD) return { ok: null, detail: 'no commit history here (not a git repo, or no commits yet)' }
-      if (gitIsShallow()) return { ok: null, detail: 'shallow clone — history truncated, append-only not provable' }
-      const mdr = gitNameStatus('MDR', scope, { fullHistory: true })
-      const adds = gitNameStatus('A', scope, { fullHistory: true })
-      if (mdr === null || adds === null) return { ok: null, detail: 'git history unreadable' }
-      const current = new Set(match([scope + '**'], { tracked: true }))
-      if (!adds.length && !mdr.length && !current.size) return { ok: null, detail: `no committed records under ${scope} yet` }
-      // Issue #47: a mutation whose path is covered by an unexpired SANCTIONING
-      // judgment (subject glob-matches the reported path — globMatcher, one home) is
-      // sanctioned, not an offence. The tombstone makes the rule's own `fix` true:
-      // an author reaches clean without rewriting history. break-glass never
-      // sanctions (see SANCTION_KINDS); an expired tombstone stops sanctioning.
-      // Issue #56: an `M` event is not one event class, and the finding used to say
-      // `edited` for all of them. The question the reader actually has is whether the
-      // edit LOST anything, so classify by what survived from the introduction:
-      //   appended  — the introduced lines are still there, in order, at the FRONT
-      //   extended  — all still there, in order, but with new lines woven between them
-      //   rewritten — an introduced line is gone or reads differently: the lossy one
-      // All three remain findings (a record's meaning can change by addition alone, and
-      // the tombstone route disposes of a whole class at once), but the count names the
-      // classes and the examples lead with the rewrites. The issue framed this as a
-      // two-way split; a mid-file insertion is neither an append nor a loss, and calling
-      // it either would put the benign edits back in the bucket this rule is trying to
-      // empty. Deterministic — two blob reads per event, memoized per path; an unreadable
-      // blob on either side stays the old undifferentiated `edited`, never a guess.
-      const recLines = s => { const a = s.split('\n'); if (a.length && a[a.length - 1] === '') a.pop(); return a }
-      // Prefix, LINE-wise, not string-wise: `line one` -> `line oneX` starts with the
-      // introduction as a string while having restated the only line the record carried.
-      const isPrefix = (a, b) => {
-        if (a.length > b.length) return false
-        for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
-        return true
-      }
-      // Every introduced line still present, in order — insertions allowed anywhere.
-      const isSubseq = (a, b) => {
-        let i = 0
-        for (const line of b) { if (i < a.length && a[i] === line) i++ }
-        return i === a.length
-      }
-      const editClass = (intro, now) => {
-        if (intro === now) return 'appended'
-        const a = recLines(intro), b = recLines(now)
-        return isPrefix(a, b) ? 'appended' : isSubseq(a, b) ? 'extended' : 'rewritten'
-      }
-      const introCache = new Map() // path -> [content at each add] (lazy: only mutated paths)
-      const introTexts = p => {
-        if (!introCache.has(p)) introCache.set(p, adds.filter(e => e.path === p).map(e => gitCatFile(e.sha, p)).filter(t => t != null))
-        return introCache.get(p)
-      }
-      // Introduction is the SET of add-blobs (see above), so extending ANY of them is an
-      // append — the two-lanes-added-the-same-record case must not read as a rewrite.
-      // The BEST class across the add-blob set: the record is only rewritten if it is
-      // rewritten with respect to every introduction it could have had.
-      const RANK_BEST = ['appended', 'extended', 'rewritten']
-      const classOf = (p, text) => {
-        if (text == null) return null
-        const intros = introTexts(p); if (!intros.length) return null
-        return intros.map(t => editClass(t, text)).sort((x, y) => RANK_BEST.indexOf(x) - RANK_BEST.indexOf(y))[0]
-      }
-      const VERB = { appended: 'appended to', extended: 'inserted into', rewritten: 'rewrote', edited: 'edited', deleted: 'deleted', renamed: 'renamed' }
-      const mutations = [] // { path, cls, text } — path is what a tombstone names
-      for (const e of mdr) {
-        const cls = e.status === 'M' ? (classOf(e.path, gitCatFile(e.sha, e.path)) || 'edited') : e.status === 'D' ? 'deleted' : 'renamed'
-        mutations.push({ path: e.to || e.path, cls, text: `${e.sha.slice(0, 7)} ${VERB[cls]} ${e.to || e.path}` })
-      }
-      const touched = new Set(mdr.map(e => e.path))
-      const addBlobs = new Map() // path -> Set of blob shas at each add
-      for (const e of adds) { const b = gitBlobAt(e.sha, e.path); if (b) { if (!addBlobs.has(e.path)) addBlobs.set(e.path, new Set()); addBlobs.get(e.path).add(b) } }
-      for (const [p, blobs] of addBlobs) {
-        if (!current.has(p)) { if (!mdr.some(e => (e.status === 'D' || e.status === 'R') && e.path === p)) mutations.push({ path: p, cls: 'vanished', text: `${p} vanished with no recorded delete (merge-hidden?)` }); continue }
-        if (touched.has(p)) continue // already reported above
-        const now = gitBlobAt('HEAD', p)
-        if (now && blobs.size && !blobs.has(now)) mutations.push({ path: p, cls: classOf(p, gitCatFile('HEAD', p)) || 'edited', text: `${p} content differs from its introduction with no recorded edit (merge-hidden?)` })
-      }
-      const sanctionsOf = path => (JUDGMENTS || []).filter(j => SANCTION_KINDS.includes(j.kind) && j.review_by >= TODAY && globMatcher(j.subject).test(path)).map(j => j.id)
-      const sanctioned = [], unexplained = []
-      for (const m of mutations) {
-        const ids = sanctionsOf(m.path)
-        if (ids.length) sanctioned.push({ text: m.text, by: ids.join(', ') })
-        else unexplained.push(m)
-      }
-      // Loss-of-information first, so the three examples the detail prints are the three
-      // worth opening — an append-heavy ledger used to bury its one rewrite (#56).
-      const CLASS_ORDER = ['rewritten', 'deleted', 'vanished', 'renamed', 'edited', 'extended', 'appended']
-      const rank = m => { const i = CLASS_ORDER.indexOf(m.cls); return i === -1 ? CLASS_ORDER.length : i }
-      const worst = [...unexplained].sort((a, b) => rank(a) - rank(b))
-      const tally = list => CLASS_ORDER.filter(c => list.some(m => m.cls === c)).map(c => `${list.filter(m => m.cls === c).length} ${c}`).join(' · ')
-      if (!mutations.length) return { ok: true, detail: `${current.size} record(s), history append-only` }
-      if (!unexplained.length) return { ok: true, detail: `${sanctioned.length} mutation(s) sanctioned by judgment: ` + sanctioned.map(s => `${s.text} [${s.by}]`).join('; ') }
-      return { ok: false, detail: `${unexplained.length} mutation(s) (${tally(unexplained)}): ` + worst.slice(0, 3).map(m => m.text).join('; ') + (worst.length > 3 ? ` (+${worst.length - 3})` : '') + (sanctioned.length ? ` — ${sanctioned.length} sanctioned (${sanctioned.map(s => s.by).join(', ')})` : '') }
-    }
-
     if (k === 'records-scrub') {
       // REC-02 (C34): re-scan LANDED records with the one scan API the write gate
       // uses — blob content at HEAD, not the worktree ("what landed" must give the
@@ -705,104 +478,9 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       return { ok: true, detail: `${scanned} record(s) scrub-clean at HEAD` + (allowed ? ` (${allowed} allowlisted)` : '') }
     }
 
-    if (k === 'records-one-home') {
-      // REC-04 (C09, pinned warn-only per CF10): the same fact must not live in two
-      // record homes — duplicate ids/slugs across record files, or the session
-      // narrative kept in both the V2 home and the legacy prototype home.
-      const bad = []
-      const seen = new Map() // key -> first file
-      const claim = (key, f) => { const prev = seen.get(key); if (prev && prev !== f) bad.push(`${key} in both ${prev} and ${f}`); else seen.set(key, f) }
-      let any = false, unparseable = 0
-      for (const [kind, glob] of [['JDG', 'records/judgments/*.json'], ['CLM', 'records/claims/*.json']]) {
-        for (const f of match([glob])) {
-          any = true
-          const raw = read(f); if (raw == null) continue
-          // BOM-tolerant: a BOM-prefixed duplicate must not escape the cross-check;
-          // still-unparseable files are counted, not silently waved through
-          let obj; try { obj = JSON.parse(raw.replace(/^\uFEFF/, '')) } catch { unparseable++; continue }
-          if (obj.id) claim(`${kind} ${obj.id}`, f)
-          if (kind === 'CLM' && obj.slug) claim(`slug '${obj.slug}'`, f)
-        }
-      }
-      for (const f of match(cfg.decision_globs)) {
-        const m = f.split('/').pop().match(/^ADR-?(\d{1,4})/i)
-        if (m) { any = true; claim(`ADR ${String(parseInt(m[1], 10))}`, f) }
-      }
-      const v2Sessions = match(['records/sessions/**']), legacySessions = match(['docs/session-log/**'])
-      if (v2Sessions.length || legacySessions.length) any = true
-      if (v2Sessions.length && legacySessions.length) bad.push(`session narrative has two homes (records/sessions/ and docs/session-log/)`)
-      if (!any) return { ok: null, detail: 'no records to cross-check' }
-      const unpNote = unparseable ? ` (${unparseable} unparseable file(s) not cross-checked)` : ''
-      return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 3).join('; ') + (bad.length > 3 ? ` (+${bad.length - 3})` : '') + unpNote : 'every record fact has one home' + unpNote }
-    }
-
-    if (k === 'vendored-lock') {
-      // REC-06 (M7c, C26/S9): the vendored tree's pin. Same recompute `gen lock`
-      // performs — one hash definition, two consumers (writer + verifier). SKIP
-      // when the canonical tree is absent: a repo that doesn't vendor (or vendors
-      // elsewhere) is outside the lock contract, never wallpapered. Unhashable
-      // entries (symlinks, unreadable files) DEGRADE to a labeled WARN over the
-      // readable set — a SKIP here would let one dangling symlink mask a real
-      // concurrent skew (the fail-open the panel caught); the writer refuses the
-      // same entries outright.
-      const lock = computeVendorLock(repo.REPO, repo)
-      if (!lock.files && !lock.unhashable.length) return { ok: null, detail: `no vendored tree at ${VENDOR_TREE}/ — nothing to pin` }
-      const caveat = lock.unhashable.length ? ` — and ${lock.unhashable.length} entr${lock.unhashable.length === 1 ? 'y' : 'ies'} cannot be hashed (${lock.unhashable[0]}${lock.unhashable.length > 1 ? `, +${lock.unhashable.length - 1}` : ''}), so the pin cannot fully verify` : ''
-      if (!lock.files) return { ok: false, detail: `vendored tree at ${VENDOR_TREE}/ has no hashable files${caveat}; fix the tree, then pin: baseline gen lock` }
-      const raw = read(VENDOR_LOCK)
-      if (raw == null) return { ok: false, detail: `vendored tree (${lock.files} files${lock.version ? `, ${lock.version}` : ''}) is unpinned — no ${VENDOR_LOCK}; pin it: baseline gen lock` }
-      let pin = null
-      try { pin = JSON.parse(raw.replace(/^\uFEFF/, '')) } catch {}
-      if (!pin || typeof pin.tree_hash !== 'string' || typeof pin.version !== 'string') return { ok: false, detail: `${VENDOR_LOCK} is not a lock ({version, tree_hash}) — rewrite it: baseline gen lock` }
-      if (pin.tree_hash !== lock.tree_hash) {
-        // the ruled skew finding names BOTH versions — equal strings still name
-        // both honestly, with the benign-vs-not causes spelled out
-        const equal = pin.version === (lock.version ?? '') ? ` (same version both sides: a hand-edit, or an EOL-converting checkout missing the vendored .gitattributes)` : ''
-        return { ok: false, detail: `vendored tree skews from its lock: lock pins ${pin.version} (${pin.tree_hash.slice(0, 12)}), tree is ${lock.version ?? 'version unreadable'} (${lock.tree_hash.slice(0, 12)})${equal}${caveat} — re-vendor to match, or re-pin deliberately: baseline gen lock` }
-      }
-      if (lock.unhashable.length) return { ok: false, detail: `lock matches the readable set (${pin.version} · ${lock.files} files)${caveat}; remove the unhashable entr${lock.unhashable.length === 1 ? 'y' : 'ies'} and re-pin: baseline gen lock` }
-      return { ok: true, detail: `pinned: ${pin.version} · ${lock.files} files · ${lock.tree_hash.slice(0, 12)}` }
-    }
-
-    if (k === 'branch-session-record') {
-      // FLOW-02 (C14): work on a lane carries its own session record — the forensic
-      // tier rides the same PR as the change it describes. Engine gates guarantee
-      // this only runs on a non-default branch of a declared multi-lane repo.
-      if (nonResidentLane()) return { ok: null, detail: `'${BRANCH}' is a declared-family / non-namespace branch — lane record discipline n/a (placement is FLOW-04's)` }
-      const base = baseRef()
-      if (!base) return { ok: null, detail: `default branch '${DEFAULT_BRANCH}' not resolvable locally — lane coupling not provable` }
-      const changed = gitDiffNames(`${base}...HEAD`, null)
-      if (changed === null) return { ok: null, detail: `diff ${base}...HEAD failed — lane coupling not provable` }
-      // a freshly-cut lane with no work yet has nothing for a record to describe —
-      // the record couples to the merge, not to branch creation (ceremony thinnest
-      // where value is thinnest)
-      if (!changed.length) return { ok: null, detail: 'no work on this branch yet — nothing for a record to describe' }
-      const added = gitDiffNames(`${base}...HEAD`, `records/sessions/${BRANCH}/`, { addedOnly: true })
-      if (added === null) return { ok: null, detail: `diff ${base}...HEAD failed — lane coupling not provable` }
-      return { ok: added.length > 0, detail: added.length ? `${added.length} session record(s) ride this lane` : `no session record for lane '${BRANCH}' — write one: baseline log -m "..." --next "..."` }
-    }
-
-    if (k === 'branch-atomicity') {
-      // FLOW-06 (C14/C26, heuristic per CF9): a branch changing a gated subject
-      // should carry the corresponding record in the same range — same-PR atomicity.
-      const base = baseRef()
-      if (!base) return { ok: null, detail: `default branch '${DEFAULT_BRANCH}' not resolvable locally` }
-      const changed = gitDiffNames(`${base}...HEAD`, null)
-      if (changed === null) return { ok: null, detail: `diff ${base}...HEAD failed` }
-      const hits = globs => { const res = asArr(globs).map(globMatcher); return changed.some(f => res.some(re => re.test(f))) }
-      const bad = []; let triggered = 0
-      for (const p of (c.pairs || [])) {
-        if (!hits(p.if_changed)) continue
-        triggered++
-        if (!hits(p.expect)) bad.push(p.note || `${asArr(p.if_changed).join(',')} changed without ${asArr(p.expect).join(',')}`)
-      }
-      if (!triggered) return { ok: null, detail: 'no gated subject changed on this branch' }
-      return { ok: bad.length === 0, detail: bad.length ? bad.slice(0, 2).join('; ') : `${triggered} gated change(s) carry their record` }
-    }
-
     if (k === 'descriptor') {
-      // DESC-01 (narrowed at M7c): PRESENCE only — validity is DESC-02's blocker,
-      // the FLOW-02/03 presence/content divide. One condition, one finding.
+      // DESC-01 (narrowed at M7c): PRESENCE only — validity is DESC-02's blocker
+      // (the presence/content divide). One condition, one finding.
       const d = DESCRIPTOR
       if (!d || !d.present) return { ok: false, soft: true, detail: `no ${DESCRIPTOR_FILE} — the repo doesn't declare itself (type/lifecycle/maturity/workflow); copy a config-presets/*.repo.json posture preset` }
       if (!d.valid) return { ok: true, detail: `${DESCRIPTOR_FILE} present (schema validity is DESC-02's finding)` }
@@ -822,265 +500,11 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       return { ok: true, detail: `${DESCRIPTOR_FILE} schema-valid (schema_version ${d.data.schema_version})` }
     }
 
-    // ---- M5c lane/divergence kinds — every one reads through LANEWORLD (the SAME
-    // gathering + derivation orient and reclaim use; one answer, three surfaces), and
-    // every unreachable plane degrades to ok:null with the reason — exit-stable offline,
+    // ---- The forge kinds (GOV-01/02, OPS-07) read through LANEWORLD — the SAME
+    // gathering orient and admit use; one answer, three surfaces — and every
+    // unreachable plane degrades to ok:null with the reason: exit-stable offline,
     // with multi-lane-local runs carrying makeForge's posture label, never fake
-    // unreachability. A DIV finding sets res.diverged — the engine's DIVERGED tag. ----
-
-    if (k === 'lane-anchor') {
-      // FLOW-01: anchoring per the descriptor knob — existence + resolution ONLY
-      // (open-ness is DIV-01's alone; overlap would double-report one contradiction)
-      if (nonResidentLane()) return { ok: null, detail: `'${BRANCH}' is a declared-family / non-namespace branch — anchoring n/a (placement is FLOW-04's)` }
-      const knob = DESCRIPTOR?.valid ? DESCRIPTOR.data.anchoring : null
-      if (!knob || knob === 'off') return { ok: null, detail: 'anchoring off (descriptor anchoring: off)' }
-      const w = LANEWORLD()
-      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared — an anchor is underivable' }
-      const n = issueOf(w.ns, BRANCH)
-      if (n == null) return { ok: false, detail: `branch '${BRANCH}' carries no issue anchor under '${w.ns}' — claim lanes: baseline lane claim <issue>` }
-      if (knob === 'relaxed') return { ok: true, detail: `anchored to #${n} (relaxed: existence only)` }
-      if (!w.forge.available) return { ok: null, detail: `anchor #${n} unverifiable (${w.forge.reason}) — strict anchoring not provable` }
-      const st = w.issueState(n)
-      // unresolvable ≠ resolved-to-a-miss: a null from a transient query failure must
-      // SKIP (parity with DIV-01's "never guessed"), never brand a real anchor bogus.
-      // A resolved answer — open OR closed — proves the anchor exists (open-ness is DIV's).
-      return st === 'unknown'
-        ? { ok: null, detail: `anchor #${n} state unresolvable (missing issue or query failed) — strict anchoring not provable, never guessed` }
-        : { ok: true, detail: `anchored to #${n} (${st})` }
-    }
-
-    if (k === 'lane-next-filled') {
-      // FLOW-03: fires ONLY on a present record with an empty next: — absence of the
-      // record itself is FLOW-02's finding (no overlap, no double report)
-      if (nonResidentLane()) return { ok: null, detail: `'${BRANCH}' is a declared-family / non-namespace branch — lane record discipline n/a (placement is FLOW-04's)` }
-      const log = committedLog(BRANCH)
-      if (log?.unprovable) return { ok: null, detail: `lane coupling not provable — ${log.unprovable}` }
-      if (!log) return { ok: null, detail: `no committed session record on this lane yet (absence is FLOW-02's)` }
-      if (log.next) return { ok: true, detail: `next: recorded — ${logProvenance(log)}` }
-      // Name the cause, since the parser knows it. "empty next:" on a record whose next:
-      // is full and merely outside the section sends the author to fix the one thing that
-      // is not wrong, and never names the requirement they missed (#50).
-      const d = log.diag || { cause: 'blank', stray: null }
-      const stray = d.stray ? ` (a filled-in next: sits at line ${d.stray}, outside the section)` : ''
-      const cause = d.cause === 'no-section' ? `${log.rel} has no '## Left open' section — next: is read from inside it${stray}`
-        : d.cause === 'no-line' ? `${log.rel}: the '## Left open' section has no next: line${stray}`
-          : `${log.rel} has an empty next:`
-      return { ok: false, detail: `${cause} — record the one next step (baseline log ... --next "..."). Read as ${log.basis}; ${log.note}` }
-    }
-
-    if (k === 'lane-namespace') {
-      // FLOW-04: branch placement against the declared inventory — lanes.namespace +
-      // lanes.families (the repo's REAL branch families, so legitimate release/adopt
-      // branches are declared, not wallpapered). THE placement rule — not residency-gated.
-      const w = LANEWORLD()
-      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
-      const pools = [w.ns, ...w.families]
-      const hit = pools.find(g => globMatcher(g).test(BRANCH))
-      return hit
-        ? { ok: true, detail: `'${BRANCH}' sits in declared family '${hit}'` }
-        : { ok: false, detail: `branch '${BRANCH}' is outside every declared family (${pools.join(' · ')}) — claim a lane (baseline lane claim) or declare the family (lanes.families)` }
-    }
-
-    if (k === 'lane-record-pushed') {
-      // FLOW-05: the arbitrated threshold-free predicate — the newest COMMITTED session
-      // record exists locally but is absent at origin (session-boundary-aligned; zero
-      // tuning surface). Judged against the last-fetched origin state, and says so.
-      if (nonResidentLane()) return { ok: null, detail: `'${BRANCH}' is a declared-family / non-namespace branch — push discipline n/a (placement is FLOW-04's)` }
-      const log = committedLog(BRANCH)
-      if (log?.unprovable) return { ok: null, detail: `push discipline not provable — ${log.unprovable}` }
-      if (!log) return { ok: null, detail: 'no committed session record on this lane yet — nothing to push' }
-      if (!gitObjExists(`origin/${BRANCH}^{commit}`)) return { ok: null, detail: `origin/${BRANCH} unknown locally — push discipline not provable (push/fetch first)` }
-      return gitBlobAt(`origin/${BRANCH}`, log.rel) !== null
-        ? { ok: true, detail: `newest record ${log.rel} is at origin (as of the last fetch) — chosen by ${log.basis}` }
-        : { ok: false, detail: `newest session record ${log.rel} exists locally but is absent at origin/${BRANCH} (as of the last fetch) — push the lane before pausing. Chosen by ${log.basis}` }
-    }
-
-    if (k === 'lane-lease') {
-      // FLOW-07: lease liveness — warns ONLY at derived ABANDONED (C31; STALE is
-      // orient's nudge, not a finding — the ruling forbids wallpaper)
-      const w = LANEWORLD()
-      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
-      const me = w.lanes.find(l => l.ref === BRANCH)
-      if (!me) return { ok: null, detail: w.source ? `'${BRANCH}' is not a claimed lane at origin — lease n/a (claim it: baseline lane claim)` : `lanes underived: ${w.reason}` }
-      if (me.state === 'COMPLETED') return { ok: null, detail: 'lane complete (tip merged into the default branch) — lease n/a; prune the branch' }
-      if (me.state === null) return { ok: null, detail: me.labels.find(l => /underived/.test(l)) || 'lease underived' }
-      // the git-plane low-confidence provenance (committer clock, no PR corroboration)
-      // rides the detail — CONTRACT promises it "says so", and orient already shows it
-      const prov = me.source === 'git' ? ' · git plane, committer clock (low confidence)' : ''
-      if (me.state === 'ABANDONED') return { ok: false, detail: `lease ABANDONED (${Math.floor((me.age_ms ?? 0) / DAY)}d idle of ttl ${w.ttl})${prov} — renew (push work) or hand it over (baseline lane reclaim)` }
-      return { ok: true, detail: `lease ${me.state} (${Math.floor((me.age_ms ?? 0) / 3600000)}h idle of ttl ${w.ttl})${prov}` }
-    }
-
-    // FLOW-09 (#49): the decision-record number is the OTHER scarce name in a multi-lane
-    // repo. `lane claim` makes the issue number an atomic reservation at origin precisely
-    // so two agents cannot claim one; the ADR number had no such protection, so two lanes
-    // each authored an 0027, each tree was clean, and neither merge conflicted. CTX-14 is
-    // the floor that stops it surviving on the default branch; this is the rule that sees
-    // it while both lanes are still open — the only place it can still be cheap to fix.
-    //
-    // INTRODUCES is a file this lane ADDS (see below for why it is measured by path and
-    // not by number). Two lanes introducing the same number at the SAME path is one record
-    // reached two ways — a lane branched off a lane — and not a collision. The finding is
-    // one number, two paths, and either another lane or the default branch itself.
-    //
-    // Degradation is per-lane and counted, never silent: a lane whose objects the clone
-    // cannot resolve is named in the detail, so "no collisions" never quietly means "I
-    // could read one of the four".
-    if (k === 'lane-adr-reservation') {
-      if (nonResidentLane()) return { ok: null, detail: `'${BRANCH}' is a declared-family / non-namespace branch — number reservation n/a (placement is FLOW-04's)` }
-      const w = LANEWORLD()
-      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
-      const base = baseRef()
-      if (!base) return { ok: null, detail: `default branch '${DEFAULT_BRANCH}' not resolvable locally — what this lane INTRODUCES is underivable` }
-      const atBase = gitLsTree(base)
-      if (atBase === null) return { ok: null, detail: `could not list '${base}' — what this lane introduces is underivable` }
-      const globs = asArr(cfg[c.globs_from_config]).map(globMatcher)
-      const decisions = paths => paths.filter(f => globs.some(g => g.test(f))).filter(isAdrFile)
-      const numOf = paths => { const m = new Map(); for (const f of paths) { const n = adrFileNumber(f); if (n != null && !m.has(n)) m.set(n, f) } return m }
-      const pad = n => String(n).padStart(4, '0')
-
-      const baseDecisions = decisions(atBase)
-      const baseNums = numOf(baseDecisions)
-      const mine = decisions(match(cfg[c.globs_from_config]))
-      // INTRODUCED is by PATH, not by number: a file this lane adds. Defining it by number
-      // would make the rule blind on the merge order that actually shipped the incident —
-      // the second lane checking AFTER the first one merged already sees 0027 on the
-      // default branch, so "a number the base doesn't have" is empty and the duplicate
-      // sails through. A lane adds a file; whether its number is free is the question.
-      const baseSet = new Set(baseDecisions)
-      const introduced = mine.filter(f => !baseSet.has(f)).map(f => [adrFileNumber(f), f]).filter(([n]) => n != null)
-      if (!introduced.length) return { ok: true, detail: `this lane introduces no decision record beyond '${base}' — nothing to reserve` }
-      const mineTxt = [...new Set(introduced.map(([n]) => pad(n)))].sort().join(', ')
-
-      // A RENAME is not a second claim: a lane that moved `0027-a.md` to `0027-b.md`
-      // introduces a path, not a number. What separates it from a genuine duplicate is
-      // whether THIS lane removed the base's holder — not whether the holder is absent
-      // from this tree, which is also true of the merge order that shipped the incident
-      // (the second lane branched before the first one's record landed on the default
-      // branch, so it never held the file it is about to duplicate). null degrades to
-      // "deleted nothing", which reports rather than hides.
-      const removed = new Set(gitDiffNames(`${base}...HEAD`, null, { deletedOnly: true, noRenames: true }) || [])
-      const hits = [], reportedVsBase = new Set()
-      // 1. against the default branch itself — the collision that merging this lane
-      //    would CREATE, which CTX-14 would then find on the default branch, too late.
-      for (const [n, f] of introduced) {
-        const held = baseNums.get(n)
-        if (!held || held === f || removed.has(held)) continue
-        reportedVsBase.add(n)
-        hits.push(`${pad(n)} — this lane's ${f.split('/').pop()} vs '${base}' already carrying ${held.split('/').pop()}`)
-      }
-      // 2. against every other live lane. A COMPLETED lane's numbers are already on the
-      //    default branch (that is what COMPLETED means), so case 1 has them; it cannot
-      //    hold a second reservation. Degradation is per-lane and counted — a lane the
-      //    clone cannot resolve is named, never folded into a pass.
-      const others = w.lanes.filter(l => l.ref !== BRANCH && l.state !== 'COMPLETED')
-      const objs = others.length ? w.laneObjects() : null
-      const blind = []
-      for (const l of others) {
-        const files = objs.files(l.ref)
-        if (files === null) { blind.push(l.ref); continue }
-        const theirs = numOf(decisions(files))
-        for (const [n, f] of introduced) {
-          const t = theirs.get(n)
-          // same path = one record two lanes can see (a lane branched off a lane), not a
-          // second claim. A number case 1 ALREADY reported is not repeated — but a number
-          // the base merely holds is not enough to suppress this: a lane that RENAMED the
-          // base's holder clears case 1 and still collides with a lane that authored a
-          // second record under that number.
-          if (!t || t === f || reportedVsBase.has(n) || removed.has(t)) continue // removed: the record THIS lane renamed, seen at its old path
-          hits.push(`${pad(n)} — this lane's ${f.split('/').pop()} vs ${l.ref}'s ${t.split('/').pop()}${l.state ? ` (lane ${l.state})` : ''}`)
-        }
-      }
-      const blindNote = blind.length ? ` · ${blind.length} lane(s) not inspectable (${blind.slice(0, 3).join(', ')}${blind.length > 3 ? ` +${blind.length - 3}` : ''}${objs?.reason ? `; ${objs.reason}` : ''})` : ''
-      if (hits.length) return { ok: false, detail: `${hits.length} decision number(s) already claimed: ` + hits.slice(0, 3).join('; ') + (hits.length > 3 ? ` (+${hits.length - 3})` : '') + blindNote }
-      if (others.length && blind.length === others.length) return { ok: null, detail: `introduces ${mineTxt}, free against '${base}'; none of the ${others.length} other live lane(s) is inspectable locally${objs?.reason ? ` — ${objs.reason}` : ''}` }
-      if (!others.length) return { ok: true, detail: `introduces ${mineTxt}; free against '${base}', and no other live lane to collide with${w.source ? '' : ` (lanes underived: ${w.reason})`}` }
-      return { ok: true, detail: `introduces ${mineTxt}; unclaimed across '${base}' and ${others.length - blind.length} other live lane(s)${blindNote}` }
-    }
-
-    // ---- DIV kinds: all three route their classification through deriveDivergence (the
-    // ONE definition of a cross-tier contradiction) — the evaluator only gathers the
-    // scoped facts, resolves availability, and presents the fix. res.diverged → DIVERGED.
-
-    if (k === 'div-anchor-closed') {
-      // DIV-01: issue-closed-lane-active — the work surface says in-progress, the
-      // tracker says done; one of them lies.
-      const w = LANEWORLD()
-      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
-      const n = issueOf(w.ns, BRANCH)
-      if (n == null) return { ok: null, detail: `'${BRANCH}' carries no issue anchor — nothing to diverge from (FLOW-01's territory)` }
-      if (!w.forge.available) return { ok: null, detail: `anchor #${n} state unknown (${w.forge.reason}) — divergence not provable` }
-      const st = w.issueState(n)
-      if (st === 'unknown') return { ok: null, detail: `anchor #${n} state unresolvable — divergence not provable, never guessed` }
-      // COMPLETED exemption (M7a): a merged lane's closed anchor is agreement
-      const me = w.lanes.find(l => l.ref === BRANCH)
-      const hit = deriveDivergence({ lanes: [{ ref: BRANCH, state: me?.state, anchor: { issue: n, state: st } }], issueStates: w.issueStates }).find(i => i.code === 'DIV-01')
-      if (me?.state === 'COMPLETED' && !hit) return { ok: true, detail: `lane complete (tip merged into the default branch) — closed anchor #${n} is agreement; prune the branch` }
-      return hit
-        ? { ok: false, diverged: true, detail: `${hit.text} — the resolution path: reopen #${n} if the work is genuinely unfinished, or merge/close-and-prune the lane if it is done` }
-        : { ok: true, detail: `anchor #${n} is open — lane and tracker agree` }
-    }
-
-    if (k === 'div-next-closed') {
-      // DIV-02: a recorded next: naming a closed issue — the plan on disk is stale
-      const w = LANEWORLD()
-      const log = committedLog(BRANCH)
-      if (log?.unprovable) return { ok: null, detail: `divergence not provable — ${log.unprovable}` }
-      if (!log?.next) return { ok: null, detail: log ? `read ${logProvenance(log)} — it carries no next:, so there is no recorded plan to contradict (FLOW-03's territory)` : `no committed session record on this lane (FLOW-02's territory)` }
-      const allRefs = issueRefs(log.next)
-      if (!allRefs.length) return { ok: true, detail: 'next: names no issues — nothing to contradict' }
-      if (!w.forge.available) return { ok: null, detail: `next: names #${allRefs.slice(0, DIV_REF_CAP).join(', #')} — states unknown (${w.forge.reason})` }
-      const capped = allRefs.length > DIV_REF_CAP
-      const scan = allRefs.slice(0, DIV_REF_CAP)
-      for (const n of scan) w.issueState(n) // resolve into w.issueStates (memoized, capped)
-      const hits = deriveDivergence({ thisLane: { branch: BRANCH, next: `#${scan.join(' #')}` }, issueStates: w.issueStates }).filter(i => i.code === 'DIV-02')
-      const capNote = capped ? ` (+${allRefs.length - DIV_REF_CAP} more refs not checked)` : ''
-      return hits.length
-        ? { ok: false, diverged: true, detail: `next: points at closed issue(s) #${hits.map(h => h.issue).join(', #')} — the recorded plan is stale; re-derive (baseline orient) and re-log${capNote}` }
-        : { ok: true, detail: `next:'s issue reference(s) #${scan.join(', #')} are open or unresolved — no contradiction proven${capNote}` }
-    }
-
-    if (k === 'div-closes-closed') {
-      // DIV-03: done-with-nothing-merged — an open PR closing an already-closed issue.
-      // The closing set is forge-authoritative (sidebar links included); the body regex
-      // is only the fallback when the per-PR closingIssuesReferences query failed.
-      const w = LANEWORLD()
-      if (!w.forge.available) return { ok: null, detail: `${w.forge.reason} — PR closures unreadable` }
-      const scoped = scopedPrClosers(w)
-      if (scoped === null) return { ok: null, detail: 'PR listing failed at the forge — closures unreadable (not "no PRs")' }
-      if (!scoped.length) return { ok: true, detail: 'no open PRs — nothing to diverge' }
-      for (const pr of scoped) for (const n of pr.closes) w.issueState(n) // resolve, memoized
-      const hits = deriveDivergence({ prs: scoped, issueStates: w.issueStates }).filter(i => i.code === 'DIV-03')
-      return hits.length
-        ? { ok: false, diverged: true, detail: `${hits.slice(0, 3).map(h => h.text).join('; ')}${hits.length > 3 ? ` (+${hits.length - 3})` : ''} — done-with-nothing-merged; retarget the PR or close it` }
-        : { ok: true, detail: `${scoped.length} open PR(s), none closes an already-closed issue` }
-    }
-
-    if (k === 'pr-closes-own-anchor') {
-      // FLOW-08: an open PR whose closing set contains ITS OWN lane anchor — the
-      // preventive twin of DIV-01 (which fires only AFTER the close and deadlocks the
-      // lane). Repo-wide (like DIV-03): every open PR is checked against its own head
-      // branch's anchor, so a CI run on any branch sees the trap before the merge.
-      // Warn, never block — the contradiction hasn't happened yet.
-      const w = LANEWORLD()
-      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared' }
-      if (!w.forge.available) return { ok: null, detail: `${w.forge.reason} — PR closures unreadable` }
-      const scoped = scopedPrClosers(w)
-      if (scoped === null) return { ok: null, detail: 'PR listing failed at the forge — closures unreadable (not "no PRs")' }
-      if (!scoped.length) return { ok: true, detail: 'no open PRs — nothing to warn about' }
-      const hits = []
-      for (const pr of scoped) {
-        const n = issueOf(w.ns, pr.branch)
-        if (n == null || !pr.closes.includes(n)) continue
-        // a closure the forge saw but the body does not declare is a sidebar link —
-        // the exact shape that closes invisibly; a body-declared close is a keyword
-        const viaSidebar = !!pr.forgeCloses?.includes(n) && !pr.bodyCloses.includes(n)
-        hits.push(`PR #${pr.number} (${pr.branch}) will close its own anchor #${n} on merge (${viaSidebar ? 'via linked reference, not body text' : 'via closing keyword'}) — intended? If the lane continues past this PR, unlink the issue first`)
-      }
-      return hits.length
-        ? { ok: false, detail: hits.slice(0, 3).join('; ') + (hits.length > 3 ? ` (+${hits.length - 3} more)` : '') }
-        : { ok: true, detail: 'no open PR closes its own lane anchor' }
-    }
+    // unreachability. ----
 
     // ---- M6b: GOV-01/02 live asserts on the READABLE surface (the ruled ladder:
     // rules-for-branch is a plain read; the branch `protected` flag is plain; the
@@ -1178,16 +602,15 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       return { ok: false, detail: `${file}: ${st.state} at the forge — the cron files nothing while disabled${st.state === 'disabled_inactivity' ? ` (GitHub's 60-day auto-disable)` : ''}; re-enable: gh workflow enable ${file}${extra}` }
     }
 
-    // ---- M6a admit-context kinds — both read through ADMITWORLD (the target-ref
-    // world `baseline admit` assembles: target tip, range diff, added judgments,
-    // sister lane refs). In any run without an ADMITWORLD they are unrepresentable
-    // (contexts gating excludes them from check), and the guard keeps that honest. ----
+    // ---- M6a admit-context kind — reads through ADMITWORLD (the target-ref world
+    // `baseline admit` assembles: target tip, range diff, added judgments). In any run
+    // without an ADMITWORLD it is unrepresentable (contexts gating excludes it from
+    // check), and the guard keeps that honest. ----
 
     if (k === 'descriptor-change') {
       // DESC-03: a descriptor change in the admitted range carries its judgment in the
       // SAME range — subject exactly the descriptor filename (ONE spelling, the one
-      // constant the tool owns; CONTRACT.md, FLOW-06's fix, and the jdg hint all emit
-      // it). Deterministic: diff names + record subjects; the weakening classification
+      // constant the tool owns; CONTRACT.md and the jdg hint both emit it). Deterministic: diff names + record subjects; the weakening classification
       // (x-strictness ladders + gate-consumed set-rules) rides the finding text — it is
       // M7's per-axis policy seam, not this verdict's fork.
       if (!ADMITWORLD) return { ok: null, detail: 'admit-context only (no target world assembled)' }
@@ -1202,7 +625,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
       // M7a kind pin: {sign-off, deviation, risk-acceptance} satisfy — break-glass is
       // EXCLUDED (it is outage relief with its own gate semantics; letting it double
       // as descriptor-change approval would conflate the two valves M6 separated).
-      // One home: SANCTION_KINDS is the shared set (REC-01's tombstone uses it too).
+      // One home: SANCTION_KINDS is the shared set (CTX-13/CTX-14 sanction through it too).
       const DESC_JDG_KINDS = SANCTION_KINDS
       const jdgs = addedJudgments.filter(j => j.record && DESC_JDG_KINDS.includes(j.record.kind) && j.record.subject === DESCRIPTOR_FILE && j.record.review_by >= TODAY)
       if (!jdgs.length) {
@@ -1213,31 +636,6 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS = null, DESC
         return { ok: false, detail: `${DESCRIPTOR_FILE} changed with no same-range judgment${weakNote}${hint} — baseline jdg new --kind deviation --subject "${DESCRIPTOR_FILE}" --reason "why the posture changed" --review-by <date>, in this PR` }
       }
       return { ok: true, detail: `descriptor change carries ${jdgs[0].record.id} (subject ${DESCRIPTOR_FILE}, review by ${jdgs[0].record.review_by})${weakNote}` }
-    }
-
-    if (k === 'merge-sister-dep') {
-      // MERGE-02: a lane admitted atop ANOTHER lane's unmerged commits depends on work
-      // that may never land (C32). Deterministic from the git plane alone: sister =
-      // a local remote-tracking lane ref whose shared history with HEAD reaches past
-      // the target tip. The Baseline-Stacked-On trailer (whole-token ref match in the
-      // admitted range) declares the stack and lifts the finding. Blocker since M7a.
-      if (!ADMITWORLD) return { ok: null, detail: 'admit-context only (no target world assembled)' }
-      const { targetTip, headSha, sisters, stackedOn, mergeBase, sistersCapped } = ADMITWORLD
-      const w = LANEWORLD()
-      if (!w.ns) return { ok: null, detail: 'no lanes.namespace declared — sister lanes underivable' }
-      if (!sisters.length) return { ok: true, detail: 'no sister lanes known locally (as of the last fetch)' }
-      const deps = [], declared = []
-      for (const s of sisters) {
-        if (s.tip === headSha) continue // this PR's own lane seen under its remote-tracking name (a local branch-name mismatch is not a dependency)
-        const mb = mergeBase('HEAD', s.tip)
-        if (!mb) continue // no common history — unrelated lane
-        if (gitIsAncestor(mb, targetTip) === 0) continue // shared history is already in the target
-        ;(stackedOn.includes(s.ref) ? declared : deps).push(s.ref)
-      }
-      const capNote = sistersCapped ? ' (sister list capped at 100)' : ''
-      if (deps.length) return { ok: false, detail: `HEAD contains unmerged commits from ${deps.join(', ')}${capNote} — land/rebase first, or declare the stack: trailer 'Baseline-Stacked-On: ${deps[0]}'` }
-      if (declared.length) return { ok: true, detail: `stacked on ${declared.join(', ')} — declared via Baseline-Stacked-On${capNote}` }
-      return { ok: true, detail: `no unmerged sister-lane dependencies (${sisters.length} sister(s) checked)${capNote}` }
     }
 
     return { ok: null, detail: 'unknown check kind: ' + k }

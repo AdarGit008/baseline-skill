@@ -1,11 +1,10 @@
 // The gate -> evaluate -> tag pipeline. Gates can short-circuit a rule to SKIP
-// (wrong type, off profile, opted out, wrong posture, wrong branch) before its
-// check ever runs; only a blocker that evaluates to false FAILs. An erroring
-// check degrades to SKIP. The posture/branch gates are data-driven (a rule
-// declares `workflow` / `branch_scope`), so "no wallpaper warns" is structural:
-// a lane rule is unrepresentable as a finding on a single-lane repo or on the
-// default branch — it never runs there.
-export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIPTOR = null, BRANCH = null, DEFAULT_BRANCH = null, CLAIMS_REASON = null, context = 'check' }) {
+// (wrong type, off profile, opted out, wrong posture) before its check ever
+// runs; only a blocker that evaluates to false FAILs. An erroring check
+// degrades to SKIP. The posture gate is data-driven (a rule declares
+// `workflow`), so "no wallpaper warns" is structural: a posture-gated rule is
+// unrepresentable as a finding on a repo of another posture — it never runs there.
+export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIPTOR = null, CLAIMS_REASON = null, context = 'check' }) {
   const results = []
   for (const r of rules) {
     // M6a: context-gated execution — the first real consumer of rule `contexts`. A rule
@@ -23,18 +22,11 @@ export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIP
     if (r.requires === 'makes_external_claims') { if (!CLAIMS_ACTIVE) { results.push({ r, tag: 'SKIP', detail: CLAIMS_REASON || 'claims opt-in (no register; set makes_external_claims:true to enable)' }); continue } }
     if (r.workflow) {
       if (!DESCRIPTOR || !DESCRIPTOR.valid) { results.push({ r, tag: 'SKIP', detail: 'workflow contract off (no valid baseline.repo.json)' }); continue }
-      // string-or-array (M5c): a rule may serve a posture FAMILY — e.g. the lane rules
-      // run under multi-lane AND multi-lane-local, whose difference is forge access,
-      // not lane discipline; forge-dependent checks still degrade inside the evaluator
+      // string-or-array (M5c): a rule may serve a posture FAMILY — e.g. multi-lane AND
+      // multi-lane-local, whose difference is forge access; forge-dependent checks
+      // still degrade inside the evaluator
       const wfs = Array.isArray(r.workflow) ? r.workflow : [r.workflow]
       if (!wfs.includes(DESCRIPTOR.data.workflow)) { results.push({ r, tag: 'SKIP', detail: `workflow=${DESCRIPTOR.data.workflow} (rule needs ${wfs.join('|')})` }); continue }
-    }
-    if (r.branch_scope === 'lane') {
-      if (!BRANCH) { results.push({ r, tag: 'SKIP', detail: 'no branch resolved (detached HEAD / CI checkout) — lane rules n/a' }); continue }
-      // an undeclared default branch is a SKIP, never a guessed 'main' — a guess can
-      // put lane rules ON the real default branch, the exact wallpaper the gate forbids
-      if (!DEFAULT_BRANCH) { results.push({ r, tag: 'SKIP', detail: 'default branch undeclared (set ground_truth_boundary.default_branch) — lane rules n/a' }); continue }
-      if (BRANCH === DEFAULT_BRANCH) { results.push({ r, tag: 'SKIP', detail: `on default branch '${DEFAULT_BRANCH}' — lane rules n/a` }); continue }
     }
     let res; try { res = evalCheck(r.check, r) } catch (e) { res = { ok: null, detail: 'check errored: ' + String(e.message).slice(0, 60) } }
     let tag
@@ -45,7 +37,6 @@ export function runRules({ rules, cfg, ACTIVE, CLAIMS_ACTIVE, evalCheck, DESCRIP
     // this tag and the COUNTING seams (report exits, admit leg (b)) treat it as
     // failing. The verdict class is never erased into a generic FAIL.
     else if (res.diverged) tag = 'DIVERGED'
-    else if (res.signoff || r.check.kind === 'signoff') tag = 'SIGN-OFF'
     // res.soft downgrades to WARN. The law, stated precisely (M7c panel corrected
     // the absolute form): soft-on-a-blocker is a DELIBERATE adoption-path downgrade
     // that exists in exactly one place today — BUILD-05 (kind `command`) with no

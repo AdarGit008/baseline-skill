@@ -124,7 +124,7 @@ function materializeInto(name, src, manifest, tmp, extra) {
   }
   // manifest.branches (M6a): ORDERED branches created before the current one — each
   // checks out from the PREVIOUS tip, so a later entry (or manifest.branch itself)
-  // stacks on an earlier sister (MERGE-02's shape).
+  // stacks on an earlier sister.
   for (const b of manifest.branches || []) {
     git(tmp, 'checkout', '-q', '-b', b.name)
     fs.writeFileSync(path.join(tmp, b.file || `${b.name.replace(/\W+/g, '-')}.txt`), b.content || `${b.name}\n`)
@@ -132,7 +132,7 @@ function materializeInto(name, src, manifest, tmp, extra) {
     git(tmp, 'commit', '-q', '-m', b.message || `fixture: ${b.name} work`)
   }
   // manifest.branch: check out a lane branch and commit the fixture's _branch/ overlay
-  // there — the FLOW/REC lane rules only evaluate off the default branch (M4c).
+  // there — admit judges a branch against its target, never the default branch itself.
   // branch_message (M6a) controls the commit message — trailers ride fixtures too.
   if (manifest.branch) {
     git(tmp, 'checkout', '-q', '-b', manifest.branch)
@@ -154,9 +154,9 @@ function materializeInto(name, src, manifest, tmp, extra) {
     git(tmp, 'commit', '-q', '-m', 'fixture: main advances')
     git(tmp, 'checkout', '-q', back)
   }
-  // manifest.bare_origin (M5c): a LOCAL bare origin so origin-coupled rules (FLOW-05's
-  // push discipline, FLOW-07's git-plane lease fallback) evaluate — the push also lands
-  // the remote-tracking refs the evaluators read. Lives OUTSIDE the repo tree.
+  // manifest.bare_origin (M5c): a LOCAL bare origin so origin-coupled commands (admit's
+  // target derivation, reconcile) have a remote — the push also lands the remote-tracking
+  // refs they read. Lives OUTSIDE the repo tree.
   const env = {}
   if (manifest.bare_origin) {
     const bare = fs.mkdtempSync(path.join(os.tmpdir(), `baseline-golden-${name}-origin-`))

@@ -33,31 +33,31 @@ const TYPES = RULES.project_types || ['node', 'python', 'service', 'library', 'd
 
 const color = makeColor(JSON_OUT)
 const repo = indexRepo(REPO)
-const { cfg, DEFAULTS, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, JDGS, JUDGMENTS, DESCRIPTOR } = resolveConfig(repo, {
+const { cfg, DEFAULTS, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, JUDGMENTS, DESCRIPTOR } = resolveConfig(repo, {
   cliConfigPath: opt('--config', null),
   profileArgs: optAll('--profile'),
 })
 
 if (SELF_CHECK) process.exit(runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }))
 
-// Lane identity for the M4c branch-scoped rules: lane = branch name (the FS2 seam
+// Lane identity for the branch-scoped rules: lane = branch name (the FS2 seam
 // log/orient already use), falling back to the CI event where the checkout is detached
 // and the event names a branch (#55: on a pull_request `actions/checkout` leaves
 // refs/pull/N/merge detached, and reading the checkout alone made every lane rule n/a on
 // the one event a branch-protection ruleset requires). Still nothing — a bisect, a
-// hand-detached local tree — is honestly null and the branch gate SKIPs. The default
-// branch is the descriptor's declared one only; undeclared stays null and the gate SKIPs
-// rather than guessing 'main'.
+// hand-detached local tree — is honestly null and the branch gate stands down. The default
+// branch is the descriptor's declared one only; undeclared stays null and the gate stands
+// down rather than guessing 'main'.
 const LANE = resolveLane(repo)
 const BRANCH = LANE.lane
 const DEFAULT_BRANCH = (DESCRIPTOR.valid && DESCRIPTOR.data.ground_truth_boundary?.default_branch) || null
 
-// The lane world (M5c): the capability-probe + forge-facts plumbing the FLOW/DIV rules
-// evaluate through — LAZY (first rule that needs it pays; a single-lane or off-posture
-// run never spawns gh) and exit-stable offline (degradations become labeled SKIPs).
+// The lane world: the capability-probe + forge-facts plumbing the forge-sourced rules
+// (GOV-01/02, OPS-07) evaluate through — LAZY (first rule that needs it pays; a
+// single-lane or off-posture run never spawns gh) and exit-stable offline.
 const LANEWORLD = makeLaneWorld(repo, DESCRIPTOR)
 
-const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD })
+const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, JUDGMENTS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD })
 const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH })
 
 process.exit(JSON_OUT

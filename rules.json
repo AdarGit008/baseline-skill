@@ -8,7 +8,7 @@
     "library",
     "docs"
   ],
-  "description": "Testable readiness standard. v1's 20 rules (build/test/context/claims) distilled from three of the author's own repo reviews, plus v2 additions pressure-tested against the prior-art field (OpenSSF Scorecard, SLSA, 12-factor, Google SRE, Diataxis, repolinter, Backstage/Cortex/OpsLevel, and ~40 more). Each rule maps to a lesson or a cited source; blockers fail CI, manual rules resolve via a dated sign-off ledger. Rules with a 'profile' only run when that profile is active: core is always on; 'service' auto-activates when project_type=service; 'advanced' is opt-in via config.profiles.",
+  "description": "Testable readiness standard. v1's 20 rules (build/test/context/claims) distilled from three of the author's own repo reviews, plus v2 additions pressure-tested against the prior-art field (OpenSSF Scorecard, SLSA, 12-factor, Google SRE, Diataxis, repolinter, Backstage/Cortex/OpsLevel, and ~40 more). Each rule maps to a lesson or a cited source; blockers fail CI, everything else warns. Rules with a 'profile' only run when that profile is active: core is always on; 'service' auto-activates when project_type=service; 'advanced' is opt-in via config.profiles.",
   "profiles": {
     "core": "Always on. Universal, high-confidence, machine-checkable rules.",
     "service": "Auto-on when project_type=service (or listed in config.profiles). Operability/observability rules that only make sense for a running service.",
@@ -26,9 +26,6 @@
     "rules/repro.json",
     "rules/ops.json",
     "rules/rec.json",
-    "rules/flow.json",
-    "rules/merge.json",
-    "rules/div.json",
     "rules/desc.json"
   ]
 }

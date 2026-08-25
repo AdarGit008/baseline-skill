@@ -80,12 +80,12 @@
             ]
           },
           {
-            "kind": "json-field",
+            "kind": "grep",
             "globs": [
               "package.json"
             ],
-            "path": "engines.node",
-            "assert": "nonempty"
+            "pattern": "\"engines\"\\s*:\\s*\\{[^}]*\"node\"\\s*:\\s*\"[^\"]+\"",
+            "mode": "present"
           },
           {
             "kind": "grep",

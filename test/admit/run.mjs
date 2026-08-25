@@ -4,9 +4,8 @@
 // designed). Covers: the C35 staleness refusal in both directions, FS1 target-ref
 // descriptor reads (a branch cannot weaken the posture that judges it), DESC-03's
 // same-range judgment contract (subject = the ONE spelling), the JDG-only admission
-// path, break-glass-from-main relief for ancestry-unprovable (shallow) runs,
-// MERGE-02 sister-lane dependencies + the Baseline-Stacked-On lift, and the context
-// gate (admit-only rules are invisible to check).
+// path, break-glass-from-main relief for ancestry-unprovable (shallow) runs, and the
+// context gate (admit-only rules are invisible to check).
 import { execFileSync, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -69,9 +68,6 @@ function mkworld(name, desc = BASE_DESC) {
   return { dir, bare, seed, clone }
 }
 const commit = (cwd, rel, content, msg) => { fs.mkdirSync(path.dirname(path.join(cwd, rel)), { recursive: true }); fs.writeFileSync(path.join(cwd, rel), content); git(cwd, 'add', '-A'); git(cwd, 'commit', '-qm', msg) }
-// M7a: promoted FLOW-02 refuses a record-less lane at admit — worlds that assert
-// OTHER things plant one committed session record so their assertion stays isolated
-const logLane = (cwd, lane) => commit(cwd, `records/sessions/${lane}/2026-07-18-1200-t.md`, `---\nrecord: session/1\nlane: ${lane}\nagent: t\ndate: 2026-07-18\ntime: "12:00"\n---\n## Did\nwork\n## Left open\nnext: push\n`, 'session record')
 const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n', 'main advances'); git(w.seed, 'push', '-q', 'origin', 'main') }
 
 // ---------- environment refusals (exit 2 — nothing evaluated) ----------
@@ -97,7 +93,6 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   const w = mkworld('ownertarget', legacy)
   git(w.clone, 'checkout', '-q', '-b', 'lane/7')
   commit(w.clone, 'work.txt', 'w\n', 'lane work')
-  logLane(w.clone, 'lane/7')
   let r = admitJson(w.clone)
   ok(r.status === 0 && r.j?.verdict === 'ADMITTED', `owner-bearing TARGET descriptor still admits — ref-reads ignore unknown fields (got ${r.status} ${r.j?.verdict})`)
   // the shedding PR itself: descriptor drops owner + same-PR judgment = the ceremony
@@ -105,7 +100,6 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   git(w2.clone, 'checkout', '-q', '-b', 'lane/8')
   commit(w2.clone, 'baseline.repo.json', JSON.stringify(BASE_DESC, null, 2) + '\n', 'drop retired owner field')
   commit(w2.clone, 'records/judgments/JDG-0101.json', JDG('JDG-0101', { subject: 'baseline.repo.json', kind: 'deviation', reason: 'shed the retired owner field (M7b schema)' }), 'jdg')
-  logLane(w2.clone, 'lane/8')
   r = admitJson(w2.clone)
   ok(r.status === 0 && r.j?.verdict === 'ADMITTED', `the owner-shedding PR admits with its same-PR judgment (got ${r.status} ${r.j?.verdict})`)
   const d3 = (r.j?.results || []).find(x => x.id === 'DESC-03')
@@ -117,7 +111,6 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   const w = mkworld('stale')
   git(w.clone, 'checkout', '-q', '-b', 'lane/7')
   commit(w.clone, 'work.txt', 'w\n', 'lane work')
-  logLane(w.clone, 'lane/7')
   let r = admitJson(w.clone)
   ok(r.status === 0 && r.j?.verdict === 'ADMITTED' && r.j?.staleness.ancestor === true, `fresh branch admits (got ${r.status})`)
   ok(r.j?.target.ref === 'origin/main', `target derived as origin/main (got ${r.j?.target.ref})`)
@@ -134,7 +127,6 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
 {
   const w = mkworld('desc')
   git(w.clone, 'checkout', '-q', '-b', 'lane/7')
-  logLane(w.clone, 'lane/7')
   const weak = { ...BASE_DESC, anchoring: 'off', workflow: 'single-lane' }
   commit(w.clone, 'baseline.repo.json', JSON.stringify(weak, null, 2) + '\n', 'weaken posture on-branch')
   let r = admitJson(w.clone)
@@ -142,8 +134,6 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   const d3 = r.j?.results.find(x => x.id === 'DESC-03')
   ok(d3?.tag === 'FAIL' && /no same-range judgment/.test(d3?.detail || ''), 'DESC-03 FAILs naming the missing judgment')
   ok(/WEAKENING/.test(d3?.detail || '') && /anchoring: 'strict' → 'off'/.test(d3?.detail || '') && /workflow/.test(d3?.detail || ''), `the weakening ladder names both down-moves (got: ${d3?.detail?.slice(0, 140)})`)
-  // FS1: the RUN's posture came from the target — lane rules still evaluated (rows exist)
-  ok((r.j?.results || []).some(x => x.category === 'flow'), 'FS1: flow rules evaluated under the TARGET posture, not the branch\'s single-lane')
 
   // wrong subject: the tool's OWN pinned spelling is the matcher
   commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { subject: 'descriptor change' }), 'judgment, wrong subject')
@@ -177,7 +167,6 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
 {
   const w = mkworld('desckind')
   git(w.clone, 'checkout', '-q', '-b', 'lane/7')
-  logLane(w.clone, 'lane/7')
   const weak = { ...BASE_DESC, anchoring: 'relaxed' }
   commit(w.clone, 'baseline.repo.json', JSON.stringify(weak, null, 2) + '\n', 'descriptor change')
   commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { kind: 'break-glass', gate: 'admit' }), 'break-glass, right subject')
@@ -190,24 +179,6 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   ok(r2.status === 0 && r2.j?.results.find(x => x.id === 'DESC-03')?.tag === 'PASS', 'risk-acceptance (a pinned kind) satisfies')
 }
 
-// ---------- M7a: blocker-DIVERGED refuses AT ADMIT, verdict preserved ----------
-{
-  const w = mkworld('divrefuse')
-  git(w.clone, 'checkout', '-q', '-b', 'lane/7')
-  commit(w.clone, 'work.txt', 'w\n', 'lane work')
-  logLane(w.clone, 'lane/7')
-  git(w.clone, 'push', '-q', 'origin', 'lane/7')
-  const tip = git(w.clone, 'rev-parse', 'lane/7')
-  const replay = path.join(w.dir, 'replay'); fs.mkdirSync(replay)
-  fs.writeFileSync(path.join(replay, 'lane-refs-refs_heads_lane_.json'), JSON.stringify({ data: { repository: { refs: { pageInfo: { hasNextPage: false }, nodes: [{ name: '7', target: { oid: tip, committedDate: new Date().toISOString(), message: 'claim lane/7: issue #7\n\nBaseline-Issue: #7\nBaseline-Agent: t', associatedPullRequests: { nodes: [] } } }] } } } }) + '\n')
-  fs.writeFileSync(path.join(replay, 'issue-7.json'), JSON.stringify({ number: 7, state: 'closed', title: 'closed under the live lane' }) + '\n')
-  const r = admitJson(w.clone, [], { BASELINE_FORGE_REPLAY: replay })
-  const d1 = r.j?.results.find(x => x.id === 'DIV-01')
-  ok(r.status === 1 && r.j?.verdict === 'REFUSED' && d1?.tag === 'DIVERGED', `blocker-DIVERGED refuses at admit with the verdict class preserved (got ${r.status}, ${d1?.tag})`)
-  ok((r.j?.refusals || []).some(x => /DIV-01 \(DIVERGED\)/.test(x)), 'the refusal line carries the (DIVERGED) marker')
-  ok(/reopen #7|resolution path/.test(d1?.detail || ''), 'the refusal detail carries the resolution recipe')
-}
-
 // ---------- the JDG-only admission path (the reachable relief valve) ----------
 {
   const w = mkworld('jdgonly')
@@ -215,8 +186,6 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { kind: 'break-glass', gate: 'admit', subject: 'admit outage relief' }), 'relief record only')
   const r = admitJson(w.clone)
   ok(r.status === 0 && r.j?.jdgOnly === true && r.j?.jdgRelief === 'JDG-0001', `a pure-judgment range admits via the JDG-only path, naming its relief record (got ${r.status}, ${r.j?.jdgRelief})`)
-  const f1 = r.j?.results.find(x => x.id === 'FLOW-01')
-  ok(/forge not consulted \(JDG-only admission path\)/.test(f1?.detail || ''), `the forge closure is labeled with the PATH, not fake unreachability (got: ${f1?.detail?.slice(0, 90)})`)
 
   // staleness is data-plane truth — it refuses even on the privileged path (M7a pin)
   advanceMainAtOrigin(w)
@@ -227,14 +196,14 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   // one extra non-judgment file breaks the shape — the normal path judges it
   commit(w.clone, 'src.txt', 'code\n', 'code rides along')
   const r2 = admitJson(w.clone)
-  ok(r2.status === 1 && r2.j?.jdgOnly === false && (r2.j?.refusals || []).some(x => /FLOW-02/.test(x)), 'a mixed range is NOT the JDG-only path — the normal contract judges it (promoted FLOW-02 refuses the record-less lane)')
+  ok(r2.j?.jdgOnly === false && r2.j?.jdgRelief === null, `a mixed range is NOT the JDG-only path — the normal contract judges it (got jdgOnly=${r2.j?.jdgOnly})`)
 
   // a judgment-only range WITHOUT a break-glass is just a normal (harmless) range
   const w2 = mkworld('jdgplain')
   git(w2.clone, 'checkout', '-q', '-b', 'lane/9')
   commit(w2.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { subject: 'unrelated sign-off scope', kind: 'sign-off' }), 'plain judgment')
   const r3 = admitJson(w2.clone)
-  ok(r3.j?.jdgOnly === false && r3.status === 1 && (r3.j?.refusals || []).some(x => /FLOW-02/.test(x)), 'a judgment-only range without break-glass(gate:admit) is not the relief path — the normal (promoted) contract judges it')
+  ok(r3.j?.jdgOnly === false && r3.j?.jdgRelief === null, `a judgment-only range without break-glass(gate:admit) is not the relief path — the normal contract judges it (got jdgOnly=${r3.j?.jdgOnly})`)
 }
 
 // ---------- shallow ancestry: source-loss refusal + break-glass-from-MAIN relief ----------
@@ -273,34 +242,7 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   ok(r.status === 1 && !r.j?.breakGlass, 'a break-glass riding the INCOMING branch relieves nothing (FS5: main only) — and the mixed range is not JDG-only')
 }
 
-// ---------- MERGE-02: sister-lane dependencies + the declared stack ----------
-{
-  const w = mkworld('sister')
-  // lane/9 does work off main; lane/8 stacks ON lane/9
-  git(w.clone, 'checkout', '-q', '-b', 'lane/9'); commit(w.clone, 'nine.txt', '9\n', 'sister work')
-  git(w.clone, 'checkout', '-q', '-b', 'lane/8'); commit(w.clone, 'eight.txt', '8\n', 'stacked work')
-  git(w.clone, 'push', '-q', 'origin', 'lane/9', 'lane/8')
-  const c2 = path.join(w.dir, 'c2')
-  execFileSync('git', ['clone', '-q', w.bare, c2], { env: { ...process.env, ...GITENV } })
-  git(c2, 'config', 'user.name', 'T'); git(c2, 'config', 'user.email', 't@t.t')
-  git(c2, 'checkout', '-q', 'lane/8')
-  let r = admitJson(c2)
-  const m2 = r.j?.results.find(x => x.id === 'MERGE-02')
-  ok(r.status === 1 && m2?.tag === 'FAIL' && /unmerged commits from lane\/9/.test(m2?.detail || '') && (r.j?.refusals || []).some(x => /MERGE-02/.test(x)), `an undeclared stack FAILs naming the sister — and REFUSES since M7a (got ${r.status}, ${m2?.tag})`)
-  // declare the stack — the trailer lifts the finding
-  commit(c2, 'more.txt', 'm\n', 'more\n\nBaseline-Stacked-On: lane/9')
-  r = admitJson(c2)
-  const m2b = r.j?.results.find(x => x.id === 'MERGE-02')
-  ok(m2b?.tag === 'PASS' && /declared via Baseline-Stacked-On/.test(m2b?.detail || ''), `the whole-token trailer declares the stack (got ${m2b?.tag}: ${m2b?.detail?.slice(0, 80)})`)
-  // sister lands in main → the dependency dissolves
-  git(w.seed, 'fetch', '-q', 'origin', 'lane/9'); git(w.seed, 'merge', '-q', '--no-edit', 'FETCH_HEAD'); git(w.seed, 'push', '-q', 'origin', 'main')
-  git(c2, 'fetch', '-q', 'origin'); git(c2, 'merge', '-q', '--no-edit', 'origin/main')
-  r = admitJson(c2)
-  const m2c = r.j?.results.find(x => x.id === 'MERGE-02')
-  ok(m2c?.tag === 'PASS' && /no unmerged sister-lane dependencies/.test(m2c?.detail || ''), `a landed sister is no dependency (got ${m2c?.tag})`)
-}
-
-// ---------- panel hardening: the rename bypass, invalid riders, expired relief, near-miss trailers ----------
+// ---------- panel hardening: the rename bypass, invalid riders, expired relief ----------
 {
   // DESC-03 must survive `git mv baseline.repo.json away` (rename detection would
   // collapse the delete+add into one post-image name — the no-renames diff keeps it honest)
@@ -319,7 +261,7 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { kind: 'break-glass', gate: 'admit', subject: 'relief' }), 'valid relief')
   commit(w.clone, 'records/judgments/JDG-0002.json', '{ not json\n', 'garbage rider')
   const r = admitJson(w.clone)
-  ok(r.status === 1 && r.j?.jdgOnly === false && r.j?.jdgRelief === null && (r.j?.refusals || []).some(x => /FLOW-02/.test(x)), `an invalid rider disqualifies the privileged path — the normal (promoted) contract judges it (got jdgOnly=${r.j?.jdgOnly})`)
+  ok(r.j?.jdgOnly === false && r.j?.jdgRelief === null, `an invalid rider disqualifies the privileged path — the normal contract judges it (got jdgOnly=${r.j?.jdgOnly})`)
   // a MISNAMED but valid judgment also disqualifies (id must be the filename, ledger discipline)
   const w2 = mkworld('jdgmisname')
   git(w2.clone, 'checkout', '-q', '-b', 'lane/9')
@@ -342,20 +284,6 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   ok(r.status === 1 && !r.j?.breakGlass, `an expired break-glass does not relieve (got ${r.status}, breakGlass=${JSON.stringify(r.j?.breakGlass)})`)
 }
 {
-  // Baseline-Stacked-On is whole-token in BOTH directions: lane/99 never lifts lane/9
-  const w = mkworld('nearmiss')
-  git(w.clone, 'checkout', '-q', '-b', 'lane/9'); commit(w.clone, 'nine.txt', '9\n', 'sister work')
-  git(w.clone, 'checkout', '-q', '-b', 'lane/8'); commit(w.clone, 'eight.txt', '8\n', 'stacked\n\nBaseline-Stacked-On: lane/99')
-  git(w.clone, 'push', '-q', 'origin', 'lane/9', 'lane/8')
-  const c2 = path.join(w.dir, 'c2')
-  execFileSync('git', ['clone', '-q', w.bare, c2], { env: { ...CLEAN_ENV, ...GITENV } })
-  git(c2, 'config', 'user.name', 'T'); git(c2, 'config', 'user.email', 't@t.t')
-  git(c2, 'checkout', '-q', 'lane/8')
-  const r = admitJson(c2)
-  const m2 = r.j?.results.find(x => x.id === 'MERGE-02')
-  ok(m2?.tag === 'FAIL' && /lane\/9\b/.test(m2?.detail || ''), `trailer 'lane/99' does not lift sister 'lane/9' (got ${m2?.tag})`)
-}
-{
   // FS1 under explicit --target: a NON-default target ref's descriptor governs, and the
   // declared-default switch must not fire
   const w = mkworld('exptarget')
@@ -364,11 +292,8 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001'), 'its judgment')
   git(w.clone, 'push', '-q', 'origin', 'release/next')
   git(w.clone, 'checkout', '-q', '-b', 'lane/7'); commit(w.clone, 'w.txt', 'w\n', 'work off release')
-  logLane(w.clone, 'lane/7')
   const r = admitJson(w.clone, ['--target', 'origin/release/next'])
   ok(r.status === 0 && r.j?.target.ref === 'origin/release/next' && r.j?.target.source === 'local-ref (explicit --target)', `an explicit non-default target governs, honestly labeled (got ${r.j?.target.source})`)
-  const f1 = r.j?.results.find(x => x.id === 'FLOW-01')
-  ok(/relaxed/.test(f1?.detail || '') || f1?.tag === 'PASS', `the TARGET ref's posture (anchoring relaxed) judged the run (got: ${f1?.detail?.slice(0, 60)})`)
 }
 
 // ---------- the context gate: admit-only rules are invisible to check ----------
@@ -378,18 +303,17 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   const c = cli(w.clone, ['check', '--json', '--no-exec'])
   let cj = null; try { cj = JSON.parse(c.stdout) } catch {}
   const ids = new Set((cj?.results || []).map(x => x.id))
-  ok(cj && !ids.has('DESC-03') && !ids.has('MERGE-02'), 'DESC-03/MERGE-02 are EXCLUDED from check output (no wrong-context rows)')
-  ok(ids.has('FLOW-01') && ids.has('DESC-01'), 'the shared-context rules still run in check')
+  ok(cj && !ids.has('DESC-03'), 'DESC-03 is EXCLUDED from check output (no wrong-context rows)')
+  ok(ids.has('REC-02') && ids.has('DESC-01'), 'the shared-context rules still run in check')
   const a = admitJson(w.clone)
   const aids = new Set((a.j?.results || []).map(x => x.id))
-  ok(aids.has('DESC-03') && aids.has('MERGE-02') && aids.has('FLOW-01') && !aids.has('BUILD-05'), 'admit runs the admit-context set (and never the exec crown)')
+  ok(aids.has('DESC-03') && aids.has('REC-02') && !aids.has('BUILD-05'), 'admit runs the admit-context set (and never the exec crown)')
 }
 
 // ---------- --target explicit + detached-HEAD CI shape (GITHUB_HEAD_REF) ----------
 {
   const w = mkworld('target')
   git(w.clone, 'checkout', '-q', '-b', 'lane/7'); commit(w.clone, 'w.txt', 'w\n', 'work')
-  logLane(w.clone, 'lane/7')
   const sha = git(w.clone, 'rev-parse', 'origin/main')
   const r = admitJson(w.clone, ['--target', sha])
   ok(r.status === 0 && r.j?.target.sha === sha, '--target accepts an explicit SHA')
@@ -399,7 +323,7 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   ok(r2.status === 0 && r2.j?.branch === null, 'detached HEAD: no branch identity invented')
   // ...and derived from the forge's own env when present (GITHUB_HEAD_REF)
   const r3 = admitJson(w.clone, [], { GITHUB_HEAD_REF: 'lane/7' })
-  ok(r3.status === 0 && r3.j?.branch === 'lane/7' && (r3.j?.results || []).some(x => x.id === 'MERGE-02'), 'GITHUB_HEAD_REF restores lane identity in CI (branch_scope rules evaluate)')
+  ok(r3.status === 0 && r3.j?.branch === 'lane/7', 'GITHUB_HEAD_REF restores lane identity in CI')
 }
 
 // ---------- provenance (M6c): the printed half of the ruled surface ----------

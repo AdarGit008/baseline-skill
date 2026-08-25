@@ -1,31 +1,6 @@
 {
   "rules": [
     {
-      "id": "REC-01",
-      "title": "Committed records are append-only",
-      "category": "records",
-      "severity": "warn",
-      "applies_to": "all",
-      "source": "https://martinfowler.com/eaaDev/EventSourcing.html",
-      "lesson": "C12/CF7 — never edit a committed record, write the next one; MDR + content-hash closes the delete-recreate and merge-hidden holes; an edit is classified appended/extended vs rewritten so a repair and a falsification do not read the same",
-      "rationale": "A record that can be silently rewritten is not a record — the forensic tier's value is that what was written stays written. Proven from history, not promised in prose. Stays warn by the M7 ruling: REC is the only candidate at applies_to:all, and a severity-by-posture mechanism has no consumer (revive: real demand for REC-02-at-admit); blocking comes from the tooling gates.",
-      "fix": "Don't edit records/ files after commit — supersede with a new record (new session log, new JDG, superseding ADR). If a landed record must change, record a judgment tombstone naming the record's path: baseline jdg new --kind deviation --subject \"records/<path>\" --reason \"...\" --review-by <date>. A mutation covered by an unexpired sign-off/risk-acceptance/deviation whose subject glob-matches the path is sanctioned and excluded from the finding; break-glass never sanctions and an expired tombstone stops sanctioning. The subject is a GLOB, so one standing tombstone disposes of a whole recurring class — a corpus re-pinned every measurement run wants a single deviation on records/corpora/**, not one per sweep. The finding classifies each edit first: `appended to` and `inserted into` added lines while every line the record was introduced with survives, `rewrote` dropped or restated one — read the rewrites first.",
-      "sources": [
-        "history"
-      ],
-      "on_unreachable": "skip",
-      "contexts": [
-        "check",
-        "admit",
-        "reconcile"
-      ],
-      "certainty": "deterministic",
-      "check": {
-        "kind": "records-append-only",
-        "path": "records/"
-      }
-    },
-    {
       "id": "REC-02",
       "title": "Landed records are scrub-clean",
       "category": "records",
@@ -50,29 +25,6 @@
         "globs": [
           "records/**"
         ]
-      }
-    },
-    {
-      "id": "REC-04",
-      "title": "Every record fact has one home",
-      "category": "records",
-      "severity": "warn",
-      "applies_to": "all",
-      "source": "https://pragprog.com/tips/",
-      "lesson": "C09/CF10 — one home per fact, declared precedence; duplication detection is a heuristic, so this rule is pinned warn-only",
-      "rationale": "Two files claiming the same JDG/CLM id (or the session narrative kept in two directories) means the next reader picks one at random — the drift C09 exists to prevent.",
-      "fix": "Keep one owned file per record id; renumber the newer duplicate (see CONTRACT.md's merge-renumbering rule) and move or delete the legacy docs/session-log/ home — left in place it stays a second home and this warn cannot clear.",
-      "sources": [
-        "tree"
-      ],
-      "on_unreachable": "skip",
-      "contexts": [
-        "check",
-        "reconcile"
-      ],
-      "certainty": "heuristic",
-      "check": {
-        "kind": "records-one-home"
       }
     },
     {
@@ -150,29 +102,6 @@
           ]
         },
         "then_fail_detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
-      }
-    },
-    {
-      "id": "REC-06",
-      "title": "The vendored baseline tree is pinned and un-skewed",
-      "category": "records",
-      "severity": "warn",
-      "applies_to": "all",
-      "source": "https://reproducible-builds.org/docs/checksums/",
-      "lesson": "C26/S9 — the contraction's honest endpoint: the consumption model stays vendored (pointer flip cut to V3), so the pin is what makes a vendored copy auditable — an unpinned tree drifts invisibly, a skewed one lies about which contract judged the repo",
-      "rationale": "Deterministic: tools/baseline/ exists while tools/baseline.lock.json is absent (unpinned), not a lock, or its tree_hash differs from the hash recomputed over the vendored files (skew — the finding names the lock's pinned version and the tree's own rules.json version). Worktree semantics like every tree rule: an untracked edit inside the vendored tree is a real skew — local stricter than CI, never the reverse. No vendored tree at the canonical path → SKIP (a copy living elsewhere is outside the lock contract; CONTRACT.md's manual-copy paragraph names the location).",
-      "fix": "Pin it: baseline gen lock writes tools/baseline.lock.json ({version, tree_hash}) — commit it beside the tree. On skew: re-vendor to match the lock, or re-pin deliberately in the same PR as the vendor bump.",
-      "sources": [
-        "tree"
-      ],
-      "on_unreachable": "skip",
-      "contexts": [
-        "check",
-        "reconcile"
-      ],
-      "certainty": "deterministic",
-      "check": {
-        "kind": "vendored-lock"
       }
     }
   ]

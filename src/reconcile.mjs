@@ -229,7 +229,7 @@ export function runReconcile(argv) {
     cfgRes = resolveConfig(repo, { cliConfigPath: opt('--config', null), profileArgs: optAll('--profile'), descriptorRef: targetTip })
     DESCRIPTOR = cfgRes.DESCRIPTOR
   }
-  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, JDGS, JUDGMENTS } = cfgRes
+  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, JUDGMENTS } = cfgRes
   const BRANCH_NAME = targetRef.replace(/^origin\//, '')
 
   // ---- posture gate: reconcile IS forge writes — a posture that closes the forge
@@ -269,7 +269,7 @@ export function runReconcile(argv) {
   // call probe.mjs's resolveLane, which check and admit share since #55 — the dissent
   // is deliberate and documented at both ends, not an oversight) ----
   const LANEWORLD = makeLaneWorld(repo, DESCRIPTOR, { probe: pf })
-  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JDGS, JUDGMENTS, DESCRIPTOR, BRANCH: BRANCH_NAME, DEFAULT_BRANCH: declared || BRANCH_NAME, LANEWORLD })
+  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JUDGMENTS, DESCRIPTOR, BRANCH: BRANCH_NAME, DEFAULT_BRANCH: declared || BRANCH_NAME, LANEWORLD })
   const RULES = loadRules()
   const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH: BRANCH_NAME, DEFAULT_BRANCH: declared || BRANCH_NAME, context: 'reconcile' })
 
@@ -278,7 +278,7 @@ export function runReconcile(argv) {
     const key = findingKey(x.r.id, BRANCH_NAME)
     if (x.tag === 'WARN' || x.tag === 'FAIL' || x.tag === 'DIVERGED') {
       present.push({ key, id: x.r.id, subject: BRANCH_NAME, title: x.r.title, detail: x.detail, fp: fingerprint(x.detail), reopenAlways: false })
-    } else if (x.tag === 'PASS' || x.tag === 'SIGN-OFF') {
+    } else if (x.tag === 'PASS') {
       clearedKeys.add(key) // positive re-evaluation — a SKIP never lands here
     }
   }
@@ -502,7 +502,7 @@ export function runReconcile(argv) {
   const summary = {
     mode: DRY ? 'dry-run' : reportOnly ? 'report-only' : 'full',
     findings: findings.length, actions: actions ? actions.length : null, delivered: delivered.length, failed: failed.length,
-    pass: n('PASS'), warn: n('WARN'), fail: n('FAIL'), diverged: n('DIVERGED'), signoff: n('SIGN-OFF'), skip: n('SKIP'), rules: results.length,
+    pass: n('PASS'), warn: n('WARN'), fail: n('FAIL'), diverged: n('DIVERGED'), skip: n('SKIP'), rules: results.length,
     jdg: { records: ledger.records.length, swept: sweep.length, capped: sweepCapped, filed: sweep.filter(r => r.verdict === 'tripped' || r.verdict === 'expired').length, invalid: ledger.findings.length },
     rescan: { files: recList === null ? null : recList.length, unscanned, capped: rescanCapped, skipped: rescanSkipped, findings: findings.filter(f => f.id === 'scrub').length },
     mergedWindow: mwrWindow,

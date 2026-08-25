@@ -3,7 +3,7 @@
 import path from 'node:path'
 import { sanitizeTTY } from './util.mjs'
 
-export const CATS = { build: 'Build & execution', quality: 'Code quality', test: 'Tests & invariants', security: 'Security & supply-chain', repro: 'Reproducibility', ops: 'Operability (service)', governance: 'Change governance', community: 'Community & onboarding', context: 'Context management', claims: 'Claims discipline', records: 'Records & ledger', flow: 'Lane workflow', merge: 'Merge admission', div: 'Divergence (cross-tier)', desc: 'Repo descriptor' }
+export const CATS = { build: 'Build & execution', quality: 'Code quality', test: 'Tests & invariants', security: 'Security & supply-chain', repro: 'Reproducibility', ops: 'Operability (service)', governance: 'Change governance', community: 'Community & onboarding', context: 'Context management', claims: 'Claims discipline', records: 'Records & ledger', desc: 'Repo descriptor' }
 
 export function makeColor(JSON_OUT) {
   return (c, s) => (process.stdout.isTTY && !JSON_OUT) ? `\x1b[${c}m${s}\x1b[0m` : s
@@ -17,14 +17,14 @@ export const isBlocking = x => x.r.severity === 'blocker' && (x.tag === 'FAIL' |
 export function reportJson({ results, REPO, cfg, ACTIVE, HEAD, lane = null }) {
   const out = { repo: REPO, project_type: cfg.project_type, profiles: [...ACTIVE], head: HEAD, ...(lane ? { lane: { name: lane.lane, basis: lane.basis, event: lane.event } } : {}), results: results.map(x => ({ id: x.r.id, category: x.r.category, severity: x.r.severity, profile: x.r.profile || 'core', tag: x.tag, detail: x.detail })) }
   const blockers = results.filter(isBlocking).length
-  out.summary = { blockers, pass: results.filter(x => x.tag === 'PASS').length, warn: results.filter(x => x.tag === 'WARN').length, diverged: results.filter(x => x.tag === 'DIVERGED').length, signoff: results.filter(x => x.tag === 'SIGN-OFF').length, skip: results.filter(x => x.tag === 'SKIP').length, total: results.length }
+  out.summary = { blockers, pass: results.filter(x => x.tag === 'PASS').length, warn: results.filter(x => x.tag === 'WARN').length, diverged: results.filter(x => x.tag === 'DIVERGED').length, skip: results.filter(x => x.tag === 'SKIP').length, total: results.length }
   console.log(JSON.stringify(out, null, 2))
   return blockers ? 1 : 0
 }
 
 export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color, lane = null }) {
-  const TAG = { PASS: color(32, 'PASS'), FAIL: color(31, 'FAIL'), WARN: color(33, 'WARN'), DIVERGED: color(31, 'DIVERGED'), SKIP: color(90, 'SKIP'), 'SIGN-OFF': color(35, 'SIGN-OFF') }
-  // pad to the widest tag (DIVERGED/SIGN-OFF = 8) by VISIBLE width — color the tag, then
+  const TAG = { PASS: color(32, 'PASS'), FAIL: color(31, 'FAIL'), WARN: color(33, 'WARN'), DIVERGED: color(31, 'DIVERGED'), SKIP: color(90, 'SKIP') }
+  // pad to the widest tag (DIVERGED = 8) by VISIBLE width — color the tag, then
   // append spaces, so the id column aligns in both TTY (ANSI-wrapped) and pipe modes; the
   // old `padEnd(tag.length + …)` padded each tag to its own length, i.e. never
   const TAGW = 8
@@ -39,7 +39,7 @@ export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color, 
   // once, here, and no rule's detail string has to carry it. Silent on the ordinary case:
   // basis 'checkout' is what every local run and every push-with-branch run resolves on.
   if (lane && lane.lane && lane.basis && lane.basis !== 'checkout') {
-    console.log(`  ${color(33, 'lane')} ${S(lane.lane)} resolved from ${lane.basis}${lane.event ? ` (${S(lane.event)} event)` : ''} — the checkout is detached, so the lane rules read the tree that IS checked out (on a pull_request, the merge result), not the lane tip\n`)
+    console.log(`  ${color(33, 'lane')} ${S(lane.lane)} resolved from ${lane.basis}${lane.event ? ` (${S(lane.event)} event)` : ''} — the checkout is detached, so the rules read the tree that IS checked out (on a pull_request, the merge result), not the lane tip\n`)
   }
   for (const cat of Object.keys(CATS)) {
     const rows = results.filter(x => x.r.category === cat); if (!rows.length) continue
@@ -51,7 +51,7 @@ export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color, 
   const blockers = results.filter(isBlocking).length
   const scored = results.filter(x => x.tag !== 'SKIP').length
   const div = n('DIVERGED')
-  console.log('  ' + color(1, 'Summary') + `  ${color(32, n('PASS') + ' pass')} · ${color(31, n('FAIL') + ' fail')} · ${color(33, n('WARN') + ' warn')}${div ? ` · ${color(31, div + ' diverged')}` : ''} · ${color(35, n('SIGN-OFF') + ' sign-off')} · ${color(90, n('SKIP') + ' n/a')}`)
+  console.log('  ' + color(1, 'Summary') + `  ${color(32, n('PASS') + ' pass')} · ${color(31, n('FAIL') + ' fail')} · ${color(33, n('WARN') + ' warn')}${div ? ` · ${color(31, div + ' diverged')}` : ''} · ${color(90, n('SKIP') + ' n/a')}`)
   console.log(`  Readiness: ${Math.round(100 * n('PASS') / Math.max(1, scored))}%  (${n('PASS')}/${scored} applicable)`)
   console.log(blockers ? color(31, `\n  ✗ ${blockers} blocker(s) — not build-ready.\n`) : color(32, `\n  ✓ no blockers.\n`))
   return blockers ? 1 : 0

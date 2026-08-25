@@ -90,10 +90,13 @@ export async function runOrient(argv) {
       const pr = l.pr ? ` · PR #${l.pr.number}${l.pr.draft ? ' [draft]' : ''}` : ' · no PR yet'
       P.push(head + pr)
       for (const lab of l.labels) P.push(`    · ${lab}`)
-      // the recipe must be runnable verbatim: reclaim refuses an anchor-less ref, so an
-      // abandoned lane without an issue anchor gets the honest line, never a dead recipe
+      // the recipe must be runnable verbatim and git-native (the `baseline lane` verb is
+      // gone): a takeover is a child of the observed tip carrying the new agent's trailers,
+      // pushed WITHOUT force so a lane that moved meanwhile rejects non-fast-forward. The
+      // trailers are what derive/lanes reads back, so an abandoned lane without an issue
+      // anchor gets the honest line, never a recipe that would mint an anchor-less takeover
       if (l.state === 'ABANDONED') P.push(l.issue != null
-        ? `    ↳ reclaimable:  baseline lane reclaim ${l.issue}`
+        ? `    ↳ reclaimable:  git fetch origin ${l.ref} && git checkout -B ${l.ref} FETCH_HEAD && git commit --allow-empty -m "reclaim ${l.ref}: issue #${l.issue}" --trailer "Baseline-Issue: #${l.issue}" --trailer "Baseline-Agent: <you>" && git push origin ${l.ref}`
         : `    ↳ not machine-reclaimable (no issue anchor) — rename or delete the branch by hand`)
       if (l.pr) P.push(l.next ? `    ↳ next: ${l.next}` : l.hasLog ? `    ↳ (session log has no filled-in next:)` : l.hasLog === false ? `    ↳ (no session log on branch)` : `    ↳ (session log not fetched for this lane)`)
     }

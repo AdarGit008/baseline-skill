@@ -154,29 +154,6 @@
       }
     },
     {
-      "id": "CLAIM-05",
-      "title": "Wedge and moat are stated and pressure-tested",
-      "category": "claims",
-      "severity": "manual",
-      "applies_to": "all",
-      "lesson": "Claims-5 wedge != moat",
-      "requires": "makes_external_claims",
-      "rationale": "The hard-to-build part (interception, a pipeline) is often already commoditized; the moat must survive assuming it's free.",
-      "fix": "Declare wedge + moat explicitly; pressure-test the moat assuming the hard mechanism is free; record sign-off.",
-      "sources": [
-        "tree"
-      ],
-      "on_unreachable": "skip",
-      "contexts": [
-        "check",
-        "reconcile"
-      ],
-      "certainty": "judgment",
-      "check": {
-        "kind": "signoff"
-      }
-    },
-    {
       "id": "CLAIM-06",
       "title": "Specs of record carry explicit acceptance criteria",
       "category": "claims",

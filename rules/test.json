@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "TEST-01",
+      "id": "TEST-01-automated-tests-exist",
       "title": "Automated tests exist",
       "category": "test",
       "severity": "blocker",
@@ -46,7 +46,7 @@
       }
     },
     {
-      "id": "TEST-02",
+      "id": "TEST-02-failure-paths-tested",
       "title": "Failure paths are tested (negative tests)",
       "category": "test",
       "severity": "warn",
@@ -83,11 +83,12 @@
       }
     },
     {
-      "id": "TEST-05",
+      "id": "TEST-05-mutation-testing-gated",
       "title": "Mutation testing, if used, is gated",
       "category": "test",
       "severity": "warn",
       "profile": "advanced",
+      "pack": "advanced",
       "source": "https://stryker-mutator.io/docs/stryker-js/configuration/",
       "lesson": "SW-2 tests must be able to fail",
       "applies_to": [
@@ -119,11 +120,12 @@
       }
     },
     {
-      "id": "TEST-07",
+      "id": "TEST-07-coverage-floor-enforced",
       "title": "A coverage floor is declared and enforced",
       "category": "test",
       "severity": "warn",
       "profile": "advanced",
+      "pack": "advanced",
       "source": "https://docs.codecov.com/docs/commit-status",
       "lesson": "a coverage regression should exit non-zero",
       "applies_to": [

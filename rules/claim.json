@@ -1,10 +1,11 @@
 {
   "rules": [
     {
-      "id": "CLAIM-00",
+      "id": "CLAIM-00-claims-register-exists",
       "title": "A claims register exists",
       "category": "claims",
       "severity": "blocker",
+      "pack": "claims",
       "applies_to": "all",
       "lesson": "Claims-1..5",
       "requires": "makes_external_claims",
@@ -36,10 +37,11 @@
       }
     },
     {
-      "id": "CLAIM-01",
+      "id": "CLAIM-01-claims-tagged-build-state",
       "title": "Every claim tagged with a build-state",
       "category": "claims",
       "severity": "blocker",
+      "pack": "claims",
       "applies_to": "all",
       "lesson": "Claims-4 future tense for unbuilt work",
       "requires": "makes_external_claims",
@@ -65,10 +67,11 @@
       }
     },
     {
-      "id": "CLAIM-02",
+      "id": "CLAIM-02-claims-graded-blast-radius",
       "title": "Every claim graded by blast radius",
       "category": "claims",
       "severity": "blocker",
+      "pack": "claims",
       "applies_to": "all",
       "lesson": "Claims-1 grade by blast radius not confidence",
       "requires": "makes_external_claims",
@@ -97,10 +100,11 @@
       }
     },
     {
-      "id": "CLAIM-03",
+      "id": "CLAIM-03-novelty-claims-prior-art",
       "title": "Novelty/competitive claims have a dated prior-art pass",
       "category": "claims",
       "severity": "blocker",
+      "pack": "claims",
       "applies_to": "all",
       "lesson": "Claims-2 prior-art grep before freezing",
       "requires": "makes_external_claims",
@@ -131,10 +135,11 @@
       }
     },
     {
-      "id": "CLAIM-04",
+      "id": "CLAIM-04-citations-resolve-and-support",
       "title": "Citations resolve and support the claim",
       "category": "claims",
       "severity": "warn",
+      "pack": "claims",
       "applies_to": "all",
       "lesson": "Claims-3 cite the paper that proves your point",
       "requires": "makes_external_claims",
@@ -154,10 +159,11 @@
       }
     },
     {
-      "id": "CLAIM-06",
+      "id": "CLAIM-06-specs-carry-acceptance-criteria",
       "title": "Specs of record carry explicit acceptance criteria",
       "category": "claims",
       "severity": "warn",
+      "pack": "claims",
       "applies_to": "all",
       "requires": "makes_external_claims",
       "source": "https://www.atlassian.com/agile/project-management/definition-of-ready",
@@ -193,10 +199,11 @@
       }
     },
     {
-      "id": "CLAIM-07",
+      "id": "CLAIM-07-claims-in-per-claim-records",
       "title": "Claims live in per-claim records, not the legacy monolith",
       "category": "claims",
       "severity": "warn",
+      "pack": "claims",
       "applies_to": "all",
       "requires": "makes_external_claims",
       "lesson": "C17 — both V1 monoliths are exploded at M4; the monolith collides under lanes (the legacy read survives, at warn, until M7)",

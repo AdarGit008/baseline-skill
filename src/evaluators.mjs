@@ -450,15 +450,15 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JUDGMENTS = null, DESCRIPTOR
     }
 
     if (k === 'records-scrub') {
-      // REC-02 (C34): re-scan LANDED records with the one scan API the write gate
-      // uses — blob content at HEAD, not the worktree ("what landed" must give the
-      // same verdict on a dirty tree and in CI, or M7's promotion to blocker breaks
-      // reproducibility). Deterministic signatures fail the rule (warn now; M7's
-      // promotion is a pure severity flip); heuristic findings are soft — they stay
-      // WARN even at blocker. A blob we cannot read is surfaced as unscanned, never
-      // folded into the clean count.
-      const files = match(c.globs || ['records/**'], { tracked: true })
-      if (!files.length) return { ok: null, detail: 'no committed records to scan' }
+      // REC-02 (C34): re-scan LANDED files (the whole tracked tree, per the rule's
+      // globs) with the one scan API the write gate uses — blob content at HEAD, not
+      // the worktree ("what landed" must give the same verdict on a dirty tree and
+      // in CI, or M7's promotion to blocker breaks reproducibility). Deterministic
+      // signatures fail the rule (warn now; M7's promotion is a pure severity flip);
+      // heuristic findings are soft — they stay WARN even at blocker. A blob we
+      // cannot read is surfaced as unscanned, never folded into the clean count.
+      const files = match(c.globs || ['**'], { tracked: true })
+      if (!files.length) return { ok: null, detail: 'no tracked files to scan' }
       let allowlist = []
       try { allowlist = loadAllowlist(REPO).entries } catch (e) { return { ok: false, soft: true, detail: String(e.message).slice(0, 120) } }
       const det = [], heu = [], unscanned = []; let allowed = 0, scanned = 0
@@ -471,11 +471,11 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JUDGMENTS = null, DESCRIPTOR
         for (const x of res.blocked) det.push(`${f}:${x.line} ${x.name} (${x.masked}) [${x.id}]`)
         for (const x of res.warned) heu.push(`${f}:${x.line} ${x.name} (${x.masked}) [${x.id}]`)
       }
-      const unscannedNote = unscanned.length ? ` — ${unscanned.length} record(s) UNSCANNED at HEAD (${unscanned.slice(0, 2).join(', ')}${unscanned.length > 2 ? ', …' : ''})` : ''
+      const unscannedNote = unscanned.length ? ` — ${unscanned.length} file(s) UNSCANNED at HEAD (${unscanned.slice(0, 2).join(', ')}${unscanned.length > 2 ? ', …' : ''})` : ''
       if (det.length) return { ok: false, detail: `deterministic secret shape(s): ` + det.slice(0, 3).join('; ') + (det.length > 3 ? ` (+${det.length - 3})` : '') + unscannedNote }
       if (heu.length) return { ok: false, soft: true, detail: `heuristic finding(s): ` + heu.slice(0, 3).join('; ') + (heu.length > 3 ? ` (+${heu.length - 3})` : '') + unscannedNote }
       if (unscanned.length) return { ok: false, soft: true, detail: `${scanned} scanned clean, but ${unscannedNote.slice(3)}` }
-      return { ok: true, detail: `${scanned} record(s) scrub-clean at HEAD` + (allowed ? ` (${allowed} allowlisted)` : '') }
+      return { ok: true, detail: `${scanned} file(s) scrub-clean at HEAD` + (allowed ? ` (${allowed} allowlisted)` : '') }
     }
 
     if (k === 'descriptor') {

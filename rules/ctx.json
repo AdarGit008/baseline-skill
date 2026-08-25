@@ -1,10 +1,11 @@
 {
   "rules": [
     {
-      "id": "CTX-02",
+      "id": "CTX-02-decision-status-links-forward",
       "title": "Every decision record carries a Status; superseded ones link forward",
       "category": "context",
       "severity": "blocker",
+      "pack": "decisions",
       "applies_to": "all",
       "lesson": "CTX-5 no LOCKED artifact without a forward supersede-link",
       "rationale": "A frozen decision the repo has overtaken, with no in-file 'Superseded by', actively misdirects a reader.",
@@ -24,7 +25,7 @@
       }
     },
     {
-      "id": "CTX-03",
+      "id": "CTX-03-sources-of-truth-declared",
       "title": "Sources of truth are declared",
       "category": "context",
       "severity": "warn",
@@ -47,7 +48,7 @@
       }
     },
     {
-      "id": "CTX-05",
+      "id": "CTX-05-no-broken-doc-links",
       "title": "No broken internal doc links",
       "category": "context",
       "severity": "blocker",
@@ -71,7 +72,7 @@
       }
     },
     {
-      "id": "CTX-06",
+      "id": "CTX-06-docs-carry-freshness-contract",
       "title": "Long-lived docs carry a freshness contract",
       "category": "context",
       "severity": "warn",
@@ -97,10 +98,11 @@
       }
     },
     {
-      "id": "CTX-07",
+      "id": "CTX-07-decision-edges-resolve",
       "title": "Every declared decision edge resolves to a file that exists",
       "category": "context",
       "severity": "warn",
+      "pack": "decisions",
       "applies_to": "all",
       "source": "https://adr.github.io/",
       "lesson": "CTX-5 a declared decision edge must resolve — whatever the verb",
@@ -121,7 +123,7 @@
       }
     },
     {
-      "id": "CTX-08",
+      "id": "CTX-08-generated-files-marked",
       "title": "Generated files carry a 'DO NOT EDIT' provenance marker",
       "category": "context",
       "severity": "warn",
@@ -147,7 +149,7 @@
       }
     },
     {
-      "id": "CTX-09",
+      "id": "CTX-09-grounding-docs-exist",
       "title": "Required grounding docs exist and are non-empty",
       "category": "context",
       "severity": "warn",
@@ -171,11 +173,12 @@
       }
     },
     {
-      "id": "CTX-10",
+      "id": "CTX-10-doc-symbols-resolve",
       "title": "Code symbols/paths named in docs still resolve",
       "category": "context",
       "severity": "warn",
       "profile": "advanced",
+      "pack": "advanced",
       "applies_to": "all",
       "source": "https://www.writethedocs.org/",
       "lesson": "CTX symbol/anchor integrity",
@@ -196,7 +199,7 @@
       }
     },
     {
-      "id": "CTX-11",
+      "id": "CTX-11-docs-not-lagging-code",
       "title": "Docs don't lag the code they anchor",
       "category": "context",
       "severity": "warn",
@@ -222,7 +225,7 @@
       }
     },
     {
-      "id": "CTX-12",
+      "id": "CTX-12-status-is-derived",
       "title": "No hand-maintained status stamp (derive it instead)",
       "category": "context",
       "severity": "blocker",
@@ -251,10 +254,11 @@
       }
     },
     {
-      "id": "CTX-13",
+      "id": "CTX-13-amendment-declared-both-ends",
       "title": "An amendment is declared at both ends",
       "category": "context",
       "severity": "warn",
+      "pack": "decisions",
       "applies_to": "all",
       "source": "https://adr.github.io/",
       "lesson": "CTX-5 the amended record is the one a citation arrives at — it must know it was corrected",
@@ -275,10 +279,11 @@
       }
     },
     {
-      "id": "CTX-14",
+      "id": "CTX-14-decision-numbers-unique",
       "title": "No two decision records claim the same number",
       "category": "context",
       "severity": "blocker",
+      "pack": "decisions",
       "applies_to": "all",
       "source": "https://adr.github.io/",
       "lesson": "CTX-5 the decision-record number IS the record's identity — a citation that resolves to two files resolves to neither",

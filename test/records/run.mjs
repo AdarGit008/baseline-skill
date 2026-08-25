@@ -26,6 +26,10 @@ const BASELINE = path.join(ROOT, 'baseline.mjs')
 
 let fails = 0
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails++ }
+// v3 ids are PREFIX-NN-slug (PLAN §2). A test names a rule by its base prefix so a slug can
+// be revised in review without touching the test; both the two- and three-part forms match.
+const isId = (id, p) => id === p || String(id).startsWith(p + '-')
+const baseId = (id) => String(id).replace(/^([A-Z]+-\d{2}).*/, '$1')
 
 // ---------- rules loader (the split must be lossless) ----------
 {
@@ -120,7 +124,7 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
   // scrub's deterministic tier must never drift from SEC-01 — pin each source as a
   // substring of the rule's pattern (normalizing escaping/non-capturing differences)
   const norm = s => s.replace(/\\-/g, '-').replace(/\(\?:/g, '(')
-  const sec01 = norm(loadRules().rules.find(r => r.id === 'SEC-01').check.pattern)
+  const sec01 = norm(loadRules().rules.find(r => isId(r.id, 'SEC-01')).check.pattern)
   const shared = ['private-key-block', 'aws-access-key-id', 'google-api-key', 'slack-token', 'github-token']
   ok(shared.every(n => sec01.includes(norm(DETERMINISTIC_SOURCES.find(p => p.name === n).source))), 'deterministic tier stays SEC-01-parity (each source pinned inside the rule pattern)')
 }
@@ -486,7 +490,7 @@ try {
     fs.writeFileSync(path.join(t12, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false }))
     sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'base'])
     const CHECK12 = path.join(ROOT, 'check.mjs')
-    const byId = out => Object.fromEntries(JSON.parse(out).results.map(x => [x.id, x]))
+    const byId = out => Object.fromEntries(JSON.parse(out).results.map(x => [baseId(x.id), x]))
     let res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
     // M7b: the stored-status surface is GONE — CTX-01 has no row at all, and
     // CTX-12 (blocker) is de-config-keyed: no stamp in the tree = PASS, no
@@ -661,9 +665,9 @@ try {
     fs.writeFileSync(path.join(t18, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false }))
     sh(t18, 'git', ['add', '-A']); sh(t18, 'git', ['commit', '-qm', 'base'])
     const res18 = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
-    const ctx12 = res18.results.find(x => x.id === 'CTX-12')
+    const ctx12 = res18.results.find(x => isId(x.id, 'CTX-12'))
     ok(ctx12.tag === 'FAIL' && ctx12.severity === 'blocker' && /README\.md/.test(ctx12.detail), 'e2e: the stamp signature on a bare repo FAILs CTX-12 at blocker, no config key to hide behind')
-    ok(!res18.results.some(x => x.id === 'CTX-01'), 'e2e: CTX-01 is gone from the rule set entirely')
+    ok(!res18.results.some(x => isId(x.id, 'CTX-01')), 'e2e: CTX-01 is gone from the rule set entirely')
     // M7b: the WORKTREE read stays strict — the descriptor asymmetry's other half.
     // A retired field in the worktree descriptor is flagged (DESC-02 names it at
     // blocker since the M7c split; presence itself is DESC-01's PASS) and the
@@ -671,9 +675,9 @@ try {
     // ref-read strip is ever hoisted to worktree reads, this fails.
     fs.writeFileSync(path.join(t18, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 'legacy-team', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
     const res19 = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
-    const d1 = res19.results.find(x => x.id === 'DESC-01')
+    const d1 = res19.results.find(x => isId(x.id, 'DESC-01'))
     ok(d1.tag === 'PASS' && /present \(schema validity is DESC-02's/.test(d1.detail), 'e2e: presence narrowed — DESC-01 PASSes a present-but-invalid file, pointing at DESC-02')
-    const d2 = res19.results.find(x => x.id === 'DESC-02')
+    const d2 = res19.results.find(x => isId(x.id, 'DESC-02'))
     ok(d2.tag === 'FAIL' && d2.severity === 'blocker' && /'owner' is not a known field/.test(d2.detail), 'e2e: worktree read stays STRICT — a retired field makes DESC-02 name it at blocker')
   }
 

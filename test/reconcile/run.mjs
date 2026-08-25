@@ -19,6 +19,7 @@ import { findingKey, marker, fingerprint, deriveLifecycle, parseManaged, rebodyC
 import { scan } from '../../src/scrub.mjs'
 import { makeForge } from '../../src/facts/forge.mjs'
 import { normalizeVolatile } from '../../src/util.mjs'
+import { loadRules } from '../../src/rules.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '..', '..')
@@ -26,6 +27,11 @@ const BASELINE = path.join(ROOT, 'baseline.mjs')
 
 let fails = 0
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails++ }
+// v3 ids are PREFIX-NN-slug (PLAN §2). A test names a rule by its base prefix so a slug can
+// be revised in review without touching the test; both the two- and three-part forms match.
+const isId = (id, p) => id === p || String(id).startsWith(p + '-')
+// the full id a rule carries in rules/*.json, looked up by base prefix — a finding key embeds it
+const RID = (() => { const rules = loadRules().rules; return (p) => (rules.find(r => isId(r.id, p)) || { id: p }).id })()
 const tmps = []
 
 const GITENV = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 'Rec Tester', GIT_AUTHOR_EMAIL: 'rec@test.invalid', GIT_COMMITTER_NAME: 'Rec Tester', GIT_COMMITTER_EMAIL: 'rec@test.invalid' }
@@ -257,7 +263,7 @@ console.log('\n# integration — sweep, lifecycle, exits (replay forge)\n')
   const same = recJson(w.clone, ['--dry-run'], ENV(w))
   ok((same.j.actions || []).length === 0, 'unchanged finding on an open issue → no action')
   // GOV skip ≠ clear: an open GOV-01 issue while GOV-01 SKIPs (no branch fixtures) must not close
-  fix(w, 'issues-labeled-baseline', [...listingFor(probe.j, []), issue(71, 'open', findingKey('GOV-01', 'main'), 'aaaaaaaaaaaa')])
+  fix(w, 'issues-labeled-baseline', [...listingFor(probe.j, []), issue(71, 'open', findingKey(RID('GOV-01'), 'main'), 'aaaaaaaaaaaa')])
   const skip = recJson(w.clone, ['--dry-run'], ENV(w))
   ok(!(skip.j.actions || []).some(a => a.action === 'close'), 'SKIPped rule with an open filed issue → never closed (fail-open ban)')
   // cleared: judgment re-judged (valid now) → its old issue closes
@@ -307,26 +313,26 @@ console.log('\n# integration — sweep, lifecycle, exits (replay forge)\n')
   fix(w, 'branch-rules-main', [])
   fix(w, 'branch-meta-main', { protected: false })
   const r1 = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(r1.j.findings.some(f => f.key === findingKey('GOV-01', 'main')) && r1.j.findings.some(f => f.key === findingKey('GOV-02', 'main')), 'no protection (both surfaces read) → GOV-01+02 file')
+  ok(r1.j.findings.some(f => f.key === findingKey(RID('GOV-01'), 'main')) && r1.j.findings.some(f => f.key === findingKey(RID('GOV-02'), 'main')), 'no protection (both surfaces read) → GOV-01+02 file')
   fs.rmSync(path.join(w.replay, 'branch-rules-main.json'))
   const r2 = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(!r2.j.findings.some(f => f.id === 'GOV-01' || f.id === 'GOV-02'), '403-class (rules denied, meta readable) → SKIP, nothing filed')
+  ok(!r2.j.findings.some(f => isId(f.id, 'GOV-01') || isId(f.id, 'GOV-02')), '403-class (rules denied, meta readable) → SKIP, nothing filed')
   // …and a token downgrade must never bot-close a REAL protection issue (SKIP ≠ clear)
-  fix(w, 'issues-labeled-baseline', [issue(90, 'open', findingKey('GOV-01', 'main'), 'aaaaaaaaaaaa')])
+  fix(w, 'issues-labeled-baseline', [issue(90, 'open', findingKey(RID('GOV-01'), 'main'), 'aaaaaaaaaaaa')])
   const r2b = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(!(r2b.j.actions || []).some(a => a.action === 'close' && a.key === findingKey('GOV-01', 'main')), '403-class with an open GOV filing → never closed on token downgrade')
+  ok(!(r2b.j.actions || []).some(a => a.action === 'close' && a.key === findingKey(RID('GOV-01'), 'main')), '403-class with an open GOV filing → never closed on token downgrade')
   fix(w, 'issues-labeled-baseline', [])
   fix(w, 'branch-rules-main', [{ type: 'pull_request', parameters: { required_review_thread_resolution: true } }, { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true } }])
   const r3 = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(!r3.j.findings.some(f => f.id === 'GOV-01' || f.id === 'GOV-02'), 'enforcing ruleset → both PASS (cleared, nothing filed)')
+  ok(!r3.j.findings.some(f => isId(f.id, 'GOV-01') || isId(f.id, 'GOV-02')), 'enforcing ruleset → both PASS (cleared, nothing filed)')
   // a signatures-only ruleset is NOT merge protection — GOV-01 must still file
   fix(w, 'branch-rules-main', [{ type: 'required_signatures', parameters: {} }])
   const r4 = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(r4.j.findings.some(f => f.id === 'GOV-01' && f.detail.includes('none protects merges')), 'signatures-only ruleset → GOV-01 files (no merge-protective type)')
+  ok(r4.j.findings.some(f => isId(f.id, 'GOV-01') && f.detail.includes('none protects merges')), 'signatures-only ruleset → GOV-01 files (no merge-protective type)')
   // layered rulesets: the bits live in DIFFERENT rules of the same type — union wins
   fix(w, 'branch-rules-main', [{ type: 'pull_request', parameters: {} }, { type: 'pull_request', parameters: { required_review_thread_resolution: true } }, { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true } }])
   const r5 = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(!r5.j.findings.some(f => f.id === 'GOV-02'), 'layered rulesets: a later rule of the same type carries the bit — union enforced, no false FAIL')
+  ok(!r5.j.findings.some(f => isId(f.id, 'GOV-02')), 'layered rulesets: a later rule of the same type carries the bit — union enforced, no false FAIL')
 }
 {
   // reverse clears: a retired judgment and a rewritten secret close their filings

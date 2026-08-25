@@ -1,11 +1,12 @@
 {
   "rules": [
     {
-      "id": "OPS-01",
+      "id": "OPS-01-structured-logging",
       "title": "Structured logging is wired in",
       "category": "ops",
       "severity": "warn",
       "profile": "service",
+      "pack": "service",
       "applies_to": [
         "service"
       ],
@@ -40,11 +41,12 @@
       }
     },
     {
-      "id": "OPS-02",
+      "id": "OPS-02-health-endpoint-exists",
       "title": "A health/readiness endpoint exists",
       "category": "ops",
       "severity": "warn",
       "profile": "service",
+      "pack": "service",
       "applies_to": [
         "service"
       ],
@@ -78,11 +80,12 @@
       }
     },
     {
-      "id": "OPS-03",
+      "id": "OPS-03-graceful-shutdown",
       "title": "Graceful shutdown on SIGTERM",
       "category": "ops",
       "severity": "warn",
       "profile": "service",
+      "pack": "service",
       "applies_to": [
         "service"
       ],
@@ -116,11 +119,12 @@
       }
     },
     {
-      "id": "OPS-04",
+      "id": "OPS-04-outbound-calls-guarded",
       "title": "Outbound calls are time-bounded/guarded",
       "category": "ops",
       "severity": "warn",
       "profile": "service",
+      "pack": "service",
       "applies_to": [
         "service"
       ],
@@ -155,11 +159,12 @@
       }
     },
     {
-      "id": "OPS-05",
+      "id": "OPS-05-runbook-exists",
       "title": "An operational runbook exists",
       "category": "ops",
       "severity": "warn",
       "profile": "service",
+      "pack": "service",
       "applies_to": [
         "service"
       ],
@@ -190,11 +195,12 @@
       }
     },
     {
-      "id": "OPS-06",
+      "id": "OPS-06-service-descriptor-owner-lifecycle",
       "title": "A service descriptor declares owner + lifecycle",
       "category": "ops",
       "severity": "warn",
       "profile": "service",
+      "pack": "service",
       "applies_to": [
         "service"
       ],
@@ -226,10 +232,11 @@
       }
     },
     {
-      "id": "OPS-07",
+      "id": "OPS-07-reconcile-cron-alive",
       "title": "The reconcile cron is alive at the forge",
       "category": "ops",
       "severity": "warn",
+      "pack": "service",
       "applies_to": "all",
       "source": "https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/disabling-and-enabling-a-workflow",
       "lesson": "C37/M6 — reconcile is the post-merge detection floor (merged-while-red, judgment expiry, landed secrets); a scheduled workflow GitHub has auto-disabled files nothing forever while every dashboard stays green — the death mode is silence, so liveness must be a checked fact, not an assumption",

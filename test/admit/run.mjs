@@ -18,6 +18,9 @@ const BASELINE = path.join(ROOT, 'baseline.mjs')
 
 let fails = 0
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails++ }
+// v3 ids are PREFIX-NN-slug (PLAN §2). A test names a rule by its base prefix so a slug can
+// be revised in review without touching the test; both the two- and three-part forms match.
+const isId = (id, p) => id === p || String(id).startsWith(p + '-')
 const tmps = []
 
 const GITENV = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 'Admit Tester', GIT_AUTHOR_EMAIL: 'admit@test.invalid', GIT_COMMITTER_NAME: 'Admit Tester', GIT_COMMITTER_EMAIL: 'admit@test.invalid' }
@@ -102,7 +105,7 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   commit(w2.clone, 'records/judgments/JDG-0101.json', JDG('JDG-0101', { subject: 'baseline.repo.json', kind: 'deviation', reason: 'shed the retired owner field (M7b schema)' }), 'jdg')
   r = admitJson(w2.clone)
   ok(r.status === 0 && r.j?.verdict === 'ADMITTED', `the owner-shedding PR admits with its same-PR judgment (got ${r.status} ${r.j?.verdict})`)
-  const d3 = (r.j?.results || []).find(x => x.id === 'DESC-03')
+  const d3 = (r.j?.results || []).find(x => isId(x.id, 'DESC-03'))
   ok(d3 && d3.tag === 'PASS', `DESC-03 judged the descriptor change through the ceremony (got ${d3?.tag})`)
 }
 
@@ -131,20 +134,20 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   commit(w.clone, 'baseline.repo.json', JSON.stringify(weak, null, 2) + '\n', 'weaken posture on-branch')
   let r = admitJson(w.clone)
   ok(r.status === 1 && r.j?.verdict === 'REFUSED', `descriptor change without judgment refuses (got ${r.status})`)
-  const d3 = r.j?.results.find(x => x.id === 'DESC-03')
+  const d3 = r.j?.results.find(x => isId(x.id, 'DESC-03'))
   ok(d3?.tag === 'FAIL' && /no same-range judgment/.test(d3?.detail || ''), 'DESC-03 FAILs naming the missing judgment')
   ok(/WEAKENING/.test(d3?.detail || '') && /anchoring: 'strict' → 'off'/.test(d3?.detail || '') && /workflow/.test(d3?.detail || ''), `the weakening ladder names both down-moves (got: ${d3?.detail?.slice(0, 140)})`)
 
   // wrong subject: the tool's OWN pinned spelling is the matcher
   commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { subject: 'descriptor change' }), 'judgment, wrong subject')
   r = admitJson(w.clone)
-  const d3b = r.j?.results.find(x => x.id === 'DESC-03')
+  const d3b = r.j?.results.find(x => isId(x.id, 'DESC-03'))
   ok(r.status === 1 && /subject is 'descriptor change', not 'baseline\.repo\.json'/.test(d3b?.detail || ''), 'a near-miss subject refuses WITH the exact-spelling hint')
 
   // exact subject: admitted, judgment named
   commit(w.clone, 'records/judgments/JDG-0002.json', JDG('JDG-0002'), 'judgment, exact subject')
   r = admitJson(w.clone)
-  const d3c = r.j?.results.find(x => x.id === 'DESC-03')
+  const d3c = r.j?.results.find(x => isId(x.id, 'DESC-03'))
   ok(r.status === 0 && d3c?.tag === 'PASS' && /carries JDG-0002/.test(d3c?.detail || ''), `exact-subject judgment admits (got ${r.status}: ${d3c?.detail?.slice(0, 80)})`)
 
   // an EXPIRED judgment is honestly not a judgment
@@ -153,14 +156,14 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   commit(w2.clone, 'baseline.repo.json', JSON.stringify({ ...BASE_DESC, anchoring: 'relaxed' }, null, 2) + '\n', 'tune anchoring')
   commit(w2.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { review_by: '2020-01-01' }), 'lapsed judgment')
   r = admitJson(w2.clone)
-  ok(r.status === 1 && /no same-range judgment/.test(r.j?.results.find(x => x.id === 'DESC-03')?.detail || ''), 'a lapsed judgment does not satisfy DESC-03')
+  ok(r.status === 1 && /no same-range judgment/.test(r.j?.results.find(x => isId(x.id, 'DESC-03'))?.detail || ''), 'a lapsed judgment does not satisfy DESC-03')
 
   // an INVALIDATED head descriptor is the ultimate weakening
   const w3 = mkworld('descinv')
   git(w3.clone, 'checkout', '-q', '-b', 'lane/7')
   commit(w3.clone, 'baseline.repo.json', '{ not json', 'break the descriptor on-branch')
   r = admitJson(w3.clone)
-  ok(r.status === 1 && /descriptor invalidated/.test(r.j?.results.find(x => x.id === 'DESC-03')?.detail || ''), 'invalidating the descriptor on-branch is classified as weakening and refused')
+  ok(r.status === 1 && /descriptor invalidated/.test(r.j?.results.find(x => isId(x.id, 'DESC-03'))?.detail || ''), 'invalidating the descriptor on-branch is classified as weakening and refused')
 }
 
 // ---------- M7a: DESC-03 kind pin — break-glass never approves a descriptor change ----------
@@ -171,12 +174,12 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   commit(w.clone, 'baseline.repo.json', JSON.stringify(weak, null, 2) + '\n', 'descriptor change')
   commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { kind: 'break-glass', gate: 'admit' }), 'break-glass, right subject')
   const r = admitJson(w.clone)
-  const d3 = r.j?.results.find(x => x.id === 'DESC-03')
+  const d3 = r.j?.results.find(x => isId(x.id, 'DESC-03'))
   ok(r.status === 1 && d3?.tag === 'FAIL', `a right-subject BREAK-GLASS does not satisfy DESC-03 (kinds pinned at M7a) (got ${r.status}, ${d3?.tag})`)
   ok(/never descriptor-change approval/.test(d3?.detail || '') && /sign-off\|deviation\|risk-acceptance/.test(d3?.detail || ''), 'the refusal names the kind pin and the satisfying kinds')
   commit(w.clone, 'records/judgments/JDG-0002.json', JDG('JDG-0002', { kind: 'risk-acceptance' }), 'risk-acceptance, right subject')
   const r2 = admitJson(w.clone)
-  ok(r2.status === 0 && r2.j?.results.find(x => x.id === 'DESC-03')?.tag === 'PASS', 'risk-acceptance (a pinned kind) satisfies')
+  ok(r2.status === 0 && r2.j?.results.find(x => isId(x.id, 'DESC-03'))?.tag === 'PASS', 'risk-acceptance (a pinned kind) satisfies')
 }
 
 // ---------- the JDG-only admission path (the reachable relief valve) ----------
@@ -251,7 +254,7 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   git(w.clone, 'mv', 'baseline.repo.json', 'renamed-away.json')
   git(w.clone, 'commit', '-qm', 'rename the descriptor away')
   const r = admitJson(w.clone)
-  const d3 = r.j?.results.find(x => x.id === 'DESC-03')
+  const d3 = r.j?.results.find(x => isId(x.id, 'DESC-03'))
   ok(r.status === 1 && d3?.tag === 'FAIL' && /descriptor invalidated/.test(d3?.detail || ''), `renaming the descriptor away is a caught weakening, not "untouched" (got ${r.status}, ${d3?.tag})`)
 }
 {
@@ -303,11 +306,11 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   const c = cli(w.clone, ['check', '--json', '--no-exec'])
   let cj = null; try { cj = JSON.parse(c.stdout) } catch {}
   const ids = new Set((cj?.results || []).map(x => x.id))
-  ok(cj && !ids.has('DESC-03'), 'DESC-03 is EXCLUDED from check output (no wrong-context rows)')
-  ok(ids.has('REC-02') && ids.has('DESC-01'), 'the shared-context rules still run in check')
+  ok(cj && ![...ids].some(i => isId(i, 'DESC-03')), 'DESC-03 is EXCLUDED from check output (no wrong-context rows)')
+  ok([...ids].some(i => isId(i, 'REC-02')) && [...ids].some(i => isId(i, 'DESC-01')), 'the shared-context rules still run in check')
   const a = admitJson(w.clone)
   const aids = new Set((a.j?.results || []).map(x => x.id))
-  ok(aids.has('DESC-03') && aids.has('REC-02') && !aids.has('BUILD-05'), 'admit runs the admit-context set (and never the exec crown)')
+  ok([...aids].some(i => isId(i, 'DESC-03')) && [...aids].some(i => isId(i, 'REC-02')) && ![...aids].some(i => isId(i, 'BUILD-05')), 'admit runs the admit-context set (and never the exec crown)')
 }
 
 // ---------- --target explicit + detached-HEAD CI shape (GITHUB_HEAD_REF) ----------

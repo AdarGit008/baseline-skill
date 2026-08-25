@@ -1,10 +1,11 @@
 {
   "rules": [
     {
-      "id": "DESC-01",
+      "id": "DESC-01-repo-descriptor-present",
       "title": "Repo descriptor present",
       "category": "desc",
       "severity": "warn",
+      "pack": "descriptor",
       "applies_to": "all",
       "source": "https://backstage.io/docs/features/software-catalog/descriptor-format (kind/type/lifecycle/owner); Kubernetes declared-spec vs observed-status",
       "lesson": "C39 — the repo declares itself; applicability, scrutiny, and posture consume a schema-validated descriptor, not per-rule tree-sniffing that misfires and can't express intent",
@@ -24,10 +25,11 @@
       }
     },
     {
-      "id": "DESC-02",
+      "id": "DESC-02-descriptor-schema-valid",
       "title": "A present descriptor is schema-valid",
       "category": "desc",
       "severity": "blocker",
+      "pack": "descriptor",
       "applies_to": "all",
       "source": "https://backstage.io/docs/features/software-catalog/descriptor-format; JSON Schema fail-fast validation",
       "lesson": "M7b panel filing — ten workflow-gated blockers hang off descriptor validity: an invalid descriptor turns the posture OFF (every lane/divergence blocker silently SKIPs) while the run stays green-looking, which is exactly the silent-demotion class change control exists to prevent",
@@ -47,10 +49,11 @@
       }
     },
     {
-      "id": "DESC-03",
+      "id": "DESC-03-descriptor-change-carries-judgment",
       "title": "A descriptor change carries its judgment in the same range",
       "category": "desc",
       "severity": "blocker",
+      "pack": "descriptor",
       "applies_to": "all",
       "source": "https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions",
       "lesson": "CF4/FS1 — the descriptor is V2's largest stored intent and a PR must not weaken the posture that judges it; the judgment saying WHY belongs in the same range, not a follow-up promise",

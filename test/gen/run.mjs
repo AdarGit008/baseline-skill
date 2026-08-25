@@ -24,6 +24,9 @@ const BASELINE = path.join(ROOT, 'baseline.mjs')
 
 let fails = 0
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails++ }
+// v3 ids are PREFIX-NN-slug (PLAN §2). A test names a rule by its base prefix so a slug can
+// be revised in review without touching the test; both the two- and three-part forms match.
+const isId = (id, p) => id === p || String(id).startsWith(p + '-')
 const tmps = []
 const GITENV = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 'Gen Tester', GIT_AUTHOR_EMAIL: 'gen@test.invalid', GIT_COMMITTER_NAME: 'Gen Tester', GIT_COMMITTER_EMAIL: 'gen@test.invalid' }
 const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...GITENV } }).trim()
@@ -162,7 +165,7 @@ console.log('\n# hostile content + fs edges (panel regressions)\n')
   const CHECK = path.join(ROOT, 'check.mjs')
   const chk = spawnSync(process.execPath, [CHECK, '--repo', dir, '--json', '--no-exec'], { encoding: 'utf8', env: { ...process.env, ...GITENV } })
   const rows = JSON.parse(chk.stdout).results
-  const ctx05 = rows.find(r => r.id === 'CTX-05')
+  const ctx05 = rows.find(r => isId(r.id, 'CTX-05'))
   ok(ctx05 && ctx05.tag !== 'FAIL', `the view passes the consumer's own md-links blocker (CTX-05 ${ctx05?.tag}: ${String(ctx05?.detail).slice(0, 60)})`)
   // claims duplicate ids: row order pinned by _file tiebreak, not walk order
   const CLM = slug => JSON.stringify({ record: 'claim/1', id: 'CLM-0001', slug, statement: 's', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }) + '\n'

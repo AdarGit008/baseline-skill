@@ -8,11 +8,18 @@
     "library",
     "docs"
   ],
-  "description": "Testable readiness standard. v1's 20 rules (build/test/context/claims) distilled from three of the author's own repo reviews, plus v2 additions pressure-tested against the prior-art field (OpenSSF Scorecard, SLSA, 12-factor, Google SRE, Diataxis, repolinter, Backstage/Cortex/OpsLevel, and ~40 more). Each rule maps to a lesson or a cited source; blockers fail CI, everything else warns. Rules with a 'profile' only run when that profile is active: core is always on; 'service' auto-activates when project_type=service; 'advanced' is opt-in via config.profiles.",
+  "description": "Testable readiness standard. The v1 rules (build/test/context/claims) were distilled from the author's own repo reviews, plus v2 additions pressure-tested against the prior-art field (OpenSSF Scorecard, SLSA, 12-factor, Google SRE, Diataxis, repolinter, Backstage/Cortex/OpsLevel, and many more). Each rule maps to a lesson or a cited source; blockers fail CI, everything else warns. Rules with a 'pack' only run when that pack is active (see packs); everything else is always on. The legacy 'profile' field mirrors the pack until the engine reads packs directly.",
   "profiles": {
     "core": "Always on. Universal, high-confidence, machine-checkable rules.",
     "service": "Auto-on when project_type=service (or listed in config.profiles). Operability/observability rules that only make sense for a running service.",
     "advanced": "Opt-in via config.profiles. Expert/niche rules (SBOM, code-scanning, mutation testing, symbol-integrity) that would be noise on most repos."
+  },
+  "packs": {
+    "claims": "Opt-in via makes_external_claims:true (or profiles/packs/--profile claims). The claims register and per-claim record discipline.",
+    "decisions": "Opt-in via a non-empty decision_globs (or profiles/packs/--profile decisions). Decision-record status, edges, amendments and numbering.",
+    "descriptor": "Opt-in via profiles/packs/--profile descriptor. The baseline.repo.json descriptor: present, schema-valid, and judgment-carrying when it changes.",
+    "service": "Opt-in via project_type=service (or profiles/packs/--profile service). Operability/observability rules that only make sense for a running service.",
+    "advanced": "Opt-in via profiles/packs/--profile advanced. Expert/niche rules (SBOM, code-scanning, mutation testing, symbol-integrity) that would be noise on most repos."
   },
   "modules": [
     "rules/build.json",

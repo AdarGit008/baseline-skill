@@ -163,6 +163,8 @@ export const PACKS = {
   decisions: ['CTX-02', 'CTX-07', 'CTX-13', 'CTX-14'],
   descriptor: ['DESC-01', 'DESC-02', 'DESC-03'],
   service: ['OPS-01', 'OPS-02', 'OPS-03', 'OPS-04', 'OPS-05', 'OPS-06', 'OPS-07'],
+  // 'advanced' is named by topic in §5; its members are v2.5.0's advanced profile minus §11 D11's deletions
+  advanced: ['BUILD-09', 'TEST-05', 'TEST-07', 'CTX-10', 'SEC-08', 'SEC-09', 'SEC-10', 'SEC-13'],
 }
 export const PACK_OF = (() => { const m = new Map(); for (const [p, ids] of Object.entries(PACKS)) for (const id of ids) m.set(id, p); return m })()
 

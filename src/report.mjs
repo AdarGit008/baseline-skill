@@ -33,6 +33,9 @@ export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color, 
   // are stripped of terminal control bytes before printing — no cursor-move that
   // overwrites a printed FAIL with fake PASS (--json is unaffected; JSON escapes them)
   const S = sanitizeTTY
+  // the id column fits the widest id ON THIS RUN — v3 ids are three-part (PREFIX-NN-slug, §2)
+  // and vary in length, so the width is derived from the rows, never a literal
+  const IDW = Math.max(9, ...results.map(x => String(x.r.id).length))
   console.log(`\n  project-baseline v${version}  ·  ${path.basename(REPO)}  ·  type=${cfg.project_type}  ·  profiles=[${[...ACTIVE].join(',')}]  ·  HEAD=${HEAD || 'n/a'}\n`)
   // A lane the CHECKOUT could not name is a weaker claim than a checked-out branch, and
   // the difference is a property of the RUN, not of any one rule (#55) — so it is stated
@@ -44,7 +47,7 @@ export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color, 
   for (const cat of Object.keys(CATS)) {
     const rows = results.filter(x => x.r.category === cat); if (!rows.length) continue
     console.log('  ' + color(1, CATS[cat]))
-    for (const x of rows) console.log(`    ${tagCell(x.tag)} ${x.r.id.padEnd(9)} ${S(x.r.title)}\n            ${color(90, '↳ ' + S(x.detail))}`)
+    for (const x of rows) console.log(`    ${tagCell(x.tag)} ${x.r.id.padEnd(IDW)} ${S(x.r.title)}\n            ${color(90, '↳ ' + S(x.detail))}`)
     console.log('')
   }
   const n = t => results.filter(x => x.tag === t).length

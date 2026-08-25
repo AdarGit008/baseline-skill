@@ -1,0 +1,15 @@
+{
+  "_help": "Dated scrub judgments: each entry allows exactly one finding id (a content-derived hash — the secret itself is never stored). Added via `baseline log/scrub --allow <id> --allow-reason \"...\"`.",
+  "entries": [
+    {
+      "id": "scrub-0efdc1bfb245",
+      "reason": "test fixture: test/records/run.mjs plants secret-shaped strings on purpose to exercise the scrubber; REC-02 now scans every tracked file (PLAN §4 retarget)",
+      "date": "2026-08-25"
+    },
+    {
+      "id": "scrub-07e32cf77efc",
+      "reason": "test fixture: test/records/run.mjs plants secret-shaped strings on purpose to exercise the scrubber; REC-02 now scans every tracked file (PLAN §4 retarget)",
+      "date": "2026-08-25"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "REC-02",
+      "id": "REC-02-landed-records-scrub-clean",
       "title": "Landed records are scrub-clean",
       "category": "records",
       "severity": "warn",
@@ -23,12 +23,12 @@
       "check": {
         "kind": "records-scrub",
         "globs": [
-          "records/**"
+          "**"
         ]
       }
     },
     {
-      "id": "REC-05",
+      "id": "REC-05-push-time-secret-gate",
       "title": "Records are covered by a push-time secret gate",
       "category": "records",
       "severity": "warn",
@@ -51,7 +51,7 @@
         "when": {
           "kind": "any-file",
           "globs": [
-            "records/**"
+            "**"
           ],
           "tracked_only": true
         },

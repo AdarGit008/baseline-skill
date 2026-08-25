@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "BUILD-01",
+      "id": "BUILD-01-dependency-manifest-present",
       "title": "Dependency manifest present",
       "category": "build",
       "severity": "blocker",
@@ -36,7 +36,7 @@
       }
     },
     {
-      "id": "BUILD-02",
+      "id": "BUILD-02-lockfile-committed",
       "title": "Lockfile committed",
       "category": "build",
       "severity": "warn",
@@ -73,7 +73,7 @@
       }
     },
     {
-      "id": "BUILD-03",
+      "id": "BUILD-03-ci-workflow-present",
       "title": "CI workflow present",
       "category": "build",
       "severity": "blocker",
@@ -107,7 +107,7 @@
       }
     },
     {
-      "id": "BUILD-04",
+      "id": "BUILD-04-env-template-present",
       "title": "Env/secret template present",
       "category": "build",
       "severity": "warn",
@@ -139,7 +139,7 @@
       }
     },
     {
-      "id": "BUILD-05",
+      "id": "BUILD-05-task-1-passes-clean",
       "title": "Task 1 passes on a clean checkout",
       "category": "build",
       "severity": "blocker",
@@ -167,7 +167,7 @@
       }
     },
     {
-      "id": "BUILD-06",
+      "id": "BUILD-06-baseline-gate-in-ci",
       "title": "Baseline gate wired into CI",
       "category": "build",
       "severity": "warn",
@@ -201,7 +201,7 @@
       }
     },
     {
-      "id": "BUILD-07",
+      "id": "BUILD-07-single-bootstrap-entrypoint",
       "title": "A single documented bootstrap entrypoint exists",
       "category": "build",
       "severity": "warn",
@@ -244,7 +244,7 @@
       }
     },
     {
-      "id": "BUILD-08",
+      "id": "BUILD-08-task-commands-declared",
       "title": "Standard task commands are declared machine-readably",
       "category": "build",
       "severity": "warn",
@@ -304,11 +304,12 @@
       }
     },
     {
-      "id": "BUILD-09",
+      "id": "BUILD-09-bootstrap-is-idempotent",
       "title": "Bootstrap is idempotent (safe to re-run)",
       "category": "build",
       "severity": "warn",
       "profile": "advanced",
+      "pack": "advanced",
       "source": "https://blog.thoughtbot.com/bin-setup",
       "lesson": "SW-1 re-runnable setup",
       "applies_to": [
@@ -335,7 +336,7 @@
       }
     },
     {
-      "id": "BUILD-10",
+      "id": "BUILD-10-ci-runs-tests",
       "title": "CI actually invokes the test suite",
       "category": "build",
       "severity": "warn",

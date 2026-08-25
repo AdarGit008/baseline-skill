@@ -31,10 +31,14 @@ declaration naming a record that does not exist is a finding whatever the verb.
 
 THE NUMBER is this record's identity — every citation, and every field above,
 resolves to it. Two files carrying one number is CTX-14, a blocker: a citation to
-ADR-0027 arrives at whichever file sorted first. In a multi-lane repo, check the
-number is free across the OTHER live lanes before you write it (FLOW-09 does this
-on the branch; `baseline orient` lists the lanes) — two lanes can author the same
-number under different filenames and merge with no git conflict at all.
+ADR-0027 arrives at whichever file sorted first. When several branches author
+decisions in parallel, check the number is free on the other open branches before
+you write it — two branches can author the same number under different filenames
+and merge with no git conflict at all; CTX-14 catches it only once both land.
+
+These rules belong to the `decisions` pack: they run when `decision_globs` is set
+explicitly (and non-empty) in baseline.config.json, or the pack is named in
+profiles / packs / --profile.
 -->
 
 ## Context

@@ -4,18 +4,18 @@
 <text x="36" y="66" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="34" font-weight="bold" fill="#E7E9EE" text-anchor="start">How /baseline decides</text>
 <text x="36" y="98" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="17" font-weight="normal" fill="#A6ACB8" text-anchor="start">five layers turn a repository into an exit code — each layer knows less than the one above it</text>
 <rect x="844" y="36" width="560" height="40" rx="20" fill="none" stroke="#7B818C" stroke-width="2"/>
-<text x="1124" y="61" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">node check.mjs --repo &lt;path&gt;  →  73 rules  →  scorecard  →  exit code</text>
+<text x="1124" y="61" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">node check.mjs --repo &lt;path&gt;  →  rules.json  →  scorecard  →  exit code</text>
 <g transform="rotate(-90 20 520)"><text x="20" y="520" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#7B818C" text-anchor="middle">↓ questions go down · facts come up ↑</text></g>
 <rect x="36" y="136" width="850" height="112" rx="8" fill="#1C2044" stroke="#8F94F2" stroke-width="3"/>
 <circle cx="78" cy="192" r="21" fill="none" stroke="#8F94F2" stroke-width="2.8"/>
 <text x="78" y="199" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#C9CCFF" text-anchor="middle">L1</text>
 <text x="114" y="178" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#C9CCFF" text-anchor="start">THE CLI</text>
-<text x="114" y="202" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#C9CCFF" text-anchor="start" opacity="0.85">check.mjs · 65 lines</text>
+<text x="114" y="202" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#C9CCFF" text-anchor="start" opacity="0.85">check.mjs · 71 lines</text>
 <text x="114" y="224" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#C9CCFF" text-anchor="start" opacity="0.8">the only entry point</text>
 <text x="388" y="162" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#8F94F2" text-anchor="start" letter-spacing="2">KNOWS</text>
-<text x="388" y="184" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">flags: --repo · --json · --no-exec</text>
-<text x="388" y="203.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">loads rules.json — the 73-rule</text>
-<text x="388" y="223" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">standard, as pure data</text>
+<text x="388" y="184" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">flags: --repo · --json · --no-exec ·</text>
+<text x="388" y="203.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">--profile &lt;pack&gt; · loads rules.json —</text>
+<text x="388" y="223" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">the rule set, as pure data</text>
 <rect x="674" y="150" width="196" height="84" rx="6" fill="#3B3417" stroke="#C7AA3A" stroke-width="2"/>
 <text x="688" y="174" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11.5" font-weight="bold" fill="#EFDF9C" text-anchor="start">never knows:</text>
 <text x="688" y="194" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">what any rule means</text>
@@ -26,12 +26,12 @@
 <circle cx="78" cy="350" r="21" fill="none" stroke="#C77DFF" stroke-width="2.8"/>
 <text x="78" y="357" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#E4CBFF" text-anchor="middle">L2</text>
 <text x="114" y="336" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#E4CBFF" text-anchor="start">THE JUDGE</text>
-<text x="114" y="360" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#E4CBFF" text-anchor="start" opacity="0.85">engine.mjs · 53 lines</text>
+<text x="114" y="360" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#E4CBFF" text-anchor="start" opacity="0.85">engine.mjs · 78 lines</text>
 <text x="114" y="382" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#E4CBFF" text-anchor="start" opacity="0.8">gate → evaluate → tag</text>
 <text x="388" y="320" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#C77DFF" text-anchor="start" letter-spacing="2">KNOWS</text>
-<text x="388" y="342" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">5 gates: type? profile? opt-out?</text>
-<text x="388" y="361.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">posture? branch? → SKIP, never</text>
-<text x="388" y="381" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">punished · tag ladder + severity</text>
+<text x="388" y="342" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">gates: context · pack · type/tool ·</text>
+<text x="388" y="361.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">posture · forge — a miss is no row,</text>
+<text x="388" y="381" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">never a penalty · tag ladder + severity</text>
 <rect x="674" y="308" width="196" height="84" rx="6" fill="#3B3417" stroke="#C7AA3A" stroke-width="2"/>
 <text x="688" y="332" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11.5" font-weight="bold" fill="#EFDF9C" text-anchor="start">never knows:</text>
 <text x="688" y="352" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">how anything is checked</text>
@@ -42,12 +42,12 @@
 <circle cx="78" cy="508" r="21" fill="none" stroke="#F0A32F" stroke-width="2.8"/>
 <text x="78" y="515" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#FFD98A" text-anchor="middle">L3</text>
 <text x="114" y="494" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#FFD98A" text-anchor="start">THE LAB</text>
-<text x="114" y="518" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.85">evaluators.mjs · 27 kinds</text>
-<text x="114" y="540" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.8">facts only</text>
+<text x="114" y="518" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.85">evaluators.mjs · 649 lines</text>
+<text x="114" y="540" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.8">facts only, one function per kind</text>
 <text x="388" y="478" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#F0A32F" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="500" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">how to verify each claim: grep,</text>
-<text x="388" y="519.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">any-file, json-field, command,</text>
-<text x="388" y="539" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">signoff… (any-of &amp; implies recurse)</text>
+<text x="388" y="519.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">any-file, md-links, command,</text>
+<text x="388" y="539" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">dockerfile-digest… (any-of &amp; implies recurse)</text>
 <rect x="674" y="466" width="196" height="84" rx="6" fill="#3B3417" stroke="#C7AA3A" stroke-width="2"/>
 <text x="688" y="490" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11.5" font-weight="bold" fill="#EFDF9C" text-anchor="start">never knows:</text>
 <text x="688" y="510" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">severity, or what happens</text>
@@ -96,7 +96,7 @@
 <circle cx="955" cy="372" r="14" fill="#2B1A40" stroke="#C77DFF" stroke-width="2.6"/>
 <text x="955" y="377.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="bold" fill="#E4CBFF" text-anchor="middle">2</text>
 <text x="981" y="370" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14.5" font-weight="bold" fill="#E7E9EE" text-anchor="start">gates pass → try { evalCheck(check, rule) }</text>
-<text x="981" y="390" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A6ACB8" text-anchor="start">a crashing check degrades to SKIP — never a false FAIL</text>
+<text x="981" y="390" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A6ACB8" text-anchor="start">a crashing check degrades to n/a — never a false FAIL</text>
 <line x1="955" y1="386" x2="955" y2="488" stroke="#7B818C" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 6"/>
 <line x1="884.5" y1="508" x2="955" y2="502" stroke="#F0A32F" stroke-width="1.6" stroke-linecap="round"/>
 <circle cx="955" cy="502" r="14" fill="#38290F" stroke="#F0A32F" stroke-width="2.6"/>
@@ -125,7 +125,7 @@
 <line x1="982" y1="979" x2="1018" y2="979" stroke="#F26D6D" stroke-width="2.8" stroke-linecap="round"/><path d="M1018,979 L1008,974.5 L1008,983.5 Z" fill="#F26D6D"/>
 <rect x="1020" y="941" width="208" height="78" rx="8" fill="#161B22" stroke="#C77DFF" stroke-width="2.5"/>
 <text x="1038" y="971" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#E7E9EE" text-anchor="start">ladder: not null · not true ·</text>
-<text x="1038" y="989" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#E7E9EE" text-anchor="start">no sign-off → blocker ⇒ FAIL</text>
+<text x="1038" y="989" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#E7E9EE" text-anchor="start">severity blocker ⇒ FAIL</text>
 <text x="1038" y="1011" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#A6ACB8" text-anchor="start">the judge applies meaning</text>
 <line x1="1230" y1="979" x2="1266" y2="979" stroke="#F26D6D" stroke-width="2.8" stroke-linecap="round"/><path d="M1266,979 L1256,974.5 L1256,983.5 Z" fill="#F26D6D"/>
 <rect x="1268" y="941" width="136" height="78" rx="8" fill="#161B22" stroke="#F26D6D" stroke-width="3"/>
@@ -133,19 +133,19 @@
 <text x="1336" y="999" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#F26D6D" text-anchor="middle">CI goes red</text>
 <text x="36" y="927" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#E7E9EE" text-anchor="start">the tag ladder — meaning first, severity is consulted LAST</text>
 <rect x="36" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#9AA0AB" stroke-width="2.5"/>
-<text x="96" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#9AA0AB" text-anchor="middle">SKIP</text>
-<text x="96" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">couldn’t judge —</text>
-<text x="96" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">not held against you</text>
+<text x="96" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#9AA0AB" text-anchor="middle">no row</text>
+<text x="96" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">gate miss — not part</text>
+<text x="96" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">of this run at all</text>
 <line x1="158" y1="980" x2="168" y2="980" stroke="#7B818C" stroke-width="2" stroke-linecap="round"/><path d="M168,980 L161.6,977.1 L161.6,982.9 Z" fill="#7B818C"/>
-<rect x="169" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#4CC272" stroke-width="2.5"/>
-<text x="229" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#4CC272" text-anchor="middle">PASS</text>
-<text x="229" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">checked,</text>
-<text x="229" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">it’s fine</text>
+<rect x="169" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#6EA8FE" stroke-width="2.5"/>
+<text x="229" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#6EA8FE" text-anchor="middle">n/a</text>
+<text x="229" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">in scope, not evaluable —</text>
+<text x="229" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">--json only, never counted</text>
 <line x1="291" y1="980" x2="301" y2="980" stroke="#7B818C" stroke-width="2" stroke-linecap="round"/><path d="M301,980 L294.6,977.1 L294.6,982.9 Z" fill="#7B818C"/>
-<rect x="302" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#6EA8FE" stroke-width="2.5"/>
-<text x="362" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#6EA8FE" text-anchor="middle">SIGN-OFF</text>
-<text x="362" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">a human judged it,</text>
-<text x="362" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">dated + on record</text>
+<rect x="302" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#4CC272" stroke-width="2.5"/>
+<text x="362" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#4CC272" text-anchor="middle">PASS</text>
+<text x="362" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">checked,</text>
+<text x="362" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">it’s fine</text>
 <line x1="424" y1="980" x2="434" y2="980" stroke="#7B818C" stroke-width="2" stroke-linecap="round"/><path d="M434,980 L427.6,977.1 L427.6,982.9 Z" fill="#7B818C"/>
 <rect x="435" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#F0A32F" stroke-width="2.5"/>
 <text x="495" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#F0A32F" text-anchor="middle">WARN</text>
@@ -163,11 +163,11 @@
 <text x="60" y="1181" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">     verdicts — ANY drift fails the build</text>
 <text x="60" y="1203" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">self-score → baseline scores its own repo</text>
 <rect x="470" y="1075" width="400" height="150" rx="6" fill="#122B3D" stroke="#4C9BD8" stroke-width="2"/>
-<text x="494" y="1109" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#A8D5F5" text-anchor="start">next: V2 — “Lens &amp; Ledger”</text>
-<text x="494" y="1137" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">layer 4, THE SENSES, grows into three</text>
-<text x="494" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">ground-truth planes: TREE · HISTORY · FORGE —</text>
-<text x="494" y="1181" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">status derived on demand, never hand-written</text>
-<text x="494" y="1203" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">→ docs/v2/PLAN.md</text>
+<text x="494" y="1109" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#A8D5F5" text-anchor="start">v3 — enabler, not enforcer</text>
+<text x="494" y="1137" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">always-on blockers fail CI; packs switch on</text>
+<text x="494" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">explicitly; plugins (tdd-pi · graphify · okf-rag)</text>
+<text x="494" y="1181" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">are suggested — baseline reads their metadata only</text>
+<text x="494" y="1203" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">→ docs/v3/PLAN.md</text>
 <text x="1404" y="1171" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7B818C" text-anchor="end">drawn from the code on main — regenerate:</text>
 <text x="1404" y="1191" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7B818C" text-anchor="end">node docs/assets/gen-evaluate-stack.mjs</text>
 <text x="1404" y="1211" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7B818C" text-anchor="end">more: REFERENCE.md · GLOSSARY.md</text>

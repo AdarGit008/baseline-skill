@@ -1,14 +1,28 @@
 #!/usr/bin/env node
-// RED — PLAN.md §2 "Rule ids carry three parts": V5, V6, V7.
+// RED — PLAN.md §2 "Rule ids carry three parts": V5, V6, V7 — as amended by §11.
 //
 // Pure data assertions over rules.json + rules/*.json. No CLI, no fixture, no clock.
 // Today every id is the two-part `CATEGORY-NN`, so V5 and V6 fail on the whole set;
 // V7 is the compatibility half and is asserted against the real v2.5.0 tag, not a
-// hand-copied list.
-import { harness, loadRuleSet, loadRuleSetAt, isDeleted, ID_RE, PREFIX_OF, SLUG_OF, cleanup } from './_lib.mjs'
+// hand-copied list. §11 (D8, D11) changes V7's census in two ways: six more v2 ids are
+// deleted (REC-06 and the five sign-off rules), and the three PLUG-0N ids are the ONLY
+// prefixes allowed to be new since the tag.
+import * as L from './_lib.mjs'
+import { harness, loadRuleSet, loadRuleSetAt, isDeleted, ID_RE, PREFIX_OF, SLUG_OF, SIGNOFF_FIVE, PACK_OF, cleanup } from './_lib.mjs'
 
 const { ok, done } = harness('ids')
 const { rules } = loadRuleSet()
+
+// §11 D11 — the six ids deleted in the second round. _lib.mjs's DELETED_IDS is being
+// widened to carry them; until it is, the union below keeps this file's census honest.
+const D11_DELETED = ['REC-06', ...SIGNOFF_FIVE]
+const deleted = (id) => isDeleted(id) || (L.DELETED_IDS || []).includes(id) || D11_DELETED.includes(id)
+// §11 D8 — the three plugin rules, the only ids born after v2.5.0.
+const PLUG = Array.isArray(L.PLUG_IDS) && L.PLUG_IDS.length ? L.PLUG_IDS : ['PLUG-01', 'PLUG-02', 'PLUG-03']
+// The v2.5.0 tag lags the pre-v3 tree by two SURVIVING rules (#63/#64 landed untagged).
+// They are not "new in v3": the plan's own §5 pack table names them, and that is asserted
+// below so this literal cannot drift away from the plan.
+const UNRELEASED_AT_V25 = ['CTX-13', 'CTX-14']
 
 // ---------- V5: every rule id matches ^[A-Z]+-\d{2}-[a-z0-9]+(-[a-z0-9]+)*$ ----------
 {
@@ -43,23 +57,42 @@ const { rules } = loadRuleSet()
   ok(!!v25, `V7 · the v2.5.0 tag is readable as the comparison baseline (${v25 ? 'ok' : 'git show v2.5.0 failed'})`)
   if (v25) {
     const oldIds = v25.rules.map(r => r.id)
-    const survivors = oldIds.filter(id => !isDeleted(id))
+    const survivors = oldIds.filter(id => !deleted(id))
     const nowPrefixes = new Set(rules.map(r => PREFIX_OF(r.id)))
 
+    // (i) every v2.5.0 id that §3 + §11 do not delete still resolves
     const missing = survivors.filter(p => !nowPrefixes.has(p))
     ok(missing.length === 0,
-      `V7 · every v2.5.0 survivor's CATEGORY-NN prefix still resolves (${missing.length} lost; first: ${missing.slice(0, 5).join(', ') || '—'})`)
+      `V7 · every v2.5.0 survivor's CATEGORY-NN prefix still resolves (${missing.length} lost of ${survivors.length}; first: ${missing.slice(0, 5).join(', ') || '—'})`)
+    // the census must actually be narrower than the tag: §3 drops 15 and §11 drops 6 more
+    const dropped = oldIds.filter(deleted)
+    ok(dropped.length === oldIds.length - survivors.length && D11_DELETED.every(id => dropped.includes(id)),
+      `V7 · the census treats §11's six (${D11_DELETED.join(' ')}) as deleted, not as survivors (${dropped.length} of ${oldIds.length} v2.5.0 ids dropped)`)
 
     // "resolvable" has to mean resolvable to the SAME rule: a survivor may gain a slug but
-    // may not quietly change category underneath a stable number. (New rules are allowed —
-    // v2.5.0 is a tag, not a freeze — so an unrecognised prefix is not an error here; V11
-    // pins the total instead.)
+    // may not quietly change category underneath a stable number.
     const catAt = new Map(v25.rules.map(r => [r.id, r.category]))
     const drifted = rules
       .filter(r => catAt.has(PREFIX_OF(r.id)) && catAt.get(PREFIX_OF(r.id)) !== r.category)
       .map(r => `${r.id}: ${catAt.get(PREFIX_OF(r.id))} -> ${r.category}`)
     ok(drifted.length === 0,
       `V7 · a v2 id resolves to the same rule it always named (${drifted.slice(0, 3).join('; ') || '—'})`)
+
+    // (ii) the only prefixes absent from v2.5.0 are the three PLUG-0N ids (§11 D8). A new
+    // rule under an old category would be a v2 id that v2 never issued — a resolvability
+    // hole — so v3 adds rules ONLY under the new PLUG family.
+    ok(UNRELEASED_AT_V25.every(id => PACK_OF.has(id)),
+      `V7 · the untagged pre-v3 rules this file allows are ones the plan's §5 table names (${UNRELEASED_AT_V25.join(', ')})`)
+    ok(UNRELEASED_AT_V25.every(id => nowPrefixes.has(id)),
+      `V7 · and each of them is still in the tree (else the allowance is stale)`)
+    const permitted = new Set([...PLUG, ...UNRELEASED_AT_V25])
+    // (a deleted prefix still in the tree — FLOW-08/09 today — is V8/V9's finding, not V7's)
+    const born = [...nowPrefixes].filter(p => p && !catAt.has(p) && !deleted(p))
+    const rogue = born.filter(p => !permitted.has(p))
+    ok(rogue.length === 0,
+      `V7 · PLUG-01..03 are the only prefixes absent from v2.5.0 (rogue: ${rogue.join(', ') || '—'})`)
+    ok(PLUG.every(p => !catAt.has(p)),
+      `V7 · and the PLUG prefixes are genuinely new — v2.5.0 never issued them (${PLUG.join(' ')})`)
 
     // the prefix must be a prefix, not a coincidence: id === prefix + '-' + slug
     const malformed = rules.filter(r => PREFIX_OF(r.id) && r.id !== `${PREFIX_OF(r.id)}-${SLUG_OF(r.id)}`).map(r => r.id)

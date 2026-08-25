@@ -15,30 +15,40 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 
-// area -> the PLAN.md invariants it owns. The union must be V1..V37, and the runner
-// checks that itself: a suite added without registering its invariants is a silent gap.
+// area -> the PLAN.md invariants it owns. The union must be every LIVE invariant, V1..V42
+// minus the four §11 withdrew, and the runner checks that itself: a suite added without
+// registering its invariants is a silent gap.
 const AREAS = [
   ['ids', 'PLAN §2 — rule ids carry three parts', [5, 6, 7]],
   ['deletions', 'PLAN §3 — delete 15 rules, and their machinery', [8, 9, 10, 11, 12]],
-  ['retarget', 'PLAN §4 — retarget three REC rules, delete the ledger', [13, 14]],
+  ['retarget', 'PLAN §4 — retarget three REC rules, delete the ledger', [13]],
   ['packs', 'PLAN §5 — five opt-in packs', [15, 16]],
   ['scope', 'PLAN §6 — derive the scope from the repo', [17, 18, 19, 20]],
-  ['seams', 'PLAN §1 + §7 — the four-part shape and the three seams', [1, 2, 3, 4, 21, 22, 23, 24, 25, 26, 27, 28]],
+  ['seams', 'PLAN §1 + §7 — the four-part shape and the three seams', [1, 2, 3, 4, 24, 25, 26, 27, 28]],
   ['surface', 'PLAN §8 + §9 — orient v2, the SKILL.md diet, the drift', [29, 30, 31, 32, 33]],
   ['decisions', 'PLAN §10 — the five decisions of 2026-08-25', [34, 35, 36, 37]],
+  ['plugins', 'PLAN §11 — the plugin boundary', [38, 39, 40, 41, 42]],
 ]
 
-const TOTAL_INVARIANTS = 37
+// PLAN §11 "Superseded": V14 (REC-06 freshness), V21, V22, V23 (tdd.json as evidence) are
+// withdrawn — D7 forbids the artifact reading they required. They are not expected to be
+// owned, never counted as a hole, and a file that still asserts them is not registering
+// them here. The live total is derived from the highest id and this list, never typed in.
+const WITHDRAWN = [14, 21, 22, 23]
+const MAX_INVARIANT = 42
+const TOTAL_INVARIANTS = MAX_INVARIANT - WITHDRAWN.length
 const argv = process.argv.slice(2)
 const GREEN = argv.includes('--green')
 const only = argv.filter(a => !a.startsWith('-'))
 const selected = only.length ? AREAS.filter(([n]) => only.includes(n)) : AREAS
 
-// coverage self-check: V1..V37, each owned exactly once
+// coverage self-check: every live invariant in V1..V42, each owned exactly once
 {
   const owned = AREAS.flatMap(([, , vs]) => vs).sort((a, b) => a - b)
   const missing = []
-  for (let v = 1; v <= TOTAL_INVARIANTS; v++) if (!owned.includes(v)) missing.push(`V${v}`)
+  for (let v = 1; v <= MAX_INVARIANT; v++) if (!WITHDRAWN.includes(v) && !owned.includes(v)) missing.push(`V${v}`)
+  const dead = owned.filter(v => WITHDRAWN.includes(v)).map(v => `V${v}`)
+  if (dead.length) { console.error(`red suite coverage is broken — withdrawn (PLAN §11) but still registered: ${dead.join(',')}`); process.exit(2) }
   const dupes = owned.filter((v, i) => owned.indexOf(v) !== i).map(v => `V${v}`)
   if (missing.length || dupes.length) {
     console.error(`red suite coverage is broken — unowned: ${missing.join(',') || 'none'}; owned twice: ${dupes.join(',') || 'none'}`)

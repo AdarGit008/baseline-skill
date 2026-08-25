@@ -4,10 +4,13 @@
 //
 // V30's measure is the plan's own (bytes/4 < 800). V33's comparison values are derived from
 // the rule set on every run — the literal in a shipped file is the thing under test, so the
-// number it is compared against may never itself be a literal.
+// number it is compared against may never itself be a literal. §11 D11 states the one
+// number the plan itself commits to (76); the derivation is compared against it exactly
+// once, so the docs are measured against the rule set and the rule set against the plan.
 import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
+import * as lib from './_lib.mjs'
 import {
   harness, loadRuleSet, ROOT, mkrepo, cli, orientJson, git, writeAll, mktmp,
   shippedPaths, ALWAYS_ON_BLOCKERS, CLEAN_NODE, CLEAN_ENV, GITENV, cleanup,
@@ -15,6 +18,9 @@ import {
 
 const { ok, done } = harness('surface')
 const { rules } = loadRuleSet()
+
+// §11 D11: 79 − 6 + 3. _lib may not export it yet; the fallback is §11's own number.
+const EXPECTED_RULE_COUNT = lib.EXPECTED_RULE_COUNT ?? 76
 
 // ---------- V29: orient emits at most 5 lines on a clean repo and always exits 0 ----------
 {
@@ -24,14 +30,21 @@ const { rules } = loadRuleSet()
 
   const worlds = [
     ['bare', clean],
-    ['with a fresh graph + tdd DB', (() => {
-      const d = mkrepo('v29-full', { ...CLEAN_NODE(), 'tdd.json': JSON.stringify({ schema: 'tdd/1', source_commit: 'x', tests: [{ id: 'T-001', state: 'red', covers: ['TEST-03'] }] }, null, 2) + '\n' })
-      writeAll(d, { 'graphify-out/GRAPH_REPORT.md': `Built from commit: ${git(d, 'rev-parse', 'HEAD')}\n` })
+    // D7 (§11): the artifacts are metadata to baseline — exists, file-or-dir, mtime,
+    // gitignore state. Their bodies are deliberately inert: nothing here may be read.
+    ['with a graph and a tdd.json present', (() => {
+      const d = mkrepo('v29-full', { ...CLEAN_NODE(), 'tdd.json': '{"schema":"tdd/1"}\n' })
+      writeAll(d, { 'graphify-out/GRAPH_REPORT.md': '# graph\n' })
       return d
     })()],
-    ['with a stale graph', (() => {
-      const d = mkrepo('v29-stale', CLEAN_NODE())
-      writeAll(d, { 'graphify-out/GRAPH_REPORT.md': `Built from commit: ${'0'.repeat(40)}\n` })
+    ['with an old graph (mtime only)', (() => {
+      const d = mkrepo('v29-old', CLEAN_NODE())
+      writeAll(d, { 'graphify-out/GRAPH_REPORT.md': '# graph\n' })
+      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      try {
+        fs.utimesSync(path.join(d, 'graphify-out', 'GRAPH_REPORT.md'), threeDaysAgo, threeDaysAgo)
+        fs.utimesSync(path.join(d, 'graphify-out'), threeDaysAgo, threeDaysAgo)
+      } catch {}
       return d
     })()],
   ]
@@ -69,6 +82,12 @@ const { rules } = loadRuleSet()
   }
   ok(/get_knowledge/.test(text), 'V30 · SKILL.md points the rest at get_knowledge')
   for (const mode of ['orient', 'score', 'fix']) ok(new RegExp(`\\b${mode}\\b`).test(text), `V30 · SKILL.md keeps the '${mode}' mode`)
+
+  // D6 (§11): baseline is scaffolding and the three plugins are suggestions, never
+  // requirements. SKILL.md is where an agent learns what to suggest, so the three names
+  // and the word for them survive the diet.
+  for (const plugin of ['tdd-pi', 'graphify', 'okf-rag']) ok(text.includes(plugin), `V30 · SKILL.md suggests the ${plugin} plugin by name`)
+  ok(/\bplugins\b/.test(text), 'V30 · SKILL.md calls them plugins')
 }
 
 // ---------- V31: install.sh does not wire the SessionStart hook unless asked ----------
@@ -131,7 +150,8 @@ const { rules } = loadRuleSet()
     return s.size
   })()
   const TOP_KIND_COUNT = new Set(rules.map(r => r.check?.kind).filter(Boolean)).size
-  const REGISTERED_KINDS = await (async () => { try { const m = await import(path.join(ROOT, 'src', 'evaluators.mjs')); return m.CHECK_KINDS.size } catch { return null } })()
+  const REGISTRY = await (async () => { try { const m = await import(path.join(ROOT, 'src', 'evaluators.mjs')); return m.CHECK_KINDS } catch { return null } })()
+  const REGISTERED_KINDS = REGISTRY ? REGISTRY.size : null
   const BLOCKER_COUNT = rules.filter(r => r.severity === 'blocker' && !r.pack).length
   // A doc may legitimately quote a SUB-count (per pack, per category, per severity), so a
   // "N rules" literal is compared against the set of numbers the rule set can actually
@@ -191,6 +211,17 @@ const { rules } = loadRuleSet()
   // ambiguity, which is the actual defect under V33.
   ok(REGISTERED_KINDS !== null && REGISTERED_KINDS === KIND_COUNT && KIND_COUNT === TOP_KIND_COUNT,
     `V33 · the check-kind count is unambiguous: registry ${REGISTERED_KINDS} = used-anywhere ${KIND_COUNT} = used-as-a-rule's-own-check ${TOP_KIND_COUNT}`)
+
+  // D11 (§11): the rule set is 76 — the plan's one committed number, compared against the
+  // derivation here and nowhere else, so every doc literal above is measured against a
+  // rule set that is itself measured against the plan. The number is not a literal in
+  // THIS file (it comes from _lib, with §11's own value as the fallback).
+  ok(RULE_COUNT === EXPECTED_RULE_COUNT,
+    `V33 · the rule set derives to §11's ${EXPECTED_RULE_COUNT} rules (derived ${RULE_COUNT})`)
+  // D11: the two kinds whose rules are deleted leave the registry with them
+  for (const gone of ['signoff', 'vendored-lock']) {
+    ok(REGISTRY !== null && !REGISTRY.has(gone), `V33 · CHECK_KINDS no longer registers '${gone}' (D11; registry ${REGISTRY === null ? 'unreadable' : REGISTRY.has(gone) ? 'still has it' : 'clean'})`)
+  }
 
   // the alt-text of the shipped diagram is prose too — it drifted once already (§9)
   const svgs = tracked.filter(f => /docs\/assets\/.*\.svg$/.test(f))

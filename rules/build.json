@@ -308,7 +308,6 @@
       "title": "Bootstrap is idempotent (safe to re-run)",
       "category": "build",
       "severity": "warn",
-      "profile": "advanced",
       "pack": "advanced",
       "source": "https://blog.thoughtbot.com/bin-setup",
       "lesson": "SW-1 re-runnable setup",

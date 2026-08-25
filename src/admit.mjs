@@ -10,7 +10,7 @@
 //       admission path, whose ruled shape precludes lane records);
 //   (c) required-source loss on admit's GATING facts (target resolution → exit 2,
 //       nothing evaluated; ancestry provability and DESC-03's range diff → refusal) —
-//       a warn rule's unreachable source SKIPs labeled, exactly as in check:
+//       a warn rule's unreachable source resolves n/a (state + reason), exactly as in check:
 //       advisory findings never acquire blocker-grade denial power via
 //       unavailability. Relief for (c) alone: an unexpired break-glass JDG with
 //       gate:admit read FROM THE TARGET REF (FS5 — never from the incoming branch).
@@ -37,7 +37,7 @@ import { resolveConfig } from './config.mjs'
 import { makeEvalCheck } from './evaluators.mjs'
 import { makeLaneWorld } from './facts/index.mjs'
 import { runRules } from './engine.mjs'
-import { CATS, makeColor, isBlocking } from './report.mjs'
+import { makeColor, isBlocking, rowJson, summarize, humanRows } from './report.mjs'
 import { DESCRIPTOR_FILE, DESCRIPTOR_SCHEMA } from './descriptor.mjs'
 import { validateAgainst } from './validate.mjs'
 import { loadJudgmentsAt, selectBreakGlass, JUDGMENTS_DIR, JDG_PARSE_CAP } from './jdg.mjs'
@@ -245,42 +245,37 @@ export function runAdmit(argv) {
   const blockerFails = jdgOnly ? [] : results.filter(isBlocking)
   for (const x of blockerFails) refusals.push(`${x.r.id}${x.tag === 'DIVERGED' ? ' (DIVERGED)' : ''}: ${x.detail}`)
   const refused = refusals.length > 0
-  const n = t => results.filter(x => x.tag === t).length
-  const summary = { refusals: refusals.length, blockers: blockerFails.length, pass: n('PASS'), warn: n('WARN'), diverged: n('DIVERGED'), skip: n('SKIP'), total: results.length }
+  // D4: the same row/summary shape as check — n/a rows ride --json with state+reason and
+  // count nowhere; `blockers` is admit's own leg (b) (zero under the JDG-only path)
+  const summary = { refusals: refusals.length, ...summarize(results), blockers: blockerFails.length }
 
   if (JSON_OUT) {
     console.log(JSON.stringify({
       command: 'admit', repo: REPO, head: HEADSHA, branch: BRANCH,
       target: { ref: targetRef, sha: targetTip, source: explicit ? 'local-ref (explicit --target)' : fetchNote ? 'local-ref (fetch failed)' : 'fetched' },
       staleness: { ancestor: anc === 0, stale, indeterminate, shallow },
-      jdgOnly, jdgRelief: jdgOnly ? jdgReliefs[0].record.id : null, breakGlass, verdict: refused ? 'REFUSED' : 'ADMITTED', refusals, provenance,
-      results: results.map(x => ({ id: x.r.id, category: x.r.category, severity: x.r.severity, tag: x.tag, detail: x.detail })),
+      // V28: no get_knowledge result is read at the merge point either — stated, like check does
+      jdgOnly, jdgRelief: jdgOnly ? jdgReliefs[0].record.id : null, breakGlass, verdict: refused ? 'REFUSED' : 'ADMITTED', refusals, provenance: { ...provenance, knowledge: 'not-consulted' },
+      results: results.map(rowJson),
       summary, version: RULES.version, exit: refused ? 1 : 0,
     }, null, 2))
     return refused ? 1 : 0
   }
 
   const S = sanitizeTTY
-  const TAG = { PASS: color(32, 'PASS'), FAIL: color(31, 'FAIL'), WARN: color(33, 'WARN'), DIVERGED: color(31, 'DIVERGED'), SKIP: color(90, 'SKIP') }
-  const TAGW = 8
-  const tagCell = t => TAG[t] + ' '.repeat(Math.max(1, TAGW - t.length + 1))
   console.log(`\n  baseline admit v${RULES.version}  ·  ${path.basename(REPO)}  ·  HEAD ${HEADSHA.slice(0, 7)}${BRANCH ? ` (${S(BRANCH)})` : ''} → ${S(targetRef)} @ ${targetTip.slice(0, 7)}\n`)
   if (fetchNote) console.log(`  ⚠ ${fetchNote}\n`)
   if (jdgOnly) console.log(`  ◇ JDG-only admission path: the range is judgment records alone (${jdgReliefs[0].record.id}) — forge not consulted\n`)
   console.log(anc === 0 ? `  ✓ up to date: ${S(targetRef)} is an ancestor of HEAD` : breakGlass ? color(33, `  ⚠ admitted under break-glass ${breakGlass.id} from ${S(targetRef)} (review by ${breakGlass.review_by}) — ${S(breakGlass.covered)}`) : color(31, `  ✗ not admissible as-is (refusals below)`))
   console.log(color(90, `  ${provenanceLine({ digest: provenance.digest, ...provInputs })}`))
   console.log('')
-  for (const cat of Object.keys(CATS)) {
-    const rows = results.filter(x => x.r.category === cat); if (!rows.length) continue
-    console.log('  ' + color(1, CATS[cat]))
-    for (const x of rows) console.log(`    ${tagCell(x.tag)} ${x.r.id.padEnd(9)} ${S(x.r.title)}\n            ${color(90, '↳ ' + S(x.detail))}`)
-    console.log('')
-  }
+  // the rows read exactly as check's (one line per evaluated rule; n/a rows unrendered, D4)
+  for (const line of humanRows(results, color)) console.log(line)
   // one terse recap per refusal at the BOTTOM — where the eye lands — never a verbatim
   // duplicate of a FAIL row above (first clause, capped)
   for (const r of refusals) { const first = r.split(' — ')[0]; console.log(color(31, `  ✗ ${S(first.length > 140 ? first.slice(0, 137) + '…' : first)}`)) }
   console.log(refused
     ? color(31, `\n  ✗ REFUSED — ${refusals.length} refusal(s) · ${summary.warn} warn · ${summary.diverged} diverged (details above)\n`)
-    : color(32, `\n  ✓ ADMITTED — HEAD ${HEADSHA.slice(0, 7)} vs ${S(targetRef)} @ ${targetTip.slice(0, 7)} · ${summary.pass} pass · ${summary.warn} warn · ${summary.diverged} diverged · ${summary.skip} n/a\n`))
+    : color(32, `\n  ✓ ADMITTED — HEAD ${HEADSHA.slice(0, 7)} vs ${S(targetRef)} @ ${targetTip.slice(0, 7)} · ${summary.pass} pass · ${summary.warn} warn · ${summary.diverged} diverged\n`))
   return refused ? 1 : 0
 }

@@ -219,7 +219,7 @@ function score(name) {
       let out
       try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: admit did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }
       const rules = {}
-      for (const r of out.results) rules[r.id] = { tag: r.tag, detail: normalizeDetail(r.detail, tmp) }
+      for (const r of out.results) rules[r.id] = r.tag ? { tag: r.tag, detail: normalizeDetail(r.detail, tmp) } : { state: r.state, reason: normalizeDetail(r.reason, tmp) }
       return {
         exitCode, command: 'admit', verdict: out.verdict, staleness: out.staleness,
         jdgOnly: out.jdgOnly, jdgRelief: out.jdgRelief ?? null, breakGlass: out.breakGlass ? { id: out.breakGlass.id } : null,
@@ -247,8 +247,8 @@ function score(name) {
     let out
     try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: checker did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }
     const rules = {}
-    for (const r of out.results) rules[r.id] = { tag: r.tag, detail: normalizeDetail(r.detail, tmp) }
-    return { exitCode, project_type: out.project_type, profiles: out.profiles.sort(), summary: out.summary, rules }
+    for (const r of out.results) rules[r.id] = r.tag ? { tag: r.tag, detail: normalizeDetail(r.detail, tmp) } : { state: r.state, reason: normalizeDetail(r.reason, tmp) }
+    return { exitCode, project_type: out.project_type, packs: (out.packs || out.profiles || []).slice().sort(), summary: out.summary, rules }
   } finally {
     for (const d of [tmp, ...extra]) fs.rmSync(d, { recursive: true, force: true }) // never leak a tree with materialized fake secrets
   }

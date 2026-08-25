@@ -177,7 +177,6 @@
       "title": "Code symbols/paths named in docs still resolve",
       "category": "context",
       "severity": "warn",
-      "profile": "advanced",
       "pack": "advanced",
       "applies_to": "all",
       "source": "https://www.writethedocs.org/",

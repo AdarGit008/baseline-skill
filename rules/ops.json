@@ -5,7 +5,6 @@
       "title": "Structured logging is wired in",
       "category": "ops",
       "severity": "warn",
-      "profile": "service",
       "pack": "service",
       "applies_to": [
         "service"
@@ -45,7 +44,6 @@
       "title": "A health/readiness endpoint exists",
       "category": "ops",
       "severity": "warn",
-      "profile": "service",
       "pack": "service",
       "applies_to": [
         "service"
@@ -84,7 +82,6 @@
       "title": "Graceful shutdown on SIGTERM",
       "category": "ops",
       "severity": "warn",
-      "profile": "service",
       "pack": "service",
       "applies_to": [
         "service"
@@ -123,7 +120,6 @@
       "title": "Outbound calls are time-bounded/guarded",
       "category": "ops",
       "severity": "warn",
-      "profile": "service",
       "pack": "service",
       "applies_to": [
         "service"
@@ -163,7 +159,6 @@
       "title": "An operational runbook exists",
       "category": "ops",
       "severity": "warn",
-      "profile": "service",
       "pack": "service",
       "applies_to": [
         "service"
@@ -199,7 +194,6 @@
       "title": "A service descriptor declares owner + lifecycle",
       "category": "ops",
       "severity": "warn",
-      "profile": "service",
       "pack": "service",
       "applies_to": [
         "service"

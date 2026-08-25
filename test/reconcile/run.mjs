@@ -419,6 +419,9 @@ console.log('\n# M7c — OPS-07: the reconcile cron is alive at the forge\n')
   // per-LINE (stripLineComment's contract) — a whole-file strip would truncate
   // everything after the first #, lose the run: line, and SKIP a wired cron
   commitSeed(w, '.github/workflows/baseline-reconcile.yml', 'on:\n  schedule:\n    - cron: "17 5 * * *"   # GitHub may auto-disable after 60d\njobs:\n  reconcile:\n    steps:\n      - run: node tools/baseline/baseline.mjs reconcile --repo .\n', 'wire the cron')
+  // OPS-07 lives in the service pack, and a pack is armed by explicit config ONLY (v3 D13):
+  // the descriptor's type: 'node' and detectType() never arm it — the fixture says so itself
+  commitSeed(w, 'baseline.config.json', JSON.stringify({ project_type: 'service' }, null, 2) + '\n', 'arm the service pack explicitly')
   pull(w)
   // no workflow-state replay fixture → SKIP, labeled, never guessed
   let r = recJson(w.clone, ['--dry-run'], ENV(w))

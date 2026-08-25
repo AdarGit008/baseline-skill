@@ -270,7 +270,6 @@
       "title": "A committed SBOM exists in a recognized format",
       "category": "security",
       "severity": "warn",
-      "profile": "advanced",
       "pack": "advanced",
       "applies_to": [
         "node",
@@ -308,7 +307,6 @@
       "title": "Static code-scanning is configured",
       "category": "security",
       "severity": "warn",
-      "profile": "advanced",
       "pack": "advanced",
       "applies_to": [
         "node",
@@ -344,7 +342,6 @@
       "title": "Release provenance/signing is present",
       "category": "security",
       "severity": "warn",
-      "profile": "advanced",
       "pack": "advanced",
       "applies_to": [
         "node",
@@ -466,7 +463,6 @@
       "title": "A dependency vulnerability scan runs in CI",
       "category": "security",
       "severity": "warn",
-      "profile": "advanced",
       "pack": "advanced",
       "applies_to": [
         "node",

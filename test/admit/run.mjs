@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // baseline admit — the M6a command contract, exercised against LOCAL bare origins
-// (no network, no forge; forge-dependent rules degrade to labeled SKIPs exactly as
+// (no network, no forge; forge-dependent rules degrade to labeled n/a rows exactly as
 // designed). Covers: the C35 staleness refusal in both directions, FS1 target-ref
 // descriptor reads (a branch cannot weaken the posture that judges it), DESC-03's
 // same-range judgment contract (subject = the ONE spelling), the JDG-only admission
@@ -53,7 +53,12 @@ const JDG = (id, over = {}) => JSON.stringify({
   subject: 'baseline.repo.json', reason: 'test judgment', review_by: '2099-12-31', ...over,
 }, null, 2) + '\n'
 
-// seed a bare origin + a working clone with main carrying the descriptor
+// seed a bare origin + a working clone with main carrying the descriptor. Under v3 D13 a
+// pack activates only by explicit config (no auto-arm from the tree, the descriptor, or a
+// default), so the fixtures list the descriptor pack the way a governed repo would — the
+// config rides the working tree (resolveConfig reads baseline.config.json from the checkout;
+// only the DESCRIPTOR is read at the target ref, FS1), and every lane here forks from main.
+const CONFIG = { profiles: ['descriptor'] }
 function mkworld(name, desc = BASE_DESC) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `admit-${name}-`)); tmps.push(dir)
   const bare = path.join(dir, 'origin.git')
@@ -61,6 +66,7 @@ function mkworld(name, desc = BASE_DESC) {
   const seed = path.join(dir, 'seed'); fs.mkdirSync(seed)
   git(seed, 'init', '-q', '-b', 'main')
   if (desc) fs.writeFileSync(path.join(seed, 'baseline.repo.json'), JSON.stringify(desc, null, 2) + '\n')
+  fs.writeFileSync(path.join(seed, 'baseline.config.json'), JSON.stringify(CONFIG, null, 2) + '\n')
   fs.writeFileSync(path.join(seed, 'README.md'), `# ${name}\n`)
   git(seed, 'add', '-A'); git(seed, 'commit', '-qm', 'seed')
   git(seed, 'remote', 'add', 'origin', bare)

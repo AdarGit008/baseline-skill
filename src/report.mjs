@@ -1,9 +1,16 @@
 // Scorecard rendering: human-readable per-category report or --json machine
 // output. Both return the process exit code (1 if any blocker FAILed).
+//
+// D4 (PLAN §10, V36): a result row is one of two things, never a third —
+//   · EVALUATED  { r, tag: PASS|FAIL|WARN|DIVERGED, detail }   — counted, rendered, exits
+//   · N/A        { r, state: 'n/a', reason }                   — --json only, no tag
+// "Didn't apply" and "passed" are different facts. A human reads only what was
+// evaluated (no SKIP row, no n/a tally, no HEAD=n/a); a machine reads both, and
+// summary.total counts the evaluated rows alone (scope.mjs V17).
 import path from 'node:path'
 import { sanitizeTTY } from './util.mjs'
 
-export const CATS = { build: 'Build & execution', quality: 'Code quality', test: 'Tests & invariants', security: 'Security & supply-chain', repro: 'Reproducibility', ops: 'Operability (service)', governance: 'Change governance', community: 'Community & onboarding', context: 'Context management', claims: 'Claims discipline', records: 'Records & ledger', desc: 'Repo descriptor' }
+export const CATS = { build: 'Build & execution', quality: 'Code quality', test: 'Tests & invariants', security: 'Security & supply-chain', repro: 'Reproducibility', ops: 'Operability (service)', governance: 'Change governance', community: 'Community & onboarding', context: 'Context management', claims: 'Claims discipline', records: 'Records & ledger', desc: 'Repo descriptor', plugins: 'Plugins' }
 
 export function makeColor(JSON_OUT) {
   return (c, s) => (process.stdout.isTTY && !JSON_OUT) ? `\x1b[${c}m${s}\x1b[0m` : s
@@ -14,29 +21,93 @@ export function makeColor(JSON_OUT) {
 // One predicate, every counting seam (both reports here, admit's leg (b)).
 export const isBlocking = x => x.r.severity === 'blocker' && (x.tag === 'FAIL' || x.tag === 'DIVERGED')
 
+// The D4 row predicate, ONE home for every seam that counts or renders results (check,
+// admit, reconcile). An n/a row carries `state` and no tag; a tagless row is n/a by
+// construction. A legacy SKIP tag is read as n/a too, so the output shape holds while
+// the engine's gates finish moving to the no-row / state:'n/a' contract.
+export const isNA = x => x.state === 'n/a' || x.tag == null || x.tag === 'SKIP'
+export const evaluated = results => results.filter(x => !isNA(x))
+
+// the --json row: identity + (tag, detail) for an evaluated rule, (state, reason) for an
+// n/a one. `pack` names the opt-in pack the rule belongs to (null = always-on); the
+// rule-side `profile` key is retired (§11 D13). Row-level extras a family attaches
+// (PLUG's `log`, a `fix`) ride through when present, never as empty keys.
+export const rowJson = x => {
+  const base = { id: x.r.id, category: x.r.category, severity: x.r.severity, pack: x.r.pack ?? null }
+  if (isNA(x)) return { ...base, state: 'n/a', reason: String(x.reason || x.detail || 'not applicable') }
+  const extra = {}
+  for (const k of ['log', 'fix']) if (x[k] != null) extra[k] = x[k]
+  return { ...base, tag: x.tag, detail: x.detail, ...extra }
+}
+
+// the shared summary: every key counts evaluated rows only; no skip, no signoff
+export function summarize(results) {
+  const ev = evaluated(results)
+  const n = t => ev.filter(x => x.tag === t).length
+  return { blockers: results.filter(isBlocking).length, pass: n('PASS'), warn: n('WARN'), fail: n('FAIL'), diverged: n('DIVERGED'), total: ev.length }
+}
+
+// packs the run activated — the JSON's `packs` and the human header. 'core' is not a
+// pack (it is what is left when every pack is off), so it never prints as one.
+const packsOf = ACTIVE => [...(ACTIVE || [])].filter(p => p !== 'core')
+
 export function reportJson({ results, REPO, cfg, ACTIVE, HEAD, lane = null }) {
-  const out = { repo: REPO, project_type: cfg.project_type, profiles: [...ACTIVE], head: HEAD, ...(lane ? { lane: { name: lane.lane, basis: lane.basis, event: lane.event } } : {}), results: results.map(x => ({ id: x.r.id, category: x.r.category, severity: x.r.severity, profile: x.r.profile || 'core', tag: x.tag, detail: x.detail })) }
-  const blockers = results.filter(isBlocking).length
-  out.summary = { blockers, pass: results.filter(x => x.tag === 'PASS').length, warn: results.filter(x => x.tag === 'WARN').length, diverged: results.filter(x => x.tag === 'DIVERGED').length, skip: results.filter(x => x.tag === 'SKIP').length, total: results.length }
+  const packs = packsOf(ACTIVE)
+  const out = {
+    repo: REPO, project_type: cfg.project_type, packs,
+    // `profiles` is the config key and the --profile flag's spelling (§11 D13: "a
+    // `profiles` list, alias `packs`"), kept as the same list under the older name
+    profiles: packs,
+    head: HEAD,
+    ...(lane ? { lane: { name: lane.lane, basis: lane.basis, event: lane.event } } : {}),
+    // V28 (§7.3): no get_knowledge result is read during check — the verdict's
+    // provenance says so on every run, so a consumer can tell "not consulted" from
+    // "consulted and silent"
+    provenance: { knowledge: 'not-consulted' },
+    results: results.map(rowJson),
+  }
+  out.summary = summarize(results)
   console.log(JSON.stringify(out, null, 2))
-  return blockers ? 1 : 0
+  return out.summary.blockers ? 1 : 0
+}
+
+// The human row: one line per EVALUATED rule — tag, id, title, detail — grouped by
+// category; n/a rows are not rendered at all (D4). Shared with admit so the two
+// merge-time surfaces read the same. Returns the lines; the caller prints.
+export function humanRows(results, color) {
+  const TAG = { PASS: color(32, 'PASS'), FAIL: color(31, 'FAIL'), WARN: color(33, 'WARN'), DIVERGED: color(31, 'DIVERGED') }
+  // pad to the widest tag (DIVERGED = 8) by VISIBLE width — color the tag, then
+  // append spaces, so the id column aligns in both TTY (ANSI-wrapped) and pipe modes
+  const TAGW = 8
+  const tagCell = t => (TAG[t] ?? color(90, String(t))) + ' '.repeat(Math.max(1, TAGW - String(t).length + 1))
+  // repo-authored strings (rule details carry descriptor fields; titles are rule text)
+  // are stripped of terminal control bytes before printing — no cursor-move that
+  // overwrites a printed FAIL with fake PASS (--json is unaffected; JSON escapes them).
+  // A detail is one line: an embedded newline would split the row a reader (and
+  // plugins.mjs V39) takes as one.
+  const S = s => sanitizeTTY(s)
+  const oneLine = s => S(s).replace(/\s*\n\s*/g, ' ')
+  const rows = evaluated(results)
+  // the id column fits the widest id ON THIS RUN — v3 ids are three-part (PREFIX-NN-slug, §2)
+  // and vary in length, so the width is derived from the rows, never a literal
+  const IDW = Math.max(9, ...rows.map(x => String(x.r.id).length))
+  const lines = []
+  // categories in CATS order; a category CATS does not name still renders (never a silent drop)
+  const cats = [...Object.keys(CATS), ...new Set(rows.map(x => x.r.category).filter(c => !(c in CATS)))]
+  for (const cat of cats) {
+    const group = rows.filter(x => x.r.category === cat); if (!group.length) continue
+    lines.push('  ' + color(1, CATS[cat] ?? String(cat)))
+    for (const x of group) lines.push(`    ${tagCell(x.tag)} ${String(x.r.id).padEnd(IDW)} ${S(x.r.title)}  ${color(90, '↳ ' + oneLine(x.detail))}`)
+    lines.push('')
+  }
+  return lines
 }
 
 export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color, lane = null }) {
-  const TAG = { PASS: color(32, 'PASS'), FAIL: color(31, 'FAIL'), WARN: color(33, 'WARN'), DIVERGED: color(31, 'DIVERGED'), SKIP: color(90, 'SKIP') }
-  // pad to the widest tag (DIVERGED = 8) by VISIBLE width — color the tag, then
-  // append spaces, so the id column aligns in both TTY (ANSI-wrapped) and pipe modes; the
-  // old `padEnd(tag.length + …)` padded each tag to its own length, i.e. never
-  const TAGW = 8
-  const tagCell = t => TAG[t] + ' '.repeat(Math.max(1, TAGW - t.length + 1))
-  // repo-authored strings (rule details carry descriptor fields; titles are rule text)
-  // are stripped of terminal control bytes before printing — no cursor-move that
-  // overwrites a printed FAIL with fake PASS (--json is unaffected; JSON escapes them)
   const S = sanitizeTTY
-  // the id column fits the widest id ON THIS RUN — v3 ids are three-part (PREFIX-NN-slug, §2)
-  // and vary in length, so the width is derived from the rows, never a literal
-  const IDW = Math.max(9, ...results.map(x => String(x.r.id).length))
-  console.log(`\n  project-baseline v${version}  ·  ${path.basename(REPO)}  ·  type=${cfg.project_type}  ·  profiles=[${[...ACTIVE].join(',')}]  ·  HEAD=${HEAD || 'n/a'}\n`)
+  const packs = packsOf(ACTIVE)
+  // HEAD is printed when there is one; a tree without git says nothing rather than a token
+  console.log(`\n  project-baseline v${version}  ·  ${path.basename(REPO)}  ·  type=${cfg.project_type}  ·  packs=[${packs.join(',')}]${HEAD ? `  ·  HEAD=${HEAD}` : ''}\n`)
   // A lane the CHECKOUT could not name is a weaker claim than a checked-out branch, and
   // the difference is a property of the RUN, not of any one rule (#55) — so it is stated
   // once, here, and no rule's detail string has to carry it. Silent on the ordinary case:
@@ -44,18 +115,10 @@ export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color, 
   if (lane && lane.lane && lane.basis && lane.basis !== 'checkout') {
     console.log(`  ${color(33, 'lane')} ${S(lane.lane)} resolved from ${lane.basis}${lane.event ? ` (${S(lane.event)} event)` : ''} — the checkout is detached, so the rules read the tree that IS checked out (on a pull_request, the merge result), not the lane tip\n`)
   }
-  for (const cat of Object.keys(CATS)) {
-    const rows = results.filter(x => x.r.category === cat); if (!rows.length) continue
-    console.log('  ' + color(1, CATS[cat]))
-    for (const x of rows) console.log(`    ${tagCell(x.tag)} ${x.r.id.padEnd(IDW)} ${S(x.r.title)}\n            ${color(90, '↳ ' + S(x.detail))}`)
-    console.log('')
-  }
-  const n = t => results.filter(x => x.tag === t).length
-  const blockers = results.filter(isBlocking).length
-  const scored = results.filter(x => x.tag !== 'SKIP').length
-  const div = n('DIVERGED')
-  console.log('  ' + color(1, 'Summary') + `  ${color(32, n('PASS') + ' pass')} · ${color(31, n('FAIL') + ' fail')} · ${color(33, n('WARN') + ' warn')}${div ? ` · ${color(31, div + ' diverged')}` : ''} · ${color(90, n('SKIP') + ' n/a')}`)
-  console.log(`  Readiness: ${Math.round(100 * n('PASS') / Math.max(1, scored))}%  (${n('PASS')}/${scored} applicable)`)
-  console.log(blockers ? color(31, `\n  ✗ ${blockers} blocker(s) — not build-ready.\n`) : color(32, `\n  ✓ no blockers.\n`))
-  return blockers ? 1 : 0
+  for (const line of humanRows(results, color)) console.log(line)
+  const s = summarize(results)
+  console.log('  ' + color(1, 'Summary') + `  ${color(32, s.pass + ' pass')} · ${color(31, s.fail + ' fail')} · ${color(33, s.warn + ' warn')}${s.diverged ? ` · ${color(31, s.diverged + ' diverged')}` : ''}`)
+  console.log(`  Readiness: ${Math.round(100 * s.pass / Math.max(1, s.total))}%  (${s.pass}/${s.total} evaluated)`)
+  console.log(s.blockers ? color(31, `\n  ✗ ${s.blockers} blocker(s) — not build-ready.\n`) : color(32, `\n  ✓ no blockers.\n`))
+  return s.blockers ? 1 : 0
 }

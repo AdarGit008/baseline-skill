@@ -9,7 +9,7 @@
 // `baseline` label — the operator's filter/mute affordance and the scan's bound):
 //   absent           → file the issue (labeled)
 //   changed          → comment the new state + re-stamp the marker fingerprint
-//   cleared          → close, naming the sha (POSITIVE re-evaluation only — a SKIP
+//   cleared          → close, naming the sha (POSITIVE re-evaluation only — an n/a row
 //                      is never a clear; closing on unavailability is fail-open)
 //   recurred (bot-closed)   → REOPEN the same issue (history stays on one thread)
 //   recurred (human-closed) → engine rows: the close was a judgment — at most one
@@ -58,7 +58,7 @@ import { makeEvalCheck } from './evaluators.mjs'
 import { makeForge } from './facts/forge.mjs'
 import { makeLaneWorld } from './facts/index.mjs'
 import { runRules } from './engine.mjs'
-import { makeColor } from './report.mjs'
+import { makeColor, evaluated } from './report.mjs'
 import { loadJudgmentsAt, selectBreakGlass, evaluateJudgment, gatherJdgFacts, JDG_PARSE_CAP } from './jdg.mjs'
 import { scan, ALLOWLIST_FILE } from './scrub.mjs'
 
@@ -279,7 +279,7 @@ export function runReconcile(argv) {
     if (x.tag === 'WARN' || x.tag === 'FAIL' || x.tag === 'DIVERGED') {
       present.push({ key, id: x.r.id, subject: BRANCH_NAME, title: x.r.title, detail: x.detail, fp: fingerprint(x.detail), reopenAlways: false })
     } else if (x.tag === 'PASS') {
-      clearedKeys.add(key) // positive re-evaluation — a SKIP never lands here
+      clearedKeys.add(key) // positive re-evaluation — an n/a row (no tag) never lands here
     }
   }
 
@@ -498,11 +498,12 @@ export function runReconcile(argv) {
   }
   const exit = (deliveryFailure && !relief) ? 1 : 0
 
+  // D4: n/a rows (state 'n/a', no tag) count nowhere — `rules` is the evaluated count
   const n = t => results.filter(x => x.tag === t).length
   const summary = {
     mode: DRY ? 'dry-run' : reportOnly ? 'report-only' : 'full',
     findings: findings.length, actions: actions ? actions.length : null, delivered: delivered.length, failed: failed.length,
-    pass: n('PASS'), warn: n('WARN'), fail: n('FAIL'), diverged: n('DIVERGED'), skip: n('SKIP'), rules: results.length,
+    pass: n('PASS'), warn: n('WARN'), fail: n('FAIL'), diverged: n('DIVERGED'), rules: evaluated(results).length,
     jdg: { records: ledger.records.length, swept: sweep.length, capped: sweepCapped, filed: sweep.filter(r => r.verdict === 'tripped' || r.verdict === 'expired').length, invalid: ledger.findings.length },
     rescan: { files: recList === null ? null : recList.length, unscanned, capped: rescanCapped, skipped: rescanSkipped, findings: findings.filter(f => f.id === 'scrub').length },
     mergedWindow: mwrWindow,
@@ -528,7 +529,7 @@ export function runReconcile(argv) {
   if (sweepCapped) console.log(`  ⚠ ${sweepCapped}`)
   if (rescanCapped) console.log(`  ⚠ ${rescanCapped}`)
   if (mwrWindow) console.log(`  merged-while-red window: ${mwrWindow}`)
-  if (!findings.length) console.log(color(32, `  ✓ nothing to reconcile — ${summary.pass} pass · ${summary.skip} n/a · ledger ${summary.jdg.records} record(s) healthy`))
+  if (!findings.length) console.log(color(32, `  ✓ nothing to reconcile — ${summary.pass} pass · ledger ${summary.jdg.records} record(s) healthy`))
   for (const f of findings) console.log(`  ${color(33, '●')} ${S(f.key)}\n      ${S(f.title)}\n      ${color(90, '↳ ' + S(f.detail))}`)
   if (!reportOnly) {
     if (actions === null) console.log(color(31, `\n  ✗ lifecycle not run: issue listing unreadable (${S(forge.reason || 'forge unreachable')})`))

@@ -19,12 +19,11 @@ export const TOOLS = Object.freeze(['docker'])
 // can reach it and an absent tool mutes it — a kind added here binds every rule using it.
 export const TOOL_OF_KIND = Object.freeze({ 'dockerfile-digest': 'docker' })
 
-export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
+export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, color }) {
   const problems = []
   const typeSet = new Set(TYPES)
-  // `profiles` is the v2 activation map (WP3 retires it); `packs` is the v3 one (§5). While
-  // both exist, a rule declaring both must agree, and each map's keys must all be in use.
-  const profileKeys = new Set(Object.keys(RULES.profiles || {}))
+  // v3 §5: `packs` is the one activation map (the v2 `profiles` map and the rule-side
+  // `profile`/`requires` keys retired with WP3); every key must carry a description and be in use.
   if (!RULES.packs || typeof RULES.packs !== 'object' || Array.isArray(RULES.packs)) problems.push('rules.json has no "packs" map (the opt-in packs, each with a one-line description)')
   const packKeys = new Set(Object.keys(RULES.packs || {}))
   for (const p of packKeys) if (typeof RULES.packs[p] !== 'string' || !RULES.packs[p].trim()) problems.push(`rules.json packs: '${p}' needs a one-line description`)
@@ -65,17 +64,14 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
       if (!Array.isArray(r.applies_to) || r.applies_to.length === 0) problems.push(`${curId}: applies_to must be "all" or a non-empty array`)
       else for (const t of r.applies_to) if (!typeSet.has(t)) problems.push(`${curId}: applies_to has unknown type '${t}' (not in project_types)`)
     }
-    if (r.profile !== undefined && !profileKeys.has(r.profile)) problems.push(`${curId}: unknown profile '${r.profile}'`)
     // v3 §5: a pack is DATA on the rule, drawn from the rules.json packs map — never a table in prose
-    if (r.pack !== undefined) {
-      if (typeof r.pack !== 'string' || !packKeys.has(r.pack)) problems.push(`${curId}: unknown pack '${r.pack}' (rules.json packs: {${[...packKeys].join('|')}})`)
-      if (r.profile !== undefined && r.profile !== r.pack) problems.push(`${curId}: profile '${r.profile}' disagrees with pack '${r.pack}' — the two activation maps must name the same thing while both exist`)
-    }
+    if (r.pack !== undefined && (typeof r.pack !== 'string' || !packKeys.has(r.pack))) problems.push(`${curId}: unknown pack '${r.pack}' (rules.json packs: {${[...packKeys].join('|')}})`)
+    // v3 §5 / WP3: the v2 activation keys are retired — the pack is the only switch on a rule
+    for (const k of ['profile', 'requires']) if (r[k] !== undefined) problems.push(`${curId}: '${k}' is a retired v2 key — activation is 'pack' (rules.json packs)`)
     // v3 §6 / §11 D13: the tool field is a closed set, an unknown value rejected BY NAME
     if (r.tool !== undefined && (typeof r.tool !== 'string' || !toolSet.has(r.tool))) problems.push(`${curId}: unknown tool '${r.tool}' — the closed set is {${TOOLS.join('|')}} (src/selfcheck.mjs TOOLS)`)
     if (!sevOk.has(r.severity)) problems.push(`${curId}: invalid severity '${r.severity}'`)
     if (!catKeys.has(r.category)) problems.push(`${curId}: unknown category '${r.category}'`)
-    if (r.requires !== undefined && !(r.requires in DEFAULTS)) problems.push(`${curId}: 'requires' names unknown config key '${r.requires}'`)
     // M4c posture gates are data: a rule may declare the workflow(s) it needs — the value
     // set is read from the descriptor schema itself (lockstep by construction, not by
     // habit); string-or-array since M5c (a rule may serve a posture FAMILY). The lane
@@ -86,10 +82,10 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
       if (!wfs.length) problems.push(`${curId}: workflow must be a value or non-empty array from the descriptor schema enum`)
       for (const w of wfs) if (!wfEnum.includes(w)) problems.push(`${curId}: workflow '${w}' is not in the descriptor schema enum {${wfEnum.join('|')}}`)
     }
-    // M4c review ruling: the CLAIM family is uniformly opt-in — a claims rule
-    // without the family gate would fire on repos that never opted into claims
-    // discipline (the CLAIM-06 wallpaper class, fixed once, kept fixed here).
-    if (r.category === 'claims' && r.requires !== 'makes_external_claims') problems.push(`${curId}: claims-category rules must carry requires:makes_external_claims (uniform family opt-in)`)
+    // M4c review ruling, carried into v3 §5: the CLAIM family is uniformly opt-in — a claims
+    // rule outside the claims pack would fire on repos that never opted into claims discipline
+    // (the CLAIM-06 wallpaper class, fixed once, kept fixed here as a pack law).
+    if (r.category === 'claims' && r.pack !== 'claims') problems.push(`${curId}: claims-category rules must carry pack:claims (uniform family opt-in)`)
     checkKinds(r.check)
     // a kind that reads a tool's artifact binds the rule to that tool (V17/V20 reach it by the field)
     for (const k of kindsSeen) {
@@ -98,10 +94,6 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }) {
     }
   }
   for (const t of TYPES) if (!RULES.rules.some(r => expand(r).includes(t))) problems.push(`no rule applies to type '${t}' (orphan type)`)
-  for (const p of profileKeys) {
-    const has = p === 'core' ? RULES.rules.some(r => !r.profile) : RULES.rules.some(r => r.profile === p)
-    if (!has) problems.push(`no rule uses profile '${p}' (orphan profile)`)
-  }
   for (const p of packKeys) if (!RULES.rules.some(r => r.pack === p)) problems.push(`no rule belongs to pack '${p}' (orphan pack)`)
   for (const t of TOOLS) if (!RULES.rules.some(r => r.tool === t)) problems.push(`no rule declares tool '${t}' (orphan tool — the vocabulary grows only with a rule that uses it)`)
 

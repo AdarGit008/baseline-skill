@@ -427,7 +427,7 @@ export function generateConcepts() {
     P.push('')
     P.push(`# ${r.id} — ${md1(r.title)}`)
     P.push('')
-    P.push(`- **Severity:** ${r.severity} · **Category:** ${r.category} · **Applies to:** ${applies}${r.profile ? ` · **Profile:** ${r.profile}` : ''}`)
+    P.push(`- **Severity:** ${r.severity} · **Category:** ${r.category} · **Applies to:** ${applies}${r.pack ? ` · **Pack:** ${r.pack}` : ''}`)
     if (r.lesson) P.push(`- **Lesson:** ${md1(r.lesson)}`)
     if (r.rationale) P.push(`- **Why it matters:** ${md1(r.rationale)}`)
     if (r.fix) P.push(`- **Fix:** ${md1(r.fix)}`)

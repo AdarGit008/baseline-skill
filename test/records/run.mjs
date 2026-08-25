@@ -44,7 +44,14 @@ const baseId = (id) => String(id).replace(/^([A-Z]+-\d{2}).*/, '$1')
   ok(R.rules.length === perModule, `loader assembles every module's rules losslessly (${R.rules.length} assembled vs ${perModule} across ${(manifest.modules || []).length} modules)`)
   ok(!('rules' in manifest), 'manifest itself carries no rules (they live in rules/)')
   ok(new Set(R.rules.map(r => r.id)).size === R.rules.length, 'rule ids unique across modules')
-  ok(!!R.version && !!R.profiles && Array.isArray(R.project_types), 'identity fields (version/profiles/project_types) ride the manifest')
+  ok(!!R.version && R.packs && typeof R.packs === 'object' && !Array.isArray(R.packs) && Array.isArray(R.project_types), 'identity fields (version/packs/project_types) ride the manifest')
+  // v3 §5: the profile vocabulary retired with the engine keying on `pack` — the manifest
+  // keeps `packs` (the catalogue) and nothing else names a profile
+  ok(!('profiles' in R), 'manifest carries no `profiles` map (retired; `packs` is the catalogue)')
+  ok(R.rules.every(r => !('profile' in r) && !('requires' in r)), 'no rule carries a retired `profile`/`requires` key')
+  const catalogued = new Set(Object.keys(R.packs))
+  const declared = [...new Set(R.rules.map(r => r.pack).filter(Boolean))]
+  ok(declared.every(pk => catalogued.has(pk)), `every pack a rule declares is in the manifest catalogue (${declared.length} declared, ${catalogued.size} catalogued)`)
   let homed = true
   for (const m of manifest.modules) {
     const cat = path.basename(m, '.json')
@@ -268,53 +275,117 @@ try {
   ok(loadJudgments(t6).findings.some(f => /does not match filename/.test(f.error)), 'loadJudgments: id/filename mismatch is a finding')
   fs.rmSync(path.join(t6, 'records/judgments/JDG-0100.json'))
 
-  // ---- M4c: engine posture/branch/opt-out gates (pure, data-driven) ----
+  // ---- v3 engine gates (pure, data-driven): a gate MISS is no row; in scope but
+  // unevaluable is {state:'n/a', reason}. D4/V36: there is no SKIP tag anywhere. ----
   {
+    const NOOP = () => ({ ok: true, detail: 'ran' })
     const gate = (rule, over = {}) => runRules({
       rules: [{ id: 'X-01', severity: 'warn', applies_to: 'all', contexts: ['check'], check: { kind: 'x' }, ...rule }],
-      cfg: { project_type: 'docs', ...(over.cfg || {}) }, ACTIVE: new Set(['core']),
-      CLAIMS_ACTIVE: over.CLAIMS_ACTIVE ?? true, CLAIMS_REASON: over.CLAIMS_REASON ?? null,
-      evalCheck: () => ({ ok: true, detail: 'ran' }),
-      DESCRIPTOR: over.DESCRIPTOR ?? null, BRANCH: over.BRANCH ?? null,
-      DEFAULT_BRANCH: 'DEFAULT_BRANCH' in over ? over.DEFAULT_BRANCH : 'main', // ?? would swallow an explicit null (the undeclared case under test)
+      cfg: { project_type: 'docs', ...(over.cfg || {}) },
+      ACTIVE_PACKS: over.ACTIVE_PACKS ?? new Set(),
+      evalCheck: over.evalCheck ?? NOOP,
+      DESCRIPTOR: over.DESCRIPTOR ?? null,
+      TOOLS_PRESENT: 'TOOLS_PRESENT' in over ? over.TOOLS_PRESENT : null, // null = the runner detected nothing (the evaluator owns the subject question)
+      forgeClosed: over.forgeClosed ?? null,
     })[0]
+    const isNA = row => !!row && row.state === 'n/a' && typeof row.reason === 'string' && row.reason.trim().length > 0 && !('tag' in row)
     const SL = { valid: true, data: { workflow: 'single-lane' } }
-    ok(gate({ workflow: 'multi-lane' }).tag === 'SKIP' && /workflow contract off/.test(gate({ workflow: 'multi-lane' }).detail), 'engine: workflow rule SKIPs with no descriptor (best-effort posture)')
-    ok(/workflow=single-lane/.test(gate({ workflow: 'multi-lane' }, { DESCRIPTOR: SL }).detail), 'engine: workflow rule SKIPs on the other posture, says which')
-    // M7b: the generic requires:false opt-out branch retired with status_file —
-    // a config key set false no longer silences any rule; only the claims-family
-    // gate (requires: makes_external_claims) confers a SKIP.
-    ok(gate({ requires: 'some_key' }, { cfg: { some_key: false } }).tag === 'PASS', 'engine: requires:false confers no opt-out since M7b — the rule runs')
-    const cskip = gate({ requires: 'makes_external_claims' }, { CLAIMS_ACTIVE: false, CLAIMS_REASON: "maturity=prototype — CLAIM activates at 'claimed'" })
-    ok(cskip.tag === 'SKIP' && /maturity=prototype/.test(cskip.detail), 'engine: the claims skip detail carries the maturity reason')
-    // M6a: the context gate EXCLUDES (no row) — a "wrong context" SKIP on every check
-    // run would be wallpaper; a rule with NO contexts runs nowhere (selfcheck is the
-    // loudness gate that keeps that unrepresentable in the real rule set)
-    ok(gate({ contexts: ['admit'] }) === undefined, 'engine: a rule outside the run context is EXCLUDED — no row, not a SKIP')
+    // posture gate (data-driven `workflow`): a miss is structural — no row, never a finding
+    ok(gate({ workflow: 'multi-lane' }) === undefined, 'engine: a workflow rule with no descriptor is a gate MISS — no row')
+    ok(gate({ workflow: 'multi-lane' }, { DESCRIPTOR: SL }) === undefined, 'engine: a workflow rule on the other posture is a gate MISS — no row')
+    ok(gate({ workflow: ['multi-lane', 'single-lane'] }, { DESCRIPTOR: SL })?.tag === 'PASS', 'engine: a posture FAMILY that includes the descriptor posture runs')
+    // type gate
+    ok(gate({ applies_to: ['node'] }) === undefined, 'engine: an off-type rule is a gate MISS — no row')
+    ok(gate({ applies_to: ['docs', 'node'] })?.tag === 'PASS', 'engine: an on-type rule runs')
+    // pack gate (V15/V16): the engine keys on `pack`; an inactive pack pushes no row, and
+    // activating one pack activates no other
+    ok(gate({ pack: 'claims' }) === undefined, 'engine: a pack rule with no pack active is a gate MISS — no row')
+    ok(gate({ pack: 'claims' }, { ACTIVE_PACKS: new Set(['claims']) })?.tag === 'PASS', 'engine: a pack rule runs when its pack is active')
+    ok(gate({ pack: 'decisions' }, { ACTIVE_PACKS: new Set(['claims']) }) === undefined, 'engine: activating one pack activates no other (claims on, decisions rule still no row)')
+    ok(gate({ requires: 'some_key' }, { cfg: { some_key: false } })?.tag === 'PASS', 'engine: a stray `requires` key confers no opt-out (retired vocabulary; selfcheck forbids it in the real set)')
+    ok(gate({ profile: 'claims' })?.tag === 'PASS', 'engine: a stray `profile` key is not a pack gate (retired vocabulary; selfcheck forbids it in the real set)')
+    // M6a: the context gate EXCLUDES (no row); a rule with NO contexts runs nowhere
+    ok(gate({ contexts: ['admit'] }) === undefined, 'engine: a rule outside the run context is a gate MISS — no row')
     ok(gate({ contexts: undefined }) === undefined, 'engine: a rule with no contexts runs nowhere (selfcheck forbids it in the real set)')
-    ok(gate({ contexts: ['check', 'admit'] }).tag === 'PASS', 'engine: a shared-context rule runs in check (the default context)')
+    ok(gate({ contexts: ['check', 'admit'] })?.tag === 'PASS', 'engine: a shared-context rule runs in check (the default context)')
+    // in scope but unevaluable (V36): an evaluator returning ok:null, or throwing, is an n/a
+    // row with a non-empty reason and NO tag — never SKIP, never a silent drop
+    const naRow = gate({}, { evalCheck: () => ({ ok: null, detail: 'no subject in the tree' }) })
+    ok(isNA(naRow) && naRow.reason === 'no subject in the tree', `engine: an in-scope ok:null is {state:"n/a", reason} with no tag (got ${JSON.stringify({ state: naRow?.state, reason: naRow?.reason, tag: naRow?.tag })})`)
+    ok(isNA(gate({}, { evalCheck: () => ({ ok: null, detail: '' }) })), 'engine: an ok:null with an empty detail still carries a non-empty reason (the engine supplies one)')
+    ok(isNA(gate({}, { evalCheck: () => undefined })), 'engine: an evaluator returning nothing is n/a, not a crash')
+    const thrown = gate({}, { evalCheck: () => { throw new Error('boom') } })
+    ok(isNA(thrown) && /check errored/.test(thrown.reason) && /boom/.test(thrown.reason), 'engine: a THROWN check is an n/a row whose reason names the error')
+    ok(![naRow, thrown].some(x => x?.tag === 'SKIP' || x?.state === 'SKIP'), 'engine: n/a is never spelled SKIP')
+    // D12 (V19/V42): a forge-sourced rule under a closed forge resolves n/a BEFORE its evaluator
+    let called = 0
+    const fRow = gate({ sources: ['forge', 'tree'] }, { forgeClosed: 'forge not consulted', evalCheck: () => { called++; return { ok: true, detail: 'ran' } } })
+    ok(isNA(fRow) && fRow.reason === 'forge not consulted' && called === 0, 'engine: a forge-sourced rule under a closed forge is n/a with the closure reason, evaluator NOT called')
+    ok(gate({ sources: ['tree'] }, { forgeClosed: 'forge not consulted' })?.tag === 'PASS', 'engine: a closed forge gates only forge-sourced rules')
+    ok(gate({ sources: ['forge'] })?.tag === 'PASS', 'engine: with the forge open (null) a forge-sourced rule evaluates')
+    // §6 tool gate (V17/V20/V36, D13): tool present OR want -> in scope (want overrides the
+    // type gate too); on-type with the tool absent -> n/a; off-type with the tool absent -> no row
+    const tRow = gate({ tool: 'docker' }, { TOOLS_PRESENT: new Set() })
+    ok(isNA(tRow) && /docker/.test(tRow.reason) && /want/.test(tRow.reason), 'engine: an on-type tool rule with the tool absent is n/a, and the reason names the tool and the want: route')
+    ok(gate({ tool: 'docker' }, { TOOLS_PRESENT: new Set(['docker']) })?.tag === 'PASS', 'engine: a tool rule runs when the tool is detected')
+    ok(gate({ tool: 'docker' }, { TOOLS_PRESENT: new Set(), cfg: { want: ['docker'] } })?.tag === 'PASS', 'engine: want:["docker"] puts the tool rule in scope with no Dockerfile (the evaluator, not the gate, answers)')
+    ok(gate({ tool: 'docker', applies_to: ['node'] }, { TOOLS_PRESENT: new Set() }) === undefined, 'engine: an off-type tool rule with the tool absent is a gate MISS — no row')
+    ok(gate({ tool: 'docker', applies_to: ['node'] }, { TOOLS_PRESENT: new Set(), cfg: { want: ['docker'] } })?.tag === 'PASS', 'engine: want overrides BOTH the tool gate and the type gate (REPRO-04 on a docs repo)')
+    ok(gate({ tool: 'docker', applies_to: ['node'] }, { TOOLS_PRESENT: new Set(['docker']) })?.tag === 'PASS', 'engine: a detected tool overrides the type gate (a docs tree with a Dockerfile runs the docker rules)')
+    ok(gate({ tool: 'docker' })?.tag === 'PASS', 'engine: a runner that detected no tools (null) leaves the subject question to the evaluator')
   }
 
-  // ---- M4c: descriptor maturity gates CLAIM activation (C24, discrete tiers) ----
+  // ---- v3 §5 / D13 (V15/V16): the claims pack arms ONLY from an explicit switch ----
+  // Before v3 a claims register in the tree auto-armed CLAIM, and the descriptor's maturity
+  // tier demoted it. Both are gone: no tree content, no maturity tier, no default arms a pack.
   {
-    const t9 = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-maturity-')); tmps.push(t9)
+    const t9 = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-packs-')); tmps.push(t9)
     fs.mkdirSync(path.join(t9, 'docs'), { recursive: true })
     fs.writeFileSync(path.join(t9, 'docs/CLAIMS.json'), JSON.stringify({ claims: [{ id: 'x', statement: 's', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }] }))
-    const desc = m => JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: m, workflow: 'single-lane', anchoring: 'off' })
-    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('prototype'))
-    const proto = resolveConfig(indexRepo(t9))
-    ok(proto.CLAIMS_ACTIVE === false && /maturity=prototype/.test(proto.CLAIMS_REASON), 'maturity=prototype: register present but CLAIM inactive (activates at claimed)')
-    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('claimed'))
-    ok(resolveConfig(indexRepo(t9)).CLAIMS_ACTIVE === true, 'maturity=claimed: CLAIM active')
-    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('prototype'))
-    fs.writeFileSync(path.join(t9, 'baseline.config.json'), JSON.stringify({ makes_external_claims: true }))
-    ok(resolveConfig(indexRepo(t9)).CLAIMS_ACTIVE === true, 'maturity=prototype + explicit makes_external_claims:true: explicit intent wins')
-    fs.rmSync(path.join(t9, 'docs/CLAIMS.json'))
     fs.mkdirSync(path.join(t9, 'records/claims'), { recursive: true })
     fs.writeFileSync(path.join(t9, 'records/claims/CLM-0001.json'), JSON.stringify({ record: 'claim/1', id: 'CLM-0001', statement: 's', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }))
-    fs.rmSync(path.join(t9, 'baseline.config.json'))
+    const desc = m => JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: m, workflow: 'single-lane', anchoring: 'off' })
+    const cfgFile = path.join(t9, 'baseline.config.json')
+    const res = (opts = {}) => resolveConfig(indexRepo(t9), opts)
     fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('claimed'))
-    ok(resolveConfig(indexRepo(t9)).CLAIMS_ACTIVE === true, 'the exploded home alone (records/claims/) activates CLAIM — no monolith needed')
+    let r = res()
+    ok(r.CLAIMS_ACTIVE === false && !r.ACTIVE_PACKS.has('claims'), 'no config file: a claims register (monolith AND records/claims/) with maturity=claimed arms NOTHING — tree content is not an opt-in')
+    ok(r.ACTIVE_PACKS.size === 0, `no config file: every pack is off (got ${JSON.stringify([...r.ACTIVE_PACKS])})`)
+    ok(r.DEFAULTS.makes_external_claims === false, 'DEFAULTS never arm the claims pack (makes_external_claims defaults false)')
+    fs.writeFileSync(cfgFile, JSON.stringify({ makes_external_claims: true }))
+    r = res()
+    ok(r.CLAIMS_ACTIVE === true && r.ACTIVE_PACKS.has('claims'), 'explicit makes_external_claims:true arms the claims pack')
+    ok([...r.ACTIVE_PACKS].every(pk => pk === 'claims'), `activating claims activates no other pack (got ${JSON.stringify([...r.ACTIVE_PACKS])})`)
+    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('prototype'))
+    ok(res().CLAIMS_ACTIVE === true, 'maturity=prototype does NOT demote an explicit true — the maturity tier has no say (demotion retired with the auto-arm)')
+    fs.writeFileSync(cfgFile, JSON.stringify({ makes_external_claims: false }))
+    ok(res().CLAIMS_ACTIVE === false, 'explicit makes_external_claims:false leaves the pack off')
+    fs.writeFileSync(cfgFile, JSON.stringify({ makes_external_claims: 'true' }))
+    ok(res().CLAIMS_ACTIVE === false, 'only the boolean true arms it — the string "true" is not an explicit opt-in')
+    fs.rmSync(cfgFile)
+    ok(res().CLAIMS_ACTIVE === false && res().CLAIMS_REASON === null, 'with the config file removed the pack is off again, and there is no second (maturity) reason any more')
+    // the other explicit routes: the profiles/packs list and --profile <pack>
+    fs.writeFileSync(cfgFile, JSON.stringify({ profiles: ['claims'] }))
+    ok(res().ACTIVE_PACKS.has('claims') && res().CLAIMS_ACTIVE === true, 'profiles:["claims"] arms the claims pack (list route)')
+    fs.writeFileSync(cfgFile, JSON.stringify({ packs: ['claims'] }))
+    ok(res().ACTIVE_PACKS.has('claims'), 'packs:["claims"] is the alias of profiles')
+    fs.rmSync(cfgFile)
+    ok(res({ profileArgs: ['claims'] }).ACTIVE_PACKS.has('claims'), '--profile claims arms the pack from the CLI (the flag stays; it means pack)')
+    // the other pack switches never spill over, and the DEFAULTS value never activates
+    r = res()
+    ok(r.DEFAULTS.decision_globs.length > 0 && !r.ACTIVE_PACKS.has('decisions'), 'the non-empty DEFAULT decision_globs never activates the decisions pack')
+    fs.writeFileSync(cfgFile, JSON.stringify({ decision_globs: ['docs/decisions/*.md'] }))
+    r = res()
+    ok(r.ACTIVE_PACKS.has('decisions') && !r.ACTIVE_PACKS.has('claims') && !r.ACTIVE_PACKS.has('service'), `explicit decision_globs arms decisions and only decisions (got ${JSON.stringify([...r.ACTIVE_PACKS])})`)
+    fs.writeFileSync(cfgFile, JSON.stringify({ decision_globs: [] }))
+    ok(!res().ACTIVE_PACKS.has('decisions'), 'an explicit but EMPTY decision_globs arms nothing')
+    fs.writeFileSync(cfgFile, JSON.stringify({ project_type: 'service' }))
+    r = res()
+    ok(r.ACTIVE_PACKS.has('service') && r.ACTIVE_PACKS.size === 1, 'explicit project_type:"service" arms the service pack, and only it')
+    fs.rmSync(cfgFile)
+    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'service', lifecycle: 'production', maturity: 'claimed', workflow: 'single-lane', anchoring: 'off' }))
+    r = res()
+    ok(r.cfg.project_type === 'service' && !r.ACTIVE_PACKS.has('service'), "D13: the descriptor's declared type overlays project_type but never arms the service pack")
   }
 
   // ---- the sanction route's matcher: the subject is attacker-influenced text ----
@@ -674,6 +745,11 @@ try {
     // posture it declared is OFF until shed (the migration pressure). If the
     // ref-read strip is ever hoisted to worktree reads, this fails.
     fs.writeFileSync(path.join(t18, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 'legacy-team', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
+    // v3 §5: the DESC rules ride the opt-in `descriptor` pack — with it off they push no row
+    // at all, so the fixture arms it the way a repo would (packs: ["descriptor"])
+    const res19off = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
+    ok(!res19off.results.some(x => isId(x.id, 'DESC-01') || isId(x.id, 'DESC-02')), 'e2e: with the descriptor pack off, DESC-01/02 push no row — a present descriptor is not an opt-in (V15)')
+    fs.writeFileSync(path.join(t18, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false, packs: ['descriptor'] }))
     const res19 = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
     const d1 = res19.results.find(x => isId(x.id, 'DESC-01'))
     ok(d1.tag === 'PASS' && /present \(schema validity is DESC-02's/.test(d1.detail), 'e2e: presence narrowed — DESC-01 PASSes a present-but-invalid file, pointing at DESC-02')

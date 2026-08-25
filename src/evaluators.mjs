@@ -1,7 +1,7 @@
 // The declarative check kinds (CHECK_KINDS is the registry; --self-check derives the
 // count). makeEvalCheck(ctx) closes over the repo index, resolved config, and run flags;
 // evalCheck(c, rule) -> {ok:true|false|null, detail, soft?}.
-// ok:null means "not evaluable here" and always tags SKIP — one broken rule can't take down the run.
+// ok:null means "not evaluable here" and resolves to an n/a row (v3 D4) — one broken rule can't take down the run.
 import path from 'node:path'
 import fs from 'node:fs'
 import { execSync } from 'node:child_process'
@@ -399,7 +399,11 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JUDGMENTS = null, DESCRIPTOR
 
     if (k === 'dockerfile-digest') {
       const files = match(globsOf(c))
-      if (!files.length) return { ok: null, detail: 'no Dockerfile' }
+      // v3 §6 (V20): intent counts as presence, not as a pass — a tool the config `want`s
+      // and the tree lacks is a FINDING; with no such declaration the rule has no subject
+      if (!files.length) return (rule?.tool && asArr(cfg.want).includes(rule.tool))
+        ? { ok: false, detail: `no Dockerfile in the tree, yet config want declares ${rule.tool} — add one (or drop the want entry)` }
+        : { ok: null, detail: 'no Dockerfile' }
       const bad = []
       for (const f of files) {
         const t = readText(f); if (!t) continue

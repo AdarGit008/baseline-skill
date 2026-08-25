@@ -8,12 +8,7 @@
     "library",
     "docs"
   ],
-  "description": "Testable readiness standard. The v1 rules (build/test/context/claims) were distilled from the author's own repo reviews, plus v2 additions pressure-tested against the prior-art field (OpenSSF Scorecard, SLSA, 12-factor, Google SRE, Diataxis, repolinter, Backstage/Cortex/OpsLevel, and many more). Each rule maps to a lesson or a cited source; blockers fail CI, everything else warns. Rules with a 'pack' only run when that pack is active (see packs); everything else is always on. The legacy 'profile' field mirrors the pack until the engine reads packs directly.",
-  "profiles": {
-    "core": "Always on. Universal, high-confidence, machine-checkable rules.",
-    "service": "Auto-on when project_type=service (or listed in config.profiles). Operability/observability rules that only make sense for a running service.",
-    "advanced": "Opt-in via config.profiles. Expert/niche rules (SBOM, code-scanning, mutation testing, symbol-integrity) that would be noise on most repos."
-  },
+  "description": "Testable readiness standard. The v1 rules (build/test/context/claims) were distilled from the author's own repo reviews, plus v2 additions pressure-tested against the prior-art field (OpenSSF Scorecard, SLSA, 12-factor, Google SRE, Diataxis, repolinter, Backstage/Cortex/OpsLevel, and many more). Each rule maps to a lesson or a cited source; blockers fail CI, everything else warns. Rules with a 'pack' only run when that pack is active; everything else is always on. With no config file every pack is off: a pack activates only from an explicit switch — makes_external_claims:true (claims), a non-empty decision_globs (decisions), project_type:service (service) — or from the profiles/packs list (or --profile <pack>) for any pack (see packs).",
   "packs": {
     "claims": "Opt-in via makes_external_claims:true (or profiles/packs/--profile claims). The claims register and per-claim record discipline.",
     "decisions": "Opt-in via a non-empty decision_globs (or profiles/packs/--profile decisions). Decision-record status, edges, amendments and numbering.",

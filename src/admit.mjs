@@ -10,7 +10,7 @@
 //       admission path, whose ruled shape precludes lane records);
 //   (c) required-source loss on admit's GATING facts (target resolution → exit 2,
 //       nothing evaluated; ancestry provability and DESC-03's range diff → refusal) —
-//       a warn rule's unreachable source SKIPs labeled, exactly as in check:
+//       a warn rule's unreachable source resolves n/a (state + reason), exactly as in check:
 //       advisory findings never acquire blocker-grade denial power via
 //       unavailability. Relief for (c) alone: an unexpired break-glass JDG with
 //       gate:admit read FROM THE TARGET REF (FS5 — never from the incoming branch).
@@ -37,7 +37,7 @@ import { resolveConfig } from './config.mjs'
 import { makeEvalCheck } from './evaluators.mjs'
 import { makeLaneWorld } from './facts/index.mjs'
 import { runRules } from './engine.mjs'
-import { CATS, makeColor, isBlocking } from './report.mjs'
+import { makeColor, isBlocking, rowJson, summarize, humanRows } from './report.mjs'
 import { DESCRIPTOR_FILE, DESCRIPTOR_SCHEMA } from './descriptor.mjs'
 import { validateAgainst } from './validate.mjs'
 import { loadJudgmentsAt, selectBreakGlass, JUDGMENTS_DIR, JDG_PARSE_CAP } from './jdg.mjs'
@@ -110,7 +110,7 @@ export function runAdmit(argv) {
   }
   if (!DESCRIPTOR.present) return usage(`no ${DESCRIPTOR_FILE} at ${targetRef} — admit judges by the target's declared posture (FS1); adopt a descriptor on the target branch first`)
   if (!DESCRIPTOR.valid) return usage(`${DESCRIPTOR_FILE} at ${targetRef} is invalid (${DESCRIPTOR.errors.slice(0, 2).join('; ')}) — fix it on the target branch; a broken target posture cannot judge anything`)
-  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, JDGS, JUDGMENTS } = cfgRes
+  const { cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, JUDGMENTS } = cfgRes
 
   // ---- C35 staleness: command-level, before any rule ----
   const HEADSHA = g('rev-parse', 'HEAD')
@@ -179,7 +179,7 @@ export function runAdmit(argv) {
     }
   }
   // 64MB buffer: a big range's commit bodies overflowing run()'s 1MB default would
-  // silently drop every Baseline-Stacked-On declaration → false MERGE-02 warns
+  // silently drop every Baseline-Stacked-On declaration the admit world carries
   const trailerRaw = run('git', ['-C', REPO, 'log', '--format=%B', `${targetTip}..HEAD`], { maxBuffer: 64 * 1024 * 1024 }) || ''
   const stackedOn = [...trailerRaw.matchAll(/^Baseline-Stacked-On:[ \t]*(\S+)[ \t]*$/gm)].map(m => m[1])
   let headDescriptor = { present: false, valid: false, data: null, errors: [] }
@@ -200,9 +200,9 @@ export function runAdmit(argv) {
   // NO_EXEC: no exec-kind rule declares admit context (BUILD-05 is check's crown); the
   // fallback binding re-runs the check required check at the merge-relevant SHA instead
   // (F8 as ruled — the crown never runs twice per SHA because it never runs here at all)
-  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JDGS, JUDGMENTS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD, ADMITWORLD })
+  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JUDGMENTS, DESCRIPTOR, DEFAULT_BRANCH, LANEWORLD, ADMITWORLD })
   const RULES = loadRules()
-  const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, context: 'admit' })
+  const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, context: 'admit' })
 
   // ---- provenance (M6c): the inputs_digest receipt — REFUSAL-INERT by contract.
   // Assembly never touches refusals/results/summary; every lost source digests as
@@ -238,49 +238,44 @@ export function runAdmit(argv) {
   // class rides the refusal line (one predicate with the report exits: isBlocking).
   // EXCEPT under the JDG-only admission path: M6a's ruled promise is that a pure
   // judgment-additions range ADMITS from tree+history alone — its shape PRECLUDES
-  // a session record, so a promoted lane-discipline blocker (FLOW-02 on the relief
-  // branch) must never re-create the circularity the path exists to break. DESC-03
+  // a session record, so a promoted blocker on the relief branch must never
+  // re-create the circularity the path exists to break. DESC-03
   // cannot fire there by construction (the descriptor is not in a jdg-only diff);
   // promoted findings still ride the output as rows, refusing nothing.
   const blockerFails = jdgOnly ? [] : results.filter(isBlocking)
   for (const x of blockerFails) refusals.push(`${x.r.id}${x.tag === 'DIVERGED' ? ' (DIVERGED)' : ''}: ${x.detail}`)
   const refused = refusals.length > 0
-  const n = t => results.filter(x => x.tag === t).length
-  const summary = { refusals: refusals.length, blockers: blockerFails.length, pass: n('PASS'), warn: n('WARN'), diverged: n('DIVERGED'), signoff: n('SIGN-OFF'), skip: n('SKIP'), total: results.length }
+  // D4: the same row/summary shape as check — n/a rows ride --json with state+reason and
+  // count nowhere; `blockers` is admit's own leg (b) (zero under the JDG-only path)
+  const summary = { refusals: refusals.length, ...summarize(results), blockers: blockerFails.length }
 
   if (JSON_OUT) {
     console.log(JSON.stringify({
       command: 'admit', repo: REPO, head: HEADSHA, branch: BRANCH,
       target: { ref: targetRef, sha: targetTip, source: explicit ? 'local-ref (explicit --target)' : fetchNote ? 'local-ref (fetch failed)' : 'fetched' },
       staleness: { ancestor: anc === 0, stale, indeterminate, shallow },
-      jdgOnly, jdgRelief: jdgOnly ? jdgReliefs[0].record.id : null, breakGlass, verdict: refused ? 'REFUSED' : 'ADMITTED', refusals, provenance,
-      results: results.map(x => ({ id: x.r.id, category: x.r.category, severity: x.r.severity, tag: x.tag, detail: x.detail })),
+      // V28: no get_knowledge result is read at the merge point either — stated, like check does
+      jdgOnly, jdgRelief: jdgOnly ? jdgReliefs[0].record.id : null, breakGlass, verdict: refused ? 'REFUSED' : 'ADMITTED', refusals, provenance: { ...provenance, knowledge: 'not-consulted' },
+      results: results.map(rowJson),
       summary, version: RULES.version, exit: refused ? 1 : 0,
     }, null, 2))
     return refused ? 1 : 0
   }
 
   const S = sanitizeTTY
-  const TAG = { PASS: color(32, 'PASS'), FAIL: color(31, 'FAIL'), WARN: color(33, 'WARN'), DIVERGED: color(31, 'DIVERGED'), SKIP: color(90, 'SKIP'), 'SIGN-OFF': color(35, 'SIGN-OFF') }
-  const TAGW = 8
-  const tagCell = t => TAG[t] + ' '.repeat(Math.max(1, TAGW - t.length + 1))
   console.log(`\n  baseline admit v${RULES.version}  ·  ${path.basename(REPO)}  ·  HEAD ${HEADSHA.slice(0, 7)}${BRANCH ? ` (${S(BRANCH)})` : ''} → ${S(targetRef)} @ ${targetTip.slice(0, 7)}\n`)
   if (fetchNote) console.log(`  ⚠ ${fetchNote}\n`)
   if (jdgOnly) console.log(`  ◇ JDG-only admission path: the range is judgment records alone (${jdgReliefs[0].record.id}) — forge not consulted\n`)
   console.log(anc === 0 ? `  ✓ up to date: ${S(targetRef)} is an ancestor of HEAD` : breakGlass ? color(33, `  ⚠ admitted under break-glass ${breakGlass.id} from ${S(targetRef)} (review by ${breakGlass.review_by}) — ${S(breakGlass.covered)}`) : color(31, `  ✗ not admissible as-is (refusals below)`))
   console.log(color(90, `  ${provenanceLine({ digest: provenance.digest, ...provInputs })}`))
   console.log('')
-  for (const cat of Object.keys(CATS)) {
-    const rows = results.filter(x => x.r.category === cat); if (!rows.length) continue
-    console.log('  ' + color(1, CATS[cat]))
-    for (const x of rows) console.log(`    ${tagCell(x.tag)} ${x.r.id.padEnd(9)} ${S(x.r.title)}\n            ${color(90, '↳ ' + S(x.detail))}`)
-    console.log('')
-  }
+  // the rows read exactly as check's (one line per evaluated rule; n/a rows unrendered, D4)
+  for (const line of humanRows(results, color)) console.log(line)
   // one terse recap per refusal at the BOTTOM — where the eye lands — never a verbatim
   // duplicate of a FAIL row above (first clause, capped)
   for (const r of refusals) { const first = r.split(' — ')[0]; console.log(color(31, `  ✗ ${S(first.length > 140 ? first.slice(0, 137) + '…' : first)}`)) }
   console.log(refused
     ? color(31, `\n  ✗ REFUSED — ${refusals.length} refusal(s) · ${summary.warn} warn · ${summary.diverged} diverged (details above)\n`)
-    : color(32, `\n  ✓ ADMITTED — HEAD ${HEADSHA.slice(0, 7)} vs ${S(targetRef)} @ ${targetTip.slice(0, 7)} · ${summary.pass} pass · ${summary.warn} warn · ${summary.diverged} diverged · ${summary.skip} n/a\n`))
+    : color(32, `\n  ✓ ADMITTED — HEAD ${HEADSHA.slice(0, 7)} vs ${S(targetRef)} @ ${targetTip.slice(0, 7)} · ${summary.pass} pass · ${summary.warn} warn · ${summary.diverged} diverged\n`))
   return refused ? 1 : 0
 }

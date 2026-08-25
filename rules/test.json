@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "TEST-01",
+      "id": "TEST-01-automated-tests-exist",
       "title": "Automated tests exist",
       "category": "test",
       "severity": "blocker",
@@ -46,7 +46,7 @@
       }
     },
     {
-      "id": "TEST-02",
+      "id": "TEST-02-failure-paths-tested",
       "title": "Failure paths are tested (negative tests)",
       "category": "test",
       "severity": "warn",
@@ -83,65 +83,11 @@
       }
     },
     {
-      "id": "TEST-03",
-      "title": "Red-on-arrival guards for 'must-never-exist' invariants",
-      "category": "test",
-      "severity": "manual",
-      "applies_to": [
-        "node",
-        "python",
-        "service",
-        "library"
-      ],
-      "lesson": "SW-3 enforce invariants by absence",
-      "rationale": "An invariant about something that must NOT exist is only real if a pinned test (e.g. a table/enum count) goes red when it appears.",
-      "fix": "Add a count/allow-list assertion for each 'must never appear' rule, then record it in the sign-off ledger.",
-      "sources": [
-        "tree"
-      ],
-      "on_unreachable": "skip",
-      "contexts": [
-        "check",
-        "reconcile"
-      ],
-      "certainty": "judgment",
-      "check": {
-        "kind": "signoff"
-      }
-    },
-    {
-      "id": "TEST-04",
-      "title": "Acceptance criteria reconciled against reference code",
-      "category": "test",
-      "severity": "manual",
-      "applies_to": [
-        "node",
-        "python",
-        "service",
-        "library"
-      ],
-      "lesson": "SW-2 criteria vs their own example code",
-      "rationale": "Specs whose acceptance criteria contradict their own reference impl create wrong-either-way forks.",
-      "fix": "Before 'ready', confirm every enum/field named in a criterion exists in its type def; record sign-off.",
-      "sources": [
-        "tree"
-      ],
-      "on_unreachable": "skip",
-      "contexts": [
-        "check",
-        "reconcile"
-      ],
-      "certainty": "judgment",
-      "check": {
-        "kind": "signoff"
-      }
-    },
-    {
-      "id": "TEST-05",
+      "id": "TEST-05-mutation-testing-gated",
       "title": "Mutation testing, if used, is gated",
       "category": "test",
       "severity": "warn",
-      "profile": "advanced",
+      "pack": "advanced",
       "source": "https://stryker-mutator.io/docs/stryker-js/configuration/",
       "lesson": "SW-2 tests must be able to fail",
       "applies_to": [
@@ -162,59 +108,22 @@
       ],
       "certainty": "heuristic",
       "check": {
-        "kind": "any-of",
-        "checks": [
-          {
-            "kind": "grep",
-            "globs": [
-              "stryker.conf.*",
-              "stryker.config.*",
-              ".stryker.conf.*"
-            ],
-            "pattern": "\"?break\"?\\s*:\\s*[1-9]",
-            "mode": "present"
-          },
-          {
-            "kind": "signoff"
-          }
-        ]
+        "kind": "grep",
+        "globs": [
+          "stryker.conf.*",
+          "stryker.config.*",
+          ".stryker.conf.*"
+        ],
+        "pattern": "\"?break\"?\\s*:\\s*[1-9]",
+        "mode": "present"
       }
     },
     {
-      "id": "TEST-06",
-      "title": "Flaky-test quarantine is disciplined",
-      "category": "test",
-      "severity": "manual",
-      "profile": "advanced",
-      "applies_to": [
-        "node",
-        "python",
-        "service",
-        "library"
-      ],
-      "source": "https://docs.google.com/",
-      "lesson": "SW-2 skips need owner+deadline",
-      "rationale": "A growing pile of skipped tests silently erodes coverage unless each skip carries an owner+reason+deadline and the total stays under a cap.",
-      "fix": "Give every quarantined test an owner+deadline (marker or central register) and cap the total; record sign-off.",
-      "sources": [
-        "tree"
-      ],
-      "on_unreachable": "skip",
-      "contexts": [
-        "check",
-        "reconcile"
-      ],
-      "certainty": "judgment",
-      "check": {
-        "kind": "signoff"
-      }
-    },
-    {
-      "id": "TEST-07",
+      "id": "TEST-07-coverage-floor-enforced",
       "title": "A coverage floor is declared and enforced",
       "category": "test",
       "severity": "warn",
-      "profile": "advanced",
+      "pack": "advanced",
       "source": "https://docs.codecov.com/docs/commit-status",
       "lesson": "a coverage regression should exit non-zero",
       "applies_to": [
@@ -260,12 +169,12 @@
             "mode": "present"
           },
           {
-            "kind": "json-field",
+            "kind": "grep",
             "globs": [
               "package.json"
             ],
-            "path": "jest.coverageThreshold",
-            "assert": "present"
+            "pattern": "\"coverageThreshold\"\\s*:",
+            "mode": "present"
           },
           {
             "kind": "grep",

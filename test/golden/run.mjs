@@ -36,7 +36,7 @@ const GIT_ENV = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOS
 // not silently drift the pins the checker subprocess derives — or, under --capture, bless
 // wrong ones. Strip them from the inherited env; the harness re-injects BASELINE_FORGE_REPLAY
 // per-manifest exactly where a fixture wants it. (BASELINE_GOLDEN_CHECK stays a real knob.)
-for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'BASELINE_GOV_ADMIN', 'GITHUB_HEAD_REF']) delete GIT_ENV[k]
+for (const k of ['BASELINE_LOG_NOW', 'BASELINE_FORGE_REPLAY', 'BASELINE_FORGE_RECORD', 'BASELINE_AGENT', 'BASELINE_GOV_ADMIN', 'BASELINE_OKF_BUNDLE', 'GITHUB_HEAD_REF']) delete GIT_ENV[k]
 // Override the runner under test (e.g. point at a pristine V1 monolith to prove a
 // candidate runner reproduces the same pins): BASELINE_GOLDEN_CHECK=/path/check.mjs
 const CHECK_UNDER_TEST = process.env.BASELINE_GOLDEN_CHECK || CHECK
@@ -124,7 +124,7 @@ function materializeInto(name, src, manifest, tmp, extra) {
   }
   // manifest.branches (M6a): ORDERED branches created before the current one — each
   // checks out from the PREVIOUS tip, so a later entry (or manifest.branch itself)
-  // stacks on an earlier sister (MERGE-02's shape).
+  // stacks on an earlier sister.
   for (const b of manifest.branches || []) {
     git(tmp, 'checkout', '-q', '-b', b.name)
     fs.writeFileSync(path.join(tmp, b.file || `${b.name.replace(/\W+/g, '-')}.txt`), b.content || `${b.name}\n`)
@@ -132,7 +132,7 @@ function materializeInto(name, src, manifest, tmp, extra) {
     git(tmp, 'commit', '-q', '-m', b.message || `fixture: ${b.name} work`)
   }
   // manifest.branch: check out a lane branch and commit the fixture's _branch/ overlay
-  // there — the FLOW/REC lane rules only evaluate off the default branch (M4c).
+  // there — admit judges a branch against its target, never the default branch itself.
   // branch_message (M6a) controls the commit message — trailers ride fixtures too.
   if (manifest.branch) {
     git(tmp, 'checkout', '-q', '-b', manifest.branch)
@@ -154,9 +154,9 @@ function materializeInto(name, src, manifest, tmp, extra) {
     git(tmp, 'commit', '-q', '-m', 'fixture: main advances')
     git(tmp, 'checkout', '-q', back)
   }
-  // manifest.bare_origin (M5c): a LOCAL bare origin so origin-coupled rules (FLOW-05's
-  // push discipline, FLOW-07's git-plane lease fallback) evaluate — the push also lands
-  // the remote-tracking refs the evaluators read. Lives OUTSIDE the repo tree.
+  // manifest.bare_origin (M5c): a LOCAL bare origin so origin-coupled commands (admit's
+  // target derivation, reconcile) have a remote — the push also lands the remote-tracking
+  // refs they read. Lives OUTSIDE the repo tree.
   const env = {}
   if (manifest.bare_origin) {
     const bare = fs.mkdtempSync(path.join(os.tmpdir(), `baseline-golden-${name}-origin-`))
@@ -219,7 +219,7 @@ function score(name) {
       let out
       try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: admit did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }
       const rules = {}
-      for (const r of out.results) rules[r.id] = { tag: r.tag, detail: normalizeDetail(r.detail, tmp) }
+      for (const r of out.results) rules[r.id] = r.tag ? { tag: r.tag, detail: normalizeDetail(r.detail, tmp) } : { state: r.state, reason: normalizeDetail(r.reason, tmp) }
       return {
         exitCode, command: 'admit', verdict: out.verdict, staleness: out.staleness,
         jdgOnly: out.jdgOnly, jdgRelief: out.jdgRelief ?? null, breakGlass: out.breakGlass ? { id: out.breakGlass.id } : null,
@@ -247,8 +247,8 @@ function score(name) {
     let out
     try { out = JSON.parse(stdout) } catch { throw new Error(`${name}: checker did not emit JSON (exit ${exitCode}):\n${stdout.slice(0, 400)}`) }
     const rules = {}
-    for (const r of out.results) rules[r.id] = { tag: r.tag, detail: normalizeDetail(r.detail, tmp) }
-    return { exitCode, project_type: out.project_type, profiles: out.profiles.sort(), summary: out.summary, rules }
+    for (const r of out.results) rules[r.id] = r.tag ? { tag: r.tag, detail: normalizeDetail(r.detail, tmp) } : { state: r.state, reason: normalizeDetail(r.reason, tmp) }
+    return { exitCode, project_type: out.project_type, packs: (out.packs || out.profiles || []).slice().sort(), summary: out.summary, rules }
   } finally {
     for (const d of [tmp, ...extra]) fs.rmSync(d, { recursive: true, force: true }) // never leak a tree with materialized fake secrets
   }

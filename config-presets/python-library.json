@@ -1,5 +1,5 @@
 {
-  "_preset": "python-library — an installable Python package (no long-running service). project_type=library runs build/test/quality/reproducibility + community/context/security, and skips the OPS rules. Add 'advanced' to profiles if you publish an SBOM or want code-scanning.",
+  "_preset": "python-library — an installable Python package (no long-running service). project_type: library runs the always-on rules (build/test/quality/reproducibility, community/context/security) with the service pack off. Add \"advanced\" to packs if you publish an SBOM or want code-scanning.",
   "project_type": "library",
   "makes_external_claims": false,
   "bootstrap_command": "pip install -e '.[dev]' && pytest -q",
@@ -8,6 +8,6 @@
     "docs/decisions/0*.md",
     "adr/*.md"
   ],
-  "profiles": [],
-  "_profiles": "add \"advanced\" to enable SBOM, static code-scanning, mutation testing, dependency-vuln-scan, coverage-floor."
+  "packs": [],
+  "_packs": "add \"advanced\" to enable SBOM, static code-scanning, mutation testing, dependency-vuln-scan, coverage-floor. ('profiles' is the legacy alias; --profile advanced the CLI form.)"
 }

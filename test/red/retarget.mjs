@@ -1,14 +1,16 @@
 #!/usr/bin/env node
-// RED — PLAN.md §4 "Retarget three REC rules, delete the ledger": V13, V14.
+// RED — PLAN.md §4 "Retarget three REC rules, delete the ledger": V13 — as amended by §11.
 //
-// The point of the retarget is that the subject widens from `records/` to the whole tree
-// (REC-02, REC-05) and from the vendored toolkit to the three vendor artifacts (REC-06).
-// So every fixture here deliberately has NO records/ directory: if a rule still needs one,
-// the retarget did not happen.
+// §11 (D11) withdraws V14 and deletes REC-06 outright: reading a source commit out of a
+// vendor artifact is the plugin-data parse D7 forbids, and the three PLUG rules replace
+// it (V38-V41 live in the plugins area; REC-06's non-existence is V9 in deletions.mjs).
+// What survives of §4 is the retarget of REC-02 and REC-05: the subject widens from
+// `records/` to anything you commit. So every fixture here deliberately has NO records/
+// directory: if a rule still needs one, the retarget did not happen.
 import fs from 'node:fs'
 import path from 'node:path'
 import {
-  harness, loadRuleSet, mkrepo, checkJson, git, rowOf, idsOf, writeAll,
+  harness, loadRuleSet, mkrepo, checkJson, rowOf,
   CLEAN_NODE, FAKE_SECRET, FAKE_TOKEN, cleanup,
 } from './_lib.mjs'
 
@@ -17,15 +19,14 @@ const { rules } = loadRuleSet()
 const base = (id) => id.replace(/^([A-Z]+-\d{2}).*/, '$1')
 const rule = (id) => rules.find(r => base(r.id) === id)
 
-// ---------- the three survive, with their §4 severities ----------
+// ---------- the two survive, with their §4 severities ----------
 {
-  for (const id of ['REC-02', 'REC-05', 'REC-06']) ok(!!rule(id), `§4 · ${id} survives the contraction`)
+  for (const id of ['REC-02', 'REC-05']) ok(!!rule(id), `§4 · ${id} survives the contraction`)
   ok(rule('REC-02')?.severity === 'warn', `§4 · REC-02 keeps its severity (got ${rule('REC-02')?.severity})`)
   ok(rule('REC-05')?.severity === 'warn', `§4 · REC-05 keeps its severity (got ${rule('REC-05')?.severity})`)
-  ok(rule('REC-06')?.severity === 'warn', `§4 · REC-06 is the warn-severity freshness check (got ${rule('REC-06')?.severity})`)
   // the retarget must show in the DATA, not only in behaviour: no surviving REC rule may
   // still scope itself to records/
-  const stuck = ['REC-02', 'REC-05', 'REC-06'].filter(id => /records\//.test(JSON.stringify(rule(id)?.check || {})))
+  const stuck = ['REC-02', 'REC-05'].filter(id => /records\//.test(JSON.stringify(rule(id)?.check || {})))
   ok(stuck.length === 0, `§4 · no surviving REC rule still scopes itself to records/ (${stuck.join(', ') || '—'})`)
 }
 
@@ -62,55 +63,6 @@ const rule = (id) => rules.find(r => base(r.id) === id)
     `V13 · REC-05 passes with a committed gate and no records/ (tag ${rowOf(rg.j, 'REC-05')?.tag})`)
   ok(rowOf(rg.j, 'REC-02')?.tag === 'PASS',
     `V13 · REC-02 passes on a clean tree with no records/ (tag ${rowOf(rg.j, 'REC-02')?.tag})`)
-}
-
-// ---------- V14: REC-06 — a present vendor artifact must declare its source commit ----------
-{
-  // the two artifacts PLAN.md locates by name. (The OKF bundle is the third; the plan does
-  // not say where it lives in the tree, so its location is asserted in seams.mjs instead.)
-  const artifacts = {
-    'tdd.json': (sha) => JSON.stringify({ schema: 'tdd/1', ...(sha ? { source_commit: sha } : {}), tests: [] }, null, 2) + '\n',
-    'graphify-out/GRAPH_REPORT.md': (sha) => `# Graph report\n\n${sha ? `Built from commit: ${sha}\n` : 'Built from commit: (unknown)\n'}`,
-  }
-
-  // (a) absent -> n/a: no row at all
-  {
-    const dir = mkrepo('v14-absent', CLEAN_NODE())
-    const r = checkJson(dir)
-    ok(!rowOf(r.j, 'REC-06'), 'V14 · REC-06 is absent (n/a) when no vendor artifact is present')
-    ok(r.status === 0, `V14 · and absence is never a failure (exit ${r.status})`)
-  }
-
-  // (b) present without a source commit -> a finding that names the artifact
-  for (const [rel, body] of Object.entries(artifacts)) {
-    const dir = mkrepo(`v14-bare-${rel.replace(/\W+/g, '-')}`, { ...CLEAN_NODE(), [rel]: body(null) })
-    const r = checkJson(dir)
-    const row = rowOf(r.j, 'REC-06')
-    ok(!!row, `V14 · REC-06 is evaluated when ${rel} is present`)
-    ok(row && row.tag !== 'PASS' && row.tag !== 'SKIP',
-      `V14 · REC-06 fails on ${rel} with no source commit (tag ${row?.tag})`)
-    ok(new RegExp(rel.split('/').pop().replace('.', '\\.')).test(row?.detail || ''),
-      `V14 · and the finding names ${rel} (detail: ${(row?.detail || '').slice(0, 90)})`)
-  }
-
-  // (c) present WITH a resolvable source commit -> PASS
-  {
-    const dir = mkrepo('v14-stamped', { ...CLEAN_NODE(), 'tdd.json': artifacts['tdd.json'](null) })
-    const sha = git(dir, 'rev-parse', 'HEAD')
-    writeAll(dir, { 'tdd.json': artifacts['tdd.json'](sha) })
-    git(dir, 'add', '-A'); git(dir, 'commit', '-qm', 'stamp tdd.json')
-    const r = checkJson(dir)
-    const row = rowOf(r.j, 'REC-06')
-    ok(row?.tag === 'PASS', `V14 · a stamped tdd.json passes REC-06 (tag ${row?.tag}: ${(row?.detail || '').slice(0, 80)})`)
-  }
-
-  // (d) a stamp pointing at a commit this repo does not have is not a stamp
-  {
-    const dir = mkrepo('v14-bogus', { ...CLEAN_NODE(), 'tdd.json': artifacts['tdd.json']('0'.repeat(40)) })
-    const r = checkJson(dir)
-    const row = rowOf(r.j, 'REC-06')
-    ok(row && row.tag !== 'PASS', `V14 · an unresolvable source commit does not satisfy REC-06 (tag ${row?.tag})`)
-  }
 }
 
 cleanup()

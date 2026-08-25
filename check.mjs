@@ -1,22 +1,20 @@
 #!/usr/bin/env node
 // project-baseline checker — zero-dependency. Scores a repo against rules.json.
-// Usage: node check.mjs [--repo <dir>] [--config <file>] [--no-exec] [--json] [--profile <name>]
+// Usage: node check.mjs [--repo <dir>] [--config <file>] [--no-exec] [--json] [--profile <pack>]
 // Exit code 1 if any blocker fails. See README.md.
 //
-// This file is the thin CLI; the runner lives in src/ (index -> config ->
-// evaluators -> engine -> report). check.mjs, rules.json, and src/ are
-// co-located — invoke by absolute path, never copy this file away from them.
+// This file is the thin CLI; the scorer lives in src/check-run.mjs (index -> config ->
+// evaluators -> engine) and the renderers in src/report.mjs. orient runs the same scorer
+// in-process for its `score:` line (v3 §8), so the pipeline has one home. check.mjs,
+// rules.json, and src/ are co-located — invoke by absolute path, never copy this file
+// away from them.
 import path from 'node:path'
 import { makeOpt, makeOptAll } from './src/util.mjs'
 import { loadRules } from './src/rules.mjs'
-import { indexRepo } from './src/repo.mjs'
-import { resolveLane } from './src/probe.mjs'
-import { resolveConfig } from './src/config.mjs'
-import { CHECK_KINDS, makeEvalCheck } from './src/evaluators.mjs'
-import { makeLaneWorld } from './src/facts/index.mjs'
-import { runRules } from './src/engine.mjs'
+import { CHECK_KINDS } from './src/evaluators.mjs'
 import { makeColor, reportJson, reportHuman } from './src/report.mjs'
-import { runSelfCheck } from './src/selfcheck.mjs'
+import { runSelfCheck, TOOLS } from './src/selfcheck.mjs'
+import { scoreRepo, FORGE_CLOSED } from './src/check-run.mjs'
 
 const args = process.argv.slice(2)
 const opt = makeOpt(args)
@@ -32,34 +30,26 @@ const RULES = loadRules()
 const TYPES = RULES.project_types || ['node', 'python', 'service', 'library', 'docs']
 
 const color = makeColor(JSON_OUT)
-const repo = indexRepo(REPO)
-const { cfg, DEFAULTS, CLAIMS_ACTIVE, CLAIMS_REASON, ACTIVE, JDGS, JUDGMENTS, DESCRIPTOR } = resolveConfig(repo, {
-  cliConfigPath: opt('--config', null),
+// the self-check reads the rule set alone — it scores nothing, so it indexes nothing
+if (SELF_CHECK) process.exit(runSelfCheck({ RULES, TYPES, CHECK_KINDS, color }))
+
+// v3 §11 D12 (V19/V42): the forge is CLOSED under check — scoreRepo resolves every
+// forge-sourced rule (GOV-01/02, OPS-07) n/a with this reason before its evaluator runs,
+// and the same closure rides into the lane world so no path — replay or not — spawns
+// gh/curl/wget from a check run. admit and reconcile keep the live probe.
+const { results, cfgRes, repo, lane } = scoreRepo(REPO, {
+  noExec: NO_EXEC,
+  forgeClosed: FORGE_CLOSED,
   profileArgs: optAll('--profile'),
+  cliConfigPath: opt('--config', null),
+  rules: RULES,
 })
+const { cfg, ACTIVE, WANT_UNKNOWN } = cfgRes
 
-if (SELF_CHECK) process.exit(runSelfCheck({ RULES, TYPES, CHECK_KINDS, DEFAULTS, color }))
-
-// Lane identity for the M4c branch-scoped rules: lane = branch name (the FS2 seam
-// log/orient already use), falling back to the CI event where the checkout is detached
-// and the event names a branch (#55: on a pull_request `actions/checkout` leaves
-// refs/pull/N/merge detached, and reading the checkout alone made every lane rule n/a on
-// the one event a branch-protection ruleset requires). Still nothing — a bisect, a
-// hand-detached local tree — is honestly null and the branch gate SKIPs. The default
-// branch is the descriptor's declared one only; undeclared stays null and the gate SKIPs
-// rather than guessing 'main'.
-const LANE = resolveLane(repo)
-const BRANCH = LANE.lane
-const DEFAULT_BRANCH = (DESCRIPTOR.valid && DESCRIPTOR.data.ground_truth_boundary?.default_branch) || null
-
-// The lane world (M5c): the capability-probe + forge-facts plumbing the FLOW/DIV rules
-// evaluate through — LAZY (first rule that needs it pays; a single-lane or off-posture
-// run never spawns gh) and exit-stable offline (degradations become labeled SKIPs).
-const LANEWORLD = makeLaneWorld(repo, DESCRIPTOR)
-
-const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC, JDGS, JUDGMENTS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD })
-const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, BRANCH, DEFAULT_BRANCH })
+// v3 §6 (V20): a `want` entry naming no known tool is said BY NAME, on stderr (so --json
+// stays parseable), never silently ignored — the closed vocabulary is selfcheck's TOOLS.
+for (const t of WANT_UNKNOWN) console.error(`check: unrecognised "want" entry '${t}' — known tools: ${TOOLS.join(', ')}`)
 
 process.exit(JSON_OUT
-  ? reportJson({ results, REPO, cfg, ACTIVE, HEAD: repo.HEAD, lane: LANE })
-  : reportHuman({ results, REPO, cfg, ACTIVE, HEAD: repo.HEAD, version: RULES.version, color, lane: LANE }))
+  ? reportJson({ results, REPO, cfg, ACTIVE, HEAD: repo.HEAD, lane })
+  : reportHuman({ results, REPO, cfg, ACTIVE, HEAD: repo.HEAD, version: RULES.version, color, lane }))

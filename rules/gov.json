@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "GOV-01",
+      "id": "GOV-01-merge-protection-active",
       "title": "Merge protection is active on the default branch",
       "category": "governance",
       "severity": "warn",
@@ -25,7 +25,7 @@
       }
     },
     {
-      "id": "GOV-02",
+      "id": "GOV-02-up-to-date-merges-enforced",
       "title": "Strict/up-to-date merges and conversation resolution enforced",
       "category": "governance",
       "severity": "warn",
@@ -49,7 +49,7 @@
       }
     },
     {
-      "id": "GOV-03",
+      "id": "GOV-03-codeowners-names-owner",
       "title": "CODEOWNERS exists and names an owner",
       "category": "governance",
       "severity": "warn",

@@ -88,20 +88,6 @@ export function selectBreakGlass(records, gate, today) {
     .sort((a, b) => (a.date === b.date ? (a.id < b.id ? 1 : -1) : (a.date < b.date ? 1 : -1)))[0] || null
 }
 
-// The bridge's selection rule, one home: schema-VALID sign-offs only (a malformed
-// review_by must never read as signed-forever), newest per subject — date desc,
-// id desc on ties. The newest governs even if lapsed: a re-judgment supersedes;
-// an older unexpired record does not resurrect (documented in CONTRACT.md).
-export function selectSignoffs(records) {
-  const by = {}
-  for (const j of records) {
-    if (j.kind !== 'sign-off') continue
-    const prev = by[j.subject]
-    if (!prev || j.date > prev.date || (j.date === prev.date && j.id > prev.id)) by[j.subject] = j
-  }
-  return by
-}
-
 // One condition — { fact, op, value } -> { fired: true|false|null, note } where
 // null means the fact path did not resolve (surfaced, never guessed).
 export function evalCondition(cond, facts) {

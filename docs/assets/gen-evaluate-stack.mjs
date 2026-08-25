@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 // Generates docs/assets/evaluate-stack-{light,dark}.svg — the README "evaluate stack" board.
 // Deterministic: re-running produces byte-identical SVGs (for the same repo state), so diffs
-// stay honest. Counts (rules, check kinds, fixtures, pins, module sizes) are DERIVED from the
-// code, never hardcoded — a stale number can't ship. Never hand-edit the SVGs; rerun this.
+// stay honest. Every number on the board (fixtures, pins, module sizes) is DERIVED from the
+// code, never hardcoded — and the rule-set and check-kind counts are not printed at all: a
+// static picture of a moving count is drift by construction (v3 V32/V33), so the board says
+// "the rule set" and `check.mjs --self-check` says how big it is. Never hand-edit the SVGs;
+// rerun this after a change to src/ or the fixtures.
 // Usage: node docs/assets/gen-evaluate-stack.mjs
 import fs from 'node:fs'
 import path from 'node:path'
-import { CHECK_KINDS } from '../../src/evaluators.mjs'
-import { loadRules } from '../../src/rules.mjs'
 
 const W = 1440, H = 1265
 const SANS = 'Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif'
@@ -72,8 +73,6 @@ const PALETTES = {
 // ---------- derived facts (from the code itself, so the board can't go stale) ----------
 const here = path.dirname(new URL(import.meta.url).pathname)
 const ROOT = path.join(here, '..', '..')
-const RULES = loadRules().rules.length
-const KINDS = CHECK_KINDS.size
 const wc = f => fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').length - 1 // wc -l
 const FIXTURES = fs.readdirSync(path.join(ROOT, 'test/fixtures'), { withFileTypes: true }).filter(d => d.isDirectory()).length
 const pinsFile = JSON.parse(fs.readFileSync(path.join(ROOT, 'test/golden/pins.json'), 'utf8'))
@@ -82,9 +81,9 @@ const PINNED = pinCounts.length === 1 ? pinCounts[0] : Math.min(...pinCounts) //
 
 // ---------- content ----------
 const LAYERS = [
-  { nick: 'THE CLI', file: `check.mjs · ${wc('check.mjs')} lines`, role: 'the only entry point', knows: ['flags: --repo · --json · --no-exec', `loads rules.json — the ${RULES}-rule`, 'standard, as pure data'], never: ['what any rule means'] },
-  { nick: 'THE JUDGE', file: `engine.mjs · ${wc('src/engine.mjs')} lines`, role: 'gate → evaluate → tag', knows: ['5 gates: type? profile? opt-out?', 'posture? branch? → SKIP, never', 'punished · tag ladder + severity'], never: ['how anything is checked'] },
-  { nick: 'THE LAB', file: `evaluators.mjs · ${KINDS} kinds`, role: 'facts only', knows: ['how to verify each claim: grep,', 'any-file, json-field, command,', 'signoff… (any-of & implies recurse)'], never: ['severity, or what happens', 'to its result'] },
+  { nick: 'THE CLI', file: `check.mjs · ${wc('check.mjs')} lines`, role: 'the only entry point', knows: ['flags: --repo · --json · --no-exec ·', '--profile <pack> · loads rules.json —', 'the rule set, as pure data'], never: ['what any rule means'] },
+  { nick: 'THE JUDGE', file: `engine.mjs · ${wc('src/engine.mjs')} lines`, role: 'gate → evaluate → tag', knows: ['gates: context · pack · type/tool ·', 'posture · forge — a miss is no row,', 'never a penalty · tag ladder + severity'], never: ['how anything is checked'] },
+  { nick: 'THE LAB', file: `evaluators.mjs · ${wc('src/evaluators.mjs')} lines`, role: 'facts only, one function per kind', knows: ['how to verify each claim: grep,', 'any-file, md-links, command,', 'dockerfile-digest… (any-of & implies recurse)'], never: ['severity, or what happens', 'to its result'] },
   { nick: 'THE SENSES', file: `repo.mjs · ${wc('src/repo.mjs')} lines`, role: 'the repo index, built once', knows: ['find: match(globs) · read: 3', 'paranoia levels · ask git: age,', 'ancestry, lag behind HEAD'], never: ['what a “rule” even is'] },
   { nick: 'THE WORLD', file: 'node:fs + git', role: 'the only true things', knows: ['bytes on disk', 'the git object database'], never: ['everything above'] },
 ]
@@ -96,15 +95,15 @@ const WAISTS = [
 ]
 const STEPS = [
   { main: 'SEC-01 loaded — severity: blocker', note: 'the rule is data; the CLI doesn’t interpret it' },
-  { main: 'gates pass → try { evalCheck(check, rule) }', note: 'a crashing check degrades to SKIP — never a false FAIL' },
+  { main: 'gates pass → try { evalCheck(check, rule) }', note: 'a crashing check degrades to n/a — never a false FAIL' },
   { main: 'kind: grep — credential regex, mode: “absent”', note: 'pass only if NOTHING matches' },
   { main: 'readRaw(“.env”) — the paranoid read', note: 'big & binary files not skipped: secrets hide there' },
   { main: 'AWS_SECRET_ACCESS_KEY=wJalrXUtn…', note: 'a planted fake key in the node-fail fixture' },
 ]
 const CHIPS = [
-  { tag: 'SKIP', sub: ['couldn’t judge —', 'not held against you'], ck: 'gray' },
+  { tag: 'no row', sub: ['gate miss — not part', 'of this run at all'], ck: 'gray' },
+  { tag: 'n/a', sub: ['in scope, not evaluable —', '--json only, never counted'], ck: 'blue' },
   { tag: 'PASS', sub: ['checked,', 'it’s fine'], ck: 'green' },
-  { tag: 'SIGN-OFF', sub: ['a human judged it,', 'dated + on record'], ck: 'blue' },
   { tag: 'WARN', sub: ['real shortfall,', 'doesn’t block'], ck: 'amber' },
   { tag: 'FAIL', sub: ['blockers only', '→ exit 1'], ck: 'red' },
 ]
@@ -120,7 +119,7 @@ function board(p) {
   o.push(text(36, 66, 'How /baseline decides', { size: 34, weight: 'bold', fill: p.ink }))
   o.push(text(36, 98, 'five layers turn a repository into an exit code — each layer knows less than the one above it', { size: 17, fill: p.soft }))
   o.push(box(844, 36, 560, 40, { fill: 'none', stroke: p.faint, sw: 2, rx: 20 }))
-  o.push(text(1124, 61, `node check.mjs --repo <path>  →  ${RULES} rules  →  scorecard  →  exit code`, { size: 12.5, fill: p.soft, family: MONO, anchor: 'middle' }))
+  o.push(text(1124, 61, 'node check.mjs --repo <path>  →  rules.json  →  scorecard  →  exit code', { size: 12.5, fill: p.soft, family: MONO, anchor: 'middle' }))
 
   // vertical margin note
   o.push(`<g transform="rotate(-90 20 520)">` + text(20, 520, '↓ questions go down · facts come up ↑', { size: 13, fill: p.faint, anchor: 'middle' }) + `</g>`)
@@ -177,7 +176,7 @@ function board(p) {
   o.push(text(748, VY + 96, 'the lab states facts + evidence', { size: 12.5, fill: p.soft }))
   o.push(arrow(982, VY + 64, 1018, VY + 64, { stroke: p.red, sw: 2.8 }))
   o.push(box(1020, VY + 26, 208, 78, { fill: p.chipFill, stroke: p.layers[1].stroke, sw: 2.5 }))
-  o.push(lines(1038, VY + 56, ['ladder: not null · not true ·', 'no sign-off → blocker ⇒ FAIL'], { size: 12.5, lh: 18, fill: p.ink }))
+  o.push(lines(1038, VY + 56, ['ladder: not null · not true ·', 'severity blocker ⇒ FAIL'], { size: 12.5, lh: 18, fill: p.ink }))
   o.push(text(1038, VY + 96, 'the judge applies meaning', { size: 12.5, fill: p.soft }))
   o.push(arrow(1230, VY + 64, 1266, VY + 64, { stroke: p.red, sw: 2.8 }))
   o.push(box(1268, VY + 26, 136, 78, { fill: p.chipFill, stroke: p.red, sw: 3 }))
@@ -200,8 +199,8 @@ function board(p) {
   o.push(text(60, SY + 34, 'kept honest — this repo’s own CI', { size: 15.5, weight: 'bold', fill: p.sticky.text }))
   o.push(lines(60, SY + 62, ['--self-check → rules.json is internally valid', `golden corpus → ${FIXTURES} fixture repos × ${PINNED} pinned`, '     verdicts — ANY drift fails the build', 'self-score → baseline scores its own repo'], { size: 13, lh: 22, fill: p.sticky.text }))
   o.push(card(470, SY, 400, 150, { fill: p.v2sticky.fill, stroke: p.v2sticky.stroke }))
-  o.push(text(494, SY + 34, 'next: V2 — “Lens & Ledger”', { size: 15.5, weight: 'bold', fill: p.v2sticky.text }))
-  o.push(lines(494, SY + 62, ['layer 4, THE SENSES, grows into three', 'ground-truth planes: TREE · HISTORY · FORGE —', 'status derived on demand, never hand-written', '→ docs/v2/PLAN.md'], { size: 13, lh: 22, fill: p.v2sticky.text }))
+  o.push(text(494, SY + 34, 'v3 — enabler, not enforcer', { size: 15.5, weight: 'bold', fill: p.v2sticky.text }))
+  o.push(lines(494, SY + 62, ['always-on blockers fail CI; packs switch on', 'explicitly; plugins (tdd-pi · graphify · okf-rag)', 'are suggested — baseline reads their metadata only', '→ docs/v3/PLAN.md'], { size: 13, lh: 22, fill: p.v2sticky.text }))
   o.push(lines(1404, SY + 96, ['drawn from the code on main — regenerate:', 'node docs/assets/gen-evaluate-stack.mjs', 'more: REFERENCE.md · GLOSSARY.md'], { size: 12.5, lh: 20, fill: p.faint, anchor: 'end', family: MONO }))
 
   o.push('</svg>')

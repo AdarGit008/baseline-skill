@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "SEC-01",
+      "id": "SEC-01-no-committed-secrets",
       "title": "No high-signal secrets committed",
       "category": "security",
       "severity": "blocker",
@@ -43,7 +43,7 @@
       }
     },
     {
-      "id": "SEC-02",
+      "id": "SEC-02-env-files-ignored",
       "title": "Real .env files are git-ignored, not committed",
       "category": "security",
       "severity": "blocker",
@@ -87,7 +87,7 @@
       }
     },
     {
-      "id": "SEC-03",
+      "id": "SEC-03-ci-actions-pinned-sha",
       "title": "Third-party CI actions pinned to a commit SHA",
       "category": "security",
       "severity": "warn",
@@ -117,7 +117,7 @@
       }
     },
     {
-      "id": "SEC-04",
+      "id": "SEC-04-no-dangerous-ci-patterns",
       "title": "No dangerous CI workflow patterns",
       "category": "security",
       "severity": "warn",
@@ -146,7 +146,7 @@
       }
     },
     {
-      "id": "SEC-05",
+      "id": "SEC-05-dependency-updates-automated",
       "title": "Automated dependency-update tool configured",
       "category": "security",
       "severity": "warn",
@@ -193,7 +193,7 @@
       }
     },
     {
-      "id": "SEC-06",
+      "id": "SEC-06-security-policy-reporting-channel",
       "title": "Security policy names a reporting channel",
       "category": "security",
       "severity": "warn",
@@ -222,7 +222,7 @@
       }
     },
     {
-      "id": "SEC-07",
+      "id": "SEC-07-no-committed-binaries",
       "title": "No committed binary/executable artifacts",
       "category": "security",
       "severity": "warn",
@@ -266,11 +266,11 @@
       }
     },
     {
-      "id": "SEC-08",
+      "id": "SEC-08-sbom-committed",
       "title": "A committed SBOM exists in a recognized format",
       "category": "security",
       "severity": "warn",
-      "profile": "advanced",
+      "pack": "advanced",
       "applies_to": [
         "node",
         "python",
@@ -303,11 +303,11 @@
       }
     },
     {
-      "id": "SEC-09",
+      "id": "SEC-09-code-scanning-configured",
       "title": "Static code-scanning is configured",
       "category": "security",
       "severity": "warn",
-      "profile": "advanced",
+      "pack": "advanced",
       "applies_to": [
         "node",
         "python",
@@ -338,11 +338,11 @@
       }
     },
     {
-      "id": "SEC-10",
+      "id": "SEC-10-release-provenance-present",
       "title": "Release provenance/signing is present",
       "category": "security",
       "severity": "warn",
-      "profile": "advanced",
+      "pack": "advanced",
       "applies_to": [
         "node",
         "python",
@@ -386,7 +386,7 @@
       }
     },
     {
-      "id": "SEC-11",
+      "id": "SEC-11-least-privilege-ci-token",
       "title": "CI grants a least-privilege GITHUB_TOKEN",
       "category": "security",
       "severity": "warn",
@@ -413,7 +413,7 @@
       }
     },
     {
-      "id": "SEC-12",
+      "id": "SEC-12-secret-scanning-gate",
       "title": "A secret-scanning gate is wired in",
       "category": "security",
       "severity": "warn",
@@ -459,11 +459,11 @@
       }
     },
     {
-      "id": "SEC-13",
+      "id": "SEC-13-dependency-vulnerability-scan",
       "title": "A dependency vulnerability scan runs in CI",
       "category": "security",
       "severity": "warn",
-      "profile": "advanced",
+      "pack": "advanced",
       "applies_to": [
         "node",
         "python",
@@ -498,7 +498,7 @@
       }
     },
     {
-      "id": "SEC-14",
+      "id": "SEC-14-pre-commit-hooks-pinned",
       "title": "Pre-commit hooks pinned to an immutable rev",
       "category": "security",
       "severity": "warn",

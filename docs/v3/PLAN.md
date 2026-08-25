@@ -1,5 +1,10 @@
 # v3 — simplify baseline: enabler, not enforcer
 
+**Status (2026-08-25).** Landed on branch `v3/red-tests` at `705e43a`, WP1–WP7 plus
+the WP8 release package: `node test/red/run.mjs --green` exits 0 — 454/454 assertions,
+38/38 live invariants — and every CI step is green. Open: the D13 ledger follow-up
+(`log` / `jdg` / `scrub` / `admit` / `reconcile` and the `records/` tree), its own PR.
+
 > **This document is not the authority. The tests are.**
 > Every statement below must be enforced by a test in `test/red/`. Where this
 > document and a red test disagree, the test wins and this document is wrong.
@@ -26,12 +31,20 @@ baseline stops being the whole system and becomes one part of four.
 | **okf-rag** | why things matter (prose, rationale) | `get_knowledge()`, HITL-curated |
 | **graphify** | what is where (code structure) | `graphify-out/`, local, gitignored |
 
+baseline also ships one always-on `PLUG` rule per plugin (§11 D8): `PLUG-01`
+tdd-pi, `PLUG-02` graphify, `PLUG-03` okf-rag. Each is one WARN — artifact
+absent → the install command; present but gitignore state differs from config →
+the mismatch; otherwise PASS. It reads metadata only (D7): path, file or
+directory, mtime, gitignore state. Plugins are suggested, never required (D6).
+
 **Invariants (each needs a red test):**
 
 - **V1** baseline imports no code from tdd-pi, okf-rag, or graphify. File
   contracts only. The runner stays zero-dependency Node.
 - **V2** baseline runs to a complete, correct verdict with all three vendors
   absent. Absence is never a failure, never a warning — it is `n/a`.
+  — amended by §11 (D8): absence of a plugin is one WARN, never a FAIL, never
+  an exit-code change.
 - **V3** a verdict never depends on a retrieval. `get_knowledge` may enrich an
   explanation; it may never change PASS/FAIL/WARN/SKIP.
 - **V4** baseline never writes to the OKF bundle. It may write a *proposed*
@@ -45,8 +58,10 @@ Today: `CATEGORY-NN`. v3: `CATEGORY-NN-semantic-slug`.
 SEC-01-no-committed-secrets      blocker
 BUILD-05-task-1-passes-clean     blocker
 CTX-12-status-is-derived         blocker
-REC-06-vendor-declares-commit    warn
 ```
+
+— `REC-06-vendor-declares-commit` withdrawn by §11 (D11): the rule is deleted;
+the three surviving exemplars are the verbatim slugs D13 names.
 
 The id says what the rule checks, so a finding is readable with no lookup —
 which is what lets `SKILL.md` shrink and the doctrine move out of context.
@@ -67,7 +82,8 @@ which is what lets `SKILL.md` shrink and the doctrine move out of context.
 | `MERGE-02` | 1 | 1 | Sister-lane dependencies — same reason. |
 | `REC-01`, `REC-04` | 2 | 0 | The records ledger is gone; okf-rag is the authority. |
 
-94 → **79 rules**. 28 → **9 always-on blockers**.
+94 → 79 → **76 rules** (§11 D11: the five `signoff` rules and `REC-06` leave,
+three `PLUG` rules arrive). 28 → **9 always-on blockers**.
 
 **Invariants:**
 
@@ -77,6 +93,8 @@ which is what lets `SKILL.md` shrink and the doctrine move out of context.
   deleted rule. Deleting the rules deletes their machinery.
 - **V11** the rule set contains exactly 79 rules and exactly 9 always-on blockers,
   and every count printed anywhere is derived from the rule set, never literal.
+  — amended by §11 (D11): the rule set contains exactly 76 rules; the
+  "never literal" clause stands.
 
 ### The 9 always-on blockers
 
@@ -94,12 +112,15 @@ which is what lets `SKILL.md` shrink and the doctrine move out of context.
 - `REC-06` retargets to: **every vendored artifact declares the commit it was
   built from.** It becomes the freshness check for `tdd.json`, the OKF bundle,
   and `graphify-out/`.
+  — withdrawn by §11 (D11): `REC-06` is deleted; reading a commit out of an
+  artifact is the plugin-data parse D7 forbids. The three `PLUG` rules replace it.
 
 **Invariants:**
 
 - **V13** `REC-02` and `REC-05` fire on a secret committed outside `records/`.
 - **V14** `REC-06` fails when a present vendor artifact carries no source commit,
   and is `n/a` when the artifact is absent.
+  — withdrawn by §11 (D11).
 
 ## 5. Five opt-in packs
 
@@ -107,11 +128,15 @@ Nothing below runs unless enabled or obviously needed.
 
 | Pack | Rules | Activates when |
 |---|---|---|
-| `claims` | `CLAIM-00`…`CLAIM-07` (8) | `makes_external_claims: true` |
+| `claims` | `CLAIM-00`…`CLAIM-07` minus `CLAIM-05` (7, §11 D11) | `makes_external_claims: true` |
 | `decisions` | `CTX-02`, `CTX-07`, `CTX-13`, `CTX-14` (4) | `decision_globs` non-empty |
 | `descriptor` | `DESC-01/02/03` (3) | listed in `profiles` |
 | `service` | `OPS-01`…`OPS-07` (7) | `project_type: service` |
 | `advanced` | SBOM, code-scan, mutation, symbol-integrity | listed in `profiles` |
+
+Any pack also activates from the `profiles` list (alias `packs`) or
+`--profile <pack>`; the switches above are shortcuts, and a descriptor `type`
+never activates a pack (§11 D13).
 
 **Invariants:**
 
@@ -124,7 +149,9 @@ Nothing below runs unless enabled or obviously needed.
 
 Today a docs repo drags all 94 rules through its run. v3 detects what the repo
 actually uses — package manager, test runner, CI, linters, hooks, Docker — and
-evaluates only rules whose subject is present or declared.
+evaluates only rules whose subject is present or declared. A rule's tool
+requirement is an explicit rule field (`"tool": "docker"`), validated by
+selfcheck; `want` overrides it (§11 D13).
 
 **Invariants:**
 
@@ -137,28 +164,39 @@ evaluates only rules whose subject is present or declared.
 
 ## 7. The three seams
 
-### 7.1 `tdd.json` — evidence, never a mandate
+### 7.1 `tdd.json` — presence only
 
-baseline reads the committed DB written by tdd-pi. Red tests are open work.
-This flips the five sign-off rules — `TEST-03`, `TEST-04`, `TEST-06`,
-`CLAIM-05`, `CTX-04` — from "write a ledger entry" to "a red test already
-proves this."
+**Amended by §11.** baseline never opens `tdd.json` (D7); it asks whether the
+file exists and whether its gitignore state matches config, and answers with
+one WARN row, `PLUG-01` (D8). The five sign-off rules this seam was to feed by
+evidence — `TEST-03`, `TEST-04`, `TEST-06`, `CLAIM-05`, `CTX-04` — are deleted
+(D11): a rule nothing can check is a written promise.
 
 - **V21** with a `tdd.json` whose red test covers the invariant, the matching
   sign-off rule resolves by evidence with no ledger entry present.
+  — withdrawn by §11 (D11).
 - **V22** with no `tdd.json`, all five resolve `n/a` — never WARN, never a nag.
+  — withdrawn by §11 (D11).
 - **V23** baseline never checks *whether TDD was followed*. No rule asserts the
   existence of a red test as such; rules assert that a claim has a falsifiable
   criterion, of which a red test is one accepted form.
+  — withdrawn by §11 (D11).
 
 ### 7.2 `graphify-out/` — orientation only
 
 `graphify-out/` is gitignored, so it is local optional state.
 `GRAPH_REPORT.md` records `Built from commit: <sha>`; compare against HEAD.
+— amended by §11 (D7): baseline never opens `GRAPH_REPORT.md`; the graph's age
+is the directory's mtime.
 
 - **V24** `orient` reports the graph as fresh, stale, or absent, and never
   changes an exit code.
+  — amended by §11 (D7): `orient` reports the graph as present or absent and
+  its age from mtime; it reads no content.
 - **V25** a stale or absent graph produces a suggestion, never a finding.
+  — amended by §11 (D7, D8): `orient` reports present or absent and age from
+  mtime as a suggestion; an absent graph's one finding is `PLUG-02`'s WARN row
+  under `check`.
 
 ### 7.3 `get_knowledge()` — explanations only
 
@@ -177,9 +215,9 @@ Orient prints five lines and blocks on nothing:
 
 ```
 repo:      baseline-skill @ f8e31bc
-work:      3 red tests open (tdd.json)
-graph:     stale — built at 49dceb3, HEAD f8e31bc
-knowledge: okf bundle reachable
+work:      tdd.json present · tracked · 2h old
+graph:     graphify-out/ present · ignored · 3d old
+knowledge: okf bundle present
 score:     0 blockers · 4 advisory
 ```
 
@@ -210,6 +248,8 @@ the number stops depending on a reading.
 - **V33** no shipped file contains a rule count or check-kind count as a literal
   that disagrees with the rule set, and `registry == top-level == 44` — the two
   derivations agree, so no reading has to be chosen.
+  — amended by §11 (D11): `signoff` and `vendored-lock` leave the registry and
+  `plugin-presence` joins it, so both derivations read 43; the equality stands.
 
 ## 10. Decisions taken 2026-08-25
 
@@ -220,7 +260,8 @@ maintainer. Each adds or amends an invariant.
 kind. Removing it collapses 45-vs-44 into one number. Amends V33; see §9.
 
 **D2 — the OKF migration is a deterministic extraction, not authorship.** The
-79 rules' prose already exists in `REFERENCE.md`'s rule table and `GLOSSARY.md`.
+rules' prose (76 after §11 D11) already exists in `REFERENCE.md`'s rule table
+and `GLOSSARY.md`.
 A one-time generator moves it; no model is involved, and the maintainer approves
 the batch before anything enters the bundle.
 
@@ -247,3 +288,92 @@ code path that can write near the bundle.
 - **V37** `orient` runs `git pull` as its first act and performs no other git
   write and no forge access; `gh` is never spawned. A failed pull degrades to a
   note, and `orient` still exits 0.
+
+## 11. Decisions taken 2026-08-25, second round — the plugin boundary
+
+The first round left the three seams reading plugin *data*: `tdd.json`'s
+`covers[]`, a `source_commit` inside a vendor artifact, `Built from commit:`
+inside `GRAPH_REPORT.md`. Every one of those is a second parser for someone
+else's file. The maintainer drew the line one step back. Where §1, §4 or §7
+disagree with this section, this section wins; where a red test disagrees with
+this section, the test is rewritten.
+
+**D6 — baseline is workflow scaffolding, and plugins are suggested, not
+required.** tdd-pi, okf-rag and graphify are the default suggestions. Install
+is per approval: baseline prints the install command, and never runs it.
+
+**D7 — the boundary is metadata.** For a plugin artifact baseline may read: does
+the path exist, is it a file or a directory, its mtime, and its gitignore state.
+It never opens the artifact. No `covers[]`, no `source_commit`, no
+`Built from commit:`. `explain` may *display* a concept from the OKF bundle —
+display is not a verdict (V3 stands).
+
+**D8 — one WARN per plugin.** Each plugin is exactly one rule, in a new
+always-on family `PLUG` (`rules/plug.json`, category `plugins`, severity
+`warn`, kind `plugin-presence`): `PLUG-01` tdd-pi, `PLUG-02` graphify,
+`PLUG-03` okf-rag. Verdict: artifact absent → WARN naming the install command;
+present but gitignore state differs from config → WARN naming the mismatch;
+otherwise PASS. A plugin never produces a second row, a FAIL, or an exit-code
+change. The WARN is a `check` row (CI sees it), not an `orient` line.
+
+**D9 — the only git question baseline asks about a plugin is "tracked or
+ignored, per the user's setup".** Config key `plugins`, one entry per plugin,
+`{ "path": <relative path or env-derived>, "ignored": true|false }`. Defaults:
+`tdd.json` tracked; `graphify-out/` ignored; the OKF bundle at
+`$BASELINE_OKF_BUNDLE` ignored, and the gitignore question is skipped when that
+path is outside the repo.
+
+**D10 — every WARN leaves a log.** A WARN row prints the path
+`.baseline/log/<RULE-ID>.log`; the file records the paths inspected, the config
+values used, and the gitignore answer, so the finding can be investigated
+without re-running. Overwritten each run. `.baseline/log/` joins
+`.baseline/cache/` in the gitignore template. `--json` carries the same path
+as `log`.
+
+**D11 — the five `signoff` rules and `REC-06` are deleted.** `TEST-03`,
+`TEST-04`, `TEST-06`, `CLAIM-05`, `CTX-04` were severity `manual`: a human
+ledger entry was their only evidence, and D7 forbids the `tdd.json` reading
+that §7.1 offered in its place. A rule nothing can check is a written promise.
+`REC-06` (`vendored-lock`) is replaced by the three `PLUG` rules. The kinds
+`signoff` and `vendored-lock` leave `CHECK_KINDS` (V10, V33). The rule set is
+therefore **76** rules (79 − 6 + 3); V11's count is amended, its "never
+literal" clause stands. `REC-02` and `REC-05` (§4, V13) survive; REC-05 is narrowed to at-rest push-time evidence (a committed gitleaks config or pre-push hook) so it no longer duplicates SEC-12, whose question is CI/pre-commit scanning.
+
+**D12 — the forge is closed under `check` and `orient`.** `GOV-01`, `GOV-02`
+and `OPS-07` are forge-sourced and survive; under `check` and `orient` they
+resolve `n/a` with reason `forge not consulted` (V19, V37). `admit` and
+`reconcile` keep the live probe.
+
+**D13 — the first-round questions, settled.** `explain --propose` does not
+exist (D3 wins; seams V4's two `--propose` assertions are rewritten against
+`gen okf-concepts`). The ledger removal in this burn-down is the minimum the
+tests pin (`lane` verb, `signoff` kind, `REC-01`/`REC-04`); `log`, `jdg`,
+`scrub`, `admit`, `reconcile` are a follow-up PR. A rule's tool requirement is
+an explicit rule field (`"tool": "docker"`), validated by selfcheck; `want`
+overrides it. Any pack activates from a `profiles` list (alias `packs`) or
+`--profile <pack>`; the §5 switches are shortcuts; a descriptor `type` never
+activates a pack. The 76 slugs are drafted by the implementer from titles, the
+§2 exemplars verbatim, reviewed as one file diff.
+
+**Superseded:** V14, V21, V22, V23 are withdrawn. V2 is amended: absence of a
+plugin is one WARN, never a FAIL, never an exit-code change. V24 and V25 are
+amended: `orient` reports the graph as present or absent and its age from
+mtime; it reads no content. V11 reads 76.
+
+**Invariants:**
+
+- **V38** `rules/plug.json` holds exactly three rules, `PLUG-01`, `PLUG-02`,
+  `PLUG-03`, all severity `warn`, all kind `plugin-presence`, none in a pack,
+  none a blocker. No other rule reads a plugin artifact path.
+- **V39** with all three artifacts absent, `check` on a clean repo emits exactly
+  three WARN rows, one per `PLUG` rule, each naming an install command and a
+  `.baseline/log/PLUG-0N.log` path that exists after the run; exit code 0.
+- **V40** with an artifact present and its gitignore state matching config, the
+  `PLUG` row is PASS and no log is written for it; with the state differing
+  (e.g. `graphify-out/` tracked), the row is WARN, names the mismatch, and the
+  log records the config value and the git answer.
+- **V41** no code path under `check` or `orient` opens a plugin artifact for
+  reading. `tdd.json` content, `GRAPH_REPORT.md` content and bundle content
+  are never read during `check`; `explain` may read the bundle.
+- **V42** `GOV-01`, `GOV-02`, `OPS-07` resolve `state: "n/a"`, reason
+  `forge not consulted`, under `check` and `orient`, and `gh` is not spawned.

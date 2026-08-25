@@ -27,10 +27,20 @@
 //     a file WITHOUT the marker is refused (move it aside or pass a different
 //     --out — never paste the marker onto a hand-written file to authorize a
 //     clobber). The refusal probe uses the same uncapped read.
+//
+// v3 D2: `gen okf-concepts` — the one-shot OKF migration, a deterministic EXTRACTION
+// (never authorship, never a model, never the network). One markdown concept per
+// loaded rule, YAML frontmatter (id, title, source span), staged under
+// <repo>/.baseline/proposed/baseline/rules/ and nowhere else (V35). The bundle at
+// BASELINE_OKF_BUNDLE is not consulted and not written (V4): the maintainer reviews
+// the batch and copies it in by hand. Byte-identical on every rerun — no date, no
+// sha, no absolute path in the output.
 import fs from 'node:fs'
 import path from 'node:path'
-import crypto from 'node:crypto'
+import { fileURLToPath } from 'node:url'
 import { makeOpt, sanitizeTTY } from './util.mjs'
+import { loadRules } from './rules.mjs'
+import { conceptOf, baseOf } from './explain.mjs'
 import { indexRepo } from './repo.mjs'
 import { resolveConfig } from './config.mjs'
 import { validateRecord, recordSchema } from './records.mjs'
@@ -57,65 +67,6 @@ export function remedyCommand(REPO, kind, outRel) {
   return inRepo
     ? `node ${q(path.relative(REPO, self).split(path.sep).join('/'))} gen ${kind} --out ${q(outRel)} --repo .`
     : `node ${q(self)} gen ${kind} --out ${q(outRel)} --repo ${q(REPO)}`
-}
-
-// ---- the vendored-tree lock (M7c) ----
-// C26's contraction endpoint: the consumption model STAYS vendored (the pointer
-// flip is cut to V3 — the demo invokes tools/baseline/ at six sites incl. the
-// required admit check; re-creating M6's relief circularity for no demonstrated
-// demand is the classic contraction overreach). What ships is the pin: `gen lock`
-// writes {version, tree_hash} and REC-06 (warn) compares — unpinned and skewed
-// vendored trees stop being invisible. Paths are CANONICAL, not knobs: the tree
-// at tools/baseline/, the lock BESIDE it (never inside — the lock must not hash
-// itself). A tree vendored elsewhere is REC-06's documented SKIP, and S9's
-// manual-copy paragraph (CONTRACT.md) names the canonical location.
-export const VENDOR_TREE = 'tools/baseline'
-export const VENDOR_LOCK = 'tools/baseline.lock.json'
-
-// Deterministic tree hash: sha256 over `<relpath>\0<sha256(bytes)>\n` per file,
-// paths sorted code-unit, bytes RAW (readText's 512KB/utf8 cap would corrupt a
-// hash the way it silently greens a big view — same law, same exemption).
-// The pool is a DEDICATED full walk of the tree, not the repo walker: the
-// walker's SKIP_DIRS (node_modules, vendor, dist…) would be an undetectable
-// rider channel inside the vendored copy — the pin must see EVERYTHING on disk
-// (panel: lock-seam). Only `.git` is skipped, named and deliberate (a vendored-
-// by-clone tree should shed it; its packfiles differ per clone and would make
-// the pin machine-local). Worktree semantics: an untracked edit inside the
-// vendored tree is a real skew — local stricter than CI, never the reverse.
-// Symlinks and unreadable files are NOT hashed and NOT fatal here: they are
-// collected so the writer can refuse (a tree that can't be fully read can't be
-// pinned honestly) while the verifier degrades to a labeled WARN over the
-// readable set — never a SKIP that would mask a concurrent real skew.
-export function computeVendorLock(REPO, repo) {
-  const files = [], unhashable = []
-  const walkAll = (dir, rel) => {
-    let ents; try { ents = fs.readdirSync(dir, { withFileTypes: true }) } catch { unhashable.push(`${rel}/ (unlistable)`); return }
-    for (const e of ents) {
-      if (e.name === '.git') continue
-      const r = `${rel}/${e.name}`
-      if (e.isSymbolicLink()) { unhashable.push(`${r} (symlink)`); continue }
-      if (e.isDirectory()) walkAll(path.join(dir, e.name), r)
-      else files.push(r)
-    }
-  }
-  let rootIsDir = false
-  try { rootIsDir = fs.lstatSync(path.join(REPO, VENDOR_TREE)).isDirectory() } catch {}
-  if (rootIsDir) walkAll(path.join(REPO, VENDOR_TREE), VENDOR_TREE)
-  if (!files.length && !unhashable.length) return { files: 0, unhashable }
-  files.sort()
-  const h = crypto.createHash('sha256')
-  for (const f of files) {
-    let buf
-    try { buf = fs.readFileSync(path.join(REPO, f)) }
-    catch { unhashable.push(`${f} (unreadable)`); continue }
-    h.update(`${f}\0${crypto.createHash('sha256').update(buf).digest('hex')}\n`)
-  }
-  unhashable.sort()
-  // version = the VENDORED tree's own declaration (its rules.json), never the
-  // running engine's — the lock describes the tree it hashes
-  let version = null
-  try { version = JSON.parse(fs.readFileSync(path.join(REPO, VENDOR_TREE, 'rules.json'), 'utf8'))?.version ?? null } catch {}
-  return { files: files.length, tree_hash: h.digest('hex'), version, unhashable }
 }
 
 const firstHeading = (md) => md.match(/^#\s+(.+?)\s*$/m)?.[1] ?? null
@@ -215,14 +166,14 @@ export function generateIndex(repo, outRel) {
 const CLAIM_FIELDS = Object.keys(recordSchema('claim').properties).filter(k => !['record', 'id', 'slug', 'citations'].includes(k))
 
 const GEN_USAGE = `usage: baseline gen index [--repo DIR] [--out PATH]
-         baseline gen lock [--repo DIR]
          baseline gen --check [--repo DIR]
-         baseline gen migrate-claims [--repo DIR]`
+         baseline gen migrate-claims [--repo DIR]
+         baseline gen okf-concepts [--repo DIR]`
 
 export function runGen(argv) {
   // help must never mutate: a generator WRITES, so an argv we don't fully
   // understand is a usage error, not a shrug-and-proceed
-  if (argv.includes('--help') || argv.includes('-h')) { console.log(`baseline gen — generators that write derivable artifacts\n  ${GEN_USAGE}\n  index: write a deterministic, marker-headed index view (default docs/INDEX.md) over the records ledgers + docs map\n  lock: pin the vendored ${VENDOR_TREE}/ tree — write ${VENDOR_LOCK} ({version, tree_hash}); REC-06 flags unpinned/skewed trees\n  --check: regenerate every marker-headed view and byte-compare — the CI drift guard (zero views → trivially green; advisory job, never continue-on-error)\n  migrate-claims: explode the legacy docs/CLAIMS.json monolith into records/claims/CLM-NNNN.json (the checker reads records only since M7b; idempotent by slug)`); return 0 }
+  if (argv.includes('--help') || argv.includes('-h')) { console.log(`baseline gen — generators that write derivable artifacts\n  ${GEN_USAGE}\n  index: write a deterministic, marker-headed index view (default docs/INDEX.md) over the records ledgers + docs map\n  --check: regenerate every marker-headed view and byte-compare — the CI drift guard (zero views → trivially green; advisory job, never continue-on-error)\n  migrate-claims: explode the legacy docs/CLAIMS.json monolith into records/claims/CLM-NNNN.json (the checker reads records only since M7b; idempotent by slug)\n  okf-concepts: stage one proposed markdown concept per rule (YAML frontmatter with its source span) under <repo>/.baseline/proposed/baseline/rules/ — a deterministic extraction from the shipped docs, byte-identical on rerun; the okf bundle itself is never read or written`); return 0 }
   const sub = argv[0] && !argv[0].startsWith('-') ? argv[0] : null
   const rest = sub ? argv.slice(1) : argv
   const usage = msg => { console.error(`baseline gen: ${msg}\n  ${GEN_USAGE}`); return 2 }
@@ -230,7 +181,7 @@ export function runGen(argv) {
   if (CHECK && sub) return usage(`--check takes no generator (it discovers marked views)`)
   const FLAGS = CHECK ? new Set(['--check', '--repo']) : sub === 'index' ? new Set(['--repo', '--out']) : new Set(['--repo'])
   const VALUELESS = new Set(['--check'])
-  if (!CHECK && sub !== 'migrate-claims' && sub !== 'index' && sub !== 'lock') return usage(sub ? `unknown generator '${sub}'` : 'a generator (or --check) is required')
+  if (!CHECK && sub !== 'migrate-claims' && sub !== 'index' && sub !== 'okf-concepts') return usage(sub ? `unknown generator '${sub}'` : 'a generator (or --check) is required')
   for (let i = 0; i < rest.length; i++) {
     if (!rest[i].startsWith('-')) return usage(`unexpected argument '${rest[i]}'`)
     if (!FLAGS.has(rest[i])) return usage(`unknown flag '${rest[i]}'`)
@@ -241,7 +192,6 @@ export function runGen(argv) {
   const REPO = path.resolve(String(opt('--repo', process.cwd())))
 
   if (CHECK) return runGenCheck(REPO)
-  if (sub === 'lock') return runGenLock(REPO)
   if (sub === 'index') {
     // --out is repo-relative, posix, and stays INSIDE the repo — a generator that
     // can write outside its repo is a footgun, not a knob
@@ -250,6 +200,7 @@ export function runGen(argv) {
     if (path.posix.isAbsolute(outRel) || outRel === '..' || outRel.startsWith('../')) return usage(`--out must be a repo-relative path inside the repo (got '${rawOut}')`)
     return runGenIndex(REPO, outRel)
   }
+  if (sub === 'okf-concepts') return runGenOkfConcepts(REPO)
 
   const repo = indexRepo(REPO)
   const { cfg } = resolveConfig(repo)
@@ -321,43 +272,6 @@ export function runGen(argv) {
   console.log(`\ngen migrate-claims: ${wrote} written · ${skipped} already migrated · ${refused} refused`)
   if (wrote) console.log(`  review + commit the new records; the checker no longer reads the legacy ${cfg.claims_file} — deleting it after review clears CLAIM-07`)
   return refused ? 1 : 0
-}
-
-// ---- gen lock (M7c) ----
-function runGenLock(REPO) {
-  const repo = indexRepo(REPO)
-  const lock = computeVendorLock(REPO, repo)
-  // asking to pin an absent tree is a failed intent, not an idempotent no-op
-  // (contrast migrate-claims' "nothing to migrate": there, done IS the goal state)
-  if (!lock.files && !lock.unhashable.length) { console.error(`gen lock: no vendored tree at ${VENDOR_TREE}/ — nothing to pin (the canonical vendored location; see CONTRACT.md's manual-copy procedure)`); return 1 }
-  // the writer is STRICT where the verifier degrades: a tree that cannot be
-  // fully read cannot be pinned honestly — refuse, naming what's in the way
-  if (lock.unhashable.length) { console.error(`gen lock: ${lock.unhashable.length} entr${lock.unhashable.length === 1 ? 'y' : 'ies'} cannot be hashed — ${lock.unhashable.slice(0, 3).join(', ')}${lock.unhashable.length > 3 ? ` (+${lock.unhashable.length - 3})` : ''}; remove or fix them (symlinks and unreadable files cannot be pinned honestly)`); return 2 }
-  if (typeof lock.version !== 'string') { console.error(`gen lock: ${VENDOR_TREE}/rules.json carries no readable string version — is this a baseline toolkit tree? (the lock names the version it pins, and REC-06 validates the shape it writes)`); return 2 }
-  const abs = path.join(REPO, VENDOR_LOCK)
-  // overwrite law, lock flavor: write over a parseable {version, tree_hash} lock
-  // or into absence — a foreign file squatting the canonical path is refused,
-  // same as gen index refuses a marker-less file
-  let existing = null
-  try { existing = fs.readFileSync(abs, 'utf8') }
-  catch (e) {
-    if (e.code === 'EISDIR' || e.code === 'ENOTDIR') { console.error(`gen lock: cannot write ${VENDOR_LOCK} — ${e.code === 'EISDIR' ? 'it is a directory' : 'a file exists where a directory belongs on its path'}`); return 2 }
-    if (e.code !== 'ENOENT') { console.error(`gen lock: cannot read ${VENDOR_LOCK} — ${e.message}`); return 2 }
-  }
-  if (existing !== null) {
-    let old = null
-    try { old = JSON.parse(existing) } catch {}
-    if (!old || typeof old !== 'object' || typeof old.version !== 'string' || typeof old.tree_hash !== 'string') {
-      console.error(`gen lock: refusing to overwrite ${VENDOR_LOCK} — it exists but is not a lock ({version, tree_hash}). Move it aside.`)
-      return 2
-    }
-  }
-  const content = JSON.stringify({ version: lock.version, tree_hash: lock.tree_hash }, null, 2) + '\n'
-  if (existing === content) { console.log(`gen lock: ${VENDOR_LOCK} is up to date (${lock.version} · ${lock.files} files · ${lock.tree_hash.slice(0, 12)})`); return 0 }
-  try { fs.writeFileSync(abs, content) }
-  catch (e) { console.error(`gen lock: cannot write ${VENDOR_LOCK} — ${e.message}`); return 2 }
-  console.log(`gen lock: pinned ${VENDOR_TREE}/ — ${lock.version} · ${lock.files} files · ${lock.tree_hash.slice(0, 12)} → ${VENDOR_LOCK}; commit it (REC-06 verifies)`)
-  return 0
 }
 
 // ---- gen index (M6c) ----
@@ -441,5 +355,117 @@ function runGenCheck(REPO) {
   for (const b of broken) console.error(`✗ ${S(b.f)}: ${S(b.why)}`)
   if (drifted.length || broken.length) { console.error(`\ngen --check: ${drifted.length} drifted · ${broken.length} broken of ${views} view(s)`); return 1 }
   console.log(`gen --check: ${views} generated view(s) in sync`)
+  return 0
+}
+
+// ---- gen okf-concepts (v3 D2 / V35) — the one-shot OKF migration ----
+// Inputs are the runner's OWN shipped files, co-located like rules.json: the rule set
+// (title, lesson, rationale, fix, prior-art url), REFERENCE.md's rule table (the row
+// is the source span the frontmatter cites) and GLOSSARY.md (the terms a rule's prose
+// uses, each cited by line). Nothing from the target repo, nothing from the bundle.
+const SHIPPED = (rel) => { try { return fs.readFileSync(fileURLToPath(new URL('../' + rel, import.meta.url)), 'utf8') } catch { return null } }
+const OKF_STAGING = 'baseline/rules' // under <repo>/.baseline/proposed/ — the bundle's own layout
+
+/** REFERENCE.md rule table: base id → 1-based line of its row. Matched on the two-part
+ *  base so the row is found before and after the slugs land (PLAN §2). */
+function referenceRows(md) {
+  const rows = new Map()
+  if (md === null) return rows
+  md.split('\n').forEach((line, i) => {
+    const m = line.match(/^\|\s*([A-Z]+-\d{2})(?:-[a-z0-9-]+)?\s*\|/)
+    if (m && !rows.has(m[1])) rows.set(m[1], i + 1)
+  })
+  return rows
+}
+/** GLOSSARY.md: every `## Term` heading with its line and first paragraph, one line each. */
+function glossaryTerms(md) {
+  const terms = []
+  if (md === null) return terms
+  const lines = md.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    const h = lines[i].match(/^##\s+(.+?)\s*$/)
+    if (!h) continue
+    const para = []
+    for (let j = i + 1; j < lines.length && !/^##\s/.test(lines[j]); j++) {
+      if (!lines[j].trim()) { if (para.length) break; continue }
+      para.push(lines[j].trim())
+    }
+    terms.push({ name: h[1], line: i + 1, def: para.join(' ') })
+  }
+  return terms
+}
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const mentions = (hay, name) => new RegExp('(^|[^A-Za-z0-9])' + esc(name) + '([^A-Za-z0-9]|$)', 'i').test(hay)
+const y = (v) => JSON.stringify(String(v)) // a YAML double-quoted scalar is JSON-compatible
+const md1 = (s) => String(s ?? '').replace(/\s+/g, ' ').trim()
+
+/** One concept per loaded rule, in rules.json module order. Pure of clock, machine and
+ *  cwd: the same rule set and docs produce the same bytes anywhere. */
+export function generateConcepts() {
+  const { modules, rules } = loadRules()
+  // which module a rule came from — the fallback source span when REFERENCE.md has no row
+  const moduleOf = new Map()
+  for (const m of modules) for (const r of JSON.parse(SHIPPED(m) || '{"rules":[]}').rules || []) if (!moduleOf.has(r.id)) moduleOf.set(r.id, m)
+  const rows = referenceRows(SHIPPED('REFERENCE.md'))
+  const terms = glossaryTerms(SHIPPED('GLOSSARY.md'))
+  const out = []
+  for (const r of rules) {
+    const refLine = rows.get(baseOf(r.id))
+    const source = refLine ? `REFERENCE.md:${refLine}` : `${moduleOf.get(r.id) || 'rules.json'}#${r.id}`
+    const hay = [r.title, r.lesson, r.rationale, r.fix].map(md1).join(' ')
+    const used = terms.filter(t => mentions(hay, t.name))
+    const applies = Array.isArray(r.applies_to) ? r.applies_to.join(', ') : String(r.applies_to ?? 'all')
+    const P = []
+    P.push('---')
+    P.push(`id: ${conceptOf(r.id)}`)
+    P.push(`title: ${y(r.title)}`)
+    P.push(`rule: ${r.id}`)
+    P.push(`category: ${r.category}`)
+    P.push(`severity: ${r.severity}`)
+    P.push(`source: ${source}`)
+    P.push('---')
+    P.push('')
+    P.push(`# ${r.id} — ${md1(r.title)}`)
+    P.push('')
+    P.push(`- **Severity:** ${r.severity} · **Category:** ${r.category} · **Applies to:** ${applies}${r.pack ? ` · **Pack:** ${r.pack}` : ''}`)
+    if (r.lesson) P.push(`- **Lesson:** ${md1(r.lesson)}`)
+    if (r.rationale) P.push(`- **Why it matters:** ${md1(r.rationale)}`)
+    if (r.fix) P.push(`- **Fix:** ${md1(r.fix)}`)
+    if (r.source) P.push(`- **Prior art:** ${md1(r.source)}`)
+    P.push(`- **Extracted from:** ${source}`)
+    if (used.length) {
+      P.push('')
+      P.push('## Terms')
+      P.push('')
+      for (const t of used) P.push(`- **${t.name}** (GLOSSARY.md:${t.line}) — ${t.def}`)
+    }
+    P.push('')
+    out.push({ rel: `${OKF_STAGING}/${String(r.id).toLowerCase()}.md`, content: P.join('\n'), fromReference: !!refLine })
+  }
+  return out
+}
+
+function runGenOkfConcepts(REPO) {
+  try { if (!fs.statSync(REPO).isDirectory()) throw new Error('not a directory') }
+  catch (e) { console.error(`gen okf-concepts: --repo ${REPO} — ${e.message}`); return 2 }
+  let concepts
+  try { concepts = generateConcepts() }
+  catch (e) { console.error(`gen okf-concepts: ${e.message}`); return 2 }
+  const stagingRel = path.posix.join('.baseline', 'proposed')
+  const rulesDir = path.join(REPO, stagingRel, OKF_STAGING)
+  // the staging tree is generator-owned: a stale concept for a rule that no longer
+  // exists must not linger, or two runs on the same input would differ by a file
+  try {
+    fs.rmSync(rulesDir, { recursive: true, force: true })
+    fs.mkdirSync(rulesDir, { recursive: true })
+  } catch (e) { console.error(`gen okf-concepts: cannot prepare ${stagingRel}/${OKF_STAGING}/ — ${e.message}`); return 2 }
+  let fromRef = 0
+  for (const c of concepts) {
+    try { fs.writeFileSync(path.join(REPO, stagingRel, c.rel), c.content) }
+    catch (e) { console.error(`gen okf-concepts: cannot write ${c.rel} — ${e.message}`); return 2 }
+    if (c.fromReference) fromRef++
+  }
+  console.log(`gen okf-concepts: ${concepts.length} concept(s) staged under ${stagingRel}/${OKF_STAGING}/ (${fromRef} cite a REFERENCE.md row, ${concepts.length - fromRef} their rules/ module)`)
+  console.log('  review the batch, then copy it into the okf bundle by hand — baseline never writes there')
   return 0
 }

@@ -26,24 +26,40 @@ const BASELINE = path.join(ROOT, 'baseline.mjs')
 
 let fails = 0
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails++ }
+// v3 ids are PREFIX-NN-slug (PLAN §2). A test names a rule by its base prefix so a slug can
+// be revised in review without touching the test; both the two- and three-part forms match.
+const isId = (id, p) => id === p || String(id).startsWith(p + '-')
+const baseId = (id) => String(id).replace(/^([A-Z]+-\d{2}).*/, '$1')
 
 // ---------- rules loader (the split must be lossless) ----------
 {
   const R = loadRules()
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'rules.json'), 'utf8'))
-  ok(R.rules.length === 94, `loader assembles 94 rules (got ${R.rules.length})`)
-  ok((manifest.modules || []).length === 15, `manifest lists 15 modules (got ${(manifest.modules || []).length})`)
+  // both counts DERIVE — the manifest must list exactly the module files on disk, and the
+  // loader must assemble exactly their rules; no rule count is ever typed here
+  const onDisk = fs.readdirSync(path.join(ROOT, 'rules')).filter(f => f.endsWith('.json')).map(f => `rules/${f}`).sort()
+  const listed = [...(manifest.modules || [])].sort()
+  ok(JSON.stringify(listed) === JSON.stringify(onDisk), `manifest lists exactly the modules on disk (${listed.length} listed, ${onDisk.length} on disk)`)
+  const perModule = (manifest.modules || []).reduce((n, m) => n + JSON.parse(fs.readFileSync(path.join(ROOT, m), 'utf8')).rules.length, 0)
+  ok(R.rules.length === perModule, `loader assembles every module's rules losslessly (${R.rules.length} assembled vs ${perModule} across ${(manifest.modules || []).length} modules)`)
   ok(!('rules' in manifest), 'manifest itself carries no rules (they live in rules/)')
   ok(new Set(R.rules.map(r => r.id)).size === R.rules.length, 'rule ids unique across modules')
-  ok(!!R.version && !!R.profiles && Array.isArray(R.project_types), 'identity fields (version/profiles/project_types) ride the manifest')
+  ok(!!R.version && R.packs && typeof R.packs === 'object' && !Array.isArray(R.packs) && Array.isArray(R.project_types), 'identity fields (version/packs/project_types) ride the manifest')
+  // v3 §5: the profile vocabulary retired with the engine keying on `pack` — the manifest
+  // keeps `packs` (the catalogue) and nothing else names a profile
+  ok(!('profiles' in R), 'manifest carries no `profiles` map (retired; `packs` is the catalogue)')
+  ok(R.rules.every(r => !('profile' in r) && !('requires' in r)), 'no rule carries a retired `profile`/`requires` key')
+  const catalogued = new Set(Object.keys(R.packs))
+  const declared = [...new Set(R.rules.map(r => r.pack).filter(Boolean))]
+  ok(declared.every(pk => catalogued.has(pk)), `every pack a rule declares is in the manifest catalogue (${declared.length} declared, ${catalogued.size} catalogued)`)
   let homed = true
   for (const m of manifest.modules) {
     const cat = path.basename(m, '.json')
     const mod = JSON.parse(fs.readFileSync(path.join(ROOT, m), 'utf8'))
     for (const r of mod.rules) {
+      // the module file IS the category: a rule's id prefix, lowercased, names its home
       const prefix = r.id.split('-')[0].toLowerCase()
-      const want = { build: 'build', test: 'test', ctx: 'ctx', claim: 'claim', sec: 'sec', gov: 'gov', comm: 'comm', qual: 'qual', repro: 'repro', ops: 'ops', rec: 'rec', flow: 'flow', merge: 'merge', div: 'div', desc: 'desc' }[prefix]
-      if (want !== cat) { homed = false; console.log(`      ${r.id} lives in ${m}`) }
+      if (prefix !== cat) { homed = false; console.log(`      ${r.id} lives in ${m}`) }
     }
   }
   ok(homed, 'every rule lives in its own category module')
@@ -115,7 +131,7 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
   // scrub's deterministic tier must never drift from SEC-01 — pin each source as a
   // substring of the rule's pattern (normalizing escaping/non-capturing differences)
   const norm = s => s.replace(/\\-/g, '-').replace(/\(\?:/g, '(')
-  const sec01 = norm(loadRules().rules.find(r => r.id === 'SEC-01').check.pattern)
+  const sec01 = norm(loadRules().rules.find(r => isId(r.id, 'SEC-01')).check.pattern)
   const shared = ['private-key-block', 'aws-access-key-id', 'google-api-key', 'slack-token', 'github-token']
   ok(shared.every(n => sec01.includes(norm(DETERMINISTIC_SOURCES.find(p => p.name === n).source))), 'deterministic tier stays SEC-01-parity (each source pinned inside the rule pattern)')
 }
@@ -259,234 +275,122 @@ try {
   ok(loadJudgments(t6).findings.some(f => /does not match filename/.test(f.error)), 'loadJudgments: id/filename mismatch is a finding')
   fs.rmSync(path.join(t6, 'records/judgments/JDG-0100.json'))
 
-  // ---- the signoff→JDG bridge through check.mjs ----
-  const t7 = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-bridge-')); tmps.push(t7)
-  fs.mkdirSync(path.join(t7, 'records/judgments'), { recursive: true })
-  fs.mkdirSync(path.join(t7, 'docs'), { recursive: true })
-  fs.mkdirSync(path.join(t7, '.project-baseline'), { recursive: true })
-  fs.writeFileSync(path.join(t7, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'prototype', workflow: 'single-lane', anchoring: 'off' }))
-  fs.writeFileSync(path.join(t7, 'docs/start-here.md'), '# status\n\nderived — see orient\n')
-  fs.writeFileSync(path.join(t7, 'README.md'), '# bridge fixture\n')
-  fs.writeFileSync(path.join(t7, 'LICENSE'), 'MIT\n')
-  fs.writeFileSync(path.join(t7, '.project-baseline/signoff.json'), JSON.stringify({ 'CTX-04': { by: 'legacy', date: '2020-01-01', note: 'eternal legacy entry' } }))
-  fs.writeFileSync(path.join(t7, 'records/judgments/JDG-0001.json'), JSON.stringify({ record: 'judgment/1', id: 'JDG-0001', kind: 'sign-off', date: '2026-06-01', by: 'adar', subject: 'CTX-04', reason: 'r', review_by: '2026-07-10' }))
-  const CHECK = path.join(ROOT, 'check.mjs')
-  const br = sh(t7, process.execPath, [CHECK, '--repo', t7, '--json', '--no-exec'], NOW)
-  const ctx04 = JSON.parse(br.out).results.find(r => r.id === 'CTX-04')
-  ok(ctx04.tag === 'SIGN-OFF' && /lapsed/.test(ctx04.detail), 'bridge: a LAPSED sign-off JDG is honestly not signed — the unread legacy entry cannot rescue it')
-  // a malformed record must never read as signed-forever: strict loading excludes it
-  fs.writeFileSync(path.join(t7, 'records/judgments/JDG-0002.json'), JSON.stringify({ record: 'judgment/1', id: 'JDG-0002', kind: 'sign-off', date: '2026-07-01', by: 'adar', subject: 'CTX-04', reason: 'r', review_by: 20200101 }))
-  const br2 = sh(t7, process.execPath, [CHECK, '--repo', t7, '--json', '--no-exec'], NOW)
-  const ctx04b = JSON.parse(br2.out).results.find(r => r.id === 'CTX-04')
-  ok(ctx04b.tag === 'SIGN-OFF' && /lapsed/.test(ctx04b.detail), 'bridge: a schema-invalid sign-off (numeric review_by) is excluded — it can never read as signed while jdg check calls it INVALID')
-
-  // ---- M4c: engine posture/branch/opt-out gates (pure, data-driven) ----
+  // ---- v3 engine gates (pure, data-driven): a gate MISS is no row; in scope but
+  // unevaluable is {state:'n/a', reason}. D4/V36: there is no SKIP tag anywhere. ----
   {
+    const NOOP = () => ({ ok: true, detail: 'ran' })
     const gate = (rule, over = {}) => runRules({
       rules: [{ id: 'X-01', severity: 'warn', applies_to: 'all', contexts: ['check'], check: { kind: 'x' }, ...rule }],
-      cfg: { project_type: 'docs', ...(over.cfg || {}) }, ACTIVE: new Set(['core']),
-      CLAIMS_ACTIVE: over.CLAIMS_ACTIVE ?? true, CLAIMS_REASON: over.CLAIMS_REASON ?? null,
-      evalCheck: () => ({ ok: true, detail: 'ran' }),
-      DESCRIPTOR: over.DESCRIPTOR ?? null, BRANCH: over.BRANCH ?? null,
-      DEFAULT_BRANCH: 'DEFAULT_BRANCH' in over ? over.DEFAULT_BRANCH : 'main', // ?? would swallow an explicit null (the undeclared case under test)
+      cfg: { project_type: 'docs', ...(over.cfg || {}) },
+      ACTIVE_PACKS: over.ACTIVE_PACKS ?? new Set(),
+      evalCheck: over.evalCheck ?? NOOP,
+      DESCRIPTOR: over.DESCRIPTOR ?? null,
+      TOOLS_PRESENT: 'TOOLS_PRESENT' in over ? over.TOOLS_PRESENT : null, // null = the runner detected nothing (the evaluator owns the subject question)
+      forgeClosed: over.forgeClosed ?? null,
     })[0]
-    const ML = { valid: true, data: { workflow: 'multi-lane' } }, SL = { valid: true, data: { workflow: 'single-lane' } }
-    ok(gate({ workflow: 'multi-lane' }).tag === 'SKIP' && /workflow contract off/.test(gate({ workflow: 'multi-lane' }).detail), 'engine: workflow rule SKIPs with no descriptor (best-effort posture)')
-    ok(/workflow=single-lane/.test(gate({ workflow: 'multi-lane' }, { DESCRIPTOR: SL }).detail), 'engine: workflow rule SKIPs on the other posture, says which')
-    ok(gate({ workflow: 'multi-lane', branch_scope: 'lane' }, { DESCRIPTOR: ML, BRANCH: 'main' }).tag === 'SKIP', 'engine: lane rule SKIPs on the default branch')
-    ok(gate({ workflow: 'multi-lane', branch_scope: 'lane' }, { DESCRIPTOR: ML, BRANCH: 'lane/x' }).tag === 'PASS', 'engine: lane rule runs on a lane branch of a multi-lane repo')
-    ok(/no branch/.test(gate({ branch_scope: 'lane' }, { BRANCH: null }).detail), 'engine: lane rule SKIPs on detached HEAD, honestly')
-    const undecl = gate({ workflow: 'multi-lane', branch_scope: 'lane' }, { DESCRIPTOR: ML, BRANCH: 'lane/x', DEFAULT_BRANCH: null })
-    ok(undecl.tag === 'SKIP' && /default branch undeclared/.test(undecl.detail), 'engine: an undeclared default branch SKIPs lane rules — never a guessed main')
-    // M7b: the generic requires:false opt-out branch retired with status_file —
-    // a config key set false no longer silences any rule; only the claims-family
-    // gate (requires: makes_external_claims) confers a SKIP.
-    ok(gate({ requires: 'some_key' }, { cfg: { some_key: false } }).tag === 'PASS', 'engine: requires:false confers no opt-out since M7b — the rule runs')
-    const cskip = gate({ requires: 'makes_external_claims' }, { CLAIMS_ACTIVE: false, CLAIMS_REASON: "maturity=prototype — CLAIM activates at 'claimed'" })
-    ok(cskip.tag === 'SKIP' && /maturity=prototype/.test(cskip.detail), 'engine: the claims skip detail carries the maturity reason')
-    // M6a: the context gate EXCLUDES (no row) — a "wrong context" SKIP on every check
-    // run would be wallpaper; a rule with NO contexts runs nowhere (selfcheck is the
-    // loudness gate that keeps that unrepresentable in the real rule set)
-    ok(gate({ contexts: ['admit'] }) === undefined, 'engine: a rule outside the run context is EXCLUDED — no row, not a SKIP')
+    const isNA = row => !!row && row.state === 'n/a' && typeof row.reason === 'string' && row.reason.trim().length > 0 && !('tag' in row)
+    const SL = { valid: true, data: { workflow: 'single-lane' } }
+    // posture gate (data-driven `workflow`): a miss is structural — no row, never a finding
+    ok(gate({ workflow: 'multi-lane' }) === undefined, 'engine: a workflow rule with no descriptor is a gate MISS — no row')
+    ok(gate({ workflow: 'multi-lane' }, { DESCRIPTOR: SL }) === undefined, 'engine: a workflow rule on the other posture is a gate MISS — no row')
+    ok(gate({ workflow: ['multi-lane', 'single-lane'] }, { DESCRIPTOR: SL })?.tag === 'PASS', 'engine: a posture FAMILY that includes the descriptor posture runs')
+    // type gate
+    ok(gate({ applies_to: ['node'] }) === undefined, 'engine: an off-type rule is a gate MISS — no row')
+    ok(gate({ applies_to: ['docs', 'node'] })?.tag === 'PASS', 'engine: an on-type rule runs')
+    // pack gate (V15/V16): the engine keys on `pack`; an inactive pack pushes no row, and
+    // activating one pack activates no other
+    ok(gate({ pack: 'claims' }) === undefined, 'engine: a pack rule with no pack active is a gate MISS — no row')
+    ok(gate({ pack: 'claims' }, { ACTIVE_PACKS: new Set(['claims']) })?.tag === 'PASS', 'engine: a pack rule runs when its pack is active')
+    ok(gate({ pack: 'decisions' }, { ACTIVE_PACKS: new Set(['claims']) }) === undefined, 'engine: activating one pack activates no other (claims on, decisions rule still no row)')
+    ok(gate({ requires: 'some_key' }, { cfg: { some_key: false } })?.tag === 'PASS', 'engine: a stray `requires` key confers no opt-out (retired vocabulary; selfcheck forbids it in the real set)')
+    ok(gate({ profile: 'claims' })?.tag === 'PASS', 'engine: a stray `profile` key is not a pack gate (retired vocabulary; selfcheck forbids it in the real set)')
+    // M6a: the context gate EXCLUDES (no row); a rule with NO contexts runs nowhere
+    ok(gate({ contexts: ['admit'] }) === undefined, 'engine: a rule outside the run context is a gate MISS — no row')
     ok(gate({ contexts: undefined }) === undefined, 'engine: a rule with no contexts runs nowhere (selfcheck forbids it in the real set)')
-    ok(gate({ contexts: ['check', 'admit'] }).tag === 'PASS', 'engine: a shared-context rule runs in check (the default context)')
+    ok(gate({ contexts: ['check', 'admit'] })?.tag === 'PASS', 'engine: a shared-context rule runs in check (the default context)')
+    // in scope but unevaluable (V36): an evaluator returning ok:null, or throwing, is an n/a
+    // row with a non-empty reason and NO tag — never SKIP, never a silent drop
+    const naRow = gate({}, { evalCheck: () => ({ ok: null, detail: 'no subject in the tree' }) })
+    ok(isNA(naRow) && naRow.reason === 'no subject in the tree', `engine: an in-scope ok:null is {state:"n/a", reason} with no tag (got ${JSON.stringify({ state: naRow?.state, reason: naRow?.reason, tag: naRow?.tag })})`)
+    ok(isNA(gate({}, { evalCheck: () => ({ ok: null, detail: '' }) })), 'engine: an ok:null with an empty detail still carries a non-empty reason (the engine supplies one)')
+    ok(isNA(gate({}, { evalCheck: () => undefined })), 'engine: an evaluator returning nothing is n/a, not a crash')
+    const thrown = gate({}, { evalCheck: () => { throw new Error('boom') } })
+    ok(isNA(thrown) && /check errored/.test(thrown.reason) && /boom/.test(thrown.reason), 'engine: a THROWN check is an n/a row whose reason names the error')
+    ok(![naRow, thrown].some(x => x?.tag === 'SKIP' || x?.state === 'SKIP'), 'engine: n/a is never spelled SKIP')
+    // D12 (V19/V42): a forge-sourced rule under a closed forge resolves n/a BEFORE its evaluator
+    let called = 0
+    const fRow = gate({ sources: ['forge', 'tree'] }, { forgeClosed: 'forge not consulted', evalCheck: () => { called++; return { ok: true, detail: 'ran' } } })
+    ok(isNA(fRow) && fRow.reason === 'forge not consulted' && called === 0, 'engine: a forge-sourced rule under a closed forge is n/a with the closure reason, evaluator NOT called')
+    ok(gate({ sources: ['tree'] }, { forgeClosed: 'forge not consulted' })?.tag === 'PASS', 'engine: a closed forge gates only forge-sourced rules')
+    ok(gate({ sources: ['forge'] })?.tag === 'PASS', 'engine: with the forge open (null) a forge-sourced rule evaluates')
+    // §6 tool gate (V17/V20/V36, D13): tool present OR want -> in scope (want overrides the
+    // type gate too); on-type with the tool absent -> n/a; off-type with the tool absent -> no row
+    const tRow = gate({ tool: 'docker' }, { TOOLS_PRESENT: new Set() })
+    ok(isNA(tRow) && /docker/.test(tRow.reason) && /want/.test(tRow.reason), 'engine: an on-type tool rule with the tool absent is n/a, and the reason names the tool and the want: route')
+    ok(gate({ tool: 'docker' }, { TOOLS_PRESENT: new Set(['docker']) })?.tag === 'PASS', 'engine: a tool rule runs when the tool is detected')
+    ok(gate({ tool: 'docker' }, { TOOLS_PRESENT: new Set(), cfg: { want: ['docker'] } })?.tag === 'PASS', 'engine: want:["docker"] puts the tool rule in scope with no Dockerfile (the evaluator, not the gate, answers)')
+    ok(gate({ tool: 'docker', applies_to: ['node'] }, { TOOLS_PRESENT: new Set() }) === undefined, 'engine: an off-type tool rule with the tool absent is a gate MISS — no row')
+    ok(gate({ tool: 'docker', applies_to: ['node'] }, { TOOLS_PRESENT: new Set(), cfg: { want: ['docker'] } })?.tag === 'PASS', 'engine: want overrides BOTH the tool gate and the type gate (REPRO-04 on a docs repo)')
+    ok(gate({ tool: 'docker', applies_to: ['node'] }, { TOOLS_PRESENT: new Set(['docker']) })?.tag === 'PASS', 'engine: a detected tool overrides the type gate (a docs tree with a Dockerfile runs the docker rules)')
+    ok(gate({ tool: 'docker' })?.tag === 'PASS', 'engine: a runner that detected no tools (null) leaves the subject question to the evaluator')
   }
 
-  // ---- M4c: descriptor maturity gates CLAIM activation (C24, discrete tiers) ----
+  // ---- v3 §5 / D13 (V15/V16): the claims pack arms ONLY from an explicit switch ----
+  // Before v3 a claims register in the tree auto-armed CLAIM, and the descriptor's maturity
+  // tier demoted it. Both are gone: no tree content, no maturity tier, no default arms a pack.
   {
-    const t9 = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-maturity-')); tmps.push(t9)
+    const t9 = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-packs-')); tmps.push(t9)
     fs.mkdirSync(path.join(t9, 'docs'), { recursive: true })
     fs.writeFileSync(path.join(t9, 'docs/CLAIMS.json'), JSON.stringify({ claims: [{ id: 'x', statement: 's', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }] }))
-    const desc = m => JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: m, workflow: 'single-lane', anchoring: 'off' })
-    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('prototype'))
-    const proto = resolveConfig(indexRepo(t9))
-    ok(proto.CLAIMS_ACTIVE === false && /maturity=prototype/.test(proto.CLAIMS_REASON), 'maturity=prototype: register present but CLAIM inactive (activates at claimed)')
-    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('claimed'))
-    ok(resolveConfig(indexRepo(t9)).CLAIMS_ACTIVE === true, 'maturity=claimed: CLAIM active')
-    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('prototype'))
-    fs.writeFileSync(path.join(t9, 'baseline.config.json'), JSON.stringify({ makes_external_claims: true }))
-    ok(resolveConfig(indexRepo(t9)).CLAIMS_ACTIVE === true, 'maturity=prototype + explicit makes_external_claims:true: explicit intent wins')
-    fs.rmSync(path.join(t9, 'docs/CLAIMS.json'))
     fs.mkdirSync(path.join(t9, 'records/claims'), { recursive: true })
     fs.writeFileSync(path.join(t9, 'records/claims/CLM-0001.json'), JSON.stringify({ record: 'claim/1', id: 'CLM-0001', statement: 's', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }))
-    fs.rmSync(path.join(t9, 'baseline.config.json'))
+    const desc = m => JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: m, workflow: 'single-lane', anchoring: 'off' })
+    const cfgFile = path.join(t9, 'baseline.config.json')
+    const res = (opts = {}) => resolveConfig(indexRepo(t9), opts)
     fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('claimed'))
-    ok(resolveConfig(indexRepo(t9)).CLAIMS_ACTIVE === true, 'the exploded home alone (records/claims/) activates CLAIM — no monolith needed')
+    let r = res()
+    ok(r.CLAIMS_ACTIVE === false && !r.ACTIVE_PACKS.has('claims'), 'no config file: a claims register (monolith AND records/claims/) with maturity=claimed arms NOTHING — tree content is not an opt-in')
+    ok(r.ACTIVE_PACKS.size === 0, `no config file: every pack is off (got ${JSON.stringify([...r.ACTIVE_PACKS])})`)
+    ok(r.DEFAULTS.makes_external_claims === false, 'DEFAULTS never arm the claims pack (makes_external_claims defaults false)')
+    fs.writeFileSync(cfgFile, JSON.stringify({ makes_external_claims: true }))
+    r = res()
+    ok(r.CLAIMS_ACTIVE === true && r.ACTIVE_PACKS.has('claims'), 'explicit makes_external_claims:true arms the claims pack')
+    ok([...r.ACTIVE_PACKS].every(pk => pk === 'claims'), `activating claims activates no other pack (got ${JSON.stringify([...r.ACTIVE_PACKS])})`)
+    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), desc('prototype'))
+    ok(res().CLAIMS_ACTIVE === true, 'maturity=prototype does NOT demote an explicit true — the maturity tier has no say (demotion retired with the auto-arm)')
+    fs.writeFileSync(cfgFile, JSON.stringify({ makes_external_claims: false }))
+    ok(res().CLAIMS_ACTIVE === false, 'explicit makes_external_claims:false leaves the pack off')
+    fs.writeFileSync(cfgFile, JSON.stringify({ makes_external_claims: 'true' }))
+    ok(res().CLAIMS_ACTIVE === false, 'only the boolean true arms it — the string "true" is not an explicit opt-in')
+    fs.rmSync(cfgFile)
+    ok(res().CLAIMS_ACTIVE === false && res().CLAIMS_REASON === null, 'with the config file removed the pack is off again, and there is no second (maturity) reason any more')
+    // the other explicit routes: the profiles/packs list and --profile <pack>
+    fs.writeFileSync(cfgFile, JSON.stringify({ profiles: ['claims'] }))
+    ok(res().ACTIVE_PACKS.has('claims') && res().CLAIMS_ACTIVE === true, 'profiles:["claims"] arms the claims pack (list route)')
+    fs.writeFileSync(cfgFile, JSON.stringify({ packs: ['claims'] }))
+    ok(res().ACTIVE_PACKS.has('claims'), 'packs:["claims"] is the alias of profiles')
+    fs.rmSync(cfgFile)
+    ok(res({ profileArgs: ['claims'] }).ACTIVE_PACKS.has('claims'), '--profile claims arms the pack from the CLI (the flag stays; it means pack)')
+    // the other pack switches never spill over, and the DEFAULTS value never activates
+    r = res()
+    ok(r.DEFAULTS.decision_globs.length > 0 && !r.ACTIVE_PACKS.has('decisions'), 'the non-empty DEFAULT decision_globs never activates the decisions pack')
+    fs.writeFileSync(cfgFile, JSON.stringify({ decision_globs: ['docs/decisions/*.md'] }))
+    r = res()
+    ok(r.ACTIVE_PACKS.has('decisions') && !r.ACTIVE_PACKS.has('claims') && !r.ACTIVE_PACKS.has('service'), `explicit decision_globs arms decisions and only decisions (got ${JSON.stringify([...r.ACTIVE_PACKS])})`)
+    fs.writeFileSync(cfgFile, JSON.stringify({ decision_globs: [] }))
+    ok(!res().ACTIVE_PACKS.has('decisions'), 'an explicit but EMPTY decision_globs arms nothing')
+    fs.writeFileSync(cfgFile, JSON.stringify({ project_type: 'service' }))
+    r = res()
+    ok(r.ACTIVE_PACKS.has('service') && r.ACTIVE_PACKS.size === 1, 'explicit project_type:"service" arms the service pack, and only it')
+    fs.rmSync(cfgFile)
+    fs.writeFileSync(path.join(t9, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'service', lifecycle: 'production', maturity: 'claimed', workflow: 'single-lane', anchoring: 'off' }))
+    r = res()
+    ok(r.cfg.project_type === 'service' && !r.ACTIVE_PACKS.has('service'), "D13: the descriptor's declared type overlays project_type but never arms the service pack")
   }
 
-  // ---- M4c: REC evaluators against real history ----
+  // ---- the sanction route's matcher: the subject is attacker-influenced text ----
   {
-    const t10 = mkrepo('main'); tmps.push(t10)
-    const rec = 'records/sessions/main/2026-07-01-100000-a.md'
-    fs.mkdirSync(path.join(t10, path.dirname(rec)), { recursive: true })
-    fs.writeFileSync(path.join(t10, rec), '---\nrecord: session/1\nlane: main\nagent: a\nstarted: 2026-07-01T10:00:00Z\n---\n\n## Did\nx\n\n## Left open\nnext: y\n')
-    sh(t10, 'git', ['add', '-A']); sh(t10, 'git', ['commit', '-qm', 'r1'])
-    const mk = () => makeEvalCheck({ repo: indexRepo(t10), cfg: { decision_globs: ['docs/decisions/*.md'] }, NO_EXEC: true, SIGNOFF: {}, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
-    const AO = { kind: 'records-append-only', path: 'records/' }, RS = { kind: 'records-scrub', globs: ['records/**'] }, OH = { kind: 'records-one-home' }
-    ok(mk()(AO, { id: 'REC-01' }).ok === true, 'REC-01: append-only history passes')
-    fs.appendFileSync(path.join(t10, rec), 'edited\n'); sh(t10, 'git', ['add', '-A']); sh(t10, 'git', ['commit', '-qm', 'edit'])
-    let r = mk()(AO, { id: 'REC-01' })
-    ok(r.ok === false && /1 mutation/.test(r.detail) && /appended to/.test(r.detail), 'REC-01: an edit to a committed record is a mutation finding (#56: a pure append is NAMED an append)')
-    sh(t10, 'git', ['mv', rec, rec.replace('-a.md', '-b.md')]); sh(t10, 'git', ['commit', '-qm', 'rename'])
-    r = mk()(AO, { id: 'REC-01' })
-    ok(r.ok === false && /renamed/.test(r.detail) && /^2 mutation/.test(r.detail) && !/vanished/.test(r.detail), 'REC-01: a rename is ONE mutation finding (the R event is its own disposal — no bogus merge-hidden line)')
-    sh(t10, 'git', ['rm', '-q', rec.replace('-a.md', '-b.md')]); sh(t10, 'git', ['commit', '-qm', 'delete'])
-    r = mk()(AO, { id: 'REC-01' })
-    ok(r.ok === false && /deleted/.test(r.detail), 'REC-01: a delete is a mutation finding')
-
-    // layer 2, the direction history simplification hides: a record that only ever
-    // existed on the merged-in side and dies inside the merge (no D event anywhere)
-    const t10b = mkrepo('main'); tmps.push(t10b)
-    fs.writeFileSync(path.join(t10b, 'base.md'), 'b\n'); sh(t10b, 'git', ['add', '-A']); sh(t10b, 'git', ['commit', '-qm', 'base'])
-    sh(t10b, 'git', ['checkout', '-qb', 'side'])
-    const srec10 = 'records/sessions/side/2026-07-01-090000-a.md'
-    fs.mkdirSync(path.join(t10b, path.dirname(srec10)), { recursive: true })
-    fs.writeFileSync(path.join(t10b, srec10), 'side record\n'); sh(t10b, 'git', ['add', '-A']); sh(t10b, 'git', ['commit', '-qm', 'side add'])
-    sh(t10b, 'git', ['checkout', '-q', 'main'])
-    sh(t10b, 'git', ['merge', '-q', '--no-commit', '--no-ff', 'side'])
-    sh(t10b, 'git', ['rm', '-qf', srec10]); sh(t10b, 'git', ['commit', '-qm', 'evil merge'])
-    const mkb = () => makeEvalCheck({ repo: indexRepo(t10b), cfg: {}, NO_EXEC: true, SIGNOFF: {}, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
-    r = mkb()(AO, { id: 'REC-01' })
-    ok(r.ok === false && /vanished/.test(r.detail), 'REC-01: a side-branch-only record killed inside a merge is caught (--full-history closes the simplification hole)')
-
-    // ...and two lanes adding the same path, resolved to one side, is NOT an edit
-    const t10c = mkrepo('main'); tmps.push(t10c)
-    fs.writeFileSync(path.join(t10c, 'base.md'), 'b\n'); sh(t10c, 'git', ['add', '-A']); sh(t10c, 'git', ['commit', '-qm', 'base'])
-    const dup = 'records/sessions/main/2026-07-01-100000-x.md'
-    sh(t10c, 'git', ['checkout', '-qb', 'laneA'])
-    fs.mkdirSync(path.join(t10c, path.dirname(dup)), { recursive: true }); fs.writeFileSync(path.join(t10c, dup), 'A version\n')
-    sh(t10c, 'git', ['add', '-A']); sh(t10c, 'git', ['commit', '-qm', 'A'])
-    sh(t10c, 'git', ['checkout', '-q', 'main']); sh(t10c, 'git', ['checkout', '-qb', 'laneB'])
-    fs.mkdirSync(path.join(t10c, path.dirname(dup)), { recursive: true }); fs.writeFileSync(path.join(t10c, dup), 'B version\n')
-    sh(t10c, 'git', ['add', '-A']); sh(t10c, 'git', ['commit', '-qm', 'B'])
-    sh(t10c, 'git', ['checkout', '-q', 'main']); sh(t10c, 'git', ['merge', '-q', 'laneA'])
-    sh(t10c, 'git', ['merge', '-q', 'laneB']) // add/add conflict — expected
-    sh(t10c, 'git', ['checkout', '-q', '--theirs', '--', dup])
-    sh(t10c, 'git', ['add', '-A']); sh(t10c, 'git', ['commit', '-qm', 'resolve to B'])
-    const mkc = () => makeEvalCheck({ repo: indexRepo(t10c), cfg: {}, NO_EXEC: true, SIGNOFF: {}, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
-    r = mkc()(AO, { id: 'REC-01' })
-    ok(r.ok === true, 'REC-01: two lanes adding the same record, resolved to one side, is NOT a false edit (introduction = the SET of add-blobs)')
-
-    // ---- Issue #47: REC-01's sanctioned-edit route (unit — the classifier) ----
-    const t10d = mkrepo('main'); tmps.push(t10d)
-    const recd = 'records/sessions/main/2026-07-01-100000-a.md'
-    fs.mkdirSync(path.join(t10d, path.dirname(recd)), { recursive: true })
-    fs.writeFileSync(path.join(t10d, recd), '---\nrecord: session/1\nlane: main\nagent: a\nstarted: 2026-07-01T10:00:00Z\n---\n\n## Did\nx\n')
-    sh(t10d, 'git', ['add', '-A']); sh(t10d, 'git', ['commit', '-qm', 'r1'])
-    fs.appendFileSync(path.join(t10d, recd), 'edited\n'); sh(t10d, 'git', ['add', '-A']); sh(t10d, 'git', ['commit', '-qm', 'edit'])
-    const mkD = jdgs => makeEvalCheck({ repo: indexRepo(t10d), cfg: {}, NO_EXEC: true, JDGS: {}, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
-    const JDG = over => ({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-07-01', by: 'a', subject: recd, reason: 'supersede with vendored evidence', review_by: '2999-01-01', ...over })
-    r = mkD([])(AO, { id: 'REC-01' })
-    ok(r.ok === false && /1 mutation/.test(r.detail), '#47: no judgments -> the edit is an unexplained mutation')
-    r = mkD([JDG()])(AO, { id: 'REC-01' })
-    ok(r.ok === true && /sanctioned/.test(r.detail) && /JDG-0001/.test(r.detail), '#47: an unexpired deviation naming the path sanctions the edit')
-    r = mkD([JDG({ subject: 'records/claims/CLM-0001.json' })])(AO, { id: 'REC-01' })
-    ok(r.ok === false && /1 mutation/.test(r.detail), '#47: a judgment naming a DIFFERENT path does not sanction')
-    r = mkD([JDG({ kind: 'break-glass', gate: 'admit' })])(AO, { id: 'REC-01' })
-    ok(r.ok === false && /1 mutation/.test(r.detail), '#47: break-glass never sanctions a record edit (outage relief, not approval)')
-    r = mkD([JDG({ review_by: '2000-01-01' })])(AO, { id: 'REC-01' })
-    ok(r.ok === false && /1 mutation/.test(r.detail), '#47: an EXPIRED tombstone stops sanctioning — the mutation counts again')
-    r = mkD([JDG({ subject: 'records/sessions/main/*.md' })])(AO, { id: 'REC-01' })
-    ok(r.ok === true && /sanctioned/.test(r.detail), '#47: a scope subject (glob) sanctions — matched via globMatcher')
-
-    // mixed + all-sanctioned over two records
-    const t10e = mkrepo('main'); tmps.push(t10e)
-    const recA = 'records/sessions/main/2026-07-01-100000-a.md'
-    const recB = 'records/sessions/main/2026-07-01-100001-b.md'
-    for (const p of [recA, recB]) { fs.mkdirSync(path.join(t10e, path.dirname(p)), { recursive: true }); fs.writeFileSync(path.join(t10e, p), '---\nrecord: session/1\nlane: main\nagent: a\nstarted: 2026-07-01T10:00:00Z\n---\n\n## Did\nx\n') }
-    sh(t10e, 'git', ['add', '-A']); sh(t10e, 'git', ['commit', '-qm', 'r1'])
-    for (const p of [recA, recB]) fs.appendFileSync(path.join(t10e, p), 'edited\n')
-    sh(t10e, 'git', ['add', '-A']); sh(t10e, 'git', ['commit', '-qm', 'edit both'])
-    const mkE = jdgs => makeEvalCheck({ repo: indexRepo(t10e), cfg: {}, NO_EXEC: true, JDGS: {}, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
-    const JDGE = (subject, id = 'JDG-0001') => ({ record: 'judgment/1', id, kind: 'deviation', date: '2026-07-01', by: 'a', subject, reason: 'r', review_by: '2999-01-01' })
-    r = mkE([JDGE(recA)])(AO, { id: 'REC-01' })
-    ok(r.ok === false && /^1 mutation/.test(r.detail) && /sanctioned/.test(r.detail), '#47: one sanctioned + one unexplained -> counts ONLY the unexplained and names the sanction')
-    r = mkE([JDGE(recA, 'JDG-0001'), JDGE(recB, 'JDG-0002')])(AO, { id: 'REC-01' })
-    ok(r.ok === true && /2 mutation\(s\) sanctioned/.test(r.detail), '#47: all sanctioned -> PASS naming both judgments')
-
-    // ---- Issue #56: an append and a rewrite are different events, and the finding says so ----
-    // The count used to read `23 mutation(s)` with three `edited` lines that were all
-    // additive; a repair and a falsification were indistinguishable, and the number only
-    // ever grew. Both still count — the classes are what the reader needed.
-    const t10f = mkrepo('main'); tmps.push(t10f)
-    const w = (rel, body) => { fs.mkdirSync(path.join(t10f, path.dirname(rel)), { recursive: true }); fs.writeFileSync(path.join(t10f, rel), body) }
-    const commit = m => { sh(t10f, 'git', ['add', '-A']); sh(t10f, 'git', ['commit', '-qm', m]) }
-    const mkF = () => makeEvalCheck({ repo: indexRepo(t10f), cfg: {}, NO_EXEC: true, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
-    w('records/notes.md', 'line one\n')
-    w('records/claims/CLM-0001.json', '{"id":"CLM-0001","statement":"x"}\n')
-    w('records/tail.md', 'no trailing newline')
-    commit('records land')
-    w('records/notes.md', 'line one\nline two appended\n')                       // pure append
-    w('records/claims/CLM-0001.json', '{"id":"CLM-0001","statement":"REWRITTEN"}\n') // rewrite
-    commit('one append, one rewrite')
-    r = mkF()(AO, { id: 'REC-01' })
-    ok(r.ok === false && /^2 mutation\(s\) \(1 rewritten · 1 appended\)/.test(r.detail), '#56: the count names the classes — the reader sees which one lost information')
-    ok(/rewrote records\/claims\/CLM-0001\.json/.test(r.detail) && /appended to records\/notes\.md/.test(r.detail), '#56: the verb is per-event — `rewrote` vs `appended to`, never a flat `edited`')
-    ok(r.detail.indexOf('rewrote') < r.detail.indexOf('appended to'), '#56: the rewrite leads the examples — the detail prints only three, and appends must not bury the one to open')
-    // extending the LAST line is a rewrite, not an append: a line-prefix test, not a
-    // string-prefix one (`line one` -> `line oneX` starts with the introduction).
-    w('records/tail.md', 'no trailing newlineX\n')
-    commit('extend the last line')
-    r = mkF()(AO, { id: 'REC-01' })
-    ok(/2 rewritten/.test(r.detail) && /rewrote records\/tail\.md/.test(r.detail), '#56: extending the final line is a REWRITE — the introduced line no longer reads the same')
-    // and appending BELOW an already-rewritten record stays rewritten: the class is
-    // measured against the introduction, not against the previous edit.
-    fs.appendFileSync(path.join(t10f, 'records/claims/CLM-0001.json'), '\n')
-    commit('append after a rewrite')
-    r = mkF()(AO, { id: 'REC-01' })
-    ok(/3 rewritten/.test(r.detail) && !/2 appended/.test(r.detail), '#56: an append onto an already-rewritten record is still a rewrite — measured against the introduction')
-    // A mid-file insertion loses nothing but is not an append — its own class, so the
-    // benign edits do not land back in the bucket the rule is trying to empty. Measured
-    // against the INTRODUCTION, so this needs a record introduced with more than one
-    // line: inserting below the only line a record ever had IS an append.
-    const t10h = mkrepo('main'); tmps.push(t10h)
-    fs.mkdirSync(path.join(t10h, 'records'), { recursive: true })
-    const multi = path.join(t10h, 'records/multi.md')
-    fs.writeFileSync(multi, '## Did\na\n\n## Left open\nnext: y\n')
-    sh(t10h, 'git', ['add', '-A']); sh(t10h, 'git', ['commit', '-qm', 'r1'])
-    const mkH = () => makeEvalCheck({ repo: indexRepo(t10h), cfg: {}, NO_EXEC: true, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
-    fs.writeFileSync(multi, '## Did\na\nb inserted\n\n## Left open\nnext: y\n')
-    sh(t10h, 'git', ['commit', '-qam', 'insert in the middle'])
-    r = mkH()(AO, { id: 'REC-01' })
-    ok(r.ok === false && /^1 mutation\(s\) \(1 extended\)/.test(r.detail) && /inserted into records\/multi\.md/.test(r.detail), '#56: a mid-file insertion is EXTENDED — every introduced line still there, in order, just not at the front')
-    fs.writeFileSync(multi, '## Did\na\nb inserted\n\n## Left open\nnext: CHANGED\n')
-    sh(t10h, 'git', ['commit', '-qam', 'restate the next'])
-    r = mkH()(AO, { id: 'REC-01' })
-    ok(/^2 mutation\(s\) \(1 rewritten · 1 extended\)/.test(r.detail) && r.detail.indexOf('rewrote') < r.detail.indexOf('inserted into'), '#56: rewrites lead the examples — extended sorts with the lossless classes, behind the one that lost information')
-
-    // a lane appending to a record it did not introduce is the common, benign case
-    const t10g = mkrepo('main'); tmps.push(t10g)
-    fs.mkdirSync(path.join(t10g, 'records/corpora'), { recursive: true })
-    fs.writeFileSync(path.join(t10g, 'records/corpora/golden.json'), '{"a":1}\n')
-    sh(t10g, 'git', ['add', '-A']); sh(t10g, 'git', ['commit', '-qm', 'corpus'])
-    for (const n of [2, 3, 4]) { fs.appendFileSync(path.join(t10g, 'records/corpora/golden.json'), `{"a":${n}}\n`); sh(t10g, 'git', ['add', '-A']); sh(t10g, 'git', ['commit', '-qm', `sweep ${n}`]) }
-    r = makeEvalCheck({ repo: indexRepo(t10g), cfg: {}, NO_EXEC: true, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })(AO, { id: 'REC-01' })
-    ok(r.ok === false && /^3 mutation\(s\) \(3 appended\)/.test(r.detail), '#56: a re-pinned corpus reads as 3 appended — the monotonic warn now says what it is')
-    // the glob subject the rule's `fix` now names disposes of that whole class at once
-    r = makeEvalCheck({ repo: indexRepo(t10g), cfg: {}, NO_EXEC: true, JDGS: {}, JUDGMENTS: [{ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-07-01', by: 'a', subject: 'records/corpora/**', reason: 're-pinned per sweep', review_by: '2999-01-01' }], DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })(AO, { id: 'REC-01' })
-    ok(r.ok === true && /3 mutation\(s\) sanctioned/.test(r.detail), '#56: ONE standing glob deviation sanctions the whole class — not one tombstone per sweep')
-
-    // ---- Issue #47: the subject is attacker-influenced text that rides into the matcher ----
+    const JDG = over => ({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-07-01', by: 'a', subject: 'records/sessions/main/2026-07-01-100000-a.md', reason: 'r', review_by: '2999-01-01', ...over })
     // A glob like `**a**a**a…` compiled to `^.*a.*a.*a…$` backtracked exponentially: 892ms
     // at 68 chars, ~3.9x per 6 more, i.e. a hang well inside the 256-char schema cap. The
     // sweep matcher has no search tree, so these must stay in the low milliseconds. Lazy
@@ -506,12 +410,18 @@ try {
     ok(globMatcher('a?c').test('abc') && !globMatcher('a?c').test('ac'), '#47: `?` is exactly one character')
     ok(globMatcher('v1.2').test('v1.2') && !globMatcher('v1.2').test('v1x2'), '#47: a literal dot stays literal (metacharacters are not regex any more)')
 
+  }
+
+  // ---- M4c: REC-02 against real history ----
+  {
+    const RS = { kind: 'records-scrub', globs: ['records/**'] }
+    let r
     const t11 = mkrepo('main'); tmps.push(t11)
     const rec2 = 'records/sessions/main/2026-07-01-110000-a.md'
     fs.mkdirSync(path.join(t11, path.dirname(rec2)), { recursive: true })
     fs.writeFileSync(path.join(t11, rec2), 'token: ' + 'ghp_' + 'abcdefghijklmnopqrstuvwxyz0123456789' + '\n')
     sh(t11, 'git', ['add', '-A']); sh(t11, 'git', ['commit', '-qm', 'r1'])
-    const mk11 = () => makeEvalCheck({ repo: indexRepo(t11), cfg: {}, NO_EXEC: true, SIGNOFF: {}, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    const mk11 = () => makeEvalCheck({ repo: indexRepo(t11), cfg: {}, NO_EXEC: true, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
     r = mk11()(RS, { id: 'REC-02' })
     ok(r.ok === false && !r.soft && /deterministic/.test(r.detail) && !/ghp_a/.test(r.detail), 'REC-02: a landed deterministic secret fails — and the detail never reproduces it')
     const fid = findingId('github-token', 'ghp_' + 'abcdefghijklmnopqrstuvwxyz0123456789')
@@ -526,21 +436,7 @@ try {
     r = mk11()(RS, { id: 'REC-02' })
     ok(r.ok === false && r.soft === true, 'REC-02: scans what LANDED — an uncommitted worktree cleanup cannot flip the verdict')
 
-    fs.mkdirSync(path.join(t11, 'records/judgments'), { recursive: true })
-    const jdg = { record: 'judgment/1', id: 'JDG-0001', kind: 'sign-off', date: '2026-07-01', by: 'a', subject: 'S', reason: 'r', review_by: '2027-01-01' }
-    fs.writeFileSync(path.join(t11, 'records/judgments/JDG-0001.json'), JSON.stringify(jdg))
-    fs.writeFileSync(path.join(t11, 'records/judgments/JDG-0002.json'), JSON.stringify(jdg))
-    r = mk11()(OH, { id: 'REC-04' })
-    ok(r.ok === false && /JDG JDG-0001 in both/.test(r.detail), 'REC-04: the same judgment id in two files is a duplication finding')
-    fs.writeFileSync(path.join(t11, 'records/judgments/JDG-0002.json'), JSON.stringify({ ...jdg, id: 'JDG-0002' }))
-    fs.mkdirSync(path.join(t11, 'docs/session-log'), { recursive: true })
-    fs.writeFileSync(path.join(t11, 'docs/session-log/old.md'), 'legacy\n')
-    r = mk11()(OH, { id: 'REC-04' })
-    ok(r.ok === false && /two homes/.test(r.detail), 'REC-04: session narrative in both records/sessions and docs/session-log is flagged')
-    fs.rmSync(path.join(t11, 'docs/session-log'), { recursive: true })
-    ok(mk11()(OH, { id: 'REC-04' }).ok === true, 'REC-04: unique ids, one home — clean')
   }
-
 
   // ---- Issue #57: the decision graph's amendment edges — read, resolved, paired ----
   // Before this, `Amends:`/`Amended-by:` were read by no rule, no kind and no schema
@@ -565,7 +461,7 @@ try {
     fs.mkdirSync(path.join(t57, D), { recursive: true })
     const adr = (n, body) => { fs.writeFileSync(path.join(t57, D, n), body); sh(t57, 'git', ['add', '-A']); sh(t57, 'git', ['commit', '-qm', n]) }
     const cfg57 = { decision_globs: [D + '/*.md'] }
-    const mk57 = jdgs => makeEvalCheck({ repo: indexRepo(t57), cfg: cfg57, NO_EXEC: true, JDGS: {}, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    const mk57 = jdgs => makeEvalCheck({ repo: indexRepo(t57), cfg: cfg57, NO_EXEC: true, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
     const FWD = { kind: 'adr-forward-link', globs_from_config: 'decision_globs' }
     const BACK = { kind: 'adr-backlink', globs_from_config: 'decision_globs' }
     const STAT = { kind: 'adr-status', globs_from_config: 'decision_globs' }
@@ -579,7 +475,7 @@ try {
     ok(r.ok === false && /1 one-way amendment/.test(r.detail) && /0021-bench\.md amends ADR 0017/.test(r.detail) && /0017-floor\.md carries no Amended-by/.test(r.detail), '#57 CTX-13: an amendment declared at one end only is a finding naming BOTH records')
     ok(!/ADR 0019/.test(r.detail), "#57 CTX-13: a DANGLING amends is CTX-07's finding, not reported twice here")
 
-    // the sanction route — the same one REC-01 uses (#47), so a corpus with history adopts
+    // the sanction route — the judgment route of #47, so a corpus with history adopts
     const JDG57 = over => ({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-08-11', by: 'a', subject: D + '/0021-bench.md', reason: 'back-fill scheduled with the index rebuild', review_by: '2999-01-01', ...over })
     r = mk57([JDG57()])(BACK, { id: 'CTX-13' })
     ok(r.ok === true && /sanctioned by judgment/.test(r.detail) && /JDG-0001/.test(r.detail), '#57 CTX-13: an unexpired deviation naming the declaring record sanctions the one-way edge')
@@ -600,7 +496,7 @@ try {
     // CTX-02: the template's own spelling is a forward link (it was not, at blocker severity)
     const t57b = mkrepo('main'); tmps.push(t57b)
     fs.mkdirSync(path.join(t57b, D), { recursive: true })
-    const mk57b = () => makeEvalCheck({ repo: indexRepo(t57b), cfg: cfg57, NO_EXEC: true, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    const mk57b = () => makeEvalCheck({ repo: indexRepo(t57b), cfg: cfg57, NO_EXEC: true, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
     fs.writeFileSync(path.join(t57b, D, '0003-new.md'), '# ADR-0003 — the replacement\n\nStatus: Accepted\nDate: 2026-08-12\n\n## Context\n\nx\n')
     fs.writeFileSync(path.join(t57b, D, '0002-old.md'), '# ADR-0002 — old\n\nStatus: Superseded\nSuperseded-by: ADR-0003\nDate: 2026-08-01\n\n## Context\n\nx\n')
     sh(t57b, 'git', ['add', '-A']); sh(t57b, 'git', ['commit', '-qm', 'adrs'])
@@ -620,7 +516,7 @@ try {
     const D = 'docs/decisions'
     fs.mkdirSync(path.join(t49, D), { recursive: true })
     const cfg49 = { decision_globs: [D + '/*.md'] }
-    const mk49 = jdgs => makeEvalCheck({ repo: indexRepo(t49), cfg: cfg49, NO_EXEC: true, JDGS: {}, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
+    const mk49 = jdgs => makeEvalCheck({ repo: indexRepo(t49), cfg: cfg49, NO_EXEC: true, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
     const UNIQ = { kind: 'adr-number-unique', globs_from_config: 'decision_globs' }
     const adr49 = (n, title) => { fs.writeFileSync(path.join(t49, D, n), `# ADR-${n.slice(0, 4)} — ${title}\n\nStatus: Accepted\nDate: 2026-08-19\n\n## Context\n\nx\n`); sh(t49, 'git', ['add', '-A']); sh(t49, 'git', ['commit', '-qm', n]) }
 
@@ -633,7 +529,7 @@ try {
     ok(r.ok === false && /1 decision number\(s\) claimed twice/.test(r.detail), '#49 CTX-14: two records claiming 0027 is a finding (both trees passed every rule before)')
     ok(/0027 claimed by/.test(r.detail) && /0027-run-identity-is-one-block\.md/.test(r.detail) && /0027-a-routing-policy-is-adopted\.md/.test(r.detail), '#49 CTX-14: the finding names the number AND both files claiming it')
     // adoption: renumbering breaks the citations pointing at the record, so the existing
-    // judgment route sanctions the collision — naming EITHER end names it (REC-01's route)
+    // judgment route sanctions the collision — naming EITHER end names it (#47's route)
     const JDG49 = over => ({ record: 'judgment/1', id: 'JDG-0049', kind: 'deviation', date: '2026-08-19', by: 'a', subject: D + '/0027-a-routing-policy-is-adopted.md', reason: 'renumbering breaks 14 citations; scheduled with the index rebuild', review_by: '2999-01-01', ...over })
     r = mk49([JDG49()])(UNIQ, { id: 'CTX-14' })
     ok(r.ok === true && /sanctioned by judgment/.test(r.detail) && /JDG-0049/.test(r.detail), '#49 CTX-14: an unexpired judgment naming ONE colliding file sanctions the collision')
@@ -652,34 +548,11 @@ try {
     fs.mkdirSync(path.join(t49b, D), { recursive: true })
     fs.writeFileSync(path.join(t49b, D, 'README.md'), '# index\n')
     sh(t49b, 'git', ['add', '-A']); sh(t49b, 'git', ['commit', '-qm', 'index only'])
-    ok(makeEvalCheck({ repo: indexRepo(t49b), cfg: cfg49, NO_EXEC: true, JDGS: {}, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })(UNIQ, { id: 'CTX-14' }).ok === null,
+    ok(makeEvalCheck({ repo: indexRepo(t49b), cfg: cfg49, NO_EXEC: true, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })(UNIQ, { id: 'CTX-14' }).ok === null,
       '#49 CTX-14: an index-only decision dir is a SKIP, not a pass on nothing')
   }
 
-  // ---- Issue #47: REC-01's sanctioned-edit route end-to-end through check.mjs ----
-  {
-    const CHECK47 = path.join(ROOT, 'check.mjs')
-    const t47 = mkrepo('main'); tmps.push(t47)
-    fs.writeFileSync(path.join(t47, 'README.md'), '# issue 47 fixture\n')
-    fs.writeFileSync(path.join(t47, 'LICENSE'), 'MIT\n')
-    fs.writeFileSync(path.join(t47, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false }))
-    fs.writeFileSync(path.join(t47, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', workflow: 'single-lane', anchoring: 'off' }))
-    const rec47 = 'records/sessions/main/2026-07-01-100000-a.md'
-    fs.mkdirSync(path.join(t47, path.dirname(rec47)), { recursive: true })
-    fs.writeFileSync(path.join(t47, rec47), '---\nrecord: session/1\nlane: main\nagent: a\nstarted: 2026-07-01T10:00:00Z\n---\n\n## Did\nx\n')
-    sh(t47, 'git', ['add', '-A']); sh(t47, 'git', ['commit', '-qm', 'base'])
-    fs.appendFileSync(path.join(t47, rec47), 'edited\n'); sh(t47, 'git', ['add', '-A']); sh(t47, 'git', ['commit', '-qm', 'edit'])
-    const byId47 = out => Object.fromEntries(JSON.parse(out).results.map(x => [x.id, x]))
-    let res47 = byId47(sh(t47, process.execPath, [CHECK47, '--repo', t47, '--json', '--no-exec'], NOW).out)
-    ok(res47['REC-01'].tag === 'WARN' && /1 mutation/.test(res47['REC-01'].detail), 'e2e #47: an unsanctioned edit is a mutation finding')
-    fs.mkdirSync(path.join(t47, 'records/judgments'), { recursive: true })
-    fs.writeFileSync(path.join(t47, 'records/judgments/JDG-0001.json'), JSON.stringify({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-07-11', by: 'a', subject: rec47, reason: 'supersede with vendored evidence', review_by: '2026-07-18' }))
-    sh(t47, 'git', ['add', '-A']); sh(t47, 'git', ['commit', '-qm', 'tombstone'])
-    res47 = byId47(sh(t47, process.execPath, [CHECK47, '--repo', t47, '--json', '--no-exec'], NOW).out)
-    ok(res47['REC-01'].tag === 'PASS' && /sanctioned/.test(res47['REC-01'].detail) && /JDG-0001/.test(res47['REC-01'].detail), 'e2e #47: a committed tombstone sanctions the edit — REC-01 resolves PASS')
-  }
-
-  // ---- M4c: the lane loop end-to-end through check.mjs (FLOW + opt-out + REC threading) ----
+  // ---- the stored-status signature end-to-end through check.mjs (CTX-12, de-config-keyed) ----
   {
     const t12 = mkrepo('main'); tmps.push(t12)
     fs.writeFileSync(path.join(t12, 'README.md'), '# lane fixture\n')
@@ -688,9 +561,8 @@ try {
     fs.writeFileSync(path.join(t12, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false }))
     sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'base'])
     const CHECK12 = path.join(ROOT, 'check.mjs')
-    const byId = out => Object.fromEntries(JSON.parse(out).results.map(x => [x.id, x]))
+    const byId = out => Object.fromEntries(JSON.parse(out).results.map(x => [baseId(x.id), x]))
     let res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
-    ok(res['FLOW-02'].tag === 'SKIP' && /default branch/.test(res['FLOW-02'].detail), 'e2e: FLOW-02 SKIPs on the default branch — no wallpaper warns')
     // M7b: the stored-status surface is GONE — CTX-01 has no row at all, and
     // CTX-12 (blocker) is de-config-keyed: no stamp in the tree = PASS, no
     // status_file key to opt anything out.
@@ -707,33 +579,6 @@ try {
     res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
     ok(res['CTX-12'].tag === 'FAIL' && /matched in 2 file\(s\)/.test(res['CTX-12'].detail) && /docs-stamp\.md/.test(res['CTX-12'].detail) && /docs-stamp2\.md/.test(res['CTX-12'].detail), 'e2e: multiple stamps — the detail counts every match and names the files')
     fs.rmSync(path.join(t12, 'docs-stamp.md')); fs.rmSync(path.join(t12, 'docs-stamp2.md'))
-    sh(t12, 'git', ['checkout', '-qb', 'lane/t'])
-    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
-    ok(res['FLOW-02'].tag === 'SKIP' && /no work on this branch yet/.test(res['FLOW-02'].detail), 'e2e: a freshly-cut lane SKIPs — the record couples to work, not to branch creation')
-    fs.writeFileSync(path.join(t12, 'work.md'), 'lane work\n')
-    sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'work'])
-    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
-    ok(res['FLOW-02'].tag === 'FAIL' && /baseline log/.test(res['FLOW-02'].detail), 'e2e: a lane with work but no session record FAILs (blocker since M7a) with the fix')
-    ok(res['FLOW-06'].tag === 'SKIP' && /no gated subject/.test(res['FLOW-06'].detail), 'e2e: FLOW-06 SKIPs when nothing gated changed')
-    const lrec = 'records/sessions/lane/t/2026-07-11-120000-a.md'
-    fs.mkdirSync(path.join(t12, path.dirname(lrec)), { recursive: true })
-    fs.writeFileSync(path.join(t12, lrec), '---\nrecord: session/1\nlane: lane/t\nagent: a\nstarted: 2026-07-11T12:00:00Z\n---\n\n## Did\nx\n\n## Left open\nnext: y\n')
-    fs.writeFileSync(path.join(t12, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', workflow: 'multi-lane', anchoring: 'relaxed', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
-    sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'lane work + descriptor change'])
-    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
-    ok(res['FLOW-02'].tag === 'PASS', 'e2e: the session record riding the lane flips FLOW-02 to PASS')
-    ok(res['FLOW-06'].tag === 'WARN' && /DESC-03 preview/.test(res['FLOW-06'].detail), 'e2e: a descriptor change with no judgment in range WARNs (same-PR atomicity)')
-    fs.mkdirSync(path.join(t12, 'records/judgments'), { recursive: true })
-    fs.writeFileSync(path.join(t12, 'records/judgments/JDG-0001.json'), JSON.stringify({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-07-11', by: 'a', subject: 'baseline.repo.json', reason: 'r', review_by: '2027-01-01' }))
-    sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'jdg'])
-    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
-    ok(res['FLOW-06'].tag === 'PASS', 'e2e: the judgment record in the same range satisfies FLOW-06')
-    // detached HEAD is what every CI checkout looks like — lane rules must SKIP,
-    // not warn about a lane called '(detached)' (the writer refuses that lane too)
-    sh(t12, 'git', ['checkout', '-q', '--detach'])
-    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
-    ok(res['FLOW-02'].tag === 'SKIP' && /no branch resolved/.test(res['FLOW-02'].detail), 'e2e: detached HEAD (a CI checkout) SKIPs lane rules, honestly')
-    ok(res['FLOW-06'].tag === 'SKIP', 'e2e: FLOW-06 also gated off while detached')
   }
 
   // ---- M4c: claims dual-read + gen migrate-claims ----
@@ -891,71 +736,27 @@ try {
     fs.writeFileSync(path.join(t18, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false }))
     sh(t18, 'git', ['add', '-A']); sh(t18, 'git', ['commit', '-qm', 'base'])
     const res18 = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
-    const ctx12 = res18.results.find(x => x.id === 'CTX-12')
+    const ctx12 = res18.results.find(x => isId(x.id, 'CTX-12'))
     ok(ctx12.tag === 'FAIL' && ctx12.severity === 'blocker' && /README\.md/.test(ctx12.detail), 'e2e: the stamp signature on a bare repo FAILs CTX-12 at blocker, no config key to hide behind')
-    ok(!res18.results.some(x => x.id === 'CTX-01'), 'e2e: CTX-01 is gone from the rule set entirely')
+    ok(!res18.results.some(x => isId(x.id, 'CTX-01')), 'e2e: CTX-01 is gone from the rule set entirely')
     // M7b: the WORKTREE read stays strict — the descriptor asymmetry's other half.
     // A retired field in the worktree descriptor is flagged (DESC-02 names it at
     // blocker since the M7c split; presence itself is DESC-01's PASS) and the
     // posture it declared is OFF until shed (the migration pressure). If the
     // ref-read strip is ever hoisted to worktree reads, this fails.
     fs.writeFileSync(path.join(t18, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 'legacy-team', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
+    // v3 §5: the DESC rules ride the opt-in `descriptor` pack — with it off they push no row
+    // at all, so the fixture arms it the way a repo would (packs: ["descriptor"])
+    const res19off = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
+    ok(!res19off.results.some(x => isId(x.id, 'DESC-01') || isId(x.id, 'DESC-02')), 'e2e: with the descriptor pack off, DESC-01/02 push no row — a present descriptor is not an opt-in (V15)')
+    fs.writeFileSync(path.join(t18, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false, packs: ['descriptor'] }))
     const res19 = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
-    const d1 = res19.results.find(x => x.id === 'DESC-01')
+    const d1 = res19.results.find(x => isId(x.id, 'DESC-01'))
     ok(d1.tag === 'PASS' && /present \(schema validity is DESC-02's/.test(d1.detail), 'e2e: presence narrowed — DESC-01 PASSes a present-but-invalid file, pointing at DESC-02')
-    const d2 = res19.results.find(x => x.id === 'DESC-02')
+    const d2 = res19.results.find(x => isId(x.id, 'DESC-02'))
     ok(d2.tag === 'FAIL' && d2.severity === 'blocker' && /'owner' is not a known field/.test(d2.detail), 'e2e: worktree read stays STRICT — a retired field makes DESC-02 name it at blocker')
-    const f2 = res19.results.find(x => x.id === 'FLOW-02')
-    ok(f2.tag === 'SKIP' && /workflow contract off/.test(f2.detail), 'e2e: an invalid worktree descriptor turns the posture OFF — the pressure to shed the field is visible')
   }
 
-  // ---------- REC-06 (M7c): the vendored-tree lock — SKIP / unpinned / pinned / skew ----------
-  {
-    const t20 = mkrepo('main'); tmps.push(t20)
-    fs.writeFileSync(path.join(t20, 'README.md'), '# x\n')
-    sh(t20, 'git', ['add', '-A']); sh(t20, 'git', ['commit', '-qm', 'seed'])
-    const rec6 = () => JSON.parse(sh(t20, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t20, '--json', '--no-exec'], NOW).out).results.find(x => x.id === 'REC-06')
-    let r = rec6()
-    ok(r.tag === 'SKIP' && /no vendored tree/.test(r.detail), 'e2e: REC-06 SKIPs a repo that does not vendor — never wallpaper')
-    fs.mkdirSync(path.join(t20, 'tools/baseline'), { recursive: true })
-    fs.writeFileSync(path.join(t20, 'tools/baseline/rules.json'), '{ "version": "2.9.9" }\n')
-    fs.writeFileSync(path.join(t20, 'tools/baseline/check.mjs'), 'vendored\n')
-    r = rec6()
-    ok(r.tag === 'WARN' && r.severity === 'warn' && /unpinned/.test(r.detail) && /gen lock/.test(r.detail), 'e2e: REC-06 WARNs an unpinned vendored tree with the pin recipe')
-    sh(t20, process.execPath, [path.join(ROOT, 'baseline.mjs'), 'gen', 'lock', '--repo', t20], NOW)
-    r = rec6()
-    ok(r.tag === 'PASS' && /pinned: 2\.9\.9/.test(r.detail), 'e2e: REC-06 PASSes a pinned, un-skewed tree naming the pinned version')
-    // worktree semantics: an UNTRACKED file inside the vendored tree is a real skew
-    fs.writeFileSync(path.join(t20, 'tools/baseline/extra.mjs'), 'untracked rider\n')
-    r = rec6()
-    ok(r.tag === 'WARN' && /skews from its lock/.test(r.detail), 'e2e: an untracked file inside the vendored tree skews — local stricter than CI, never the reverse')
-    fs.rmSync(path.join(t20, 'tools/baseline/extra.mjs'))
-    // hand-edit skew: same version both sides, named anyway
-    fs.appendFileSync(path.join(t20, 'tools/baseline/check.mjs'), 'tampered\n')
-    r = rec6()
-    ok(r.tag === 'WARN' && /lock pins 2\.9\.9/.test(r.detail) && /tree is 2\.9\.9/.test(r.detail), 'e2e: skew names BOTH versions — a hand-edit shows same version, different bytes')
-    // version-bump skew: old and new named
-    fs.writeFileSync(path.join(t20, 'tools/baseline/rules.json'), '{ "version": "3.0.0" }\n')
-    r = rec6()
-    ok(/lock pins 2\.9\.9/.test(r.detail) && /tree is 3\.0\.0/.test(r.detail), 'e2e: a vendor bump without a re-pin names old AND new versions')
-    // an unparseable lock is a finding, never a crash
-    fs.writeFileSync(path.join(t20, 'tools/baseline.lock.json'), 'not json\n')
-    r = rec6()
-    ok(r.tag === 'WARN' && /not a lock/.test(r.detail), 'e2e: an unparseable lock file is an honest WARN with the rewrite recipe')
-    // panel (lock-seam, fail-open catch): an unhashable entry DEGRADES to a
-    // labeled WARN over the readable set — a SKIP would let one dangling
-    // symlink mask a concurrent real skew. (Clear the poisoned lock first —
-    // the writer rightly refuses to overwrite a non-lock.)
-    fs.rmSync(path.join(t20, 'tools/baseline.lock.json'))
-    sh(t20, process.execPath, [path.join(ROOT, 'baseline.mjs'), 'gen', 'lock', '--repo', t20], NOW)
-    fs.symlinkSync('/nonexistent-target', path.join(t20, 'tools/baseline/dangler'))
-    r = rec6()
-    ok(r.tag === 'WARN' && /cannot be hashed/.test(r.detail) && /dangler \(symlink\)/.test(r.detail), 'e2e: an unhashable entry is a labeled WARN caveat, never a SKIP that masks skew')
-    fs.appendFileSync(path.join(t20, 'tools/baseline/check.mjs'), 'tamper-under-cover\n')
-    r = rec6()
-    ok(r.tag === 'WARN' && /skews from its lock/.test(r.detail) && /dangler \(symlink\)/.test(r.detail), 'e2e: a real skew stays REPORTED even while an unhashable entry rides the tree')
-    fs.unlinkSync(path.join(t20, 'tools/baseline/dangler'))
-  }
 } finally {
   for (const t of tmps) fs.rmSync(t, { recursive: true, force: true })
 }

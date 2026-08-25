@@ -1,10 +1,11 @@
 {
   "rules": [
     {
-      "id": "CTX-02",
+      "id": "CTX-02-decision-status-declared",
       "title": "Every decision record carries a Status; superseded ones link forward",
       "category": "context",
       "severity": "blocker",
+      "pack": "decisions",
       "applies_to": "all",
       "lesson": "CTX-5 no LOCKED artifact without a forward supersede-link",
       "rationale": "A frozen decision the repo has overtaken, with no in-file 'Superseded by', actively misdirects a reader.",
@@ -24,7 +25,7 @@
       }
     },
     {
-      "id": "CTX-03",
+      "id": "CTX-03-sources-of-truth-declared",
       "title": "Sources of truth are declared",
       "category": "context",
       "severity": "warn",
@@ -47,29 +48,7 @@
       }
     },
     {
-      "id": "CTX-04",
-      "title": "No frozen/consolidated doc without regeneration or supersede banners",
-      "category": "context",
-      "severity": "manual",
-      "applies_to": "all",
-      "lesson": "CTX-5",
-      "rationale": "A 'consolidated' spec is only safe if regenerated from its sources or stamped with in-file supersede banners.",
-      "fix": "Regenerate consolidated specs from their ADRs, or add supersede-aware banners; record sign-off.",
-      "sources": [
-        "tree"
-      ],
-      "on_unreachable": "skip",
-      "contexts": [
-        "check",
-        "reconcile"
-      ],
-      "certainty": "judgment",
-      "check": {
-        "kind": "signoff"
-      }
-    },
-    {
-      "id": "CTX-05",
+      "id": "CTX-05-no-broken-doc-links",
       "title": "No broken internal doc links",
       "category": "context",
       "severity": "blocker",
@@ -89,11 +68,12 @@
       "certainty": "deterministic",
       "check": {
         "kind": "md-links",
+        "tracked_only": true,
         "globs_from_config": "doc_globs"
       }
     },
     {
-      "id": "CTX-06",
+      "id": "CTX-06-docs-carry-freshness-contract",
       "title": "Long-lived docs carry a freshness contract",
       "category": "context",
       "severity": "warn",
@@ -119,10 +99,11 @@
       }
     },
     {
-      "id": "CTX-07",
+      "id": "CTX-07-decision-edges-resolve",
       "title": "Every declared decision edge resolves to a file that exists",
       "category": "context",
       "severity": "warn",
+      "pack": "decisions",
       "applies_to": "all",
       "source": "https://adr.github.io/",
       "lesson": "CTX-5 a declared decision edge must resolve — whatever the verb",
@@ -143,7 +124,7 @@
       }
     },
     {
-      "id": "CTX-08",
+      "id": "CTX-08-generated-files-marked",
       "title": "Generated files carry a 'DO NOT EDIT' provenance marker",
       "category": "context",
       "severity": "warn",
@@ -169,7 +150,7 @@
       }
     },
     {
-      "id": "CTX-09",
+      "id": "CTX-09-grounding-docs-exist",
       "title": "Required grounding docs exist and are non-empty",
       "category": "context",
       "severity": "warn",
@@ -193,11 +174,11 @@
       }
     },
     {
-      "id": "CTX-10",
+      "id": "CTX-10-doc-symbols-resolve",
       "title": "Code symbols/paths named in docs still resolve",
       "category": "context",
       "severity": "warn",
-      "profile": "advanced",
+      "pack": "advanced",
       "applies_to": "all",
       "source": "https://www.writethedocs.org/",
       "lesson": "CTX symbol/anchor integrity",
@@ -218,7 +199,7 @@
       }
     },
     {
-      "id": "CTX-11",
+      "id": "CTX-11-docs-not-lagging-code",
       "title": "Docs don't lag the code they anchor",
       "category": "context",
       "severity": "warn",
@@ -244,7 +225,7 @@
       }
     },
     {
-      "id": "CTX-12",
+      "id": "CTX-12-status-is-derived",
       "title": "No hand-maintained status stamp (derive it instead)",
       "category": "context",
       "severity": "blocker",
@@ -273,10 +254,11 @@
       }
     },
     {
-      "id": "CTX-13",
+      "id": "CTX-13-amendment-declared-both-ends",
       "title": "An amendment is declared at both ends",
       "category": "context",
       "severity": "warn",
+      "pack": "decisions",
       "applies_to": "all",
       "source": "https://adr.github.io/",
       "lesson": "CTX-5 the amended record is the one a citation arrives at — it must know it was corrected",
@@ -297,15 +279,16 @@
       }
     },
     {
-      "id": "CTX-14",
+      "id": "CTX-14-decision-numbers-unique",
       "title": "No two decision records claim the same number",
       "category": "context",
       "severity": "blocker",
+      "pack": "decisions",
       "applies_to": "all",
       "source": "https://adr.github.io/",
       "lesson": "CTX-5 the decision-record number IS the record's identity — a citation that resolves to two files resolves to neither",
-      "rationale": "Every consumer of the corpus — CTX-07's edge resolution, CTX-13's amendment pairing, a human following 'see ADR-0027' — reads the number off the filename and expects one record back. Two lanes authored an 0027 under different filenames: each tree was clean, neither merge conflicted, and the default branch ended with two ADR-0027s that no check had an opinion about. This is the floor that stops the collision SURVIVING (the lane that merges second turns the gate red); catching it while both lanes are open is FLOW-09's. A gap in the sequence is reported in the detail and is deliberately not a finding.",
-      "fix": "Renumber one record to the next free number and update the edges pointing at it. If the corpus cannot renumber without breaking citations, record a judgment naming either colliding file — `baseline jdg new --kind deviation --subject \"docs/decisions/00XX-*.md\" --reason \"…\" --review-by <date>` — and deleting it is how the repair is proved. Reserve numbers across lanes with `baseline check` on the lane (FLOW-09) rather than at the merge.",
+      "rationale": "Every consumer of the corpus — CTX-07's edge resolution, CTX-13's amendment pairing, a human following 'see ADR-0027' — reads the number off the filename and expects one record back. Two lanes authored an 0027 under different filenames: each tree was clean, neither merge conflicted, and the default branch ended with two ADR-0027s that no check had an opinion about. This is the floor that stops the collision SURVIVING (the branch that merges second turns the gate red). A gap in the sequence is reported in the detail and is deliberately not a finding.",
+      "fix": "Renumber one record to the next free number and update the edges pointing at it. If the corpus cannot renumber without breaking citations, record a judgment naming either colliding file — `baseline jdg new --kind deviation --subject \"docs/decisions/00XX-*.md\" --reason \"…\" --review-by <date>` — and deleting it is how the repair is proved. Reserve the number on the branch, before the merge, so the collision never lands.",
       "sources": [
         "tree"
       ],

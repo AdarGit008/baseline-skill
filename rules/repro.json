@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "REPRO-01",
+      "id": "REPRO-01-ci-installs-frozen",
       "title": "CI installs dependencies in frozen/locked mode",
       "category": "repro",
       "severity": "warn",
@@ -40,7 +40,7 @@
       }
     },
     {
-      "id": "REPRO-02",
+      "id": "REPRO-02-runtime-version-pinned",
       "title": "Runtime version is pinned",
       "category": "repro",
       "severity": "warn",
@@ -80,12 +80,12 @@
             ]
           },
           {
-            "kind": "json-field",
+            "kind": "grep",
             "globs": [
               "package.json"
             ],
-            "path": "engines.node",
-            "assert": "nonempty"
+            "pattern": "\"engines\"\\s*:\\s*\\{[^}]*\"node\"\\s*:\\s*\"[^\"]+\"",
+            "mode": "present"
           },
           {
             "kind": "grep",
@@ -101,7 +101,7 @@
       }
     },
     {
-      "id": "REPRO-03",
+      "id": "REPRO-03-runtime-pin-consistent",
       "title": "Pinned runtime version is consistent everywhere",
       "category": "repro",
       "severity": "warn",
@@ -129,10 +129,11 @@
       }
     },
     {
-      "id": "REPRO-04",
+      "id": "REPRO-04-docker-base-pinned-by-digest",
       "title": "Dockerfile base images pinned by digest",
       "category": "repro",
       "severity": "warn",
+      "tool": "docker",
       "applies_to": [
         "node",
         "python",

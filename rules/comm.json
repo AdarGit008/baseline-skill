@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "COMM-01",
+      "id": "COMM-01-license-present",
       "title": "LICENSE file present",
       "category": "community",
       "severity": "blocker",
@@ -32,7 +32,7 @@
       }
     },
     {
-      "id": "COMM-02",
+      "id": "COMM-02-readme-newcomer-sections",
       "title": "README exists with newcomer-critical sections",
       "category": "community",
       "severity": "warn",
@@ -63,7 +63,7 @@
       }
     },
     {
-      "id": "COMM-03",
+      "id": "COMM-03-changelog-has-unreleased",
       "title": "CHANGELOG present with an Unreleased section",
       "category": "community",
       "severity": "warn",

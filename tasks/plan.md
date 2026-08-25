@@ -15,7 +15,7 @@ this rule needs lane *trees*. That is the only new plumbing.
 ## Architecture decisions
 
 - **The fork is decided in the spec, not in the diff.** Three choices (one rule vs two,
-  introduction by number vs by path, ledger vs allowlist) are settled in `SPEC.md`
+  introduction by number vs by path, ledger vs allowlist) are settled in `docs/v2/SPEC.md`
   before code, per #52's plan.
 - **INTRODUCED is by path.** The issue's own phrasing — "the numbers each lane
   introduces relative to the default branch" — is blind on the merge order that produced

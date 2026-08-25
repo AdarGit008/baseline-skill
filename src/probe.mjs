@@ -1,7 +1,9 @@
-// Capability probe — which ground-truth planes are reachable right now. Headlines every
-// orient run (C16) and is reused by the facts layer (M3b). Every plane degrades to a reason
-// string; the probe never throws. Forge reachability is gh presence + auth + a repo the
-// working directory actually resolves to (which also proves the network/API is up).
+// Capability probe — which ground-truth planes are reachable right now. Used by the
+// forge-facing surfaces (admit, reconcile, jdg) and the facts layer (M3b); orient v2 does
+// NOT call it — orient never spawns gh (v3 §10 D5), and reads its plugin lines from the
+// metadata probe in plugins.mjs. Every plane degrades to a reason string; the probe never
+// throws. Forge reachability is gh presence + auth + a repo the working directory actually
+// resolves to (which also proves the network/API is up).
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'

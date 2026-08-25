@@ -1,5 +1,5 @@
 {
-  "_preset": "product-with-claims — a repo that makes competitive/novelty claims (a product, a launch, a 'first/only/fastest' pitch). Turns the CLAIM-* discipline ON: every claim needs a build-state, a blast-radius grade, and novelty claims need a dated prior-art pass with resolving citations.",
+  "_preset": "product-with-claims — a repo that makes competitive/novelty claims (a product, a launch, a 'first/only/fastest' pitch). makes_external_claims: true activates the claims pack (CLAIM-*): every claim needs a build-state, a blast-radius grade, and novelty claims need a dated prior-art pass with resolving citations. project_type: service also activates the service pack; drop it to 'node' if there is nothing to operate.",
   "project_type": "service",
   "makes_external_claims": true,
   "claims_file": "docs/CLAIMS.json",

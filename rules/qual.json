@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "QUAL-01",
+      "id": "QUAL-01-linter-configured",
       "title": "A linter is configured",
       "category": "quality",
       "severity": "warn",
@@ -68,7 +68,7 @@
       }
     },
     {
-      "id": "QUAL-02",
+      "id": "QUAL-02-formatter-configured",
       "title": "A formatter is configured",
       "category": "quality",
       "severity": "warn",
@@ -126,7 +126,7 @@
       }
     },
     {
-      "id": "QUAL-03",
+      "id": "QUAL-03-strict-type-checking",
       "title": "Type-checking is strict where supported",
       "category": "quality",
       "severity": "warn",
@@ -153,13 +153,13 @@
         "kind": "any-of",
         "checks": [
           {
-            "kind": "json-field",
+            "kind": "grep",
             "globs": [
               "tsconfig.json",
               "tsconfig.base.json"
             ],
-            "path": "compilerOptions.strict",
-            "assert": "true"
+            "pattern": "\"strict\"\\s*:\\s*true",
+            "mode": "present"
           },
           {
             "kind": "grep",
@@ -185,7 +185,7 @@
       }
     },
     {
-      "id": "QUAL-04",
+      "id": "QUAL-04-linter-enforced",
       "title": "The linter is actually enforced (run in CI or pre-commit)",
       "category": "quality",
       "severity": "warn",

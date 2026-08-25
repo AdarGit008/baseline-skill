@@ -21,15 +21,11 @@ jobs:
         run: node test/golden/run.mjs --verify
       - name: orient availability (offline / no-forge degradation)
         run: node test/orient/run.mjs
-      - name: facts/join/derive (deterministic over forge replay)
+      - name: facts (deterministic over forge replay)
         run: node test/facts/run.mjs
       - name: records — loader split, schemas, scrub, log write-gate
         run: node test/records/run.mjs
-      - name: lane claim/reclaim — atomic ref creation, race, leases (local bare origin)
-        run: node test/lane/run.mjs
-      - name: FLOW/DIV rules — lane-world verdicts across the branch-state matrix
-        run: node test/flow/run.mjs
-      - name: admit — staleness contract, FS1/FS5, DESC-03, MERGE-02, JDG-only path (local bare origin)
+      - name: admit — staleness contract, FS1/FS5, DESC-03, JDG-only path (local bare origin)
         run: node test/admit/run.mjs
       - name: reconcile — lifecycle, mutation channel, merged-while-red, binding law (local bare origin + replay)
         run: node test/reconcile/run.mjs
@@ -37,3 +33,5 @@ jobs:
         run: node test/gen/run.mjs
       - name: self-score (the standard checks itself)
         run: node check.mjs --repo . --no-exec
+      - name: v3 invariants (test/red, all green by construction)
+        run: node test/red/run.mjs --green

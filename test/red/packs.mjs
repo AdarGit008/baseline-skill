@@ -1,9 +1,13 @@
 #!/usr/bin/env node
-// RED — PLAN.md §5 "Five opt-in packs": V15, V16.
+// RED — PLAN.md §5 "Five opt-in packs": V15, V16; §11 D13 (any pack activates from
+// `profiles` / `packs` / `--profile <pack>`; a descriptor `type` never activates one).
 //
 // V15 is an ABSENCE invariant, so the fixture is a repo with plenty of pack BAIT and no
 // config file at all — the assertion is on what the real output does NOT contain, in the
-// JSON payload and in the human render alike.
+// JSON payload and in the human render alike. §11 D8 adds the one family that MUST be
+// there with no config at all — the always-on PLUG rules — and that is asserted in the
+// same block, on the same run, as V15's counter-example.
+import * as lib from './_lib.mjs'
 import {
   harness, loadRuleSet, loadRuleSetAt, mkrepo, checkJson, cli, idsOf, rowOf,
   PACKS, PACK_OF, CLEAN_NODE, cleanup, isDeleted,
@@ -13,6 +17,11 @@ const { ok, done } = harness('packs')
 const { rules } = loadRuleSet()
 const base = (id) => id.replace(/^([A-Z]+-\d{2}).*/, '$1')
 const byBase = new Map(rules.map(r => [base(r.id), r]))
+
+// §11 D8's always-on family. _lib may not export the list yet; the fallback is §11's own.
+const PLUG_IDS = lib.PLUG_IDS ?? ['PLUG-01', 'PLUG-02', 'PLUG-03']
+// D4 (§10 V36): an n/a row may sit in the payload; "appears" here means evaluated
+const isNA = (x) => x?.state === 'n/a' || x?.tag === 'n/a' || x?.tag === 'N/A'
 
 // ---------- the pack table is DATA on the rule, not a table in prose ----------
 {
@@ -59,6 +68,15 @@ const byBase = new Map(rules.map(r => [base(r.id), r]))
   const advLeak = (r.j?.results || []).filter(x => byBase.get(base(x.id))?.pack === 'advanced').map(x => x.id)
   ok(advLeak.length === 0, `V15 · no advanced-pack rule appears either (${advLeak.join(', ') || '—'})`)
 
+  // D8 (§11, V38): one rule per plugin, in no pack, evaluated with no config file at all —
+  // the rows that MUST be there when nothing is configured (WARN or PASS, never n/a)
+  for (const id of PLUG_IDS) {
+    const rule = byBase.get(id)
+    const row = rowOf(r.j, id)
+    ok(!!rule && rule.pack == null && !!row && !isNA(row),
+      `V15 · ${id} is in no pack and appears with no config file (rule ${rule ? 'present' : 'missing'}, pack ${JSON.stringify(rule?.pack ?? null)}, row ${row ? (row.state ?? row.tag) : 'missing'})`)
+  }
+
   // and the human render must not mention them either — a SKIP line is still output
   const human = cli(bait, ['check', '--repo', bait, '--no-exec'])
   const printed = Object.values(PACKS).flat().concat(rules.filter(r2 => r2.pack === 'advanced').map(r2 => base(r2.id)))
@@ -101,22 +119,60 @@ const byBase = new Map(rules.map(r => [base(r.id), r]))
     'services/api/server.js': 'export const s = 1\n',
     'Dockerfile': 'FROM node:22\n',
   }
+  // §5's shortcut switches first; then §11 D13's general path — a `profiles` list, its
+  // `packs` alias — for the packs whose §5 switch is something else.
   const cases = [
     ['decisions', { decision_globs: ['docs/decisions/*.md'] }],
     ['descriptor', { profiles: ['descriptor'] }],
     ['service', { project_type: 'service' }],
     ['advanced', { profiles: ['advanced'] }],
+    ['claims', { profiles: ['claims'] }],
+    ['service', { packs: ['service'] }],
+    ['decisions', { profiles: ['decisions'] }],
   ]
   for (const [pack, cfg] of cases) {
-    const dir = mkrepo(`v15-${pack}`, { ...CLEAN_NODE(), ...bait, 'baseline.config.json': JSON.stringify(cfg, null, 2) + '\n' })
+    const tag = Object.keys(cfg)[0] === 'profiles' || Object.keys(cfg)[0] === 'packs' ? `§11 D13` : `§5`
+    const dir = mkrepo(`v15-${pack}-${Object.keys(cfg)[0]}`, { ...CLEAN_NODE(), ...bait, 'baseline.config.json': JSON.stringify(cfg, null, 2) + '\n' })
     const r = checkJson(dir)
     const members = rules.filter(x => x.pack === pack).map(x => base(x.id))
     const present = [...idsOf(r.j)].filter(id => members.includes(base(id)))
-    ok(present.length > 0, `§5 · the ${pack} pack activates on ${JSON.stringify(cfg)} (${present.length}/${members.length} rules evaluated)`)
+    ok(present.length > 0, `V16 · the ${pack} pack activates on ${JSON.stringify(cfg)} (${tag}; ${present.length}/${members.length} rules evaluated)`)
 
     // and activating one pack must not activate another
     const others = [...idsOf(r.j)].filter(id => { const p = byBase.get(base(id))?.pack; return p && p !== pack })
-    ok(others.length === 0, `§5 · activating ${pack} activates nothing else (${others.slice(0, 4).join(', ') || '—'})`)
+    ok(others.length === 0, `V16 · activating ${pack} via ${JSON.stringify(cfg)} activates nothing else (${others.slice(0, 4).join(', ') || '—'})`)
+  }
+
+  // §11 D13: `--profile <pack>` on the command line activates a pack with no config file at all
+  {
+    const dir = mkrepo('v15-profile-flag', { ...CLEAN_NODE(), ...bait })
+    const r = checkJson(dir, ['--profile', 'claims'])
+    const present = [...idsOf(r.j)].filter(id => byBase.get(base(id))?.pack === 'claims')
+    ok(present.length > 0, `V16 · --profile claims activates the claims pack (§11 D13; ${present.length} rows, exit ${r.status})`)
+    const others = [...idsOf(r.j)].filter(id => { const p = byBase.get(base(id))?.pack; return p && p !== 'claims' })
+    ok(others.length === 0, `V16 · --profile claims activates nothing else (§11 D13; ${others.slice(0, 4).join(', ') || '—'})`)
+  }
+
+  // §11 D13: a descriptor `type` never activates a pack — `type: service` in a valid
+  // baseline.repo.json, with a services/ tree as extra bait, and no config file
+  {
+    const desc = {
+      schema_version: 1, type: 'service', lifecycle: 'production', maturity: 'released',
+      workflow: 'trunk', anchoring: 'strict', ground_truth_boundary: { default_branch: 'main' },
+    }
+    const dir = mkrepo('v15-desc-type', {
+      ...CLEAN_NODE(),
+      'services/api/server.js': 'export const s = 1\n',
+      'baseline.repo.json': JSON.stringify(desc, null, 2) + '\n',
+    })
+    const r = checkJson(dir)
+    // membership by the §5 table (PACK_OF) as well as by the rule's own `pack` field, so the
+    // assertion is not vacuous while no rule declares a pack yet
+    const packOf = (id) => byBase.get(base(id))?.pack ?? PACK_OF.get(base(id))
+    const leaked = [...idsOf(r.j)].filter(id => packOf(id) === 'service')
+    ok(!!r.j && leaked.length === 0, `V15 · a descriptor type never activates a pack (§11 D13; leaked: ${leaked.slice(0, 4).join(', ') || '—'})`)
+    const anyPack = [...idsOf(r.j)].filter(id => packOf(id))
+    ok(!!r.j && anyPack.length === 0, `V15 · a valid descriptor alone activates no pack at all (§11 D13; ${anyPack.slice(0, 4).join(', ') || '—'})`)
   }
 }
 

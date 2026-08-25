@@ -1,5 +1,5 @@
 {
-  "_preset": "multi-lane-agents — the V2 default posture (baseline.repo.json, NOT a config file). A repo where one dev or a fleet runs N parallel agent lanes: lane namespaces, 7-day leases, strict anchoring. Copy to <repo>/baseline.repo.json, then set type.",
+  "_preset": "multi-lane-agents — the multi-agent posture (baseline.repo.json, NOT a config file): a repo where one dev or a fleet runs N parallel agent branches against one origin, with strict anchoring. Copy to <repo>/baseline.repo.json, then set type.",
   "schema_version": 1,
   "type": "service",
   "lifecycle": "production",
@@ -9,6 +9,6 @@
   "ground_truth_boundary": { "forge": "github", "default_branch": "main" },
   "lanes": { "namespace": "lane/*", "lease_ttl": "7d" },
   "join_keys": ["Baseline-Agent", "Baseline-Issue"],
-  "engine_pin": "2.x",
+  "engine_pin": "3.x",
   "staleness": { "facts_ttl": "1h", "orient_ceiling": "24h" }
 }

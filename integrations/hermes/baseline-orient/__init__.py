@@ -2,8 +2,8 @@
 
 Registers, via the standard ``register(ctx)`` entry point:
 
-  * an ``/orient`` slash command that prints the baseline skill's derived-state
-    survey (live lanes / backlog / divergence) on demand, and
+  * an ``/orient`` slash command that prints the baseline skill's five-line
+    orientation (repo, work, graph, knowledge, score) on demand, and
   * an ``on_session_start`` hook that runs the same survey at session start so a
     session opens from derived state instead of a hand-maintained status doc (C16).
 
@@ -57,14 +57,14 @@ def _run_orient(repo: str | None = None) -> str:
 
 
 def register(ctx) -> None:
-    # /orient — print the derived-state survey on demand.
+    # /orient — print the five-line orientation on demand.
     def _orient_command(args: str = "", **kwargs) -> str:
         return _run_orient()
 
     ctx.register_command(
         "orient",
         _orient_command,
-        description="Derived-state survey (live lanes, backlog, divergence) from the baseline skill.",
+        description="Five-line orientation (repo, work, graph, knowledge, score) from the baseline skill; pull-only, never gh.",
         args_hint="",
     )
 

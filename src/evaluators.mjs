@@ -45,7 +45,7 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JUDGMENTS = null, DESCRIPTOR
     if (k === 'any-of') {
       const subs = (c.checks || []).map(sc => evalCheck(sc, rule))
       if (subs.some(s => s.ok === true)) return { ok: true, detail: (subs.find(s => s.ok === true).detail) }
-      if (subs.some(s => s.ok === false)) return { ok: false, detail: subs.filter(s => s.ok === false).map(s => s.detail).slice(0, 2).join(' | ') || 'no alternative satisfied' }
+      if (subs.some(s => s.ok === false)) return { ok: false, detail: c.fail_detail || subs.filter(s => s.ok === false).map(s => s.detail).slice(0, 2).join(' | ') || 'no alternative satisfied' }
       return { ok: null, detail: 'n/a (no applicable target)' }
     }
 

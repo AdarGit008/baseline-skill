@@ -95,6 +95,10 @@ printed anywhere is now derived (`check --self-check` says how many).
   surfaced the two secret-shaped fixtures `test/records/run.mjs` plants on purpose;
   they are allowlisted as dated judgments in `.baseline/scrub-allowlist.json` — the
   designed route — not disguised.
+- **REC-05 narrowed to at-rest push-time evidence** — a committed gitleaks config or a
+  committed pre-push hook. CI and pre-commit scanning are SEC-12's question; with the
+  `**` retarget the two rules had become the same check. Retitled and reslugged
+  (`REC-05-push-time-gate-committed`); REC-02 is `REC-02-committed-tree-scrub-clean`.
 - **The forge is closed under `check` and `orient`** (§11 D12, V19, V42). The three
   forge-sourced rules — **GOV-01**, **GOV-02**, **OPS-07** — resolve
   `state: "n/a"`, reason `forge not consulted`, before their evaluator runs, and the

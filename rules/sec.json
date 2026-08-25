@@ -459,7 +459,7 @@
       }
     },
     {
-      "id": "SEC-13-dependency-vuln-scan-in-ci",
+      "id": "SEC-13-dependency-vulnerability-scan",
       "title": "A dependency vulnerability scan runs in CI",
       "category": "security",
       "severity": "warn",

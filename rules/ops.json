@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "OPS-01-structured-logging",
+      "id": "OPS-01-structured-logging-wired",
       "title": "Structured logging is wired in",
       "category": "ops",
       "severity": "warn",
@@ -78,7 +78,7 @@
       }
     },
     {
-      "id": "OPS-03-graceful-shutdown",
+      "id": "OPS-03-graceful-shutdown-on-sigterm",
       "title": "Graceful shutdown on SIGTERM",
       "category": "ops",
       "severity": "warn",
@@ -190,7 +190,7 @@
       }
     },
     {
-      "id": "OPS-06-service-descriptor-owner-lifecycle",
+      "id": "OPS-06-service-declares-owner-lifecycle",
       "title": "A service descriptor declares owner + lifecycle",
       "category": "ops",
       "severity": "warn",

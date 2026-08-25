@@ -1,8 +1,8 @@
 {
   "rules": [
     {
-      "id": "REC-02-landed-records-scrub-clean",
-      "title": "Landed records are scrub-clean",
+      "id": "REC-02-committed-tree-scrub-clean",
+      "title": "The committed tree is scrub-clean",
       "category": "records",
       "severity": "warn",
       "applies_to": "all",
@@ -28,15 +28,15 @@
       }
     },
     {
-      "id": "REC-05-push-time-secret-gate",
-      "title": "Records are covered by a push-time secret gate",
+      "id": "REC-05-push-time-gate-committed",
+      "title": "A push-time secret gate is committed alongside the code",
       "category": "records",
       "severity": "warn",
       "applies_to": "all",
       "source": "https://docs.github.com/en/code-security/secret-scanning/push-protection",
       "lesson": "F7/CF6 — baseline's scrub is layered, not \"mandatory\"; when a dedicated scanner owns the gate, baseline delegates to it",
       "rationale": "baseline log scrubs what it writes; hand-written records need a gate at the push boundary (FS4: for a public repo, push is the deadline). Evidence of gitleaks/pre-commit/a pre-push hook satisfies this; GitHub push protection also satisfies it but isn't observable at rest — M6's forge rules assert it live.",
-      "fix": "Wire gitleaks (CI or .pre-commit-config.yaml), or commit the scaffold hook where the checker can see it (copy the skill's hooks/scrub-pre-push.sh into your repo's hooks/) and install it per clone (cp hooks/scrub-pre-push.sh .git/hooks/pre-push — .git/ itself is invisible at rest). GitHub push protection satisfies the intent but isn't observable at rest; M6's forge rules assert it live.",
+      "fix": "Commit a gitleaks config (.gitleaks.toml) or the scaffold hook where the checker can see it (copy the skill's hooks/scrub-pre-push.sh into your repo's hooks/) and install it per clone. CI or pre-commit scanning is SEC-12.",
       "sources": [
         "tree"
       ],
@@ -47,61 +47,29 @@
       ],
       "certainty": "heuristic",
       "check": {
-        "kind": "implies",
-        "when": {
-          "kind": "any-file",
-          "globs": [
-            "**"
-          ],
-          "tracked_only": true
-        },
-        "when_label": "committed records",
-        "then": {
-          "kind": "any-of",
-          "checks": [
-            {
-              "kind": "grep",
-              "globs": [
-                ".github/workflows/*.yml",
-                ".github/workflows/*.yaml",
-                ".gitlab-ci.yml"
-              ],
-              "strip_comments": true,
-              "pattern": "gitleaks|trufflehog|detect-secrets|ggshield",
-              "mode": "present"
-            },
-            {
-              "kind": "grep",
-              "globs": [
-                ".pre-commit-config.yaml",
-                ".pre-commit-config.yml"
-              ],
-              "strip_comments": true,
-              "pattern": "gitleaks|detect-secrets|trufflehog",
-              "mode": "present"
-            },
-            {
-              "kind": "any-file",
-              "globs": [
-                ".gitleaks.toml",
-                "gitleaks.toml"
-              ]
-            },
-            {
-              "kind": "grep",
-              "globs": [
-                "hooks/pre-push*",
-                "hooks/scrub-pre-push*",
-                ".githooks/pre-push*",
-                ".husky/pre-push"
-              ],
-              "strip_comments": true,
-              "pattern": "baseline(\\.mjs)?[\"']? scrub|scrub --pushed|gitleaks protect",
-              "mode": "present"
-            }
-          ]
-        },
-        "then_fail_detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+        "kind": "any-of",
+        "checks": [
+          {
+            "kind": "any-file",
+            "globs": [
+              ".gitleaks.toml",
+              "gitleaks.toml"
+            ]
+          },
+          {
+            "kind": "grep",
+            "globs": [
+              "hooks/pre-push*",
+              "hooks/scrub-pre-push*",
+              ".githooks/pre-push*",
+              ".husky/pre-push"
+            ],
+            "strip_comments": true,
+            "pattern": "baseline(\\.mjs)?[\"']? scrub|scrub --pushed|gitleaks protect",
+            "mode": "present"
+          }
+        ],
+        "fail_detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
       }
     }
   ]

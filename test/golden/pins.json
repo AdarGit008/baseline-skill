@@ -44,7 +44,7 @@
       "    WARN      SEC-10-release-provenance-present        Release provenance/signing is present  ↳ pattern not found | none of: **/*.intoto.jsonl, **/*.sigstore, **/*.sig",
       "    PASS      SEC-11-least-privilege-ci-token          CI grants a least-privilege GITHUB_TOKEN  ↳ 1 workflow(s) least-privilege",
       "    PASS      SEC-12-secret-scanning-gate              A secret-scanning gate is wired in  ↳ matched in 1 file(s)",
-      "    WARN      SEC-13-dependency-vuln-scan-in-ci        A dependency vulnerability scan runs in CI  ↳ pattern not found",
+      "    WARN      SEC-13-dependency-vulnerability-scan     A dependency vulnerability scan runs in CI  ↳ pattern not found",
       "    PASS      SEC-14-pre-commit-hooks-pinned           Pre-commit hooks pinned to an immutable rev  ↳ pattern not found (good)",
       "",
       "  Reproducibility",
@@ -67,16 +67,16 @@
       "    PASS      CTX-12-status-is-derived                 No hand-maintained status stamp (derive it instead)  ↳ pattern not found (good)",
       "",
       "  Records & ledger",
-      "    PASS      REC-02-landed-records-scrub-clean        Landed records are scrub-clean  ↳ 20 file(s) scrub-clean at HEAD",
-      "    PASS      REC-05-push-time-secret-gate             Records are covered by a push-time secret gate  ↳ matched in 1 file(s)",
+      "    PASS      REC-02-committed-tree-scrub-clean        The committed tree is scrub-clean  ↳ 20 file(s) scrub-clean at HEAD",
+      "    WARN      REC-05-push-time-gate-committed          A push-time secret gate is committed alongside the code  ↳ no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule",
       "",
       "  Plugins",
       "    WARN      PLUG-01-tdd-pi                           tdd-pi artifact present and tracked  ↳ tdd-pi not found at tdd.json — install: npm i -g tdd-pi · log: .baseline/log/PLUG-01.log",
       "    WARN      PLUG-02-graphify                         graphify graph present and gitignored  ↳ graphify not found at graphify-out — install: pip install graphify · log: .baseline/log/PLUG-02.log",
       "    WARN      PLUG-03-okf-rag                          okf-rag bundle present  ↳ okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag · log: .baseline/log/PLUG-03.log",
       "",
-      "  Summary  36 pass · 0 fail · 11 warn",
-      "  Readiness: 77%  (36/47 evaluated)",
+      "  Summary  35 pass · 0 fail · 12 warn",
+      "  Readiness: 74%  (35/47 evaluated)",
       "",
       "  ✓ no blockers.",
       "",
@@ -110,7 +110,7 @@
       "total": 2
     },
     "rules": {
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "5 file(s) scrub-clean at HEAD"
       },
@@ -149,7 +149,7 @@
       "total": 2
     },
     "rules": {
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "3 file(s) scrub-clean at HEAD"
       },
@@ -186,7 +186,7 @@
       "total": 2
     },
     "rules": {
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "4 file(s) scrub-clean at HEAD"
       },
@@ -225,7 +225,7 @@
       "total": 1
     },
     "rules": {
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "5 file(s) scrub-clean at HEAD"
       },
@@ -264,7 +264,7 @@
       "total": 2
     },
     "rules": {
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "4 file(s) scrub-clean at HEAD"
       },
@@ -329,11 +329,11 @@
         "tag": "FAIL",
         "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
       },
-      "CLAIM-03-novelty-claims-prior-art": {
+      "CLAIM-03-novelty-claims-dated-prior-art": {
         "tag": "FAIL",
         "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
       },
-      "CLAIM-04-citations-resolve-and-support": {
+      "CLAIM-04-citations-resolve-support": {
         "tag": "WARN",
         "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
       },
@@ -389,7 +389,7 @@
         "state": "n/a",
         "reason": "forge not consulted"
       },
-      "GOV-02-strict-merges-enforced": {
+      "GOV-02-up-to-date-merges-enforced": {
         "state": "n/a",
         "reason": "forge not consulted"
       },
@@ -409,13 +409,13 @@
         "tag": "WARN",
         "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
       },
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "6 file(s) scrub-clean at HEAD"
       },
-      "REC-05-push-time-secret-gate": {
+      "REC-05-push-time-gate-committed": {
         "tag": "WARN",
-        "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
       },
       "PLUG-01-tdd-pi": {
         "tag": "WARN",
@@ -560,7 +560,7 @@
         "state": "n/a",
         "reason": "forge not consulted"
       },
-      "GOV-02-strict-merges-enforced": {
+      "GOV-02-up-to-date-merges-enforced": {
         "state": "n/a",
         "reason": "forge not consulted"
       },
@@ -612,13 +612,13 @@
         "state": "n/a",
         "reason": "docker not detected in the tree (declare want:[\"docker\"] to evaluate anyway)"
       },
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "4 file(s) scrub-clean at HEAD"
       },
-      "REC-05-push-time-secret-gate": {
+      "REC-05-push-time-gate-committed": {
         "tag": "WARN",
-        "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
       },
       "PLUG-01-tdd-pi": {
         "tag": "WARN",
@@ -719,7 +719,7 @@
         "state": "n/a",
         "reason": "forge not consulted"
       },
-      "GOV-02-strict-merges-enforced": {
+      "GOV-02-up-to-date-merges-enforced": {
         "state": "n/a",
         "reason": "forge not consulted"
       },
@@ -739,13 +739,13 @@
         "tag": "WARN",
         "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
       },
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "4 file(s) scrub-clean at HEAD"
       },
-      "REC-05-push-time-secret-gate": {
+      "REC-05-push-time-gate-committed": {
         "tag": "WARN",
-        "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
       },
       "PLUG-01-tdd-pi": {
         "tag": "WARN",
@@ -777,7 +777,7 @@
       "total": 26
     },
     "rules": {
-      "CTX-02-decision-status-links-forward": {
+      "CTX-02-decision-status-declared": {
         "tag": "FAIL",
         "detail": "0004-dangling.md: superseded w/o forward link"
       },
@@ -869,7 +869,7 @@
         "state": "n/a",
         "reason": "forge not consulted"
       },
-      "GOV-02-strict-merges-enforced": {
+      "GOV-02-up-to-date-merges-enforced": {
         "state": "n/a",
         "reason": "forge not consulted"
       },
@@ -889,13 +889,13 @@
         "tag": "WARN",
         "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
       },
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "17 file(s) scrub-clean at HEAD"
       },
-      "REC-05-push-time-secret-gate": {
+      "REC-05-push-time-gate-committed": {
         "tag": "WARN",
-        "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
       },
       "PLUG-01-tdd-pi": {
         "tag": "WARN",
@@ -996,7 +996,7 @@
         "state": "n/a",
         "reason": "forge not consulted"
       },
-      "GOV-02-strict-merges-enforced": {
+      "GOV-02-up-to-date-merges-enforced": {
         "state": "n/a",
         "reason": "forge not consulted"
       },
@@ -1016,13 +1016,13 @@
         "tag": "WARN",
         "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
       },
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "5 file(s) scrub-clean at HEAD"
       },
-      "REC-05-push-time-secret-gate": {
+      "REC-05-push-time-gate-committed": {
         "tag": "WARN",
-        "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
       },
       "PLUG-01-tdd-pi": {
         "tag": "WARN",
@@ -1167,7 +1167,7 @@
         "state": "n/a",
         "reason": "forge not consulted"
       },
-      "GOV-02-strict-merges-enforced": {
+      "GOV-02-up-to-date-merges-enforced": {
         "state": "n/a",
         "reason": "forge not consulted"
       },
@@ -1219,13 +1219,13 @@
         "tag": "WARN",
         "detail": "Dockerfile: FROM node:20"
       },
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "WARN",
         "detail": "deterministic secret shape(s): .env:2 github-token (ghp_…89) [scrub-<sha>]; config.js:1 aws-access-key-id (AKIA…EY) [scrub-<sha>]"
       },
-      "REC-05-push-time-secret-gate": {
+      "REC-05-push-time-gate-committed": {
         "tag": "WARN",
-        "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
       },
       "PLUG-01-tdd-pi": {
         "tag": "WARN",
@@ -1249,8 +1249,8 @@
     ],
     "summary": {
       "blockers": 0,
-      "pass": 36,
-      "warn": 11,
+      "pass": 35,
+      "warn": 12,
       "fail": 0,
       "diverged": 0,
       "total": 47
@@ -1392,7 +1392,7 @@
         "tag": "PASS",
         "detail": "matched in 1 file(s)"
       },
-      "SEC-13-dependency-vuln-scan-in-ci": {
+      "SEC-13-dependency-vulnerability-scan": {
         "tag": "WARN",
         "detail": "pattern not found"
       },
@@ -1404,7 +1404,7 @@
         "state": "n/a",
         "reason": "forge not consulted"
       },
-      "GOV-02-strict-merges-enforced": {
+      "GOV-02-up-to-date-merges-enforced": {
         "state": "n/a",
         "reason": "forge not consulted"
       },
@@ -1456,13 +1456,13 @@
         "tag": "PASS",
         "detail": "1 Dockerfile(s) digest-pinned"
       },
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "20 file(s) scrub-clean at HEAD"
       },
-      "REC-05-push-time-secret-gate": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
+      "REC-05-push-time-gate-committed": {
+        "tag": "WARN",
+        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
       },
       "PLUG-01-tdd-pi": {
         "tag": "WARN",
@@ -1537,8 +1537,8 @@
         "detail": "no active merge protection on main (rules: none; protected flag false) — anyone can force-push or merge red; create a ruleset requiring the baseline checks"
       },
       {
-        "key": "baseline:GOV-02-strict-merges-enforced:main",
-        "id": "GOV-02-strict-merges-enforced",
+        "key": "baseline:GOV-02-up-to-date-merges-enforced:main",
+        "id": "GOV-02-up-to-date-merges-enforced",
         "detail": "no active protection on main — strict up-to-date and conversation resolution are unset"
       },
       {
@@ -1577,9 +1577,9 @@
         "detail": "none of: .tool-versions, .nvmrc, .node-version, .python-version, mise.toml"
       },
       {
-        "key": "baseline:REC-05-push-time-secret-gate:main",
-        "id": "REC-05-push-time-secret-gate",
-        "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+        "key": "baseline:REC-05-push-time-gate-committed:main",
+        "id": "REC-05-push-time-gate-committed",
+        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
       },
       {
         "key": "baseline:JDG-0001:stale-accepted-thing",
@@ -1854,7 +1854,7 @@
         "state": "n/a",
         "reason": "forge not consulted"
       },
-      "GOV-02-strict-merges-enforced": {
+      "GOV-02-up-to-date-merges-enforced": {
         "state": "n/a",
         "reason": "forge not consulted"
       },
@@ -1906,7 +1906,7 @@
         "tag": "PASS",
         "detail": "1 Dockerfile(s) digest-pinned"
       },
-      "OPS-01-structured-logging": {
+      "OPS-01-structured-logging-wired": {
         "tag": "PASS",
         "detail": "matched in 1 file(s)"
       },
@@ -1914,7 +1914,7 @@
         "tag": "WARN",
         "detail": "pattern not found"
       },
-      "OPS-03-graceful-shutdown": {
+      "OPS-03-graceful-shutdown-on-sigterm": {
         "tag": "PASS",
         "detail": "matched in 1 file(s)"
       },
@@ -1926,7 +1926,7 @@
         "tag": "WARN",
         "detail": "file absent: runbooks/**/*.md, docs/runbooks/**/*.md, RUNBOOK.md"
       },
-      "OPS-06-service-descriptor-owner-lifecycle": {
+      "OPS-06-service-declares-owner-lifecycle": {
         "tag": "PASS",
         "detail": "catalog-info.yaml ok"
       },
@@ -1934,13 +1934,13 @@
         "state": "n/a",
         "reason": "forge not consulted"
       },
-      "REC-02-landed-records-scrub-clean": {
+      "REC-02-committed-tree-scrub-clean": {
         "tag": "PASS",
         "detail": "12 file(s) scrub-clean at HEAD"
       },
-      "REC-05-push-time-secret-gate": {
+      "REC-05-push-time-gate-committed": {
         "tag": "WARN",
-        "detail": "no push-time secret gate visible at rest — wire gitleaks, or commit hooks/scrub-pre-push.sh (+ per-clone install); GitHub push protection satisfies the intent but only M6 can assert it live"
+        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
       },
       "PLUG-01-tdd-pi": {
         "tag": "WARN",

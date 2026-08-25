@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "CTX-02-decision-status-links-forward",
+      "id": "CTX-02-decision-status-declared",
       "title": "Every decision record carries a Status; superseded ones link forward",
       "category": "context",
       "severity": "blocker",

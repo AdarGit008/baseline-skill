@@ -97,7 +97,7 @@
       }
     },
     {
-      "id": "CLAIM-03-novelty-claims-prior-art",
+      "id": "CLAIM-03-novelty-claims-dated-prior-art",
       "title": "Novelty/competitive claims have a dated prior-art pass",
       "category": "claims",
       "severity": "blocker",
@@ -131,7 +131,7 @@
       }
     },
     {
-      "id": "CLAIM-04-citations-resolve-and-support",
+      "id": "CLAIM-04-citations-resolve-support",
       "title": "Citations resolve and support the claim",
       "category": "claims",
       "severity": "warn",

@@ -337,7 +337,7 @@ that §7.1 offered in its place. A rule nothing can check is a written promise.
 `REC-06` (`vendored-lock`) is replaced by the three `PLUG` rules. The kinds
 `signoff` and `vendored-lock` leave `CHECK_KINDS` (V10, V33). The rule set is
 therefore **76** rules (79 − 6 + 3); V11's count is amended, its "never
-literal" clause stands. `REC-02` and `REC-05` (§4, V13) are unchanged.
+literal" clause stands. `REC-02` and `REC-05` (§4, V13) survive; REC-05 is narrowed to at-rest push-time evidence (a committed gitleaks config or pre-push hook) so it no longer duplicates SEC-12, whose question is CI/pre-commit scanning.
 
 **D12 — the forge is closed under `check` and `orient`.** `GOV-01`, `GOV-02`
 and `OPS-07` are forge-sourced and survive; under `check` and `orient` they

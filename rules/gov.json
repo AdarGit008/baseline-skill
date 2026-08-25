@@ -25,7 +25,7 @@
       }
     },
     {
-      "id": "GOV-02-strict-merges-enforced",
+      "id": "GOV-02-up-to-date-merges-enforced",
       "title": "Strict/up-to-date merges and conversation resolution enforced",
       "category": "governance",
       "severity": "warn",

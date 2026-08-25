@@ -331,7 +331,7 @@ Ids carry three parts — `PREFIX-NN-semantic-slug` (`SEC-01-no-committed-secret
 | SEC-10-release-provenance-present | Release provenance/signing is present | 🟡 warn | advanced | node, python, service, library |
 | SEC-11-least-privilege-ci-token | CI grants a least-privilege GITHUB_TOKEN | 🟡 warn | — | all |
 | SEC-12-secret-scanning-gate | A secret-scanning gate is wired in | 🟡 warn | — | all |
-| SEC-13-dependency-vuln-scan-in-ci | A dependency vulnerability scan runs in CI | 🟡 warn | advanced | node, python, service, library |
+| SEC-13-dependency-vulnerability-scan | A dependency vulnerability scan runs in CI | 🟡 warn | advanced | node, python, service, library |
 | SEC-14-pre-commit-hooks-pinned | Pre-commit hooks pinned to an immutable rev | 🟡 warn | — | all |
 
 ### Reproducibility
@@ -347,12 +347,12 @@ Ids carry three parts — `PREFIX-NN-semantic-slug` (`SEC-01-no-committed-secret
 
 | ID | Rule | Severity | Pack | Scope |
 |---|---|---|---|---|
-| OPS-01-structured-logging | Structured logging is wired in | 🟡 warn | service | service |
+| OPS-01-structured-logging-wired | Structured logging is wired in | 🟡 warn | service | service |
 | OPS-02-health-endpoint-exists | A health/readiness endpoint exists | 🟡 warn | service | service |
-| OPS-03-graceful-shutdown | Graceful shutdown on SIGTERM | 🟡 warn | service | service |
+| OPS-03-graceful-shutdown-on-sigterm | Graceful shutdown on SIGTERM | 🟡 warn | service | service |
 | OPS-04-outbound-calls-guarded | Outbound calls are time-bounded/guarded | 🟡 warn | service | service |
 | OPS-05-runbook-exists | An operational runbook exists | 🟡 warn | service | service |
-| OPS-06-service-descriptor-owner-lifecycle | A service descriptor declares owner + lifecycle | 🟡 warn | service | service |
+| OPS-06-service-declares-owner-lifecycle | A service descriptor declares owner + lifecycle | 🟡 warn | service | service |
 | OPS-07-reconcile-cron-alive | The reconcile cron is alive at the forge | 🟡 warn | service | all |
 
 ### Change governance
@@ -360,7 +360,7 @@ Ids carry three parts — `PREFIX-NN-semantic-slug` (`SEC-01-no-committed-secret
 | ID | Rule | Severity | Pack | Scope |
 |---|---|---|---|---|
 | GOV-01-merge-protection-active | Merge protection is active on the default branch | 🟡 warn | — | all |
-| GOV-02-strict-merges-enforced | Strict/up-to-date merges and conversation resolution enforced | 🟡 warn | — | all |
+| GOV-02-up-to-date-merges-enforced | Strict/up-to-date merges and conversation resolution enforced | 🟡 warn | — | all |
 | GOV-03-codeowners-names-owner | CODEOWNERS exists and names an owner | 🟡 warn | — | all |
 
 ### Community & onboarding
@@ -375,7 +375,7 @@ Ids carry three parts — `PREFIX-NN-semantic-slug` (`SEC-01-no-committed-secret
 
 | ID | Rule | Severity | Pack | Scope |
 |---|---|---|---|---|
-| CTX-02-decision-status-links-forward | Every decision record carries a Status; superseded ones link forward | 🔴 blocker | decisions | all |
+| CTX-02-decision-status-declared | Every decision record carries a Status; superseded ones link forward | 🔴 blocker | decisions | all |
 | CTX-03-sources-of-truth-declared | Sources of truth are declared | 🟡 warn | — | all |
 | CTX-05-no-broken-doc-links | No broken internal doc links | 🔴 blocker | — | all |
 | CTX-06-docs-carry-freshness-contract | Long-lived docs carry a freshness contract | 🟡 warn | — | all |
@@ -395,8 +395,8 @@ Ids carry three parts — `PREFIX-NN-semantic-slug` (`SEC-01-no-committed-secret
 | CLAIM-00-claims-register-exists | A claims register exists | 🔴 blocker | claims | all |
 | CLAIM-01-claims-tagged-build-state | Every claim tagged with a build-state | 🔴 blocker | claims | all |
 | CLAIM-02-claims-graded-blast-radius | Every claim graded by blast radius | 🔴 blocker | claims | all |
-| CLAIM-03-novelty-claims-prior-art | Novelty/competitive claims have a dated prior-art pass | 🔴 blocker | claims | all |
-| CLAIM-04-citations-resolve-and-support | Citations resolve and support the claim | 🟡 warn | claims | all |
+| CLAIM-03-novelty-claims-dated-prior-art | Novelty/competitive claims have a dated prior-art pass | 🔴 blocker | claims | all |
+| CLAIM-04-citations-resolve-support | Citations resolve and support the claim | 🟡 warn | claims | all |
 | CLAIM-06-specs-carry-acceptance-criteria | Specs of record carry explicit acceptance criteria | 🟡 warn | claims | all |
 | CLAIM-07-claims-in-per-claim-records | Claims live in per-claim records, not the legacy monolith | 🟡 warn | claims | all |
 
@@ -404,8 +404,8 @@ Ids carry three parts — `PREFIX-NN-semantic-slug` (`SEC-01-no-committed-secret
 
 | ID | Rule | Severity | Pack | Scope |
 |---|---|---|---|---|
-| REC-02-landed-records-scrub-clean | Landed records are scrub-clean | 🟡 warn | — | all |
-| REC-05-push-time-secret-gate | Records are covered by a push-time secret gate | 🟡 warn | — | all |
+| REC-02-committed-tree-scrub-clean | The committed tree is scrub-clean | 🟡 warn | — | all |
+| REC-05-push-time-gate-committed | A push-time secret gate is committed alongside the code | 🟡 warn | — | all |
 
 ### Repo descriptor
 

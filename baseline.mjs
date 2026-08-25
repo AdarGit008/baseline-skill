@@ -5,7 +5,8 @@
 //   orient  derived-state survey for session start — lanes, backlog, divergence
 //   log     write one scrubbed, schema-valid session record (the forensic tier)
 //   jdg     author/evaluate the judgment ledger (sign-offs, deviations, break-glass)
-//   gen     generators — M4c: migrate-claims (the C17 monolith explosion)
+//   explain what a rule checks and why — the okf-rag read seam (display only, never a verdict)
+//   gen     generators — index views, migrate-claims, okf-concepts (the one-shot OKF migration)
 //   scrub   scan record content for secret shapes (the pre-push hook's engine)
 //   help    usage
 // Zero-dependency. check.mjs / rules.json / src/ are co-located — invoke by absolute path.
@@ -45,6 +46,9 @@ if (cmd === 'check') {
 } else if (cmd === 'jdg') {
   const { runJdg } = await import('./src/jdg.mjs')
   process.exit(runJdg(rest))
+} else if (cmd === 'explain') {
+  const { runExplain } = await import('./src/explain.mjs')
+  process.exit(runExplain(rest))
 } else if (cmd === 'gen') {
   const { runGen } = await import('./src/gen.mjs')
   process.exit(runGen(rest))
@@ -63,6 +67,12 @@ if (cmd === 'check') {
                                                           (exit 1 = delivery failed: tracker unreachable
                                                           or a write failed — even with zero findings)
   orient [--repo DIR] [--json] [--strict]                 derived-state survey for session start
+  explain <rule-id> [--json]                              what a rule checks and why: its title and
+                                                          rationale, plus the concept from the okf bundle
+                                                          when BASELINE_OKF_BUNDLE names one (display
+                                                          only — never a verdict; degrades to the title)
+  explain --audit [--json]                                every rule id resolves to a concept file in
+                                                          the bundle, by filename (exit 1 = a hole)
   log -m "..." [--next "..."] [--lane L] [--agent A]      write a scrubbed session record
       [--from FILE] [--allow ID --allow-reason "..."]     (stdin accepted; never \$EDITOR)
   jdg new --kind K --subject S --reason "..."             record a judgment (sign-off ·
@@ -72,6 +82,9 @@ if (cmd === 'check') {
   gen --check [--repo DIR]                                view (default docs/INDEX.md); --check is the
                                                           CI drift guard (zero views = trivially green)
   gen migrate-claims [--repo DIR]                         explode docs/CLAIMS.json into records/claims/
+  gen okf-concepts [--repo DIR]                           stage one proposed concept per rule under
+                                                          .baseline/proposed/ — deterministic extraction
+                                                          from the shipped docs; the bundle is never written
   scrub <file...> | --pushed SHA [--since SHA]            scan records for secret shapes (the pre-push
       [--allow ID --allow-reason "..."]                   hook's engine; one scan API with log/REC-02)
   help                                                    this message
@@ -79,6 +92,6 @@ if (cmd === 'check') {
   Run \`baseline\` with no command (or a leading --flag) to score, e.g. \`baseline --repo .\`.`)
   process.exit(0)
 } else {
-  console.error(`baseline: unknown command '${cmd}' (try: check, admit, reconcile, orient, log, jdg, gen, scrub, help)`)
+  console.error(`baseline: unknown command '${cmd}' (try: check, admit, reconcile, orient, explain, log, jdg, gen, scrub, help)`)
   process.exit(2)
 }

@@ -27,9 +27,20 @@
 //     a file WITHOUT the marker is refused (move it aside or pass a different
 //     --out — never paste the marker onto a hand-written file to authorize a
 //     clobber). The refusal probe uses the same uncapped read.
+//
+// v3 D2: `gen okf-concepts` — the one-shot OKF migration, a deterministic EXTRACTION
+// (never authorship, never a model, never the network). One markdown concept per
+// loaded rule, YAML frontmatter (id, title, source span), staged under
+// <repo>/.baseline/proposed/baseline/rules/ and nowhere else (V35). The bundle at
+// BASELINE_OKF_BUNDLE is not consulted and not written (V4): the maintainer reviews
+// the batch and copies it in by hand. Byte-identical on every rerun — no date, no
+// sha, no absolute path in the output.
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { makeOpt, sanitizeTTY } from './util.mjs'
+import { loadRules } from './rules.mjs'
+import { conceptOf, baseOf } from './explain.mjs'
 import { indexRepo } from './repo.mjs'
 import { resolveConfig } from './config.mjs'
 import { validateRecord, recordSchema } from './records.mjs'
@@ -156,12 +167,13 @@ const CLAIM_FIELDS = Object.keys(recordSchema('claim').properties).filter(k => !
 
 const GEN_USAGE = `usage: baseline gen index [--repo DIR] [--out PATH]
          baseline gen --check [--repo DIR]
-         baseline gen migrate-claims [--repo DIR]`
+         baseline gen migrate-claims [--repo DIR]
+         baseline gen okf-concepts [--repo DIR]`
 
 export function runGen(argv) {
   // help must never mutate: a generator WRITES, so an argv we don't fully
   // understand is a usage error, not a shrug-and-proceed
-  if (argv.includes('--help') || argv.includes('-h')) { console.log(`baseline gen — generators that write derivable artifacts\n  ${GEN_USAGE}\n  index: write a deterministic, marker-headed index view (default docs/INDEX.md) over the records ledgers + docs map\n  --check: regenerate every marker-headed view and byte-compare — the CI drift guard (zero views → trivially green; advisory job, never continue-on-error)\n  migrate-claims: explode the legacy docs/CLAIMS.json monolith into records/claims/CLM-NNNN.json (the checker reads records only since M7b; idempotent by slug)`); return 0 }
+  if (argv.includes('--help') || argv.includes('-h')) { console.log(`baseline gen — generators that write derivable artifacts\n  ${GEN_USAGE}\n  index: write a deterministic, marker-headed index view (default docs/INDEX.md) over the records ledgers + docs map\n  --check: regenerate every marker-headed view and byte-compare — the CI drift guard (zero views → trivially green; advisory job, never continue-on-error)\n  migrate-claims: explode the legacy docs/CLAIMS.json monolith into records/claims/CLM-NNNN.json (the checker reads records only since M7b; idempotent by slug)\n  okf-concepts: stage one proposed markdown concept per rule (YAML frontmatter with its source span) under <repo>/.baseline/proposed/baseline/rules/ — a deterministic extraction from the shipped docs, byte-identical on rerun; the okf bundle itself is never read or written`); return 0 }
   const sub = argv[0] && !argv[0].startsWith('-') ? argv[0] : null
   const rest = sub ? argv.slice(1) : argv
   const usage = msg => { console.error(`baseline gen: ${msg}\n  ${GEN_USAGE}`); return 2 }
@@ -169,7 +181,7 @@ export function runGen(argv) {
   if (CHECK && sub) return usage(`--check takes no generator (it discovers marked views)`)
   const FLAGS = CHECK ? new Set(['--check', '--repo']) : sub === 'index' ? new Set(['--repo', '--out']) : new Set(['--repo'])
   const VALUELESS = new Set(['--check'])
-  if (!CHECK && sub !== 'migrate-claims' && sub !== 'index') return usage(sub ? `unknown generator '${sub}'` : 'a generator (or --check) is required')
+  if (!CHECK && sub !== 'migrate-claims' && sub !== 'index' && sub !== 'okf-concepts') return usage(sub ? `unknown generator '${sub}'` : 'a generator (or --check) is required')
   for (let i = 0; i < rest.length; i++) {
     if (!rest[i].startsWith('-')) return usage(`unexpected argument '${rest[i]}'`)
     if (!FLAGS.has(rest[i])) return usage(`unknown flag '${rest[i]}'`)
@@ -188,6 +200,7 @@ export function runGen(argv) {
     if (path.posix.isAbsolute(outRel) || outRel === '..' || outRel.startsWith('../')) return usage(`--out must be a repo-relative path inside the repo (got '${rawOut}')`)
     return runGenIndex(REPO, outRel)
   }
+  if (sub === 'okf-concepts') return runGenOkfConcepts(REPO)
 
   const repo = indexRepo(REPO)
   const { cfg } = resolveConfig(repo)
@@ -342,5 +355,117 @@ function runGenCheck(REPO) {
   for (const b of broken) console.error(`✗ ${S(b.f)}: ${S(b.why)}`)
   if (drifted.length || broken.length) { console.error(`\ngen --check: ${drifted.length} drifted · ${broken.length} broken of ${views} view(s)`); return 1 }
   console.log(`gen --check: ${views} generated view(s) in sync`)
+  return 0
+}
+
+// ---- gen okf-concepts (v3 D2 / V35) — the one-shot OKF migration ----
+// Inputs are the runner's OWN shipped files, co-located like rules.json: the rule set
+// (title, lesson, rationale, fix, prior-art url), REFERENCE.md's rule table (the row
+// is the source span the frontmatter cites) and GLOSSARY.md (the terms a rule's prose
+// uses, each cited by line). Nothing from the target repo, nothing from the bundle.
+const SHIPPED = (rel) => { try { return fs.readFileSync(fileURLToPath(new URL('../' + rel, import.meta.url)), 'utf8') } catch { return null } }
+const OKF_STAGING = 'baseline/rules' // under <repo>/.baseline/proposed/ — the bundle's own layout
+
+/** REFERENCE.md rule table: base id → 1-based line of its row. Matched on the two-part
+ *  base so the row is found before and after the slugs land (PLAN §2). */
+function referenceRows(md) {
+  const rows = new Map()
+  if (md === null) return rows
+  md.split('\n').forEach((line, i) => {
+    const m = line.match(/^\|\s*([A-Z]+-\d{2})(?:-[a-z0-9-]+)?\s*\|/)
+    if (m && !rows.has(m[1])) rows.set(m[1], i + 1)
+  })
+  return rows
+}
+/** GLOSSARY.md: every `## Term` heading with its line and first paragraph, one line each. */
+function glossaryTerms(md) {
+  const terms = []
+  if (md === null) return terms
+  const lines = md.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    const h = lines[i].match(/^##\s+(.+?)\s*$/)
+    if (!h) continue
+    const para = []
+    for (let j = i + 1; j < lines.length && !/^##\s/.test(lines[j]); j++) {
+      if (!lines[j].trim()) { if (para.length) break; continue }
+      para.push(lines[j].trim())
+    }
+    terms.push({ name: h[1], line: i + 1, def: para.join(' ') })
+  }
+  return terms
+}
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const mentions = (hay, name) => new RegExp('(^|[^A-Za-z0-9])' + esc(name) + '([^A-Za-z0-9]|$)', 'i').test(hay)
+const y = (v) => JSON.stringify(String(v)) // a YAML double-quoted scalar is JSON-compatible
+const md1 = (s) => String(s ?? '').replace(/\s+/g, ' ').trim()
+
+/** One concept per loaded rule, in rules.json module order. Pure of clock, machine and
+ *  cwd: the same rule set and docs produce the same bytes anywhere. */
+export function generateConcepts() {
+  const { modules, rules } = loadRules()
+  // which module a rule came from — the fallback source span when REFERENCE.md has no row
+  const moduleOf = new Map()
+  for (const m of modules) for (const r of JSON.parse(SHIPPED(m) || '{"rules":[]}').rules || []) if (!moduleOf.has(r.id)) moduleOf.set(r.id, m)
+  const rows = referenceRows(SHIPPED('REFERENCE.md'))
+  const terms = glossaryTerms(SHIPPED('GLOSSARY.md'))
+  const out = []
+  for (const r of rules) {
+    const refLine = rows.get(baseOf(r.id))
+    const source = refLine ? `REFERENCE.md:${refLine}` : `${moduleOf.get(r.id) || 'rules.json'}#${r.id}`
+    const hay = [r.title, r.lesson, r.rationale, r.fix].map(md1).join(' ')
+    const used = terms.filter(t => mentions(hay, t.name))
+    const applies = Array.isArray(r.applies_to) ? r.applies_to.join(', ') : String(r.applies_to ?? 'all')
+    const P = []
+    P.push('---')
+    P.push(`id: ${conceptOf(r.id)}`)
+    P.push(`title: ${y(r.title)}`)
+    P.push(`rule: ${r.id}`)
+    P.push(`category: ${r.category}`)
+    P.push(`severity: ${r.severity}`)
+    P.push(`source: ${source}`)
+    P.push('---')
+    P.push('')
+    P.push(`# ${r.id} — ${md1(r.title)}`)
+    P.push('')
+    P.push(`- **Severity:** ${r.severity} · **Category:** ${r.category} · **Applies to:** ${applies}${r.profile ? ` · **Profile:** ${r.profile}` : ''}`)
+    if (r.lesson) P.push(`- **Lesson:** ${md1(r.lesson)}`)
+    if (r.rationale) P.push(`- **Why it matters:** ${md1(r.rationale)}`)
+    if (r.fix) P.push(`- **Fix:** ${md1(r.fix)}`)
+    if (r.source) P.push(`- **Prior art:** ${md1(r.source)}`)
+    P.push(`- **Extracted from:** ${source}`)
+    if (used.length) {
+      P.push('')
+      P.push('## Terms')
+      P.push('')
+      for (const t of used) P.push(`- **${t.name}** (GLOSSARY.md:${t.line}) — ${t.def}`)
+    }
+    P.push('')
+    out.push({ rel: `${OKF_STAGING}/${String(r.id).toLowerCase()}.md`, content: P.join('\n'), fromReference: !!refLine })
+  }
+  return out
+}
+
+function runGenOkfConcepts(REPO) {
+  try { if (!fs.statSync(REPO).isDirectory()) throw new Error('not a directory') }
+  catch (e) { console.error(`gen okf-concepts: --repo ${REPO} — ${e.message}`); return 2 }
+  let concepts
+  try { concepts = generateConcepts() }
+  catch (e) { console.error(`gen okf-concepts: ${e.message}`); return 2 }
+  const stagingRel = path.posix.join('.baseline', 'proposed')
+  const rulesDir = path.join(REPO, stagingRel, OKF_STAGING)
+  // the staging tree is generator-owned: a stale concept for a rule that no longer
+  // exists must not linger, or two runs on the same input would differ by a file
+  try {
+    fs.rmSync(rulesDir, { recursive: true, force: true })
+    fs.mkdirSync(rulesDir, { recursive: true })
+  } catch (e) { console.error(`gen okf-concepts: cannot prepare ${stagingRel}/${OKF_STAGING}/ — ${e.message}`); return 2 }
+  let fromRef = 0
+  for (const c of concepts) {
+    try { fs.writeFileSync(path.join(REPO, stagingRel, c.rel), c.content) }
+    catch (e) { console.error(`gen okf-concepts: cannot write ${c.rel} — ${e.message}`); return 2 }
+    if (c.fromReference) fromRef++
+  }
+  console.log(`gen okf-concepts: ${concepts.length} concept(s) staged under ${stagingRel}/${OKF_STAGING}/ (${fromRef} cite a REFERENCE.md row, ${concepts.length - fromRef} their rules/ module)`)
+  console.log('  review the batch, then copy it into the okf bundle by hand — baseline never writes there')
   return 0
 }

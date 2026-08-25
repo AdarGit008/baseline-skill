@@ -10,7 +10,7 @@
 <circle cx="78" cy="192" r="21" fill="none" stroke="#5C61C9" stroke-width="2.8"/>
 <text x="78" y="199" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#383D96" text-anchor="middle">L1</text>
 <text x="114" y="178" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#383D96" text-anchor="start">THE CLI</text>
-<text x="114" y="202" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#383D96" text-anchor="start" opacity="0.85">check.mjs · 71 lines</text>
+<text x="114" y="202" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#383D96" text-anchor="start" opacity="0.85">check.mjs · 55 lines</text>
 <text x="114" y="224" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#383D96" text-anchor="start" opacity="0.8">the only entry point</text>
 <text x="388" y="162" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#5C61C9" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="184" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#383D96" text-anchor="start">flags: --repo · --json · --no-exec ·</text>
@@ -26,7 +26,7 @@
 <circle cx="78" cy="350" r="21" fill="none" stroke="#9038D8" stroke-width="2.8"/>
 <text x="78" y="357" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#6B21A8" text-anchor="middle">L2</text>
 <text x="114" y="336" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#6B21A8" text-anchor="start">THE JUDGE</text>
-<text x="114" y="360" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#6B21A8" text-anchor="start" opacity="0.85">engine.mjs · 78 lines</text>
+<text x="114" y="360" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#6B21A8" text-anchor="start" opacity="0.85">engine.mjs · 82 lines</text>
 <text x="114" y="382" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#6B21A8" text-anchor="start" opacity="0.8">gate → evaluate → tag</text>
 <text x="388" y="320" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#9038D8" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="342" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#6B21A8" text-anchor="start">gates: context · pack · type/tool ·</text>
@@ -42,7 +42,7 @@
 <circle cx="78" cy="508" r="21" fill="none" stroke="#D28309" stroke-width="2.8"/>
 <text x="78" y="515" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#8A4B06" text-anchor="middle">L3</text>
 <text x="114" y="494" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#8A4B06" text-anchor="start">THE LAB</text>
-<text x="114" y="518" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#8A4B06" text-anchor="start" opacity="0.85">evaluators.mjs · 649 lines</text>
+<text x="114" y="518" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#8A4B06" text-anchor="start" opacity="0.85">evaluators.mjs · 701 lines</text>
 <text x="114" y="540" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#8A4B06" text-anchor="start" opacity="0.8">facts only, one function per kind</text>
 <text x="388" y="478" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#D28309" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="500" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#8A4B06" text-anchor="start">how to verify each claim: grep,</text>
@@ -59,7 +59,7 @@
 <circle cx="78" cy="666" r="21" fill="none" stroke="#0E9384" stroke-width="2.8"/>
 <text x="78" y="673" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#0F5E56" text-anchor="middle">L4</text>
 <text x="114" y="652" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#0F5E56" text-anchor="start">THE SENSES</text>
-<text x="114" y="676" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#0F5E56" text-anchor="start" opacity="0.85">repo.mjs · 146 lines</text>
+<text x="114" y="676" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#0F5E56" text-anchor="start" opacity="0.85">repo.mjs · 218 lines</text>
 <text x="114" y="698" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#0F5E56" text-anchor="start" opacity="0.8">the repo index, built once</text>
 <text x="388" y="636" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#0E9384" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="658" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#0F5E56" text-anchor="start">find: match(globs) · read: 3</text>

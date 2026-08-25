@@ -21,7 +21,7 @@ jobs:
         run: node test/golden/run.mjs --verify
       - name: orient availability (offline / no-forge degradation)
         run: node test/orient/run.mjs
-      - name: facts/join/derive (deterministic over forge replay)
+      - name: facts (deterministic over forge replay)
         run: node test/facts/run.mjs
       - name: records — loader split, schemas, scrub, log write-gate
         run: node test/records/run.mjs
@@ -33,3 +33,5 @@ jobs:
         run: node test/gen/run.mjs
       - name: self-score (the standard checks itself)
         run: node check.mjs --repo . --no-exec
+      - name: v3 invariants (test/red, all green by construction)
+        run: node test/red/run.mjs --green

@@ -1,5 +1,5 @@
 {
-  "_preset": "node-service — a Node/TypeScript web service or app. project_type=service auto-enables the OPS rules (health/readiness endpoint, structured logs, graceful shutdown on SIGTERM, outbound timeouts, runbook, service descriptor).",
+  "_preset": "node-service — a Node/TypeScript web service or app. project_type: service, set explicitly here, activates the service pack (OPS-*: health/readiness endpoint, structured logs, graceful shutdown on SIGTERM, outbound timeouts, runbook, service descriptor); a non-empty decision_globs activates the decisions pack.",
   "project_type": "service",
   "makes_external_claims": false,
   "bootstrap_command": "npm ci && npm test",

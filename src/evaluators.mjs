@@ -495,13 +495,13 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JUDGMENTS = null, DESCRIPTOR
 
     if (k === 'descriptor-valid') {
       // DESC-02 (M7c, the M7b panel's filing): present-but-invalid at BLOCKER. Ten
-      // workflow-gated blockers hang off this file — invalidity flips the posture
-      // off (every gated rule SKIPs 'workflow contract off'), so the collapse must
+      // descriptor-gated rules hang off this file — invalidity resolves them n/a
+      // ('workflow contract off'), so the collapse must
       // be the loudest row in the run, not a warn beside a wall of skips. Absence
       // is DESC-01's (no overlap).
       const d = DESCRIPTOR
       if (!d || !d.present) return { ok: null, detail: `no ${DESCRIPTOR_FILE} — absence is DESC-01's finding` }
-      if (!d.valid) return { ok: false, detail: `${DESCRIPTOR_FILE} invalid: ${d.errors.slice(0, 2).join('; ')}${d.errors.length > 2 ? ` (+${d.errors.length - 2} more)` : ''} — the posture is OFF while this file is broken (every workflow-gated blocker skips); fix the errors or re-copy a preset (retired owner key? MIGRATION.md)` }
+      if (!d.valid) return { ok: false, detail: `${DESCRIPTOR_FILE} invalid: ${d.errors.slice(0, 2).join('; ')}${d.errors.length > 2 ? ` (+${d.errors.length - 2} more)` : ''} — descriptor-gated rules resolve n/a while this file is broken; fix the errors or re-copy a preset (retired owner key? MIGRATION.md)` }
       return { ok: true, detail: `${DESCRIPTOR_FILE} schema-valid (schema_version ${d.data.schema_version})` }
     }
 
@@ -516,8 +516,8 @@ export function makeEvalCheck({ repo, cfg, NO_EXEC, JUDGMENTS = null, DESCRIPTOR
     // classic /protection endpoint needs admin and is consulted only under the
     // explicit BASELINE_GOV_ADMIN=1 opt-in). run() nulls every failure identically,
     // so 403-vs-down derives honestly: rules null while the branch's metadata
-    // answers = unreadable WITH THIS TOKEN (SKIP, never source-loss); both null =
-    // the forge plane degraded (the probe/posture reason rides the SKIP). The
+    // answers = unreadable WITH THIS TOKEN (n/a, never source-loss); both null =
+    // the forge plane degraded (the probe/posture reason rides the n/a). The
     // `protected` flag reflects CLASSIC protection only — with the rules endpoint
     // unreadable, protected:false can NEVER assert "no protection" (a ruleset may
     // exist unseen), so that leg SKIPs rather than guessing. Deterministic: every

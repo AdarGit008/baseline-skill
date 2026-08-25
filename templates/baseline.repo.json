@@ -8,12 +8,13 @@
   "maturity": "prototype",
   "_maturity": "prototype | claimed | released — scrutiny rises with maturity (CLAIM rules activate at 'claimed').",
   "workflow": "multi-lane",
-  "_workflow": "multi-lane (V2 default — any solo dev gets lanes) | single-lane (readiness-only) | multi-lane-local (CF5: lanes from origin alone, the forge is never consulted).",
+  "_workflow": "multi-lane (default — a solo dev gets it too) | multi-lane-local (admit and reconcile work from origin alone, never the forge) | single-lane (readiness-only). Under check and orient the forge is closed on every posture. No shipped v3 rule declares a workflow and the lane verb is gone; the value is declared posture, and DESC-03 flags a move down the ladder (multi-lane > multi-lane-local > single-lane) as a weakening.",
   "anchoring": "strict",
   "_anchoring": "strict | relaxed | off — work-to-issue anchoring strictness, orthogonal to workflow.",
   "ground_truth_boundary": { "forge": "github", "default_branch": "main" },
   "lanes": { "namespace": "lane/*", "lease_ttl": "7d" },
+  "_lanes": "The lane namespace agent branches and their session records (records/sessions/<lane>/) are keyed by. Read by no rule under check or orient; its remaining consumers (admit's sister-branch scan, reconcile's lease derivation, log's record path) are the D13 ledger follow-up. namespace is a DESC-03 structural field — changing it is a weakening. Omit the block on a readiness-only (single-lane) descriptor.",
   "join_keys": ["Baseline-Agent", "Baseline-Issue"],
-  "engine_pin": "2.x",
+  "engine_pin": "3.x",
   "staleness": { "facts_ttl": "1h", "orient_ceiling": "24h" }
 }

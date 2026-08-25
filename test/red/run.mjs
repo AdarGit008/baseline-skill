@@ -1,12 +1,15 @@
 #!/usr/bin/env node
-// The v3 RED suite runner. Deliberately NOT wired into .github/workflows/ci.yml: every
-// assertion below states the TARGET of docs/v3/PLAN.md, so the suite is expected to fail
-// until v3 lands. It is the burn-down list, not a gate.
+// The v3 suite runner — every assertion states an invariant of docs/v3/PLAN.md. It was
+// written RED, as the burn-down list for v3, and is now green by construction: the CI
+// step "v3 invariants" runs it with --green, so a regression against the plan fails the
+// build the same way a golden-corpus drift does.
 //
-//   node test/red/run.mjs            # run everything, report how much is still red (exit 0)
-//   node test/red/run.mjs --green    # exit 1 while anything is still red (flip this into
-//                                    # CI on the day v3 is done, then delete --green)
+//   node test/red/run.mjs            # run everything, report per area (always exit 0)
+//   node test/red/run.mjs --green    # exit 1 while anything is red — the CI form
 //   node test/red/run.mjs ids packs  # run only the named areas
+//
+// --green stays: without it the runner is a report (useful while an area is being
+// reworked); with it the runner is a gate. Only the gate is wired into CI.
 //
 // BASELINE_RED_ROOT=<repo> points the whole suite at a repo other than the one it sits in.
 import path from 'node:path'

@@ -1,5 +1,13 @@
 # Spec: Issue #49 — the decision-record number is a scarce name, and nothing reserved it
 
+> **History, kept as written against the 2.5.0 tree.** This is the #49 design as it
+> landed in #64. In **3.0.0** the lane workflow was deleted (CHANGELOG *Removed — V3*):
+> **FLOW-09** / `lane-adr-reservation`, `rules/flow.json`, `lane claim`, `laneObjects()`
+> and the `test/lane` and `test/flow` suites named below no longer exist. **CTX-14**
+> (`adr-number-unique`, `decisions` pack) survives and is the whole floor: one number, one
+> record, on the branch where the lanes land. Read everything below about FLOW-09 as the
+> reason CTX-14 is shaped the way it is, not as a live rule.
+
 ## Objective
 
 Two lanes of the same repo each authored a decision record numbered **0027**, under

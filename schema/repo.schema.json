@@ -32,7 +32,7 @@
       "type": "string",
       "enum": ["multi-lane", "single-lane", "multi-lane-local"],
       "x-strictness": ["single-lane", "multi-lane-local", "multi-lane"],
-      "description": "Agent-workflow posture. multi-lane is the V2 default (any solo dev gets lanes); single-lane is the V1-equivalent readiness-only posture; multi-lane-local (CF5) is the reduced git-plane mode — claim and leases work from origin alone, the forge is never consulted, and forge-dependent rules SKIP with the posture named. x-strictness (ascending) is DESC-03's weakening ladder (M6)."
+      "description": "Agent-workflow posture. multi-lane is the default (a solo dev gets lanes too); single-lane is the readiness-only posture; multi-lane-local (CF5) is the reduced git-plane mode — admit and reconcile work from origin alone and never consult the forge. Under check and orient the forge is closed on every posture (§11 D12): forge-dependent rules resolve n/a, reason 'forge not consulted'. A rule declaring a workflow is evaluated only on a matching posture. x-strictness (ascending) is DESC-03's weakening ladder (M6)."
     },
     "anchoring": {
       "type": "string",
@@ -52,11 +52,11 @@
     "lanes": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Multi-lane workflow configuration. namespace is the branch family a lane push (refs/heads/<namespace>) lands in (M5a); lease_ttl by the lease derivation (M5b).",
+      "description": "The lane namespace — the branch family agent work and its session records (records/sessions/<lane>/) are keyed by. Read by no rule under check or orient; its consumers (admit's sister-lane scan, reconcile's lease derivation, log's record path) are the §11 D13 ledger follow-up. namespace is also a DESC-03 structural field (the claim primitive).",
       "properties": {
-        "namespace": { "type": "string", "pattern": "^[^*]*\\*[^*]*$", "description": "Branch-name pattern for a lane push (refs/heads/<namespace>), e.g. lane/*. Exactly one '*', which the issue number replaces — the ref IS the claim (FS2), so the pattern must yield one deterministic name per issue." },
-        "lease_ttl": { "type": "string", "pattern": "^[1-9][0-9]*[dh]$", "description": "Lease horizon (nonzero); a lane with no activity within it derives as ABANDONED and is reclaimable. Freshness = max(tip committedDate, PR updatedAt) — FS10 as amended." },
-        "families": { "type": "array", "maxItems": 64, "items": { "type": "string", "minLength": 1, "maxLength": 64 }, "description": "The repo's OTHER declared branch families beyond the lane namespace (globs, e.g. adopt/*, release/*) — the real branch inventory, consumed by the lane derivation. Bounded (each ≤64 chars; ≤64 entries) since the globs ride into a matcher." }
+        "namespace": { "type": "string", "pattern": "^[^*]*\\*[^*]*$", "description": "Branch-name pattern for a lane branch (refs/heads/<namespace>), e.g. lane/*. Exactly one '*', which the issue number replaces — the ref IS the claim (FS2), so the pattern must yield one deterministic name per issue." },
+        "lease_ttl": { "type": "string", "pattern": "^[1-9][0-9]*[dh]$", "description": "Lease horizon (nonzero) for reconcile's lease derivation (D13 follow-up); a lane idle past it derives ABANDONED there and is reclaimable — never read under check or orient. Freshness = max(tip committedDate, PR updatedAt) — FS10 as amended." },
+        "families": { "type": "array", "maxItems": 64, "items": { "type": "string", "minLength": 1, "maxLength": 64 }, "description": "The repo's OTHER declared branch families beyond the lane namespace (globs, e.g. adopt/*, release/*) — the real branch inventory, consumed by reconcile's lane derivation (D13 follow-up). Bounded (each ≤64 chars; ≤64 entries) since the globs ride into a matcher." }
       }
     },
     "join_keys": {

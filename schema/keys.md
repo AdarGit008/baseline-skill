@@ -1,9 +1,9 @@
 # Join keys
 
-The relational join (`src/join.mjs`) may relate work items **only** through the keys declared
-here. A relationship it cannot resolve through a declared key is a **finding**, never an
-inferred guess — the discipline that keeps derived state honest (no NLP, no heuristics). The
-descriptor's `join_keys` names which keys a repo has opted into.
+Work items may be related **only** through the keys declared here. A relationship that
+cannot be resolved through a declared key is a **finding**, never an inferred guess — the
+discipline that keeps derived state honest (no NLP, no heuristics). The descriptor's
+`join_keys` names which keys a repo has opted into.
 
 ## Forge keys (read by `admit` and `reconcile` — the forge is closed under `check` and `orient`)
 
@@ -24,6 +24,6 @@ An unresolvable `closes #N` (no such issue) is emitted as an `unresolvable-join`
 | CLM ⇄ claim unit | record id | claim records |
 | ADR ⇄ ADR | `Supersedes` / `Superseded-by` / `Amends` / `Amended-by` header fields | decision records (the `decisions` pack resolves them) |
 
-`src/join.mjs` consumes only the keys whose records exist, so no key is joined before it can
-be resolved. Plugin artifacts (`tdd.json`, `graphify-out/`, the okf bundle) carry no join key:
+A key is consumed only where its records exist, so nothing is joined before it can be
+resolved. Plugin artifacts (`tdd.json`, `graphify-out/`, the okf bundle) carry no join key:
 baseline reads their metadata only and never their content.

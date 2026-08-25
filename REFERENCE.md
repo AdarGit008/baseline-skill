@@ -415,6 +415,14 @@ Ids carry three parts — `PREFIX-NN-semantic-slug` (`SEC-01-no-committed-secret
 | DESC-02-descriptor-schema-valid | A present descriptor is schema-valid | 🔴 blocker | descriptor | all |
 | DESC-03-descriptor-change-carries-judgment | A descriptor change carries its judgment in the same range | 🔴 blocker | descriptor | all |
 
+### Plugins
+
+| ID | Rule | Severity | Pack | Scope |
+|---|---|---|---|---|
+| PLUG-01-tdd-pi | tdd-pi artifact present and tracked | 🟡 warn | — | all |
+| PLUG-02-graphify | graphify graph present and gitignored | 🟡 warn | — | all |
+| PLUG-03-okf-rag | okf-rag bundle present | 🟡 warn | — | all |
+
 <!-- baseline:rules-table end -->
 
 ### Notes by family
@@ -454,6 +462,7 @@ Every check kind is one evaluator in `src/evaluators.mjs`, registered in `CHECK_
 - `implies` — when the precondition holds, the consequent must (else n/a)
 - `md-links` — relative markdown links resolve against each doc's own directory
 - `path-integrity` — backticked paths named in docs still exist
+- `plugin-presence` — a plugin artifact exists and its gitignore state matches the `plugins` config — metadata only, never the content
 - `records-scrub` — landed records are scrub-clean at HEAD (blob content, never the worktree)
 - `required-files` — a configured list of files exists and is non-empty
 - `version-consistency` — the pinned runtime major agrees across `.nvmrc` / CI / Dockerfile / `engines`

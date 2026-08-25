@@ -6,6 +6,205 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-08-25
+
+V3 keeps the premise — *don't trust a written promise, make something check it* —
+and drops the enforcement of a workflow that no longer exists. baseline stops being
+the whole system and becomes one part of four: it owns the verdicts; **tdd-pi** owns
+what is open, **okf-rag** owns why things matter, **graphify** owns what is where —
+and all three reach it through *file contracts only*, read as metadata, never opened.
+The plan is `docs/v3/PLAN.md`; its authority is `test/red/` — 38 executable
+invariants, 454 assertions; `node test/red/run.mjs --green` exits 0 on this tree and is
+now a CI step.
+The rule set goes **94 → 76** and the always-on blockers **28 → 9** (BUILD-01,
+BUILD-03, BUILD-05, TEST-01, SEC-01, SEC-02, COMM-01, CTX-05, CTX-12); every count
+printed anywhere is now derived (`check --self-check` says how many).
+
+### Removed — V3: the lane workflow, the ledger rules, and their machinery
+- **21 rules deleted**, with their machinery (PLAN §3, §11 D11 — deleting a rule
+  deletes what served only it): the lane family **FLOW-01…FLOW-09**, divergence
+  **DIV-01/02/03**, sister-lane admission **MERGE-02**, the records-history checks
+  **REC-01** (append-only) and **REC-04** (one home), the vendored-lock check
+  **REC-06**, and the five `manual` (sign-off) rules **TEST-03**, **TEST-04**,
+  **TEST-06**, **CLAIM-05**, **CTX-04** — a rule whose only evidence was a human
+  ledger entry was a written promise, which is what this tool exists to refuse.
+  Severity `manual` and the `SIGN-OFF` tag leave the vocabulary with them.
+- **18 check kinds deregistered** (45 → 28): the fifteen lane kinds
+  (`branch-session-record`, `branch-atomicity`, `lane-anchor`, `lane-next-filled`,
+  `lane-namespace`, `lane-record-pushed`, `lane-lease`, `lane-adr-reservation`,
+  `div-anchor-closed`, `div-next-closed`, `div-closes-closed`,
+  `pr-closes-own-anchor`, `merge-sister-dep`, `records-append-only`,
+  `records-one-home`), `signoff`, `vendored-lock`, and `json-field` (§10 D1: it was
+  registered but reachable only nested inside a composite, so the registry and the
+  rules disagreed by one; its four nested uses in QUAL-03, REPRO-02, BUILD-08 and
+  TEST-07 are rewritten as `grep` over the same globs, same verdicts on every
+  fixture). `plugin-presence` joins. Registry, used-anywhere and used-as-own-kind
+  now agree, so the count no longer depends on a reading.
+- **`baseline lane`** is gone (`unknown command`, exit 2) — `src/lane.mjs`, the
+  lane world's sign-off selection, `summary.signoff`, and the sign-off summary
+  segment with it. **`baseline gen lock`** and `tools/baseline.lock.json` are gone:
+  REC-06 was the lock's only reader.
+- **`orient --strict`** retired; **`src/derive/status.mjs`** and **`src/join.mjs`**
+  deleted (orient was their only consumer). `test/flow`, `test/lane` and their
+  fixtures deleted; CI drops the two steps.
+- **No auto-armed pack.** A `docs/CLAIMS.json` in the tree no longer switches the
+  claims rules on (and the prototype demotion that rode it is gone — known defect
+  #2); `detectType` and the descriptor's declared `type` no longer switch the
+  service rules on; a `baseline.repo.json` in the tree no longer switches the
+  descriptor rules on. The v2 rule keys `profile` / `requires` are gone from every
+  rule and rejected by `--self-check`.
+
+### Changed — V3: ids, packs, scope, output
+- **Rule ids carry three parts** — `PREFIX-NN-semantic-slug`:
+  `SEC-01-no-committed-secrets`, `BUILD-05-task-1-passes-clean`,
+  `CTX-12-status-is-derived`. The id says what the rule checks, so a finding reads
+  with no lookup — which is what lets `SKILL.md` shrink and the doctrine leave the
+  context window. The `PREFIX-NN` half of every surviving rule is **byte-identical
+  to 2.5.0** (V7), so a v2 id stays resolvable: `explain SEC-01` finds the rule, and
+  anything that matched on the prefix still matches. `--self-check` enforces the
+  grammar and slug uniqueness; `REFERENCE.md`'s rule table is now generated from the
+  rule set (`node docs/assets/gen-reference-rules.mjs --check` fails when it lags).
+- **`pack` is a rule field, and packs switch on from config alone** (§5, §11 D13).
+  Five packs — `claims` (7), `decisions` (4), `descriptor` (3), `service` (7),
+  `advanced` (8) — named in a `packs` map in `rules.json`; a rule with no pack is
+  always on, and the always-on blockers are exactly the nine. **With no config file
+  every pack is off.** The switches: `makes_external_claims: true` → claims;
+  non-empty `decision_globs` → decisions; `project_type: "service"` written down →
+  service; and any pack by name from `profiles` (alias `packs`) or
+  `--profile <pack>` — the flag keeps its v2 spelling and means *pack*. Activating
+  one pack activates no other (V16); a pack blocker can fail CI only while its pack
+  is on.
+- **Scope is derived from the repo** (§6): a rule may declare the tool whose artifact
+  it reads (`"tool": "docker"` on REPRO-04, the one Dockerfile-subject rule; the
+  vocabulary is closed and `--self-check` rejects an unknown value by name). Such a
+  rule runs when the tool is detected in the tree **or** config `want` names it —
+  `want` overrides the tool gate and the type gate both, so `want: ["docker"]` runs
+  REPRO-04 on a docs repo and gets a real WARN when the Dockerfile is missing (intent
+  counts as presence). An unrecognised `want` entry is named on stderr. A docs-only
+  repo no longer drags every rule through its run (V18).
+- **`n/a` is a state, not a row a human sees** (§10 D4, V17, V36). A gate miss —
+  wrong type, inactive pack, workflow gate — pushes **no row at all**; an in-scope
+  evaluator that returns null pushes `{ state: "n/a", reason }` with no tag.
+  `--json` carries it; the human render prints no `SKIP` and no `n/a` token
+  anywhere. **`summary.total` counts evaluated rows only** (`{ blockers, pass, warn,
+  fail, diverged, total }` — the `skip` and `signoff` keys are gone), `packs` and
+  `profiles` list what was active, and `provenance: { knowledge: "not-consulted" }`
+  records that `check` never read the knowledge bundle (V28).
+- **REC-02 and REC-05 scan everything you commit**, not `records/` (§4, V13): a
+  secret committed anywhere in the tracked tree is their finding. On this repo that
+  surfaced the two secret-shaped fixtures `test/records/run.mjs` plants on purpose;
+  they are allowlisted as dated judgments in `.baseline/scrub-allowlist.json` — the
+  designed route — not disguised.
+- **The forge is closed under `check` and `orient`** (§11 D12, V19, V42). The three
+  forge-sourced rules — **GOV-01**, **GOV-02**, **OPS-07** — resolve
+  `state: "n/a"`, reason `forge not consulted`, before their evaluator runs, and the
+  facts layer is handed a closed forge so nothing spawns `gh` under either verb (a
+  `BASELINE_FORGE_REPLAY` is ignored there too). `admit` and `reconcile` keep the
+  live probe.
+- **`orient` v2** (§8, §10 D5, V29, V37): its first act is `git pull --ff-only` and
+  that is its only network act — a failed pull (no origin, unreachable, diverged)
+  becomes a note on the `repo:` line, no stash, no other git write, the tree left
+  as found; `gh` is never spawned; exit 0 always, even on a repo whose blockers
+  fail. Human output is exactly five labelled lines — `repo:`, `work:`, `graph:`,
+  `knowledge:`, `score:` — and nothing else: `work:` is `tdd.json` presence,
+  gitignore state and age; `graph:` is `graphify-out/` presence and mtime age (an
+  absent graph is a suggestion, never a finding); `knowledge:` is whether
+  `$BASELINE_OKF_BUNDLE` exists. No artifact is opened — a planted
+  `Built from commit:` is never echoed, an unreadable `GRAPH_REPORT.md` is never
+  noticed. `score:` comes from `src/check-run.mjs` `scoreRepo()`, the one pipeline
+  `check` also runs, so the two never disagree. `--json` is
+  `{ repo, work, graph, knowledge, score, notes, suggestions }`.
+- **The plugin artifact paths leave the index.** `src/repo.mjs` excludes
+  `.baseline/` and the configured `plugins` paths from the walk and from every
+  glob, so `SEC-01` / `REC-02` over `**` never touch `tdd.json`, and a gitignored
+  `graphify-out/` never reaches CTX-05 (known defect #1): the index exclusion is
+  what keeps it out; CTX-05's `md-links` check also declares `tracked_only` so a blocker never reads an untracked file.
+- **`SKILL.md` on a diet** (§8, V30): one page, under the 800-token budget (bytes/4).
+  It keeps the nine always-on blockers by name, the orient / score / fix / explain
+  modes, `--self-check` as the only source of counts, `get_knowledge` for the
+  doctrine, and the three plugins as suggestions; the lane / admit / reconcile /
+  log / jdg / sign-off prose leaves the file.
+- **Every count is derived** (§9, V32, V33): `REFERENCE.md`, `README.md`,
+  `SKILL.md`, `docs/start-here.md`, `baseline.config.json` and `rules.json` lose
+  their rule / kind / blocker digits rather than having them corrected; the README
+  diagram generator no longer prints a count at all (a static picture of a moving
+  number is drift by construction) and its chips read v3 vocabulary; both SVGs
+  regenerated. `--self-check` prints the coverage matrix with its columns drawn from
+  the `packs` map.
+- **`install.sh` ships no session hook unless asked** (V31): `--with-session-hook
+  [<dest>]` copies `hooks/orient-session-start.sh` and its Hermes twin under
+  `integrations/`; the default install carries nothing matching `session-start`
+  and no yaml / json / sh naming `SessionStart`. Nothing is ever wired —
+  `install.sh` never edits an agent settings file.
+- **Docs rewritten for v3**: `REFERENCE.md`, `CONTRACT.md`, `GLOSSARY.md`,
+  `SECURITY.md`, `README.md`, `docs/start-here.md`, `hooks/README.md`,
+  `templates/adr.md`, `schema/keys.md` drop lanes, `gen lock`, the sign-off
+  ledger, the SKIP funnel and `profiles` / `requires`; they document the switches,
+  `tool` / `want`, `plugins`, the `PLUG` family, the log, `explain` and
+  `gen okf-concepts`, and the `--json` shape. Golden pins recaptured at each step
+  — beyond the deletions and REC-02/05's wider scope, no PASS / WARN / FAIL verdict
+  moved.
+
+### Added — V3: the plugin boundary and the knowledge seams
+- **The `PLUG` family** — one always-on WARN per plugin, `rules/plug.json`,
+  category `plugins`, kind `plugin-presence` (§11 D6–D8): **PLUG-01-tdd-pi**
+  (`tdd.json`, expected tracked), **PLUG-02-graphify** (`graphify-out/`, expected
+  ignored), **PLUG-03-okf-rag** (`$BASELINE_OKF_BUNDLE`, expected ignored; the
+  gitignore question is skipped when the path is outside the repo). Artifact absent
+  → WARN naming the install command (printed, never run — install is per approval);
+  present but gitignore state ≠ config → WARN naming both; otherwise PASS. Never a
+  FAIL, never a second row, never an exit-code change. **The boundary is metadata**
+  (D7): `existsSync` / `statSync`, `git ls-files`, `git check-ignore` — the probe
+  never opens the artifact, and the red suite's fs / child_process spy confirms zero
+  content reads under `check` and `orient`; garbage bytes in `tdd.json` give the
+  same verdict as a well-formed file (V41).
+- **Config key `plugins`** (D9): per plugin, `{ "path": <relative path>,
+  "ignored": true|false }`, keyed `tdd-pi` / `graphify` / `okf-rag`; `ignored:
+  false` means *tracked*; config beats env beats default.
+- **Every WARN leaves a log** (D10): a `PLUG` WARN writes
+  `.baseline/log/<PREFIX-NN>.log` — the path inspected, the config values and their
+  source, the git answer — overwritten each run, removed when the row returns to
+  PASS; the row carries `log` in `--json` and on its human id line.
+  `.baseline/log/` is gitignored beside `.baseline/cache/`.
+- **`baseline explain <rule-id> [--json]`** (§7.3, V26): the full id or its v2
+  prefix; prints the title, the rule's own rationale and a knowledge line (three
+  lines, exit 0) when `BASELINE_OKF_BUNDLE` is unset — the degrade path is the
+  default path; with a bundle, displays `<bundle>/baseline/rules/<id>.md` read-only.
+  Display is not a verdict. Never spawns anything; `--json` says whether the bundle
+  was read (`knowledge`: `bundle` / `not-consulted` / `unreachable` / `missing`).
+  There is no `--propose` (§10 D3, V34) — an unknown flag is a usage error.
+- **`baseline explain --audit [--json]`** (V27): every loaded rule id resolves to a
+  concept **file** in the bundle, by filename — nothing is opened; exit 1 naming
+  each hole.
+- **`baseline gen okf-concepts [--repo DIR]`** (§10 D2, V35): the one-shot OKF
+  migration as a **deterministic extraction, never authorship** — one
+  `<id>.md` per rule, YAML frontmatter naming the `REFERENCE.md` row or
+  `rules/<module>.json#<id>` it came from, body from lesson / rationale / fix /
+  prior-art plus the `GLOSSARY.md` terms the prose uses, cited by line. Written
+  under `<repo>/.baseline/proposed/baseline/rules/` and nowhere else; no date, sha
+  or absolute path in the output, so reruns are byte-identical; no network, no
+  model; the bundle is neither read nor written. The maintainer reviews the batch
+  and copies it in by hand.
+- **`test/red/`** — the plan as executable invariants, outside the shipped tree:
+  V1–V42 minus the four §11 withdrew, 454 assertions, each one a red test that
+  turned green as its work package landed. Where the plan and a red test disagree,
+  the test wins and the plan is rewritten (§0).
+
+### Known follow-up
+- **The ledger (§11 D13) — next PR.** This release removes the minimum the tests
+  pin: the `lane` verb, the `signoff` kind, REC-01 / REC-04 / REC-06. The verbs
+  `log`, `jdg`, `scrub`, `admit`, `reconcile` and the `records/` tree
+  (`src/records.mjs`, `schema/record.*`, `templates/judgment.json`) still ship and
+  still run; a `sign-off` judgment now satisfies nothing. Their removal — with
+  `admit`'s JDG-only and break-glass paths and `reconcile`'s filing — is the
+  follow-up, opened after this tree is green.
+
+### Landed between 2.5.0 and the v3 cut (issues #47, #49, #50, #56, #57)
+The entries below were written against the 2.5.0 tree and ship in 3.0.0 as history:
+**FLOW-09**, **REC-01**'s sanctioned-edit route and append / rewrite classes are
+deleted above; **CTX-13** and **CTX-14** survive in the `decisions` pack; the glob
+matcher and the `judgment.subject` bound stand.
+
 ### Added
 - **CTX-14 — no two decision records claim the same number (issue #49)**: a new
   deterministic blocker over the identity every consumer of the corpus reads off a

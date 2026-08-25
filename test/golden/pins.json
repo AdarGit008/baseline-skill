@@ -6,7 +6,7 @@
     "exitCode": 0,
     "text": [
       "",
-      "  project-baseline v2.5.0  ·  <REPO>  ·  type=node  ·  packs=[advanced]  ·  HEAD=<sha>",
+      "  project-baseline v3.0.0  ·  <REPO>  ·  type=node  ·  packs=[advanced]  ·  HEAD=<sha>",
       "",
       "  Build & execution",
       "    PASS      BUILD-01-dependency-manifest-present     Dependency manifest present  ↳ package.json",

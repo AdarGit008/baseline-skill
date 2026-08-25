@@ -1,5 +1,10 @@
 # v3 — simplify baseline: enabler, not enforcer
 
+**Status (2026-08-25).** Landed on branch `v3/red-tests` at `705e43a`, WP1–WP7 plus
+the WP8 release package: `node test/red/run.mjs --green` exits 0 — 454/454 assertions,
+38/38 live invariants — and every CI step is green. Open: the D13 ledger follow-up
+(`log` / `jdg` / `scrub` / `admit` / `reconcile` and the `records/` tree), its own PR.
+
 > **This document is not the authority. The tests are.**
 > Every statement below must be enforced by a test in `test/red/`. Where this
 > document and a red test disagree, the test wins and this document is wrong.

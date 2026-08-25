@@ -68,6 +68,7 @@
       "certainty": "deterministic",
       "check": {
         "kind": "md-links",
+        "tracked_only": true,
         "globs_from_config": "doc_globs"
       }
     },

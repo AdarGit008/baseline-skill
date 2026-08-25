@@ -2,7 +2,7 @@
 // The baseline CLI — the unified entry point (V2). Routes subcommands:
 //   check   score a repo against the rule set (the default; delegates to the intact
 //           check.mjs, so the golden corpus and CI keep invoking check.mjs directly)
-//   orient  derived-state survey for session start — lanes, backlog, divergence
+//   orient  five-line survey for session start — repo · work · graph · knowledge · score
 //   log     write one scrubbed, schema-valid session record (the forensic tier)
 //   jdg     author/evaluate the judgment ledger (sign-offs, deviations, break-glass)
 //   explain what a rule checks and why — the okf-rag read seam (display only, never a verdict)
@@ -66,7 +66,9 @@ if (cmd === 'check') {
       [--target REF]                                      branch; findings file as dedup'd issues
                                                           (exit 1 = delivery failed: tracker unreachable
                                                           or a write failed — even with zero findings)
-  orient [--repo DIR] [--json] [--strict]                 derived-state survey for session start
+  orient [--repo DIR] [--json]                            five-line survey for session start: repo ·
+                                                          work · graph · knowledge · score (pulls
+                                                          --ff-only first, never spawns gh; exit 0)
   explain <rule-id> [--json]                              what a rule checks and why: its title and
                                                           rationale, plus the concept from the okf bundle
                                                           when BASELINE_OKF_BUNDLE names one (display

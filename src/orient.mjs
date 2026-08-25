@@ -1,142 +1,199 @@
-// `baseline orient` — the derived-state survey a session runs first (C16). It gathers facts
-// from tree + history + forge (src/facts/*), joins them over declared keys (src/join.mjs),
-// derives the status view (src/derive/status.mjs), then renders it. An agent helper, never a
-// gate: every unreachable plane degrades to a labelled note and orient still prints what it
-// derived (FS9 — never hard-refuses; only --strict turns forge-unreachability into exit 1).
-// Generalizes the ADR-0009 prototype tools/orient.mjs.
+// `baseline orient` v2 — the five-line survey a session runs first (v3 PLAN §8, §10 D5,
+// §11 D7/D8/D12; red tests surface V29, decisions V37, seams V24/V25, plugins V39/V41/V42).
+//
+//   repo:      <name> @ <HEAD> (<branch>) · pulled | not pulled (<why>)
+//   work:      tdd.json present · tracked · 2h old            (tdd-pi's artifact)
+//   graph:     graphify-out/ present · ignored · 3d old        (graphify's artifact)
+//   knowledge: okf bundle present                              (okf-rag's bundle)
+//   score:     0 blockers · 4 advisory                         (check, in-process)
+//
+// Step 0 is `git pull --ff-only --quiet` — orient's ONLY network act (D5). A pull that
+// cannot happen (no git, no origin, unreachable, diverged, local changes) degrades to a
+// note and the survey still prints; nothing else touches git's state: no stash, no
+// commit, no other write. After the pull orient touches no forge and never spawns gh
+// (D12): the score is `check`'s own pipeline run in-process with the forge closed, so
+// GOV-01/02 and OPS-07 resolve n/a "forge not consulted" exactly as they do under check.
+//
+// The three plugin lines are METADATA (D7): presence, file-or-dir, git's tracked/ignored
+// answer and the artifact's mtime — probePlugin never opens tdd.json or anything under
+// graphify-out/, and the bundle is asked only whether its path exists. An absent graph is
+// a suggestion, never a finding (D8: the WARN is PLUG-02's check row, not an orient line),
+// and no PLUG row is rendered here. Exit code is 0, always — orient blocks on nothing.
+import fs from 'node:fs'
 import path from 'node:path'
-import { makeOpt, sanitizeTTY } from './util.mjs'
-import { indexRepo } from './repo.mjs'
-import { loadDescriptor } from './descriptor.mjs'
-import { capabilityProbe } from './probe.mjs'
-import { gatherFacts } from './facts/index.mjs'
-import { join } from './join.mjs'
-import { deriveStatus } from './derive/status.mjs'
+import { execFileSync } from 'node:child_process'
+import { makeOpt, sanitizeTTY, nowUTC } from './util.mjs'
+import { pluginSpec, probePlugin, LOG_DIR } from './plugins.mjs'
+import { scoreRepo, FORGE_CLOSED } from './check-run.mjs'
 
+const LABELS = ['repo', 'work', 'graph', 'knowledge', 'score']
+const LABELW = Math.max(...LABELS.map(l => l.length)) + 2 // "knowledge: " sets the column
 const fmtAge = (ms) => {
-  if (ms == null) return '?'
-  if (ms < 3600000) return 'just now'
-  if (ms < 86400000) return `${Math.floor(ms / 3600000)}h ago`
-  return `${Math.floor(ms / 86400000)}d ago`
+  if (ms == null || !Number.isFinite(ms)) return null
+  if (ms < 3600000) return 'fresh (<1h)'
+  if (ms < 86400000) return `${Math.floor(ms / 3600000)}h old`
+  return `${Math.floor(ms / 86400000)}d old`
 }
 
+// ---------------------------------------------------------------- step 0: the pull (D5)
+// The reason is CLASSIFIED, not echoed: git's stderr names paths and refs a survey line
+// has no business repeating, and the note only has to say that the pull did not happen
+// and roughly why. Anchored first so a remote's "does not appear to be a git repository"
+// is never mistaken for the working tree not being one.
+function pullReason(err, e) {
+  if (e?.killed || /ETIMEDOUT/i.test(String(e?.code || ''))) return 'origin timed out'
+  if (/^fatal: not a git repository/im.test(err)) return 'not a git repository'
+  if (/not currently on a branch/i.test(err)) return 'detached HEAD, nothing to pull onto'
+  if (/no such remote|No remote repository specified|no tracking information|no upstream|does not have any commits|couldn't find remote ref/i.test(err)) return 'no origin branch to pull from'
+  if (/Not possible to fast-forward|non-fast-forward|diverg|refusing to merge unrelated/i.test(err)) return 'branches diverged (not a fast-forward)'
+  if (/would be overwritten|local changes|uncommitted|unmerged files|You have not concluded/i.test(err)) return 'local changes in the way'
+  if (/Could not read from remote|does not appear to be a git repository|Could not resolve|unable to access|Connection|Network is unreachable|timed out|Permission denied|authentication|could not connect/i.test(err)) return 'origin unreachable'
+  return 'git pull failed'
+}
+function pullFirst(REPO) {
+  try {
+    execFileSync('git', ['-C', REPO, 'pull', '--ff-only', '--quiet'], {
+      encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'], timeout: 30000,
+      // a session hook must never hang on a credential prompt; a pull that needs one is a
+      // pull that did not happen, and the note says so
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    })
+    return { pulled: true, reason: null }
+  } catch (e) {
+    return { pulled: false, reason: pullReason(String(e?.stderr || e?.message || ''), e) }
+  }
+}
+
+// ---------------------------------------------------------------- the score leaves no trace
+// check's PLUG evaluators write .baseline/log/PLUG-0N.log on a WARN and remove it on a PASS
+// (D10) — that log is a `check` artifact. orient is a survey: the same pipeline runs, but
+// the tree it read must be the tree it leaves (V37: worktree clean), so whatever the run
+// did to the log directory is put back — a pre-existing log keeps its bytes, a fresh one
+// goes, a directory the run created goes with it.
+function shieldPluginLogs(REPO) {
+  const base = path.join(REPO, '.baseline'), dir = path.join(REPO, LOG_DIR)
+  const isLog = f => /^[A-Z]+-\d{2}\.log$/.test(f)
+  const hadBase = fs.existsSync(base), hadDir = fs.existsSync(dir)
+  const before = new Map()
+  if (hadDir) { try { for (const f of fs.readdirSync(dir)) if (isLog(f)) { try { before.set(f, fs.readFileSync(path.join(dir, f))) } catch {} } } catch {} }
+  return () => {
+    try {
+      if (fs.existsSync(dir)) for (const f of fs.readdirSync(dir)) {
+        if (!isLog(f)) continue
+        const p = path.join(dir, f)
+        if (!before.has(f)) { try { fs.rmSync(p, { force: true }) } catch {} ; continue }
+        let now = null; try { now = fs.readFileSync(p) } catch {}
+        if (!now || !now.equals(before.get(f))) { try { fs.writeFileSync(p, before.get(f)) } catch {} }
+      }
+      for (const [f, body] of before) { const p = path.join(dir, f); if (!fs.existsSync(p)) { try { fs.writeFileSync(p, body) } catch {} } }
+      if (!hadDir) { try { fs.rmdirSync(dir) } catch {} }
+      if (!hadBase) { try { fs.rmdirSync(base) } catch {} }
+    } catch {}
+  }
+}
+
+// ---------------------------------------------------------------- the plugin lines (D7)
+const gitWord = g => g === 'tracked' ? 'tracked' : g === 'ignored' ? 'ignored' : g === 'untracked' ? 'untracked' : g === 'outside' ? 'outside the repo' : 'git unasked'
+function artifactFacts(REPO, cfg, name, nowMs) {
+  const spec = pluginSpec(cfg, name)
+  const p = probePlugin(REPO, name, spec)
+  const shown = spec?.path ? (p.kind === 'dir' || (!p.present && name === 'graphify') ? spec.path.replace(/\/+$/, '') + '/' : spec.path) : null
+  const age = p.present && p.mtime ? nowMs - Date.parse(p.mtime) : null
+  return {
+    plugin: name, path: spec?.path ?? null, shown,
+    state: p.present ? 'present' : 'absent', kind: p.kind, git: p.present ? p.git : null,
+    mtime: p.mtime, age_ms: age,
+  }
+}
+const artifactLine = (a, absentWord) => a.state === 'present'
+  ? [`${a.shown} present`, gitWord(a.git), fmtAge(a.age_ms)].filter(Boolean).join(' · ')
+  : `${a.shown ?? a.plugin} ${absentWord}`
+
 export async function runOrient(argv) {
-  if (argv[0] === '--help' || argv[0] === '-h') { console.log('baseline orient — derived-state survey for session start\n  usage: baseline orient [--repo DIR] [--json] [--strict]'); return 0 }
+  if (argv[0] === '--help' || argv[0] === '-h') {
+    console.log('baseline orient — five-line survey for session start (pulls first; exits 0)\n  usage: baseline orient [--repo DIR] [--json]\n  lines: repo · work · graph · knowledge · score')
+    return 0
+  }
   const opt = makeOpt(argv)
   if (opt('--repo', null) === true) { console.error('orient: --repo needs a value'); return 2 }
   const REPO = path.resolve(opt('--repo', process.cwd()))
   const JSON_OUT = !!opt('--json', false)
-  const STRICT = !!opt('--strict', false)
+  if (opt('--strict', false)) console.error('orient: --strict is retired — orient always exits 0 (v3 §8 V29)')
 
-  const repo = indexRepo(REPO)
-  const descriptor = loadDescriptor(repo)
-  const cap = capabilityProbe(repo)
-  const facts = gatherFacts(repo, { descriptor, capability: cap })
-  const status = deriveStatus(facts, join(facts), cap)
-  const exit = (STRICT && !cap.forge.available) ? 1 : 0
+  const notes = [], suggestions = []
+  const now = nowUTC() ?? new Date()
+  const nowMs = now.getTime()
 
-  if (JSON_OUT) { console.log(JSON.stringify({ repo: REPO, ...status, exit }, null, 2)); return exit }
+  // step 0 — the one network act
+  const pull = pullFirst(REPO)
+  if (!pull.pulled) notes.push(`not pulled: ${pull.reason} (git pull --ff-only)`)
 
-  // ---- human survey (renders the derived status) ----
-  // ONE clock: ages render against the now the view was DERIVED at (BASELINE_LOG_NOW
-  // rides in) — a second Date.now() here would let PR ages drift while lane ages stay
-  // pinned, and no replayed golden could ever pin a line
-  const ageOf = (iso) => iso ? fmtAge(Date.parse(status.now) - new Date(iso).getTime()) : ''
-  const P = []
-  const capLine = c => c.available
-    ? `✓${c.branch ? ` (${c.branch})` : c.repo ? ` (${c.repo})` : ''}${c.shallow ? ' [shallow]' : ''}`
-    : `✗ (${c.reason})`
-  const branch = status.thisLane.branch
-  P.push(`\n# Orientation — ${path.basename(REPO)}${branch ? `  ·  ${branch}` : ''}\n`)
-  P.push(`Planes: TREE ${capLine(cap.tree)} · HISTORY ${capLine(cap.history)} · FORGE ${capLine(cap.forge)}`)
-  const d = status.descriptor
-  P.push(d.present
-    ? `Descriptor: ${d.valid ? `${d.type} · ${d.workflow}` : `present but INVALID (${d.errors[0] || 'schema error'})`}`
-    : `Descriptor: undeclared — advisory orientation only (declare it: copy a config-presets/*.repo.json posture preset to baseline.repo.json)`)
-  if (status.nowFallback) P.push(`_⚠ ${status.nowFallback}_`)
+  // the score: check's pipeline, in-process, forge closed, no exec — and no trace left
+  const restoreLogs = shieldPluginLogs(REPO)
+  let scored = null, scoreErr = null
+  try { scored = scoreRepo(REPO, { noExec: true, forgeClosed: FORGE_CLOSED }) }
+  catch (e) { scoreErr = String(e?.message || e) }
+  finally { restoreLogs() }
+  const cfg = scored?.cfgRes?.cfg ?? null
+  const HEAD = scored?.HEAD ?? null
+  const summary = scored?.summary ?? null
+  if (scoreErr) notes.push(`score unavailable: ${scoreErr}`)
 
-  if (status.findings.length) {
-    P.push(`\n## ⚠ Unresolved joins (integrity)`)
-    for (const f of status.findings) P.push(`- ${f.detail}`)
+  let branch = null
+  try { branch = execFileSync('git', ['-C', REPO, 'rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null } catch {}
+  if (branch === 'HEAD') branch = '(detached)'
+
+  // the plugin lines — metadata only
+  const work = artifactFacts(REPO, cfg, 'tdd-pi', nowMs)
+  const graph = artifactFacts(REPO, cfg, 'graphify', nowMs)
+  if (graph.state === 'absent') suggestions.push(`no knowledge graph at ${graph.shown ?? 'graphify-out/'} — build one with graphify (orientation reads only its age)`)
+  // the bundle is a path outside the repo more often than not: exists, and nothing else
+  const okf = pluginSpec(cfg, 'okf-rag')
+  const bundlePath = okf?.path ?? null
+  const knowledge = {
+    plugin: 'okf-rag', path: bundlePath,
+    state: !bundlePath ? 'unconfigured' : fs.existsSync(bundlePath) ? 'present' : 'absent',
+    source: okf?.source?.path ?? null, env: okf?.env ?? 'BASELINE_OKF_BUNDLE',
   }
-  if (status.divergence.length) {
-    P.push(`\n## ⚠ Divergence (resolve first)`)
-    status.divergence.forEach((x, i) => {
-      // cross-ref: a divergence reconcile already filed carries its issue on the SAME
-      // line (a second full entry below would train skimming — the pre-defect)
-      const code = status.divergenceCodes?.[i]
-      const filedIssue = code && (status.filed || []).find(f => f.title.includes(`] ${code}:`))
-      P.push(`- ${x}${filedIssue ? `  → filed as #${filedIssue.number}` : ''}`)
-    })
-  }
-  // reconcile's open filings, ONE line (M6b): the act-now section stays first; the
-  // zero case renders nothing (no wallpaper). The label is the mute affordance.
-  if ((status.filed || []).length) {
-    const top = status.filed.slice(0, 3).map(f => `#${f.number} ${f.title}`).join(' · ')
-    P.push(`\n⚠ ${status.filed.length} baseline-filed issue(s) open — ${top}${status.filed.length > 3 ? ` (+${status.filed.length - 3} more)` : ''}  \`gh issue list --label baseline\``)
-  }
+  if (knowledge.state !== 'present') suggestions.push(knowledge.state === 'unconfigured'
+    ? `no okf bundle configured — point ${knowledge.env} at one for \`baseline explain\``
+    : `okf bundle missing at ${bundlePath} — rebuild it, or point ${knowledge.env} elsewhere`)
 
-  // ---- lanes: the derived lease view (C31) when the descriptor declares a namespace;
-  // ---- the plain open-PR survey otherwise (single-lane repos keep their old section) ----
-  const meta = status.lanesMeta
-  const laneRefSet = new Set((status.lanes || []).map(l => l.ref))
-  const STATE_ICON = { LIVE: '●', STALE: '◐', ABANDONED: '✗', COMPLETED: '✔' }
-  if (meta) {
-    P.push(`\n## Lanes (\`${meta.namespace}\` · ttl ${meta.ttl})`)
-    if (meta.truncated) P.push(`_⚠ lane list truncated — refs beyond the forge's first page (100) are not shown_`)
-    if (!status.lanes.length) P.push(meta.source ? `_none claimed_` : `_underived: ${meta.reason}_`)
-    else for (const l of status.lanes) {
-      const head = `- ${STATE_ICON[l.state] ?? '?'} \`${l.ref}\`${l.issue != null ? ` → #${l.issue}` : ''} — ${l.state ?? 'UNDERIVED'} · ${fmtAge(l.age_ms)} · agent ${l.agent ?? '?'}`
-      const pr = l.pr ? ` · PR #${l.pr.number}${l.pr.draft ? ' [draft]' : ''}` : ' · no PR yet'
-      P.push(head + pr)
-      for (const lab of l.labels) P.push(`    · ${lab}`)
-      // the recipe must be runnable verbatim and git-native (the `baseline lane` verb is
-      // gone): a takeover is a child of the observed tip carrying the new agent's trailers,
-      // pushed WITHOUT force so a lane that moved meanwhile rejects non-fast-forward. The
-      // trailers are what derive/lanes reads back, so an abandoned lane without an issue
-      // anchor gets the honest line, never a recipe that would mint an anchor-less takeover
-      if (l.state === 'ABANDONED') P.push(l.issue != null
-        ? `    ↳ reclaimable:  git fetch origin ${l.ref} && git checkout -B ${l.ref} FETCH_HEAD && git commit --allow-empty -m "reclaim ${l.ref}: issue #${l.issue}" --trailer "Baseline-Issue: #${l.issue}" --trailer "Baseline-Agent: <you>" && git push origin ${l.ref}`
-        : `    ↳ not machine-reclaimable (no issue anchor) — rename or delete the branch by hand`)
-      if (l.pr) P.push(l.next ? `    ↳ next: ${l.next}` : l.hasLog ? `    ↳ (session log has no filled-in next:)` : l.hasLog === false ? `    ↳ (no session log on branch)` : `    ↳ (session log not fetched for this lane)`)
+  // blockers and advisory are the scorer's own derived counts (check-run.mjs advisoryOf:
+  // every evaluated row that is neither a pass nor a blocking failure) — never a second tally
+  const score = summary
+    ? { blockers: summary.blockers, advisory: summary.advisory, pass: summary.pass, total: summary.total }
+    : null
+
+  if (JSON_OUT) {
+    const out = {
+      repo: { path: REPO, name: path.basename(REPO), head: HEAD, branch, pulled: pull.pulled, pull: pull.pulled ? 'ff-only' : pull.reason },
+      work: { plugin: work.plugin, path: work.path, state: work.state, kind: work.kind, git: work.git, mtime: work.mtime, age_ms: work.age_ms },
+      graph: { plugin: graph.plugin, path: graph.path, state: graph.state, kind: graph.kind, git: graph.git, mtime: graph.mtime, age_ms: graph.age_ms },
+      knowledge,
+      score,
+      notes, suggestions,
     }
+    console.log(JSON.stringify(out, null, 2))
+    return 0
   }
 
-  // the probe's reason is the specific one ("gh not installed", "no forge repo resolves
-  // here") — makeForge's generic 'forge unreachable' must not shadow it into "forge
-  // unreachable (forge unreachable)"
-  const forgeWhy = status.forgeReason === 'forge unreachable' ? (cap.forge.reason || status.forgeReason) : (status.forgeReason || cap.forge.reason)
-  const prHead = meta ? `\n## Open PRs${laneRefSet.size ? ' (non-lane branches)' : ''}` : `\n## Live lanes (open PRs)`
-  const prList = (status.prs || []).filter(pr => !laneRefSet.has(pr.branch))
-  P.push(prHead)
-  if (!status.forgeAvailable) P.push(status.source === 'posture' ? `_${status.forgeReason}_` : `_forge unreachable (${forgeWhy}) — by hand: \`gh pr list\`_`)
-  else if (!prList.length) P.push(`_none_`)
-  else for (const l of prList) {
-    P.push(`- #${l.number}${l.draft ? ' [draft]' : ''} ${l.title}  \`${l.branch}\`  (${ageOf(l.updatedAt)})${l.closes?.length ? `  → closes #${l.closes.join(', #')}` : ''}`)
-    P.push(l.next ? `    ↳ next: ${l.next}` : l.hasLog ? `    ↳ (session log has no filled-in next:)` : `    ↳ (no session log on branch)`)
-  }
-
-  P.push(`\n## Backlog (open issues)`)
-  if (!status.forgeAvailable) P.push(status.source === 'posture' ? `_${status.forgeReason}_` : `_forge unreachable — by hand: \`gh issue list\`_`)
-  else if (!status.backlog.length) P.push(`_none_`)
-  else {
-    const byMs = new Map()
-    for (const it of status.backlog) { const k = it.milestone ?? '(no milestone)'; (byMs.get(k) || byMs.set(k, []).get(k)).push(it) }
-    for (const [ms, list] of [...byMs.entries()].sort()) {
-      P.push(`\n### ${ms}`)
-      for (const it of list.sort((a, b) => a.number - b.number)) P.push(`- #${it.number} ${it.title}${it.labels.length ? `  _[${it.labels.join(', ')}]_` : ''}`)
-    }
-  }
-
-  P.push(`\n## This lane (${branch || 'no git'})`)
-  if (!branch) P.push(`_${cap.history.reason || 'no branch'}_`)
-  else P.push(status.thisLane.next ? `    ↳ next: ${status.thisLane.next}  (${status.thisLane.rel})` : status.thisLane.rel ? `    ↳ (${status.thisLane.rel} has no filled-in next:)` : `    ↳ (no session log yet on this branch)`)
-  P.push('')
-
-  // orient prints plain markdown (no color/escapes of its own), so the ONLY control
-  // bytes in the output would be injected via repo-authored strings — issue/PR titles,
-  // record next:, agent trailers, lane labels. Strip them at the render boundary (tab +
-  // newline preserved); the --json branch above is untouched (JSON escapes control bytes).
-  console.log(sanitizeTTY(P.join('\n')))
-  return exit
+  // ---- human: five lines, nothing else on stdout ----
+  const L = (label, body) => `${(label + ':').padEnd(LABELW)}${body}`
+  const repoBits = [`${path.basename(REPO)}${HEAD ? ` @ ${HEAD}` : ' (no git HEAD)'}${branch ? ` (${branch})` : ''}`, pull.pulled ? 'pulled' : `not pulled: ${pull.reason}`]
+  const graphBody = graph.state === 'present' ? artifactLine(graph) : `${graph.shown ?? 'graphify-out/'} absent · suggestion: build the knowledge graph with graphify`
+  const knowledgeBody = knowledge.state === 'present' ? 'okf bundle present'
+    : knowledge.state === 'absent' ? `okf bundle absent at ${bundlePath}` : `okf bundle not configured (${knowledge.env} unset)`
+  const scoreBody = score ? `${score.blockers} blocker${score.blockers === 1 ? '' : 's'} · ${score.advisory} advisory` : `unavailable (${scoreErr || 'no score'})`
+  const lines = [
+    L('repo', repoBits.join(' · ')),
+    L('work', artifactLine(work, 'absent')),
+    L('graph', graphBody),
+    L('knowledge', knowledgeBody),
+    L('score', scoreBody),
+  ]
+  // repo-authored strings (a configured plugin path, a branch name) are stripped of control
+  // bytes at the render boundary; --json escapes them itself
+  console.log(sanitizeTTY(lines.join('\n')))
+  return 0
 }

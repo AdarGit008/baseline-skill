@@ -46,7 +46,9 @@ node baseline.mjs admit --repo /path/to/repo    # merge-point revalidation — e
 node baseline.mjs orient --repo /path/to/repo   # derived-state survey: lanes · backlog · divergence
 node baseline.mjs log -m "..." --next "..."     # write a scrubbed session record (the forensic tier)
 node baseline.mjs jdg check                     # evaluate the judgment ledger: tripwires · expiry · drift
+node baseline.mjs explain SEC-01                # what a rule checks and why — displays the okf concept when BASELINE_OKF_BUNDLE names a bundle
 node baseline.mjs gen migrate-claims            # explode a legacy docs/CLAIMS.json into records/claims/CLM-*.json
+node baseline.mjs gen okf-concepts              # stage one proposed okf concept per rule under .baseline/proposed/ (deterministic; never the bundle)
 node baseline.mjs scrub --pushed <sha>          # scan record content for secret shapes (the pre-push hook's engine)
 ```
 

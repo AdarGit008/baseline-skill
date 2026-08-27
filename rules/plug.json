@@ -1,15 +1,15 @@
 {
   "rules": [
     {
-      "id": "PLUG-01-tdd-pi",
-      "title": "tdd-pi artifact present and tracked",
+      "id": "PLUG-01-obsidian-tdd",
+      "title": "obsidian-tdd artifact present and tracked",
       "category": "plugins",
-      "severity": "warn",
+      "severity": "blocker",
       "applies_to": "all",
-      "source": "v3 PLAN §11 D6–D10 — the plugin boundary; the tdd-pi plugin's tdd.json is the test-discipline evidence a repo commits",
-      "lesson": "A plugin is known by its artifact, not by its data: baseline asks whether tdd.json is there and whether git tracks it, and never opens it — the file's schema, its covers[] and its source commit are tdd-pi's own business (D7).",
-      "rationale": "One always-on WARN per plugin (D8): absence is named once, with the install command, and never changes the exit code. When the artifact is present the one further question is git's (D9): tdd.json is committed evidence, so the default expects it tracked, and a config-vs-git disagreement is the finding. Every WARN leaves .baseline/log/PLUG-01.log recording the path inspected, the config values used and git's answer (D10).",
-      "fix": "Install the plugin and run it once so tdd.json lands at the repo root (the install command in the finding is a placeholder for the plugin's own instructions), then commit tdd.json. A different location or gitignore policy is declared in baseline.config.json: {\"plugins\": {\"tdd-pi\": {\"path\": \"tools/tdd.json\", \"ignored\": false}}}.",
+      "source": "v3 PLAN §11 D6–D10 — the plugin boundary; the obsidian-tdd plugin's tdd.json is the test-discipline evidence a repo commits",
+      "lesson": "A plugin is known by its artifact, not by its data: baseline asks whether tdd.json is there and whether git tracks it, and never opens it — the file's schema, its covers[] and its source commit are obsidian-tdd's own business (D7).",
+      "rationale": "Membership is the gate, and membership is a fact about the config, not a guess about the tree (v4): a plugin whose NAME is a key of baseline.config.json `plugins` is a MEMBER of this repo's trust circle, and this rule is a BLOCKER for it — the artifact must be present and git must say what the config expects, or the build fails. A plugin the config never named is a SUGGESTION: baseline offers it in the report, resolves this rule n/a, excludes it from the exit gate, and it can never fail a build. So absent-and-not-a-member is n/a; member-and-missing is a blocker (D8, as amended by the v4 membership model — one always-on rule per plugin, gated by adoption rather than by presence). When a member's artifact is there the one further question is git's (D9): tdd.json is committed evidence, so the default expects it tracked, and a config-vs-git disagreement is the finding. Every finding leaves .baseline/log/PLUG-01.log recording the path inspected, the config values used, the membership fact and git's answer (D10).",
+      "fix": "If this repo has adopted obsidian-tdd, install the plugin and run it once so tdd.json lands at the repo root (the install command in the finding is a placeholder for the plugin's own instructions), then commit tdd.json. If it has not, `baseline trust remove obsidian-tdd` deletes the key and this rule goes back to n/a — nothing here fails a repo that never chose the tool. Adoption and location are the same declaration: {\"plugins\": {\"obsidian-tdd\": {}}} adopts at the defaults, {\"plugins\": {\"obsidian-tdd\": {\"path\": \"tools/tdd.json\", \"ignored\": false}}} adopts with an override, and `baseline trust add obsidian-tdd` writes either for you.",
       "sources": [
         "tree"
       ],
@@ -20,20 +20,20 @@
       "certainty": "deterministic",
       "check": {
         "kind": "plugin-presence",
-        "plugin": "tdd-pi",
-        "install": "npm i -g tdd-pi"
+        "plugin": "obsidian-tdd",
+        "install": "npm i -g obsidian-tdd"
       }
     },
     {
       "id": "PLUG-02-graphify",
       "title": "graphify graph present and gitignored",
       "category": "plugins",
-      "severity": "warn",
+      "severity": "blocker",
       "applies_to": "all",
       "source": "v3 PLAN §11 D6–D10 — the plugin boundary; graphify's graphify-out/ is a derived knowledge graph, rebuilt from the tree",
       "lesson": "The graph is a plugin artifact: the only questions baseline asks are whether graphify-out/ is there, how old it is, and whether git ignores it. `Built from commit:` is a line in a file graphify owns, and reading it would make the verdict depend on the plugin's format (D7).",
-      "rationale": "One always-on WARN per plugin (D8): an absent graph is named once, with the install command, and never changes the exit code. When present, the one further question is git's (D9): a derived store belongs in .gitignore, so the default expects it ignored, and a tracked graphify-out/ is the finding (config says ignored, git says tracked). Every WARN leaves .baseline/log/PLUG-02.log recording the path inspected, the config values used and git's answer (D10).",
-      "fix": "Install the plugin and build the graph so graphify-out/ exists (the install command in the finding is a placeholder for the plugin's own instructions), and add graphify-out/ to .gitignore. A different location or gitignore policy is declared in baseline.config.json: {\"plugins\": {\"graphify\": {\"path\": \"graphify-out\", \"ignored\": true}}}.",
+      "rationale": "Membership is the gate, and membership is a fact about the config, not a guess about the tree (v4): a plugin whose NAME is a key of baseline.config.json `plugins` is a MEMBER of this repo's trust circle, and this rule is a BLOCKER for it — an absent graph is named once, with the install command, and it fails the build. A repo that never adopted graphify gets a SUGGESTION instead: this rule resolves n/a, stays out of the exit gate, and cannot fail anything. So absent-and-not-a-member is n/a; member-and-missing is a blocker (D8, as amended by the v4 membership model). When a member's graph is present the one further question is git's (D9): a derived store belongs in .gitignore, so the default expects it ignored, and a tracked graphify-out/ is the finding (config says ignored, git says tracked). Every finding leaves .baseline/log/PLUG-02.log recording the path inspected, the config values used, the membership fact and git's answer (D10).",
+      "fix": "If this repo has adopted graphify, install the plugin and build the graph so graphify-out/ exists (the install command in the finding is a placeholder for the plugin's own instructions), and add graphify-out/ to .gitignore — the pass is deterministic (an AST read of the tree, no LLM), so the same commit always rebuilds the same graph, and `baseline trust stamp` commits the hashes CI reads. If it has not, `baseline trust remove graphify` deletes the key and this rule goes back to n/a. Adoption and location are the same declaration: {\"plugins\": {\"graphify\": {}}} adopts at the defaults, {\"plugins\": {\"graphify\": {\"path\": \"graphify-out\", \"ignored\": true}}} adopts with an override, and `baseline trust add graphify` writes either for you.",
       "sources": [
         "tree"
       ],
@@ -52,12 +52,12 @@
       "id": "PLUG-03-okf-rag",
       "title": "okf-rag bundle present",
       "category": "plugins",
-      "severity": "warn",
+      "severity": "blocker",
       "applies_to": "all",
       "source": "v3 PLAN §11 D6–D10 — the plugin boundary; okf-rag's bundle is the concept store `baseline explain` addresses by concept id, at $BASELINE_OKF_BUNDLE",
       "lesson": "The bundle is addressed by path or env and never read during check: no verdict depends on a retrieval (§1 V3), and the audit `explain --audit` resolves by filename alone. Presence, kind, age and git state are the whole question (D7).",
-      "rationale": "One always-on WARN per plugin (D8): an unset or missing bundle is named once, with the install command, and never changes the exit code. The bundle usually lives outside the repo, and a path outside the repo is not asked the gitignore question at all (D9); a bundle kept inside the repo is a derived store, so the default expects it ignored. Every WARN leaves .baseline/log/PLUG-03.log recording the path inspected, the config values used and git's answer (D10).",
-      "fix": "Install the plugin (the install command in the finding is a placeholder for the plugin's own instructions), export BASELINE_OKF_BUNDLE=<dir> pointing at its bundle, or declare the path in baseline.config.json: {\"plugins\": {\"okf-rag\": {\"path\": \"/abs/path/to/bundle\", \"ignored\": true}}}. `baseline gen okf-concepts` stages the per-rule concepts the bundle is built from.",
+      "rationale": "Membership is the gate, and membership is a fact about the config, not a guess about the environment (v4): a plugin whose NAME is a key of baseline.config.json `plugins` is a MEMBER of this repo's trust circle, and this rule is a BLOCKER for it — an unset or missing bundle is named once, with the install command, and it fails the build. $BASELINE_OKF_BUNDLE sets a member's path but never creates membership: CI clones tracked files, not a shell, so an env-created member would gate differently on two machines. A repo that never named okf-rag gets a SUGGESTION: this rule resolves n/a and stays out of the exit gate. So absent-and-not-a-member is n/a; member-and-missing is a blocker (D8, as amended by the v4 membership model). The bundle usually lives outside the repo, and a path outside the repo is not asked the gitignore question at all (D9); a bundle kept inside is a derived store, so the default expects it ignored. Every finding leaves .baseline/log/PLUG-03.log recording the path inspected, the config values used, the membership fact and git's answer (D10).",
+      "fix": "If this repo has adopted okf-rag, install the plugin (the install command in the finding is a placeholder for the plugin's own instructions) and point baseline at the bundle: export BASELINE_OKF_BUNDLE=<dir>, or declare the path in the same entry that declares membership. If it has not, `baseline trust remove okf-rag` deletes the key and this rule goes back to n/a. Adoption is the key itself: {\"plugins\": {\"okf-rag\": {}}} adopts at the defaults (path from the env var), {\"plugins\": {\"okf-rag\": {\"path\": \"/abs/path/to/bundle\", \"ignored\": true}}} adopts with an override, and `baseline trust add okf-rag` writes either for you. `baseline gen okf-concepts` stages the per-rule concepts the bundle is built from.",
       "sources": [
         "tree"
       ],

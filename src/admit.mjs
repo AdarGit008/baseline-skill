@@ -35,7 +35,6 @@ import { indexRepo } from './repo.mjs'
 import { resolveLane, run } from './probe.mjs'
 import { resolveConfig } from './config.mjs'
 import { makeEvalCheck } from './evaluators.mjs'
-import { makeLaneWorld } from './facts/index.mjs'
 import { runRules } from './engine.mjs'
 import { makeColor, isBlocking, rowJson, summarize, humanRows } from './report.mjs'
 import { DESCRIPTOR_FILE, DESCRIPTOR_SCHEMA } from './descriptor.mjs'
@@ -196,25 +195,23 @@ export function runAdmit(argv) {
     targetRef, targetTip, headSha: HEADSHA, changed, added, addedJudgments, jdgCapped, jdgOnly, sisters, sistersCapped, stackedOn, headDescriptor,
     mergeBase: (a, b) => g('merge-base', a, b),
   }
-  const LANEWORLD = makeLaneWorld(repo, DESCRIPTOR, { forgeClosed: jdgOnly ? 'forge not consulted (JDG-only admission path)' : null })
-  // NO_EXEC: no exec-kind rule declares admit context (BUILD-05 is check's crown); the
-  // fallback binding re-runs the check required check at the merge-relevant SHA instead
-  // (F8 as ruled — the crown never runs twice per SHA because it never runs here at all)
-  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: true, JUDGMENTS, DESCRIPTOR, DEFAULT_BRANCH, LANEWORLD, ADMITWORLD })
+  // v4 rule-set cut: no lane world. Every surviving rule reads the tree, no rule declares
+  // the admit context, and the forge seam that the world existed to serve is deleted.
+  const evalCheck = makeEvalCheck({ repo, cfg })
   const RULES = loadRules()
   const results = runRules({ rules: RULES.rules, cfg, ACTIVE, CLAIMS_ACTIVE, CLAIMS_REASON, evalCheck, DESCRIPTOR, context: 'admit' })
 
   // ---- provenance (M6c): the inputs_digest receipt — REFUSAL-INERT by contract.
   // Assembly never touches refusals/results/summary; every lost source digests as
   // a labeled VALUE ('not consulted' / 'none'), never a refusal and never a hole.
-  // checkRuns(HEAD) is admit's one marginal forge read (F8's fold) — the same
-  // one-home closure that gates the lane world degrades it under posture/JDG-only.
-  const provWorld = LANEWORLD()
-  const provRunsRaw = provWorld.forge.checkRuns(HEADSHA)
-  const provTuples = Array.isArray(provRunsRaw?.check_runs) ? provRunsRaw.check_runs.map(r => ({ name: r.name, conclusion: r.conclusion, head_sha: r.head_sha })) : null
-  // no anchor is 'none', never issueState(null) — the world has no no-anchor value
+  // checkRuns(HEAD) WAS admit's one marginal forge read (F8's fold). The v4 rule-set cut
+  // removed the forge seam, so that plane is permanently 'not-consulted' — the canonical
+  // ABSENT value the digest was designed to carry, not a hole. The anchor number is still
+  // git's (the lane namespace), and its STATE is now honestly 'unknown': only the forge
+  // could say whether an issue is open, and baseline no longer asks.
+  const provTuples = null
   const provAnchorNum = (ns && BRANCH) ? issueOf(ns, BRANCH) : null
-  const provAnchor = provAnchorNum == null ? null : { issue: provAnchorNum, state: provWorld.issueState(provAnchorNum) }
+  const provAnchor = provAnchorNum == null ? null : { issue: provAnchorNum, state: 'unknown' }
   const provInputs = { head: HEADSHA, target: targetTip, descriptorOid: repo.gitBlobAt(targetTip, DESCRIPTOR_FILE), rulesVersion: RULES.version, checkRuns: provTuples, anchor: provAnchor }
   const provenance = provenanceJson({ digest: inputsDigest(provInputs), ...provInputs })
 

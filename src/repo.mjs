@@ -18,15 +18,43 @@ const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.turbo', 'c
 // baseline.config.json `plugins` (keyed by plugin name) overrides per key; a config path
 // beats the env var. Every resolved entry records where each value came from (`source`),
 // so the WARN log can say "default" or "config" honestly.
+//
+// v4 MEMBERSHIP. The table declares every SUPPORTED tool, which is not the same as every
+// ADOPTED one, and the difference is the whole enabler property: a repo that never chose
+// graphify must not be failed for not having it. So each resolved entry also carries
+// `member`, and membership is a FACT ABOUT THE CONFIG TEXT, never a guess about the values:
+//   member  === the plugin's NAME is a KEY of baseline.config.json's `plugins` object
+//   suggest === the key is absent — the entry here is the shipped default, untouched
+// Key presence, not value comparison, is what makes it a fact. `{"graphify": {}}` and
+// `{"graphify": {"path": "graphify-out", "ignored": true}}` are both adoptions even though
+// the second one re-types the defaults, and neither can be confused with a repo that
+// wrote nothing — which the old `source: 'default' | 'config'` alone could not tell apart
+// (a member at default values resolves every FIELD from the defaults).
+// A key whose value is `false` or `null` is an explicit DECLINE: recorded, not a member.
+// The env var is deliberately NOT a membership signal. It sets a member's path when there
+// is one, but CI clones tracked files and not a shell, so an env-created member would gate
+// differently on two machines. Adoption is a committed fact or it is not one.
 export const PLUGIN_DEFAULTS = Object.freeze({
-  'tdd-pi': Object.freeze({ path: 'tdd.json', ignored: false }),
+  'obsidian-tdd': Object.freeze({ path: 'tdd.json', ignored: false }),
   graphify: Object.freeze({ path: 'graphify-out', ignored: true }),
   'okf-rag': Object.freeze({ path: null, ignored: true, env: 'BASELINE_OKF_BUNDLE' }),
+  // v4: the fourth trust-circle member, declared with NO path so it probes as absent and
+  // stays FAIL-SILENT — my-onto emits nothing until it exists (no rule, no severity, no
+  // verify row). It is here so the roster the bootstrapper derives (PLUGIN_NAMES ->
+  // trust.mjs) is honest about it; `ignored` is the okf-rag default and is never consulted
+  // while the path is null.
+  'my-onto': Object.freeze({ path: null, ignored: true }),
 })
 export function resolvePlugins(overrides = {}, env = process.env) {
+  const decl = overrides && typeof overrides === 'object' ? overrides : {}
   const out = {}
   for (const [name, d] of Object.entries(PLUGIN_DEFAULTS)) {
-    const o = overrides && typeof overrides === 'object' && overrides[name] && typeof overrides[name] === 'object' ? overrides[name] : {}
+    // the membership fact: is the NAME a key here? Read before any value is looked at, so
+    // a member at default values is still a member and a suggestion can never look like one.
+    const declared = Object.prototype.hasOwnProperty.call(decl, name)
+    const raw = declared ? decl[name] : undefined
+    const member = declared && raw !== false && raw !== null
+    const o = raw && typeof raw === 'object' ? raw : {}
     let p = d.path, pathSource = 'default'
     if (d.env && typeof env?.[d.env] === 'string' && env[d.env].trim()) { p = env[d.env].trim(); pathSource = 'env' }
     if (typeof o.path === 'string' && o.path.trim()) { p = o.path.trim(); pathSource = 'config' }
@@ -34,11 +62,52 @@ export function resolvePlugins(overrides = {}, env = process.env) {
     out[name] = {
       path: p,
       ignored: explicitIgnored ? o.ignored : d.ignored,
-      source: { path: pathSource, ignored: explicitIgnored ? 'config' : 'default' },
+      member,
+      source: {
+        path: pathSource,
+        ignored: explicitIgnored ? 'config' : 'default',
+        // 'config' means the key was typed (adopted or declined); 'default' means untouched
+        member: declared ? 'config' : 'default',
+      },
       ...(d.env ? { env: d.env } : {}),
     }
   }
   return out
+}
+/** The adopted names, in table order — the trust circle this repo actually declared. */
+export const membersOf = PLUGINS => Object.keys(PLUGINS || {}).filter(n => PLUGINS[n]?.member)
+/** The supported-but-unadopted names: what baseline SUGGESTS and never gates. */
+export const suggestedOf = PLUGINS => Object.keys(PLUGINS || {}).filter(n => !PLUGINS[n]?.member)
+
+// ---------------------------------------------------------------- the BASELINE RULES LAYER (v4)
+//
+// The rule set has exactly two kinds of rule, and they are opted into from OPPOSITE ends:
+//   PLUGIN rules   (PLUG-01..03) belong to a trust-circle member. Opt-IN, default OUT: a
+//                  tool this repo never adopted resolves n/a and can never fail a build.
+//   BASELINE rules (everything else — the tree reads every repo can answer) are a LAYER.
+//                  Opt-OUT, default IN: they gate unless this repo says otherwise.
+// The asymmetry is the product: adopting a tool is a choice a repo makes, whereas the
+// baseline is what "baseline" means — you get it by standing still.
+//
+// One key, `baseline_rules`, and its reading follows the membership discipline: the fact is
+// read off the CONFIG TEXT, never guessed from the tree. The difference from membership is
+// which way the ABSENCE points. Membership is key PRESENCE (absent = not adopted, because a
+// repo that typed nothing chose nothing). The layer's absence is the DEFAULT, and the
+// default is IN, so an absent key gates — which is also the only safe direction: a config
+// that never heard of this key, a typo'd key name, a value that is not the literal `false`
+// all leave the layer IN. Opting out takes the exact bytes `"baseline_rules": false`, and
+// the layer's state is printed on every surface either way. There is no spelling of this
+// key that silently hides a failing rule.
+export const LAYER_KEY = 'baseline_rules'
+/** The layer as a resolved fact: { in, source: 'default'|'config' }. Reads either the raw
+ *  config value (a boolean someone typed) or the already-resolved object config.mjs writes
+ *  back, so a cfg built by hand and one that came through resolveConfig answer the same —
+ *  the same both-shapes contract pluginSpec() keeps for membership. */
+export function baselineLayerOf(cfg) {
+  const v = cfg && typeof cfg === 'object' ? cfg[LAYER_KEY] : undefined
+  if (v && typeof v === 'object' && typeof v.in === 'boolean') return v
+  if (v === undefined) return { in: true, source: 'default' }
+  return { in: !(v === false || v === null), source: 'config' }
 }
 /** A plugin path as the index spells it — posix, repo-relative — or null when it is
  *  absolute-outside the repo (the okf bundle usually is) or the repo root itself. */

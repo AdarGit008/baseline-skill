@@ -1,12 +1,16 @@
 // The plugin boundary (v3 §11 D6–D10, red tests plugins.mjs V38–V41 and seams V1/V2/V25).
 //
-// baseline knows three plugins by their ARTIFACT — tdd-pi's tdd.json, graphify's
+// baseline knows three plugins by their ARTIFACT — obsidian-tdd's tdd.json, graphify's
 // graphify-out/, okf-rag's bundle at $BASELINE_OKF_BUNDLE — and asks each one exactly the
 // questions a metadata probe can answer (D7): is the path there, is it a file or a
 // directory, how old is it, and does git track or ignore it. It never opens the artifact:
 // no readFileSync/openSync/createReadStream, no `git show`/`cat-file -p`/`grep` on it.
 // Garbage bytes, an unreadable chmod-000 report and a well-formed artifact are the same
 // answer here, because the content is the plugin's business and not this runner's.
+//
+// v4: the probe is only reached for a trust-circle MEMBER. A plugin the config never named
+// is SUGGESTED, and the evaluator resolves it n/a before asking this file anything — the
+// table below is the list of tools baseline supports, not the list a given repo adopted.
 //
 // The git question is three-valued — tracked | ignored | untracked (present, neither
 // tracked nor ignored) — and is asked ONLY of a path inside the repo: a bundle that lives
@@ -20,14 +24,23 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
-import { PLUGIN_DEFAULTS, resolvePlugins } from './repo.mjs'
+import { PLUGIN_DEFAULTS, resolvePlugins, membersOf, suggestedOf } from './repo.mjs'
 
 /** The plugin names — the keys of baseline.config.json `plugins` and the `plugin` value of
  *  a plugin-presence check. Derived from the table, never a second list. */
 export const PLUGIN_NAMES = Object.freeze(Object.keys(PLUGIN_DEFAULTS))
 
-/** One resolved entry { path, ignored, source: { path, ignored }, env? } for `name`, from a
- *  cfg whose `plugins` is already resolved (config.mjs) or still the raw config object. */
+/** The trust circle as a cfg sees it: { members, suggested } by name, in table order. */
+export function trustCircle(cfg) {
+  const P = Object.fromEntries(PLUGIN_NAMES.map(n => [n, pluginSpec(cfg, n)]).filter(([, e]) => e))
+  return { members: membersOf(P), suggested: suggestedOf(P) }
+}
+
+/** One resolved entry { path, ignored, member, source: { path, ignored, member }, env? } for
+ *  `name`, from a cfg whose `plugins` is already resolved (config.mjs) or still the raw
+ *  config object. `member` is the v4 trust-circle fact (repo.mjs): the config NAMED this
+ *  plugin. Either shape answers it — resolvePlugins reads key presence, so a raw config
+ *  object resolves to the same membership the config pipeline computed. */
 export function pluginSpec(cfg, name) {
   const raw = cfg && typeof cfg === 'object' ? cfg.plugins : null
   const e = raw && typeof raw === 'object' ? raw[name] : null

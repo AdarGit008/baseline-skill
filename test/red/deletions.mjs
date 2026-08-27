@@ -16,6 +16,7 @@ import * as L from './_lib.mjs'
 import {
   harness, loadRuleSet, loadRuleSetAt, ROOT, cli, mkrepo, checkJson, idsOf,
   DELETED_PREFIXES, isDeleted, ALWAYS_ON_BLOCKERS, PACK_OF, SIGNOFF_FIVE, cleanup, FAKE_SECRET,
+  SURVIVING_IDS, SURVIVING_KINDS, TRUSTED_NODE, plantGraph, okfEnv,
 } from './_lib.mjs'
 
 const { ok, done } = harness('deletions')
@@ -30,7 +31,10 @@ const D11_DELETED = ['REC-06', ...SIGNOFF_FIVE]
 const DELETED = [...new Set([...(L.DELETED_IDS || ['REC-01', 'REC-04']), 'REC-01', 'REC-04', ...D11_DELETED])]
 const deleted = (id) => isDeleted(id) || DELETED.includes(id)
 const PLUG = Array.isArray(L.PLUG_IDS) && L.PLUG_IDS.length ? L.PLUG_IDS : ['PLUG-01', 'PLUG-02', 'PLUG-03']
-const EXPECTED = Number.isInteger(L.EXPECTED_RULE_COUNT) ? L.EXPECTED_RULE_COUNT : 76
+// EXPECTED_RULE_COUNT is DELETED (a hand-maintained count is exactly the stamp CTX-12
+// used to forbid). The expected size is derived from SURVIVING_IDS — the v4 review's own
+// list — so the two derivations below stay independent without a literal between them.
+const EXPECTED = SURVIVING_IDS.length
 const D11_KINDS = ['signoff', 'vendored-lock']
 
 // The pre-v3 rule set: the v2.5.0 tag PLUS whatever landed unreleased on top of it (CTX-13,
@@ -95,7 +99,12 @@ const PRE_IDS = [...new Set(PRE.map(r => r.id))]
   // §11 D11 names two kinds outright: `signoff` and `vendored-lock` leave CHECK_KINDS.
   // `vendored-lock` is orphaned by derivation (REC-06 was its only user); `signoff` is not,
   // because TEST-05 keeps it as an any-of fallback — so the survivor has to lose it too.
-  const orphanKinds = [...new Set([...derivedOrphans, ...D11_KINDS])].sort()
+  // The v4 cut leaves ONE deliberate orphan: `doc-code-age` has no rule (CTX-11 is
+  // deleted) but is kept because the incoming CTX-16 inherits its git-date arithmetic.
+  // It is exempted here by name, so the exemption is visible rather than silent.
+  const PRESERVED = ['doc-code-age']
+  const orphanKinds = [...new Set([...derivedOrphans, ...D11_KINDS])].filter(k => !PRESERVED.includes(k)).sort()
+  ok(SURVIVING_KINDS.includes('doc-code-age'), 'V10 · doc-code-age is preserved on purpose — CTX-16 inherits its git-date arithmetic')
   ok(derivedOrphans.includes('vendored-lock'), `V10 · 'vendored-lock' is orphaned by the derivation itself (REC-06 was its only user)`)
   const survivorsUsingD11 = rules.filter(r => kindsOf(r.check).some(k => D11_KINDS.includes(k))).map(r => `${r.id}:${kindsOf(r.check).filter(k => D11_KINDS.includes(k)).join('+')}`)
   ok(survivorsUsingD11.length === 0,
@@ -115,7 +124,9 @@ const PRE_IDS = [...new Set(PRE.map(r => r.id))]
   const srcFiles = []
   const walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); e.isDirectory() ? walk(p) : p.endsWith('.mjs') && srcFiles.push(p) } }
   walk(path.join(ROOT, 'src'))
-  const carriers = srcFiles.filter(f => { const t = fs.readFileSync(f, 'utf8'); return orphanKinds.some(k => t.includes(`'${k}'`)) })
+  // an IMPLEMENTATION is the dispatch branch, not any mention of the word — 'descriptor'
+  // is also a plain noun in src/validate.mjs's error text, and that is not a check kind
+  const carriers = srcFiles.filter(f => { const t = fs.readFileSync(f, 'utf8'); return orphanKinds.some(k => t.includes(`k === '${k}'`) || t.includes(`'${k}',`) && /CHECK_KINDS/.test(t)) })
   ok(carriers.length === 0,
     `V10 · no src/ module implements an orphaned kind (${carriers.map(f => path.relative(ROOT, f)).slice(0, 5).join(', ') || '—'})`)
 
@@ -148,7 +159,7 @@ const PRE_IDS = [...new Set(PRE.map(r => r.id))]
   ok(laneRun.status === 2 && /unknown command/.test(laneRun.stderr), `V10 · \`baseline lane\` is an unknown command (got ${laneRun.status})`)
 }
 
-// ---------- V11: exactly 76 rules, exactly 9 always-on blockers, all counts derived ----------
+// ---------- V11: the set is exactly the v4 survivors, every rule a blocker, counts derived ----------
 {
   // the surviving set is exactly the pre-v3 set minus §3's fifteen minus §11's six, plus
   // §11's three PLUG rules — no survivor lost, nothing extra crept in. The count follows
@@ -161,14 +172,17 @@ const PRE_IDS = [...new Set(PRE.map(r => r.id))]
   ok(lost.length === 0 && crept.length === 0,
     `V11 · the rule set is exactly (pre-v3 ${PRE_IDS.length}) − (deleted ${PRE_IDS.filter(deleted).length}) + (PLUG ${PLUG.length}) = ${expectedSet.length}; got ${rules.length} (lost: ${lost.join(',') || '—'}; extra: ${crept.join(',') || '—'})`)
   ok(rules.length === expectedSet.length, `V11 · and the count agrees (${rules.length} vs ${expectedSet.length})`)
-  // cross-check against PLAN §11's own arithmetic (79 − 6 + 3 = 76): two independent
-  // derivations of the same number must land on the same answer.
+  // cross-check: the set arithmetic over the pre-v3 corpus and the review's own survivor
+  // list are two independent derivations and must land on the same number.
   ok(PRE_IDS.length - PRE_IDS.filter(deleted).length + PLUG.length === expectedSet.length && expectedSet.length === EXPECTED,
-    `V11 · PLAN §11's arithmetic and the set derivation agree on ${expectedSet.length} (plan says ${EXPECTED})`)
+    `V11 · the set arithmetic and the v4 survivor list agree on ${expectedSet.length} (review says ${EXPECTED})`)
 
+  // the execution model: no warn tier, so EVERY rule is a blocker and none is in a pack
   const alwaysOnBlockers = rules.filter(r => r.severity === 'blocker' && !r.pack).map(r => r.id)
   ok(alwaysOnBlockers.length === ALWAYS_ON_BLOCKERS.length,
     `V11 · always-on blockers = ${ALWAYS_ON_BLOCKERS.length} (got ${alwaysOnBlockers.length}: ${alwaysOnBlockers.slice(0, 12).join(' ')})`)
+  const notBlocking = rules.filter(r => r.severity !== 'blocker').map(r => `${r.id}:${r.severity}`)
+  ok(notBlocking.length === 0, `V11 · there is no warn tier — every rule is a blocker (${notBlocking.join(', ') || '—'})`)
 
   // "every count printed anywhere is derived from the rule set, never literal"
   const sc = cli(ROOT, ['check', '--self-check'])
@@ -179,7 +193,7 @@ const PRE_IDS = [...new Set(PRE.map(r => r.id))]
   ok(/loadRules\(\)\.rules\.length/.test(installSh), 'V11 · install.sh derives its rule count from loadRules(), never a literal')
 }
 
-// ---------- V12: only the 9 can produce a non-zero exit with no opt-in packs active ----------
+// ---------- V12: only the eight can produce a non-zero exit, and there is no pack to opt out of ----------
 {
   // data half — the always-on blocker set IS the §3 list, by id
   // (deleted rules are filtered out here only so the message stays legible — V8/V9 own them)
@@ -188,36 +202,33 @@ const PRE_IDS = [...new Set(PRE.map(r => r.id))]
   const missing = ALWAYS_ON_BLOCKERS.filter(id => !derived.has(id))
   const extra = [...derived].filter(id => !ALWAYS_ON_BLOCKERS.includes(id))
   ok(missing.length === 0 && extra.length === 0,
-    `V12 · the always-on blocker set is exactly §3's nine (missing: ${missing.join(',') || '—'}; extra: ${extra.join(',') || '—'})`)
+    `V12 · the always-on blocker set is exactly the v4 eight (missing: ${missing.join(',') || '—'}; extra: ${extra.join(',') || '—'})`)
 
-  // behavior half — a repo that trips several PACK blockers, with NO config file at all,
-  // must still exit 0: nothing outside the nine may reach the exit code.
+  // behavior half — a repo carrying every kind of former-pack BAIT, with no config file at
+  // all, must still exit 0: the deleted families cannot reach the exit code because they
+  // do not exist. The fixture stocks the trust circle, which IS gated now.
   const dir = mkrepo('v12', {
-    'README.md': '# packs off\n',
-    LICENSE: 'MIT-ish red fixture (not a real grant).\n',
-    'package.json': '{"name":"v12","version":"0.0.0","private":true}\n',
-    '.github/workflows/ci.yml': 'name: ci\non: [push]\npermissions: read-all\njobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - run: "true"\n',
-    'test/t.test.js': '// test\n',
-    '.gitignore': '.env\n',
-    // decisions pack bait: two records claiming the same number (CTX-14, a pack blocker)
+    ...TRUSTED_NODE(),
+    // decisions bait: two records claiming the same number (CTX-14 was a pack blocker)
     'docs/decisions/0001-first.md': '# ADR-0001: first\n\nStatus: Accepted\n',
     'docs/decisions/0001-again.md': '# ADR-0001: again\n\nStatus: Accepted\n',
-    // claims pack bait: a register that is present but empty (CLAIM-00..03, pack blockers)
+    // claims bait: a register present but empty (CLAIM-00..03 were pack blockers)
     'docs/CLAIMS.json': '{}\n',
-    // descriptor pack bait: an invalid descriptor (DESC-02, a pack blocker)
+    // descriptor bait: an invalid descriptor (DESC-02 was a pack blocker)
     'baseline.repo.json': '{ not json\n',
   })
-  const r = checkJson(dir)
+  plantGraph(dir)
+  const r = checkJson(dir, [], okfEnv('v12-okf'))
   const blocking = (r.j?.results || []).filter(x => x.severity === 'blocker' && (x.tag === 'FAIL' || x.tag === 'DIVERGED'))
   const outside = blocking.filter(x => !ALWAYS_ON_BLOCKERS.includes(base(x.id)))
   ok(outside.length === 0,
-    `V12 · with no config, no rule outside the nine blocks (offenders: ${outside.map(x => x.id).join(', ') || '—'})`)
-  ok(r.status === 0, `V12 · the pack-bait repo exits 0 with every pack off (got ${r.status})`)
+    `V12 · no rule outside the eight blocks (offenders: ${outside.map(x => x.id).join(', ') || '—'})`)
+  ok(r.status === 0, `V12 · the former-pack-bait repo exits 0 (got ${r.status})`)
   const seen = idsOf(r.j)
   ok(![...seen].some(id => PACK_OF.get(base(id))),
     'V12 · and no pack rule appears in the payload at all')
 
-  // the nine themselves must still be able to block: same repo, one always-on blocker broken
+  // the eight themselves must still be able to block: one always-on blocker broken
   const dir2 = mkrepo('v12b', { 'README.md': '# no license\n', 'package.json': '{"name":"x","private":true}\n', 'src/keys.js': `export const K = '${FAKE_SECRET}'\n` })
   const r2 = checkJson(dir2)
   ok(r2.status === 1, `V12 · an always-on blocker still fails CI (got ${r2.status})`)

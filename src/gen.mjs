@@ -44,7 +44,7 @@ import { conceptOf, baseOf } from './explain.mjs'
 import { indexRepo } from './repo.mjs'
 import { resolveConfig } from './config.mjs'
 import { validateRecord, recordSchema } from './records.mjs'
-import { loadClaimRecords, loadLegacyClaims, CLAIM_RECORD_GLOB } from './claims.mjs'
+import { loadClaimRecords, loadLegacyClaims, CLAIM_RECORD_GLOB, LEGACY_CLAIMS_FILE } from './claims.mjs'
 import { loadJudgments } from './jdg.mjs'
 import { SESSION_BASES } from './facts/git.mjs'
 
@@ -205,9 +205,10 @@ export function runGen(argv) {
   const repo = indexRepo(REPO)
   const { cfg } = resolveConfig(repo)
   const legacy = loadLegacyClaims(repo, cfg)
-  if (!legacy.present) { console.log(`gen migrate-claims: no legacy register (${cfg.claims_file}) — nothing to migrate`); return 0 }
+  const legacyFile = cfg.claims_file === undefined ? LEGACY_CLAIMS_FILE : cfg.claims_file
+  if (!legacy.present) { console.log(`gen migrate-claims: no legacy register (${legacyFile}) — nothing to migrate`); return 0 }
   if (legacy.error) { console.error(`gen migrate-claims: ${legacy.error}`); return 2 }
-  if (!legacy.claims.length) { console.log(`gen migrate-claims: ${cfg.claims_file} has no claims — nothing to migrate`); return 0 }
+  if (!legacy.claims.length) { console.log(`gen migrate-claims: ${legacyFile} has no claims — nothing to migrate`); return 0 }
 
   const existing = loadClaimRecords(repo)
   // a corrupt/partial record file hides its slug — a rerun would re-migrate its
@@ -235,7 +236,7 @@ export function runGen(argv) {
     const slug = String(cl.id ?? '')
     // the slug IS the migration key (claims.mjs shadows by it) — an unkeyed claim
     // can never be marked migrated, so writing it would duplicate on every rerun
-    if (!slug) { refused++; console.error(`  ✗ (no id) refused — every legacy claim needs an "id" to key the migration: add one in ${cfg.claims_file}, rerun`); continue }
+    if (!slug) { refused++; console.error(`  ✗ (no id) refused — every legacy claim needs an "id" to key the migration: add one in ${legacyFile}, rerun`); continue }
     if (migrated.has(slug)) { skipped++; console.log(`  = ${slug} already migrated — skipped`); continue }
     const rec = { record: 'claim/1', id: `CLM-${String(++maxN).padStart(4, '0')}`, slug }
     const dropped = []
@@ -246,7 +247,7 @@ export function runGen(argv) {
     // and any subfield beyond url/supports_because is reported into the same
     // dropped channel as top-level fields
     if (cl.citations !== undefined) {
-      if (!Array.isArray(cl.citations)) { refused++; maxN--; console.error(`  ✗ ${slug} refused — "citations" must be an array (fix in ${cfg.claims_file}, rerun)`); continue }
+      if (!Array.isArray(cl.citations)) { refused++; maxN--; console.error(`  ✗ ${slug} refused — "citations" must be an array (fix in ${legacyFile}, rerun)`); continue }
       const cits = []
       cl.citations.forEach((c, i) => {
         if (!c || typeof c !== 'object') { dropped.push(`citations[${i}] (not an object)`); return }
@@ -258,7 +259,7 @@ export function runGen(argv) {
     const errs = validateRecord('claim', rec)
     if (errs.length) {
       refused++; maxN-- // the number wasn't spent
-      console.error(`  ✗ ${slug} refused (fix in ${cfg.claims_file}, rerun): ${errs.slice(0, 3).join('; ')}${errs.length > 3 ? ` (+${errs.length - 3})` : ''}`)
+      console.error(`  ✗ ${slug} refused (fix in ${legacyFile}, rerun): ${errs.slice(0, 3).join('; ')}${errs.length > 3 ? ` (+${errs.length - 3})` : ''}`)
       continue
     }
     const rel = `records/claims/${rec.id}.json`
@@ -270,7 +271,7 @@ export function runGen(argv) {
     console.log(`  + ${rel} (slug: ${slug})${dropped.length ? ` — dropped: ${dropped.join(', ')}` : ''}`)
   }
   console.log(`\ngen migrate-claims: ${wrote} written · ${skipped} already migrated · ${refused} refused`)
-  if (wrote) console.log(`  review + commit the new records; the checker no longer reads the legacy ${cfg.claims_file} — deleting it after review clears CLAIM-07`)
+  if (wrote) console.log(`  review + commit the new records; the checker no longer reads the legacy ${legacyFile} — deleting it after review completes the migration`)
   return refused ? 1 : 0
 }
 

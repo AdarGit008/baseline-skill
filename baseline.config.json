@@ -2,6 +2,8 @@
   "_comment": "Distribution-repo suite: this repo ships the standard, it isn't a buildable app. project_type=docs narrows the run to the rules that fit a docs/distribution repo (build/test/service rules produce no row). Scored via: node check.mjs --repo .",
   "project_type": "docs",
   "makes_external_claims": false,
+  "baseline_rules": true,
+  "_baseline_rules": "The BASELINE RULES LAYER: every rule outside the trust circle (BUILD-03, BUILD-04, GOV-03, SEC-01, SEC-02), opted in or out as one layer at setup time. Default is IN, so an ABSENT key gates — this repo states it explicitly to keep the choice visible, and `true` and no key at all are the same run. `false` makes those rules resolve n/a: no finding, excluded from the exit gate, and the layer's state printed on every check. `baseline trust setup --baseline-rules in|out` is what writes it.",
   "_accepted_warns": {
     "SEC-05": "Not relevant: baseline-skill is zero-dependency (no package manifest or lockfile), so the rule's 'pinned deps rot into known-CVE territory' rationale does not apply; the only updatable surface is pinned GitHub Actions SHAs. We accept the warn rather than add a dependency-update bot with nothing to update. Baseline does not silently suppress warns — this documents the acceptance."
   },

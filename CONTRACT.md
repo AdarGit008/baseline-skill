@@ -23,12 +23,12 @@ document does not carry those.
 
 ## The three plugins, by hand
 
-baseline suggests **tdd-pi**, **graphify** and **okf-rag** and never requires them.
+baseline suggests **obsidian-tdd**, **graphify** and **okf-rag** and never requires them.
 Its whole contract with each is one question a shell can ask:
 
 | plugin | artifact | expected in git | the question |
 |---|---|---|---|
-| tdd-pi | `tdd.json` | tracked | `test -e tdd.json && git ls-files --error-unmatch tdd.json` |
+| obsidian-tdd | `tdd.json` | tracked | `test -e tdd.json && git ls-files --error-unmatch tdd.json` |
 | graphify | `graphify-out/` | ignored | `test -d graphify-out && git check-ignore -q graphify-out` |
 | okf-rag | `$BASELINE_OKF_BUNDLE` | ignored (skipped when outside the repo) | `test -d "$BASELINE_OKF_BUNDLE"` |
 

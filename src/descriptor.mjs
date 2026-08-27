@@ -25,7 +25,7 @@ export const FIELD_CONSUMERS = {
   maturity:              'M4c · config CLAIMS_ACTIVE gate — CLAIM category activates at "claimed" (C24, discrete tiers)',
   workflow:              'M4c · engine posture gate — rules declaring `workflow` SKIP on other postures; string-or-array families since M5c',
   anchoring:             'M5c · probe/orient anchoring knob',
-  ground_truth_boundary: 'M4c · DEFAULT_BRANCH for GOV-01/02 forge protection reads; probe/target-ref reads',
+  ground_truth_boundary: 'M4c · DEFAULT_BRANCH for admit/reconcile target-ref reads (GOV-01/02 read it for forge protection until the v4 cut deleted them)',
   lanes:                 'M5a/M5b · namespace/lease_ttl in derive/lanes (orient)',
   join_keys:             'M5a · trailer allowlist (util.mjs TRAILER_*)',
   engine_pin:            'reserved:M7 · pointer-install skew detection',

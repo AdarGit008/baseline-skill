@@ -19,8 +19,10 @@ import {
 const { ok, done } = harness('surface')
 const { rules } = loadRuleSet()
 
-// §11 D11: 79 − 6 + 3. _lib may not export it yet; the fallback is §11's own number.
-const EXPECTED_RULE_COUNT = lib.EXPECTED_RULE_COUNT ?? 76
+// EXPECTED_RULE_COUNT is DELETED from _lib.mjs — a hand-maintained count is exactly the
+// stamp CTX-12 used to forbid. The expected size is DERIVED from the v4 review's own
+// survivor list, so the comparison below stays two independent derivations, no literal.
+const EXPECTED_RULE_COUNT = lib.SURVIVING_IDS.length
 
 // ---------- V29: orient emits at most 5 lines on a clean repo and always exits 0 ----------
 {
@@ -86,7 +88,7 @@ const EXPECTED_RULE_COUNT = lib.EXPECTED_RULE_COUNT ?? 76
   // D6 (§11): baseline is scaffolding and the three plugins are suggestions, never
   // requirements. SKILL.md is where an agent learns what to suggest, so the three names
   // and the word for them survive the diet.
-  for (const plugin of ['tdd-pi', 'graphify', 'okf-rag']) ok(text.includes(plugin), `V30 · SKILL.md suggests the ${plugin} plugin by name`)
+  for (const plugin of ['obsidian-tdd', 'graphify', 'okf-rag']) ok(text.includes(plugin), `V30 · SKILL.md suggests the ${plugin} plugin by name`)
   ok(/\bplugins\b/.test(text), 'V30 · SKILL.md calls them plugins')
 }
 
@@ -204,20 +206,24 @@ const EXPECTED_RULE_COUNT = lib.EXPECTED_RULE_COUNT ?? 76
     ok(bad.length === 0, `V33 · ${rel} states no wrong ${what} (${bad.map(f => `${f.got} vs ${f.want}`).join(', ') || '—'})`)
   }
 
-  // "the check-kind count" must have exactly ONE value before any doc may state it.
-  // Today it has three: the registry (CHECK_KINDS), the kinds rules use as their own
-  // check, and the kinds rules use anywhere (json-field appears only inside an any-of).
-  // PLAN §9 asserts the truth is 44 and README says 45 — both are readings of the same
-  // ambiguity, which is the actual defect under V33.
-  ok(REGISTERED_KINDS !== null && REGISTERED_KINDS === KIND_COUNT && KIND_COUNT === TOP_KIND_COUNT,
-    `V33 · the check-kind count is unambiguous: registry ${REGISTERED_KINDS} = used-anywhere ${KIND_COUNT} = used-as-a-rule's-own-check ${TOP_KIND_COUNT}`)
+  // "the check-kind count" must have exactly ONE value before any doc may state it. The
+  // two USED counts must agree exactly (no kind may hide inside a combinator — there are
+  // no combinators left). The REGISTRY may exceed them only by the deliberate orphans,
+  // named here so the exemption is visible: doc-code-age is kept for the incoming CTX-16.
+  const PRESERVED_ORPHAN_KINDS = ['doc-code-age']
+  ok(KIND_COUNT === TOP_KIND_COUNT,
+    `V33 · every kind a rule uses is that rule's own check kind: used-anywhere ${KIND_COUNT} = used-as-a-rule's-own-check ${TOP_KIND_COUNT}`)
+  ok(REGISTERED_KINDS !== null && REGISTERED_KINDS === KIND_COUNT + PRESERVED_ORPHAN_KINDS.length,
+    `V33 · the registry is the used set plus the ${PRESERVED_ORPHAN_KINDS.length} named orphan(s) ${PRESERVED_ORPHAN_KINDS.join(', ')}: registry ${REGISTERED_KINDS} = used ${KIND_COUNT} + ${PRESERVED_ORPHAN_KINDS.length}`)
+  ok(REGISTRY !== null && PRESERVED_ORPHAN_KINDS.every(k => REGISTRY.has(k)),
+    `V33 · and the orphan is really still registered (CTX-16 inherits doc-code-age's git-date arithmetic)`)
 
   // D11 (§11): the rule set is 76 — the plan's one committed number, compared against the
   // derivation here and nowhere else, so every doc literal above is measured against a
   // rule set that is itself measured against the plan. The number is not a literal in
   // THIS file (it comes from _lib, with §11's own value as the fallback).
   ok(RULE_COUNT === EXPECTED_RULE_COUNT,
-    `V33 · the rule set derives to §11's ${EXPECTED_RULE_COUNT} rules (derived ${RULE_COUNT})`)
+    `V33 · the rule set derives to the v4 cut's ${EXPECTED_RULE_COUNT} rules (derived ${RULE_COUNT})`)
   // D11: the two kinds whose rules are deleted leave the registry with them
   for (const gone of ['signoff', 'vendored-lock']) {
     ok(REGISTRY !== null && !REGISTRY.has(gone), `V33 · CHECK_KINDS no longer registers '${gone}' (D11; registry ${REGISTRY === null ? 'unreadable' : REGISTRY.has(gone) ? 'still has it' : 'clean'})`)

@@ -115,23 +115,40 @@ const hashTree = (dir) => {
 
 // ======================================================== D4 / V36: n/a is silent, then explicit
 {
-  // a repo with no Dockerfile: REPRO-04 (dockerfile-digest) has no subject at all
-  const dir = mkrepo('v36', CLEAN_NODE())
-  ok(!fs.existsSync(path.join(dir, 'Dockerfile')), 'V36 · fixture has no Dockerfile')
+  // REPRO-04 was the exemplar (no Dockerfile -> no subject). It is deleted, so the n/a
+  // exemplar is now SEC-01: its grep is tracked_only over **/* excluding **/*.md, so a repo
+  // whose every tracked file is markdown gives it nothing to scan. The v4 execution model
+  // AND-gates every rule to exit 0 — an n/a rule must therefore be EXCLUDED from the gate,
+  // which is asserted here alongside D4's silent/explicit split.
+  const dir = mkrepo('v36', {
+    'README.md': '# md only\n\nProse.\n',
+    'docs/guide.md': '# guide\n\nMore prose.\n',
+    'CODEOWNERS.md': 'not the real one\n',
+  })
 
   const human = cli(dir, ['check', '--repo', dir, '--no-exec'])
-  const na = fullId('REPRO-04')
-  ok(!human.stdout.includes(na) && !human.stdout.includes('REPRO-04'),
+  const na = fullId('SEC-01')
+  ok(!human.stdout.includes(na) && !human.stdout.includes('SEC-01'),
     'V36 · an n/a rule is absent from human output entirely')
   ok(!/\bSKIP\b/.test(human.stdout), `V36 · and is not rendered as a SKIP row`)
 
   const j = checkJson(dir)
-  const row = rowOf(j.j, 'REPRO-04')
+  const row = rowOf(j.j, 'SEC-01')
   ok(!!row, 'V36 · but --json still carries it')
   ok(row?.state === 'n/a' || row?.tag === 'n/a', `V36 · with state "n/a" (got ${JSON.stringify(row?.state ?? row?.tag)})`)
   ok(typeof (row?.reason) === 'string' && row.reason.trim().length > 0,
     `V36 · and a non-empty reason (${JSON.stringify(row?.reason)})`)
   ok(row?.tag !== 'SKIP' && row?.state !== 'SKIP', 'V36 · n/a is never spelled SKIP in the payload')
+
+  // the gate: an n/a rule is a BLOCKER with no subject, and must not fail the build for it
+  const rule = rules.find(r => base(r.id) === 'SEC-01')
+  ok(rule?.severity === 'blocker', `V36 · the n/a exemplar is a blocker (got ${rule?.severity})`)
+  const naRows = (j.j?.results || []).filter(x => x.state === 'n/a')
+  const evaluatedFails = (j.j?.results || []).filter(x => x.tag === 'FAIL' || x.tag === 'DIVERGED')
+  ok(naRows.length > 0, `V36 · the run really produced n/a rows (${naRows.map(x => x.id).join(', ') || '—'})`)
+  ok(!naRows.some(x => evaluatedFails.includes(x)), 'V36 · an n/a row is never also a failing row')
+  ok(!(j.j?.summary?.total >= 0) || j.j.summary.total === (j.j.results.length - naRows.length),
+    `V36 · summary.total counts evaluated rows only, excluding the n/a ones (${j.j?.summary?.total} of ${j.j?.results?.length} rows, ${naRows.length} n/a)`)
 }
 
 // ======================================================== D5 / V37: orient pulls, then reads

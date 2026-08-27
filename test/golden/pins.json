@@ -9,74 +9,21 @@
       "  project-baseline v3.0.0  ·  <REPO>  ·  type=node  ·  packs=[advanced]  ·  HEAD=<sha>",
       "",
       "  Build & execution",
-      "    PASS      BUILD-01-dependency-manifest-present     Dependency manifest present  ↳ package.json",
-      "    PASS      BUILD-02-lockfile-committed              Lockfile committed  ↳ package-lock.json",
-      "    PASS      BUILD-03-ci-workflow-present             CI workflow present  ↳ .github/workflows/ci.yml",
-      "    PASS      BUILD-04-env-template-present            Env/secret template present  ↳ .env.example",
-      "    PASS      BUILD-05-task-1-passes-clean             Task 1 passes on a clean checkout  ↳ exit 0: node -e \"process.exit(0)\"",
-      "    PASS      BUILD-06-baseline-gate-in-ci             Baseline gate wired into CI  ↳ matched in 1 file(s)",
-      "    WARN      BUILD-07-single-bootstrap-entrypoint     A single documented bootstrap entrypoint exists  ↳ none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml",
-      "    PASS      BUILD-08-task-commands-declared          Standard task commands are declared machine-readably  ↳ matched in 1 file(s)",
-      "    PASS      BUILD-09-bootstrap-is-idempotent         Bootstrap is idempotent (safe to re-run)  ↳ exit 0 x2: node -e \"process.exit(0)\"",
-      "    PASS      BUILD-10-ci-runs-tests                   CI actually invokes the test suite  ↳ matched in 1 file(s)",
-      "",
-      "  Code quality",
-      "    PASS      QUAL-01-linter-configured                A linter is configured  ↳ eslint.config.js",
-      "    PASS      QUAL-02-formatter-configured             A formatter is configured  ↳ .prettierrc",
-      "    PASS      QUAL-03-strict-type-checking             Type-checking is strict where supported  ↳ matched in 1 file(s)",
-      "    PASS      QUAL-04-linter-enforced                  The linter is actually enforced (run in CI or pre-commit)  ↳ matched in 1 file(s)",
-      "",
-      "  Tests & invariants",
-      "    PASS      TEST-01-automated-tests-exist            Automated tests exist  ↳ test/basic.test.js",
-      "    PASS      TEST-02-failure-paths-tested             Failure paths are tested (negative tests)  ↳ matched in 1 file(s)",
-      "    WARN      TEST-07-coverage-floor-enforced          A coverage floor is declared and enforced  ↳ pattern not found | pattern not found",
+      "    PASS      BUILD-03-ci-workflow-present  CI workflow present  ↳ .github/workflows/ci.yml",
+      "    PASS      BUILD-04-env-template-present Env/secret template present  ↳ .env.example",
       "",
       "  Security & supply-chain",
-      "    PASS      SEC-01-no-committed-secrets              No high-signal secrets committed  ↳ pattern not found (good)",
-      "    PASS      SEC-02-env-files-ignored                 Real .env files are git-ignored, not committed  ↳ none present (good)",
-      "    PASS      SEC-03-ci-actions-pinned-sha             Third-party CI actions pinned to a commit SHA  ↳ pattern not found (good)",
-      "    PASS      SEC-04-no-dangerous-ci-patterns          No dangerous CI workflow patterns  ↳ pattern not found (good)",
-      "    PASS      SEC-05-dependency-updates-automated      Automated dependency-update tool configured  ↳ .github/dependabot.yml",
-      "    PASS      SEC-06-security-policy-reporting-channel Security policy names a reporting channel  ↳ SECURITY.md ok",
-      "    PASS      SEC-07-no-committed-binaries             No committed binary/executable artifacts  ↳ none present (good)",
-      "    WARN      SEC-08-sbom-committed                    A committed SBOM exists in a recognized format  ↳ none of: **/*.cdx.json, **/bom.json, **/cyclonedx.json, **/*.spdx.json, **/sbom.json",
-      "    WARN      SEC-09-code-scanning-configured          Static code-scanning is configured  ↳ pattern not found",
-      "    WARN      SEC-10-release-provenance-present        Release provenance/signing is present  ↳ pattern not found | none of: **/*.intoto.jsonl, **/*.sigstore, **/*.sig",
-      "    PASS      SEC-11-least-privilege-ci-token          CI grants a least-privilege GITHUB_TOKEN  ↳ 1 workflow(s) least-privilege",
-      "    PASS      SEC-12-secret-scanning-gate              A secret-scanning gate is wired in  ↳ matched in 1 file(s)",
-      "    WARN      SEC-13-dependency-vulnerability-scan     A dependency vulnerability scan runs in CI  ↳ pattern not found",
-      "    PASS      SEC-14-pre-commit-hooks-pinned           Pre-commit hooks pinned to an immutable rev  ↳ pattern not found (good)",
-      "",
-      "  Reproducibility",
-      "    PASS      REPRO-01-ci-installs-frozen              CI installs dependencies in frozen/locked mode  ↳ matched in 1 file(s)",
-      "    PASS      REPRO-02-runtime-version-pinned          Runtime version is pinned  ↳ .nvmrc",
-      "    PASS      REPRO-03-runtime-pin-consistent          Pinned runtime version is consistent everywhere  ↳ pins consistent across 1 language(s)",
-      "    PASS      REPRO-04-docker-base-pinned-by-digest    Dockerfile base images pinned by digest  ↳ 1 Dockerfile(s) digest-pinned",
+      "    PASS      SEC-01-no-committed-secrets   No high-signal secrets committed  ↳ pattern not found (good)",
+      "    PASS      SEC-02-env-files-ignored      Real .env files are git-ignored, not committed  ↳ none present (good)",
       "",
       "  Change governance",
-      "    PASS      GOV-03-codeowners-names-owner            CODEOWNERS exists and names an owner  ↳ CODEOWNERS ok",
+      "    PASS      GOV-03-codeowners-names-owner CODEOWNERS exists and names an owner  ↳ CODEOWNERS ok",
       "",
-      "  Community & onboarding",
-      "    PASS      COMM-01-license-present                  LICENSE file present  ↳ LICENSE",
-      "    WARN      COMM-02-readme-newcomer-sections         README exists with newcomer-critical sections  ↳ README.md too short (<400 chars)",
-      "    PASS      COMM-03-changelog-has-unreleased         CHANGELOG present with an Unreleased section  ↳ CHANGELOG.md ok",
-      "",
-      "  Context management",
-      "    WARN      CTX-03-sources-of-truth-declared         Sources of truth are declared  ↳ config.sources_of_truth empty",
-      "    PASS      CTX-05-no-broken-doc-links               No broken internal doc links  ↳ 3 doc(s), links resolve",
-      "    PASS      CTX-12-status-is-derived                 No hand-maintained status stamp (derive it instead)  ↳ pattern not found (good)",
-      "",
-      "  Records & ledger",
-      "    PASS      REC-02-committed-tree-scrub-clean        The committed tree is scrub-clean  ↳ 20 file(s) scrub-clean at HEAD",
-      "    WARN      REC-05-push-time-gate-committed          A push-time secret gate is committed alongside the code  ↳ no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule",
-      "",
-      "  Plugins",
-      "    WARN      PLUG-01-tdd-pi                           tdd-pi artifact present and tracked  ↳ tdd-pi not found at tdd.json — install: npm i -g tdd-pi · log: .baseline/log/PLUG-01.log",
-      "    WARN      PLUG-02-graphify                         graphify graph present and gitignored  ↳ graphify not found at graphify-out — install: pip install graphify · log: .baseline/log/PLUG-02.log",
-      "    WARN      PLUG-03-okf-rag                          okf-rag bundle present  ↳ okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag · log: .baseline/log/PLUG-03.log",
-      "",
-      "  Summary  35 pass · 0 fail · 12 warn",
-      "  Readiness: 74%  (35/47 evaluated)",
+      "  Summary  5 pass · 0 fail · 0 warn",
+      "  Readiness: 100%  (5/5 evaluated)",
+      "  Baseline layer  IN (the default — no baseline_rules key)  ·  5 rule(s) in scope — a finding among them fails this build",
+      "  Trust circle  no members — 3 supported tool(s) suggested: obsidian-tdd, graphify, okf-rag",
+      "                a suggestion is not a finding and can never fail this build. `baseline trust setup` prints the recommended config; `baseline trust add <tool>` adopts one, and then it gates.",
       "",
       "  ✓ no blockers.",
       "",
@@ -103,27 +50,18 @@
     "summary": {
       "refusals": 0,
       "blockers": 0,
-      "pass": 2,
+      "pass": 0,
       "warn": 0,
       "fail": 0,
       "diverged": 0,
-      "total": 2
+      "total": 0
     },
-    "rules": {
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "5 file(s) scrub-clean at HEAD"
-      },
-      "DESC-03-descriptor-change-carries-judgment": {
-        "tag": "PASS",
-        "detail": "descriptor untouched in origin/main...HEAD"
-      }
-    }
+    "rules": {}
   },
   "admit-desc-weaken": {
-    "exitCode": 1,
+    "exitCode": 0,
     "command": "admit",
-    "verdict": "REFUSED",
+    "verdict": "ADMITTED",
     "staleness": {
       "ancestor": true,
       "stale": false,
@@ -133,31 +71,20 @@
     "jdgOnly": false,
     "jdgRelief": null,
     "breakGlass": null,
-    "refusals": [
-      "DESC-03-descriptor-change-carries-judgment: baseline.repo.json changed with no same-range judgment — WEAKENING: workflow: 'multi-lane' → 'single-lane' (down-ladder); anchoring: 'strict' → 'off' (down-ladder) — baseline jdg new --kind deviation --subject \"baseline.repo.json\" --reason \"why the posture changed\" --review-by <date>, in this PR"
-    ],
+    "refusals": [],
     "target": {
       "ref": "origin/main"
     },
     "summary": {
-      "refusals": 1,
-      "blockers": 1,
-      "pass": 1,
+      "refusals": 0,
+      "blockers": 0,
+      "pass": 0,
       "warn": 0,
-      "fail": 1,
+      "fail": 0,
       "diverged": 0,
-      "total": 2
+      "total": 0
     },
-    "rules": {
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "3 file(s) scrub-clean at HEAD"
-      },
-      "DESC-03-descriptor-change-carries-judgment": {
-        "tag": "FAIL",
-        "detail": "baseline.repo.json changed with no same-range judgment — WEAKENING: workflow: 'multi-lane' → 'single-lane' (down-ladder); anchoring: 'strict' → 'off' (down-ladder) — baseline jdg new --kind deviation --subject \"baseline.repo.json\" --reason \"why the posture changed\" --review-by <date>, in this PR"
-      }
-    }
+    "rules": {}
   },
   "admit-jdg-only": {
     "exitCode": 0,
@@ -179,22 +106,13 @@
     "summary": {
       "refusals": 0,
       "blockers": 0,
-      "pass": 2,
+      "pass": 0,
       "warn": 0,
       "fail": 0,
       "diverged": 0,
-      "total": 2
+      "total": 0
     },
-    "rules": {
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "4 file(s) scrub-clean at HEAD"
-      },
-      "DESC-03-descriptor-change-carries-judgment": {
-        "tag": "PASS",
-        "detail": "descriptor untouched in origin/main...HEAD"
-      }
-    }
+    "rules": {}
   },
   "admit-relieved": {
     "exitCode": 0,
@@ -218,22 +136,13 @@
     "summary": {
       "refusals": 0,
       "blockers": 0,
-      "pass": 1,
+      "pass": 0,
       "warn": 0,
       "fail": 0,
       "diverged": 0,
-      "total": 1
+      "total": 0
     },
-    "rules": {
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "5 file(s) scrub-clean at HEAD"
-      },
-      "DESC-03-descriptor-change-carries-judgment": {
-        "state": "n/a",
-        "reason": "diff origin/main...HEAD failed — change scope unreadable (admit refuses on this as gating-source loss)"
-      }
-    }
+    "rules": {}
   },
   "admit-stale": {
     "exitCode": 1,
@@ -257,22 +166,13 @@
     "summary": {
       "refusals": 1,
       "blockers": 0,
-      "pass": 2,
+      "pass": 0,
       "warn": 0,
       "fail": 0,
       "diverged": 0,
-      "total": 2
+      "total": 0
     },
-    "rules": {
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "4 file(s) scrub-clean at HEAD"
-      },
-      "DESC-03-descriptor-change-carries-judgment": {
-        "tag": "PASS",
-        "detail": "descriptor untouched in origin/main...HEAD"
-      }
-    }
+    "rules": {}
   },
   "claims-repo": {
     "exitCode": 1,
@@ -281,70 +181,14 @@
       "claims"
     ],
     "summary": {
-      "blockers": 3,
-      "pass": 9,
-      "warn": 12,
-      "fail": 3,
+      "blockers": 1,
+      "pass": 2,
+      "warn": 0,
+      "fail": 1,
       "diverged": 0,
-      "total": 24
+      "total": 3
     },
     "rules": {
-      "CTX-03-sources-of-truth-declared": {
-        "tag": "WARN",
-        "detail": "config.sources_of_truth empty"
-      },
-      "CTX-05-no-broken-doc-links": {
-        "tag": "PASS",
-        "detail": "2 doc(s), links resolve"
-      },
-      "CTX-06-docs-carry-freshness-contract": {
-        "state": "n/a",
-        "reason": "config.freshness_globs empty (opt-in)"
-      },
-      "CTX-08-generated-files-marked": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "CTX-09-grounding-docs-exist": {
-        "state": "n/a",
-        "reason": "config.grounding_docs empty (opt-in)"
-      },
-      "CTX-11-docs-not-lagging-code": {
-        "state": "n/a",
-        "reason": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "CTX-12-status-is-derived": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "CLAIM-00-claims-register-exists": {
-        "tag": "PASS",
-        "detail": "docs/CLAIMS.json"
-      },
-      "CLAIM-01-claims-tagged-build-state": {
-        "tag": "FAIL",
-        "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
-      },
-      "CLAIM-02-claims-graded-blast-radius": {
-        "tag": "FAIL",
-        "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
-      },
-      "CLAIM-03-novelty-claims-dated-prior-art": {
-        "tag": "FAIL",
-        "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
-      },
-      "CLAIM-04-citations-resolve-support": {
-        "tag": "WARN",
-        "detail": "no claim records — legacy docs/CLAIMS.json is no longer read; run `baseline gen migrate-claims` (MIGRATION.md)"
-      },
-      "CLAIM-06-specs-carry-acceptance-criteria": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "CLAIM-07-claims-in-per-claim-records": {
-        "tag": "WARN",
-        "detail": "found: docs/CLAIMS.json"
-      },
       "SEC-01-no-committed-secrets": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
@@ -353,81 +197,21 @@
         "tag": "PASS",
         "detail": "none present (good)"
       },
-      "SEC-03-ci-actions-pinned-sha": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-04-no-dangerous-ci-patterns": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-05-dependency-updates-automated": {
-        "tag": "WARN",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
-      },
-      "SEC-06-security-policy-reporting-channel": {
-        "tag": "WARN",
-        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
-      },
-      "SEC-07-no-committed-binaries": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-11-least-privilege-ci-token": {
-        "state": "n/a",
-        "reason": "no workflow files"
-      },
-      "SEC-12-secret-scanning-gate": {
-        "state": "n/a",
-        "reason": "n/a (no applicable target)"
-      },
-      "SEC-14-pre-commit-hooks-pinned": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "GOV-01-merge-protection-active": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
-      "GOV-02-up-to-date-merges-enforced": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
       "GOV-03-codeowners-names-owner": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
       },
-      "COMM-01-license-present": {
-        "tag": "PASS",
-        "detail": "LICENSE"
-      },
-      "COMM-02-readme-newcomer-sections": {
-        "tag": "WARN",
-        "detail": "README.md too short (<400 chars)"
-      },
-      "COMM-03-changelog-has-unreleased": {
-        "tag": "WARN",
-        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
-      },
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "6 file(s) scrub-clean at HEAD"
-      },
-      "REC-05-push-time-gate-committed": {
-        "tag": "WARN",
-        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
-      },
-      "PLUG-01-tdd-pi": {
-        "tag": "WARN",
-        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      "PLUG-01-obsidian-tdd": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
       },
       "PLUG-02-graphify": {
-        "tag": "WARN",
-        "detail": "graphify not found at graphify-out — install: pip install graphify"
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
       },
       "PLUG-03-okf-rag": {
-        "tag": "WARN",
-        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
       }
     }
   },
@@ -436,85 +220,21 @@
     "project_type": "node",
     "packs": [],
     "summary": {
-      "blockers": 2,
-      "pass": 8,
-      "warn": 18,
-      "fail": 2,
+      "blockers": 3,
+      "pass": 2,
+      "warn": 0,
+      "fail": 3,
       "diverged": 0,
-      "total": 28
+      "total": 5
     },
     "rules": {
-      "BUILD-01-dependency-manifest-present": {
-        "tag": "PASS",
-        "detail": "package.json"
-      },
-      "BUILD-02-lockfile-committed": {
-        "tag": "WARN",
-        "detail": "none of: pnpm-lock.yaml, package-lock.json, yarn.lock, poetry.lock, uv.lock"
-      },
       "BUILD-03-ci-workflow-present": {
         "tag": "FAIL",
         "detail": "none of: .github/workflows/*.yml, .github/workflows/*.yaml, .gitlab-ci.yml, .circleci/config.yml, azure-pipelines.yml"
       },
       "BUILD-04-env-template-present": {
-        "tag": "WARN",
-        "detail": "none of: .env.example, .env.sample, .env.template, env.example"
-      },
-      "BUILD-05-task-1-passes-clean": {
-        "tag": "WARN",
-        "detail": "no bootstrap_command configured — the crown check can't run; set it in baseline.config.json"
-      },
-      "BUILD-06-baseline-gate-in-ci": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "BUILD-07-single-bootstrap-entrypoint": {
-        "tag": "WARN",
-        "detail": "none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml"
-      },
-      "BUILD-08-task-commands-declared": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "BUILD-10-ci-runs-tests": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "TEST-01-automated-tests-exist": {
         "tag": "FAIL",
-        "detail": "none of: **/*.test.*, **/*.spec.*, **/*_test.py, **/*_test.go, **/*Test.java"
-      },
-      "TEST-02-failure-paths-tested": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "CTX-03-sources-of-truth-declared": {
-        "tag": "WARN",
-        "detail": "config.sources_of_truth empty"
-      },
-      "CTX-05-no-broken-doc-links": {
-        "tag": "PASS",
-        "detail": "1 doc(s), links resolve"
-      },
-      "CTX-06-docs-carry-freshness-contract": {
-        "state": "n/a",
-        "reason": "config.freshness_globs empty (opt-in)"
-      },
-      "CTX-08-generated-files-marked": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "CTX-09-grounding-docs-exist": {
-        "state": "n/a",
-        "reason": "config.grounding_docs empty (opt-in)"
-      },
-      "CTX-11-docs-not-lagging-code": {
-        "state": "n/a",
-        "reason": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "CTX-12-status-is-derived": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
+        "detail": "none of: .env.example, .env.sample, .env.template, env.example"
       },
       "SEC-01-no-committed-secrets": {
         "tag": "PASS",
@@ -524,157 +244,37 @@
         "tag": "PASS",
         "detail": "none present (good)"
       },
-      "SEC-03-ci-actions-pinned-sha": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-04-no-dangerous-ci-patterns": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-05-dependency-updates-automated": {
-        "tag": "WARN",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
-      },
-      "SEC-06-security-policy-reporting-channel": {
-        "tag": "WARN",
-        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
-      },
-      "SEC-07-no-committed-binaries": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-11-least-privilege-ci-token": {
-        "state": "n/a",
-        "reason": "no workflow files"
-      },
-      "SEC-12-secret-scanning-gate": {
-        "state": "n/a",
-        "reason": "n/a (no applicable target)"
-      },
-      "SEC-14-pre-commit-hooks-pinned": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "GOV-01-merge-protection-active": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
-      "GOV-02-up-to-date-merges-enforced": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
       "GOV-03-codeowners-names-owner": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
       },
-      "COMM-01-license-present": {
-        "tag": "PASS",
-        "detail": "LICENSE"
-      },
-      "COMM-02-readme-newcomer-sections": {
-        "tag": "WARN",
-        "detail": "README.md too short (<400 chars)"
-      },
-      "COMM-03-changelog-has-unreleased": {
-        "tag": "WARN",
-        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
-      },
-      "QUAL-01-linter-configured": {
-        "tag": "WARN",
-        "detail": "none of: eslint.config.js, eslint.config.mjs, eslint.config.cjs, .eslintrc, .eslintrc.* | pattern not found"
-      },
-      "QUAL-02-formatter-configured": {
-        "tag": "WARN",
-        "detail": "none of: .prettierrc, .prettierrc.*, prettier.config.*, rustfmt.toml, .rustfmt.toml | pattern not found"
-      },
-      "QUAL-03-strict-type-checking": {
+      "PLUG-01-obsidian-tdd": {
         "state": "n/a",
-        "reason": "n/a (no applicable target)"
-      },
-      "QUAL-04-linter-enforced": {
-        "state": "n/a",
-        "reason": "n/a (a linter config not present)"
-      },
-      "REPRO-01-ci-installs-frozen": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "REPRO-02-runtime-version-pinned": {
-        "tag": "WARN",
-        "detail": "none of: .tool-versions, .nvmrc, .node-version, .python-version, mise.toml | pattern not found"
-      },
-      "REPRO-03-runtime-pin-consistent": {
-        "state": "n/a",
-        "reason": "runtime pinned in <2 homes (nothing to cross-check)"
-      },
-      "REPRO-04-docker-base-pinned-by-digest": {
-        "state": "n/a",
-        "reason": "docker not detected in the tree (declare want:[\"docker\"] to evaluate anyway)"
-      },
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "4 file(s) scrub-clean at HEAD"
-      },
-      "REC-05-push-time-gate-committed": {
-        "tag": "WARN",
-        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
-      },
-      "PLUG-01-tdd-pi": {
-        "tag": "WARN",
-        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
       },
       "PLUG-02-graphify": {
-        "tag": "WARN",
-        "detail": "graphify not found at graphify-out — install: pip install graphify"
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
       },
       "PLUG-03-okf-rag": {
-        "tag": "WARN",
-        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
       }
     }
   },
   "descriptor-repo": {
-    "exitCode": 0,
+    "exitCode": 1,
     "project_type": "docs",
     "packs": [],
     "summary": {
-      "blockers": 0,
-      "pass": 7,
-      "warn": 10,
-      "fail": 0,
+      "blockers": 1,
+      "pass": 2,
+      "warn": 0,
+      "fail": 1,
       "diverged": 0,
-      "total": 17
+      "total": 3
     },
     "rules": {
-      "CTX-03-sources-of-truth-declared": {
-        "tag": "WARN",
-        "detail": "config.sources_of_truth empty"
-      },
-      "CTX-05-no-broken-doc-links": {
-        "tag": "PASS",
-        "detail": "1 doc(s), links resolve"
-      },
-      "CTX-06-docs-carry-freshness-contract": {
-        "state": "n/a",
-        "reason": "config.freshness_globs empty (opt-in)"
-      },
-      "CTX-08-generated-files-marked": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "CTX-09-grounding-docs-exist": {
-        "state": "n/a",
-        "reason": "config.grounding_docs empty (opt-in)"
-      },
-      "CTX-11-docs-not-lagging-code": {
-        "state": "n/a",
-        "reason": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "CTX-12-status-is-derived": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
       "SEC-01-no-committed-secrets": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
@@ -683,81 +283,21 @@
         "tag": "PASS",
         "detail": "none present (good)"
       },
-      "SEC-03-ci-actions-pinned-sha": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-04-no-dangerous-ci-patterns": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-05-dependency-updates-automated": {
-        "tag": "WARN",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
-      },
-      "SEC-06-security-policy-reporting-channel": {
-        "tag": "WARN",
-        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
-      },
-      "SEC-07-no-committed-binaries": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-11-least-privilege-ci-token": {
-        "state": "n/a",
-        "reason": "no workflow files"
-      },
-      "SEC-12-secret-scanning-gate": {
-        "state": "n/a",
-        "reason": "n/a (no applicable target)"
-      },
-      "SEC-14-pre-commit-hooks-pinned": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "GOV-01-merge-protection-active": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
-      "GOV-02-up-to-date-merges-enforced": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
       "GOV-03-codeowners-names-owner": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
       },
-      "COMM-01-license-present": {
-        "tag": "PASS",
-        "detail": "LICENSE"
-      },
-      "COMM-02-readme-newcomer-sections": {
-        "tag": "WARN",
-        "detail": "README.md too short (<400 chars)"
-      },
-      "COMM-03-changelog-has-unreleased": {
-        "tag": "WARN",
-        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
-      },
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "4 file(s) scrub-clean at HEAD"
-      },
-      "REC-05-push-time-gate-committed": {
-        "tag": "WARN",
-        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
-      },
-      "PLUG-01-tdd-pi": {
-        "tag": "WARN",
-        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      "PLUG-01-obsidian-tdd": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
       },
       "PLUG-02-graphify": {
-        "tag": "WARN",
-        "detail": "graphify not found at graphify-out — install: pip install graphify"
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
       },
       "PLUG-03-okf-rag": {
-        "tag": "WARN",
-        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
       }
     }
   },
@@ -765,66 +305,17 @@
     "exitCode": 1,
     "project_type": "docs",
     "packs": [
-      "advanced",
-      "decisions"
+      "advanced"
     ],
     "summary": {
-      "blockers": 4,
-      "pass": 8,
-      "warn": 14,
-      "fail": 4,
+      "blockers": 1,
+      "pass": 2,
+      "warn": 0,
+      "fail": 1,
       "diverged": 0,
-      "total": 26
+      "total": 3
     },
     "rules": {
-      "CTX-02-decision-status-declared": {
-        "tag": "FAIL",
-        "detail": "0004-dangling.md: superseded w/o forward link"
-      },
-      "CTX-03-sources-of-truth-declared": {
-        "tag": "PASS",
-        "detail": "declared"
-      },
-      "CTX-05-no-broken-doc-links": {
-        "tag": "FAIL",
-        "detail": "1 broken: docs/broken.md→nope/missing.md"
-      },
-      "CTX-06-docs-carry-freshness-contract": {
-        "tag": "WARN",
-        "detail": "stale.md: <N>d old (>180)"
-      },
-      "CTX-07-decision-edges-resolve": {
-        "tag": "PASS",
-        "detail": "2 declared edge(s) resolve"
-      },
-      "CTX-08-generated-files-marked": {
-        "tag": "WARN",
-        "detail": "1 file(s) missing marker: docs/gen/rogue.md"
-      },
-      "CTX-09-grounding-docs-exist": {
-        "tag": "WARN",
-        "detail": "docs/missing-doc.md missing"
-      },
-      "CTX-10-doc-symbols-resolve": {
-        "tag": "WARN",
-        "detail": "1 missing: docs/stale.md: src/gone.js"
-      },
-      "CTX-11-docs-not-lagging-code": {
-        "tag": "PASS",
-        "detail": "1 anchored doc(s) not lagging"
-      },
-      "CTX-12-status-is-derived": {
-        "tag": "FAIL",
-        "detail": "matched in 1 file(s): docs/start-here.md"
-      },
-      "CTX-13-amendment-declared-both-ends": {
-        "tag": "WARN",
-        "detail": "1 one-way amendment(s): 0003-new.md amends ADR 0001; 0001-first.md carries no Amended-by"
-      },
-      "CTX-14-decision-numbers-unique": {
-        "tag": "FAIL",
-        "detail": "1 decision number(s) claimed twice: 0006 claimed by 0006-numbering-again.md, 0006-numbering.md"
-      },
       "SEC-01-no-committed-secrets": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
@@ -833,125 +324,37 @@
         "tag": "PASS",
         "detail": "none present (good)"
       },
-      "SEC-03-ci-actions-pinned-sha": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-04-no-dangerous-ci-patterns": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-05-dependency-updates-automated": {
-        "tag": "WARN",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
-      },
-      "SEC-06-security-policy-reporting-channel": {
-        "tag": "WARN",
-        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
-      },
-      "SEC-07-no-committed-binaries": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-11-least-privilege-ci-token": {
-        "state": "n/a",
-        "reason": "no workflow files"
-      },
-      "SEC-12-secret-scanning-gate": {
-        "state": "n/a",
-        "reason": "n/a (no applicable target)"
-      },
-      "SEC-14-pre-commit-hooks-pinned": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "GOV-01-merge-protection-active": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
-      "GOV-02-up-to-date-merges-enforced": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
       "GOV-03-codeowners-names-owner": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
       },
-      "COMM-01-license-present": {
-        "tag": "PASS",
-        "detail": "LICENSE"
-      },
-      "COMM-02-readme-newcomer-sections": {
-        "tag": "WARN",
-        "detail": "README.md too short (<400 chars)"
-      },
-      "COMM-03-changelog-has-unreleased": {
-        "tag": "WARN",
-        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
-      },
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "17 file(s) scrub-clean at HEAD"
-      },
-      "REC-05-push-time-gate-committed": {
-        "tag": "WARN",
-        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
-      },
-      "PLUG-01-tdd-pi": {
-        "tag": "WARN",
-        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      "PLUG-01-obsidian-tdd": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
       },
       "PLUG-02-graphify": {
-        "tag": "WARN",
-        "detail": "graphify not found at graphify-out — install: pip install graphify"
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
       },
       "PLUG-03-okf-rag": {
-        "tag": "WARN",
-        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
       }
     }
   },
   "jdg-repo": {
-    "exitCode": 0,
+    "exitCode": 1,
     "project_type": "docs",
     "packs": [],
     "summary": {
-      "blockers": 0,
-      "pass": 7,
-      "warn": 10,
-      "fail": 0,
+      "blockers": 1,
+      "pass": 2,
+      "warn": 0,
+      "fail": 1,
       "diverged": 0,
-      "total": 17
+      "total": 3
     },
     "rules": {
-      "CTX-03-sources-of-truth-declared": {
-        "tag": "WARN",
-        "detail": "config.sources_of_truth empty"
-      },
-      "CTX-05-no-broken-doc-links": {
-        "tag": "PASS",
-        "detail": "2 doc(s), links resolve"
-      },
-      "CTX-06-docs-carry-freshness-contract": {
-        "state": "n/a",
-        "reason": "config.freshness_globs empty (opt-in)"
-      },
-      "CTX-08-generated-files-marked": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "CTX-09-grounding-docs-exist": {
-        "state": "n/a",
-        "reason": "config.grounding_docs empty (opt-in)"
-      },
-      "CTX-11-docs-not-lagging-code": {
-        "state": "n/a",
-        "reason": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "CTX-12-status-is-derived": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
       "SEC-01-no-committed-secrets": {
         "tag": "PASS",
         "detail": "pattern not found (good)"
@@ -960,81 +363,21 @@
         "tag": "PASS",
         "detail": "none present (good)"
       },
-      "SEC-03-ci-actions-pinned-sha": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-04-no-dangerous-ci-patterns": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-05-dependency-updates-automated": {
-        "tag": "WARN",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
-      },
-      "SEC-06-security-policy-reporting-channel": {
-        "tag": "WARN",
-        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
-      },
-      "SEC-07-no-committed-binaries": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-11-least-privilege-ci-token": {
-        "state": "n/a",
-        "reason": "no workflow files"
-      },
-      "SEC-12-secret-scanning-gate": {
-        "state": "n/a",
-        "reason": "n/a (no applicable target)"
-      },
-      "SEC-14-pre-commit-hooks-pinned": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "GOV-01-merge-protection-active": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
-      "GOV-02-up-to-date-merges-enforced": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
       "GOV-03-codeowners-names-owner": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
       },
-      "COMM-01-license-present": {
-        "tag": "PASS",
-        "detail": "LICENSE"
-      },
-      "COMM-02-readme-newcomer-sections": {
-        "tag": "WARN",
-        "detail": "README.md too short (<400 chars)"
-      },
-      "COMM-03-changelog-has-unreleased": {
-        "tag": "WARN",
-        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
-      },
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "5 file(s) scrub-clean at HEAD"
-      },
-      "REC-05-push-time-gate-committed": {
-        "tag": "WARN",
-        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
-      },
-      "PLUG-01-tdd-pi": {
-        "tag": "WARN",
-        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      "PLUG-01-obsidian-tdd": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
       },
       "PLUG-02-graphify": {
-        "tag": "WARN",
-        "detail": "graphify not found at graphify-out — install: pip install graphify"
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
       },
       "PLUG-03-okf-rag": {
-        "tag": "WARN",
-        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
       }
     }
   },
@@ -1043,85 +386,21 @@
     "project_type": "node",
     "packs": [],
     "summary": {
-      "blockers": 6,
-      "pass": 6,
-      "warn": 25,
-      "fail": 6,
+      "blockers": 7,
+      "pass": 1,
+      "warn": 0,
+      "fail": 7,
       "diverged": 0,
-      "total": 37
+      "total": 8
     },
     "rules": {
-      "BUILD-01-dependency-manifest-present": {
-        "tag": "PASS",
-        "detail": "package.json"
-      },
-      "BUILD-02-lockfile-committed": {
-        "tag": "WARN",
-        "detail": "none of: pnpm-lock.yaml, package-lock.json, yarn.lock, poetry.lock, uv.lock"
-      },
       "BUILD-03-ci-workflow-present": {
         "tag": "PASS",
         "detail": ".github/workflows/deploy.yml, .github/workflows/loose.yml"
       },
       "BUILD-04-env-template-present": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "none of: .env.example, .env.sample, .env.template, env.example"
-      },
-      "BUILD-05-task-1-passes-clean": {
-        "tag": "FAIL",
-        "detail": "failed: node -e \"process.exit(1)\" — Command failed: node -e \"process.exit(1)\""
-      },
-      "BUILD-06-baseline-gate-in-ci": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "BUILD-07-single-bootstrap-entrypoint": {
-        "tag": "WARN",
-        "detail": "none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml"
-      },
-      "BUILD-08-task-commands-declared": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "BUILD-10-ci-runs-tests": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "TEST-01-automated-tests-exist": {
-        "tag": "FAIL",
-        "detail": "none of: **/*.test.*, **/*.spec.*, **/*_test.py, **/*_test.go, **/*Test.java"
-      },
-      "TEST-02-failure-paths-tested": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "CTX-03-sources-of-truth-declared": {
-        "tag": "WARN",
-        "detail": "config.sources_of_truth empty"
-      },
-      "CTX-05-no-broken-doc-links": {
-        "tag": "FAIL",
-        "detail": "1 broken: notes.md→docs/nope.md"
-      },
-      "CTX-06-docs-carry-freshness-contract": {
-        "state": "n/a",
-        "reason": "config.freshness_globs empty (opt-in)"
-      },
-      "CTX-08-generated-files-marked": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "CTX-09-grounding-docs-exist": {
-        "state": "n/a",
-        "reason": "config.grounding_docs empty (opt-in)"
-      },
-      "CTX-11-docs-not-lagging-code": {
-        "state": "n/a",
-        "reason": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "CTX-12-status-is-derived": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
       },
       "SEC-01-no-committed-secrets": {
         "tag": "FAIL",
@@ -1131,112 +410,20 @@
         "tag": "FAIL",
         "detail": "found: .env"
       },
-      "SEC-03-ci-actions-pinned-sha": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "SEC-04-no-dangerous-ci-patterns": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "SEC-05-dependency-updates-automated": {
-        "tag": "WARN",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc | pattern not found"
-      },
-      "SEC-06-security-policy-reporting-channel": {
-        "tag": "WARN",
-        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
-      },
-      "SEC-07-no-committed-binaries": {
-        "tag": "WARN",
-        "detail": "found: tool.exe"
-      },
-      "SEC-11-least-privilege-ci-token": {
-        "tag": "WARN",
-        "detail": "deploy.yml: top-level grants a write scope (top-level should be read); loose.yml: a job grants permissions: write-all"
-      },
-      "SEC-12-secret-scanning-gate": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "SEC-14-pre-commit-hooks-pinned": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "GOV-01-merge-protection-active": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
-      "GOV-02-up-to-date-merges-enforced": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
       "GOV-03-codeowners-names-owner": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
       },
-      "COMM-01-license-present": {
+      "PLUG-01-obsidian-tdd": {
         "tag": "FAIL",
-        "detail": "none of: LICENSE, LICENSE.*, LICENCE, LICENCE.*, COPYING"
-      },
-      "COMM-02-readme-newcomer-sections": {
-        "tag": "WARN",
-        "detail": "file absent: README.md, README.rst, readme.md"
-      },
-      "COMM-03-changelog-has-unreleased": {
-        "tag": "WARN",
-        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
-      },
-      "QUAL-01-linter-configured": {
-        "tag": "WARN",
-        "detail": "none of: eslint.config.js, eslint.config.mjs, eslint.config.cjs, .eslintrc, .eslintrc.* | pattern not found"
-      },
-      "QUAL-02-formatter-configured": {
-        "tag": "WARN",
-        "detail": "none of: .prettierrc, .prettierrc.*, prettier.config.*, rustfmt.toml, .rustfmt.toml | pattern not found"
-      },
-      "QUAL-03-strict-type-checking": {
-        "state": "n/a",
-        "reason": "n/a (no applicable target)"
-      },
-      "QUAL-04-linter-enforced": {
-        "state": "n/a",
-        "reason": "n/a (a linter config not present)"
-      },
-      "REPRO-01-ci-installs-frozen": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "REPRO-02-runtime-version-pinned": {
-        "tag": "PASS",
-        "detail": ".nvmrc"
-      },
-      "REPRO-03-runtime-pin-consistent": {
-        "tag": "WARN",
-        "detail": "DRIFT node: .nvmrc=18, Dockerfile=20"
-      },
-      "REPRO-04-docker-base-pinned-by-digest": {
-        "tag": "WARN",
-        "detail": "Dockerfile: FROM node:20"
-      },
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "WARN",
-        "detail": "deterministic secret shape(s): .env:2 github-token (ghp_…89) [scrub-<sha>]; config.js:1 aws-access-key-id (AKIA…EY) [scrub-<sha>]"
-      },
-      "REC-05-push-time-gate-committed": {
-        "tag": "WARN",
-        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
-      },
-      "PLUG-01-tdd-pi": {
-        "tag": "WARN",
-        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+        "detail": "obsidian-tdd not found at tdd.json — install: npm i -g obsidian-tdd"
       },
       "PLUG-02-graphify": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "graphify not found at graphify-out — install: pip install graphify"
       },
       "PLUG-03-okf-rag": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
       }
     }
@@ -1249,21 +436,13 @@
     ],
     "summary": {
       "blockers": 0,
-      "pass": 35,
-      "warn": 12,
+      "pass": 5,
+      "warn": 0,
       "fail": 0,
       "diverged": 0,
-      "total": 47
+      "total": 5
     },
     "rules": {
-      "BUILD-01-dependency-manifest-present": {
-        "tag": "PASS",
-        "detail": "package.json"
-      },
-      "BUILD-02-lockfile-committed": {
-        "tag": "PASS",
-        "detail": "package-lock.json"
-      },
       "BUILD-03-ci-workflow-present": {
         "tag": "PASS",
         "detail": ".github/workflows/ci.yml"
@@ -1271,78 +450,6 @@
       "BUILD-04-env-template-present": {
         "tag": "PASS",
         "detail": ".env.example"
-      },
-      "BUILD-05-task-1-passes-clean": {
-        "tag": "PASS",
-        "detail": "exit 0: node -e \"process.exit(0)\""
-      },
-      "BUILD-06-baseline-gate-in-ci": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "BUILD-07-single-bootstrap-entrypoint": {
-        "tag": "WARN",
-        "detail": "none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml"
-      },
-      "BUILD-08-task-commands-declared": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "BUILD-09-bootstrap-is-idempotent": {
-        "tag": "PASS",
-        "detail": "exit 0 x2: node -e \"process.exit(0)\""
-      },
-      "BUILD-10-ci-runs-tests": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "TEST-01-automated-tests-exist": {
-        "tag": "PASS",
-        "detail": "test/basic.test.js"
-      },
-      "TEST-02-failure-paths-tested": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "TEST-05-mutation-testing-gated": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "TEST-07-coverage-floor-enforced": {
-        "tag": "WARN",
-        "detail": "pattern not found | pattern not found"
-      },
-      "CTX-03-sources-of-truth-declared": {
-        "tag": "WARN",
-        "detail": "config.sources_of_truth empty"
-      },
-      "CTX-05-no-broken-doc-links": {
-        "tag": "PASS",
-        "detail": "3 doc(s), links resolve"
-      },
-      "CTX-06-docs-carry-freshness-contract": {
-        "state": "n/a",
-        "reason": "config.freshness_globs empty (opt-in)"
-      },
-      "CTX-08-generated-files-marked": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "CTX-09-grounding-docs-exist": {
-        "state": "n/a",
-        "reason": "config.grounding_docs empty (opt-in)"
-      },
-      "CTX-10-doc-symbols-resolve": {
-        "state": "n/a",
-        "reason": "no path-like symbols found"
-      },
-      "CTX-11-docs-not-lagging-code": {
-        "state": "n/a",
-        "reason": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "CTX-12-status-is-derived": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
       },
       "SEC-01-no-committed-secrets": {
         "tag": "PASS",
@@ -1352,129 +459,21 @@
         "tag": "PASS",
         "detail": "none present (good)"
       },
-      "SEC-03-ci-actions-pinned-sha": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "SEC-04-no-dangerous-ci-patterns": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "SEC-05-dependency-updates-automated": {
-        "tag": "PASS",
-        "detail": ".github/dependabot.yml"
-      },
-      "SEC-06-security-policy-reporting-channel": {
-        "tag": "PASS",
-        "detail": "SECURITY.md ok"
-      },
-      "SEC-07-no-committed-binaries": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-08-sbom-committed": {
-        "tag": "WARN",
-        "detail": "none of: **/*.cdx.json, **/bom.json, **/cyclonedx.json, **/*.spdx.json, **/sbom.json"
-      },
-      "SEC-09-code-scanning-configured": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "SEC-10-release-provenance-present": {
-        "tag": "WARN",
-        "detail": "pattern not found | none of: **/*.intoto.jsonl, **/*.sigstore, **/*.sig"
-      },
-      "SEC-11-least-privilege-ci-token": {
-        "tag": "PASS",
-        "detail": "1 workflow(s) least-privilege"
-      },
-      "SEC-12-secret-scanning-gate": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "SEC-13-dependency-vulnerability-scan": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "SEC-14-pre-commit-hooks-pinned": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
-      },
-      "GOV-01-merge-protection-active": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
-      "GOV-02-up-to-date-merges-enforced": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
       "GOV-03-codeowners-names-owner": {
         "tag": "PASS",
         "detail": "CODEOWNERS ok"
       },
-      "COMM-01-license-present": {
-        "tag": "PASS",
-        "detail": "LICENSE"
-      },
-      "COMM-02-readme-newcomer-sections": {
-        "tag": "WARN",
-        "detail": "README.md too short (<400 chars)"
-      },
-      "COMM-03-changelog-has-unreleased": {
-        "tag": "PASS",
-        "detail": "CHANGELOG.md ok"
-      },
-      "QUAL-01-linter-configured": {
-        "tag": "PASS",
-        "detail": "eslint.config.js"
-      },
-      "QUAL-02-formatter-configured": {
-        "tag": "PASS",
-        "detail": ".prettierrc"
-      },
-      "QUAL-03-strict-type-checking": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "QUAL-04-linter-enforced": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "REPRO-01-ci-installs-frozen": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "REPRO-02-runtime-version-pinned": {
-        "tag": "PASS",
-        "detail": ".nvmrc"
-      },
-      "REPRO-03-runtime-pin-consistent": {
-        "tag": "PASS",
-        "detail": "pins consistent across 1 language(s)"
-      },
-      "REPRO-04-docker-base-pinned-by-digest": {
-        "tag": "PASS",
-        "detail": "1 Dockerfile(s) digest-pinned"
-      },
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "20 file(s) scrub-clean at HEAD"
-      },
-      "REC-05-push-time-gate-committed": {
-        "tag": "WARN",
-        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
-      },
-      "PLUG-01-tdd-pi": {
-        "tag": "WARN",
-        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+      "PLUG-01-obsidian-tdd": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
       },
       "PLUG-02-graphify": {
-        "tag": "WARN",
-        "detail": "graphify not found at graphify-out — install: pip install graphify"
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
       },
       "PLUG-03-okf-rag": {
-        "tag": "WARN",
-        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
       }
     }
   },
@@ -1487,16 +486,6 @@
     "relief": null,
     "findings": [
       {
-        "key": "baseline:BUILD-01-dependency-manifest-present:main",
-        "id": "BUILD-01-dependency-manifest-present",
-        "detail": "none of: package.json, pyproject.toml, go.mod, Cargo.toml, build.gradle*"
-      },
-      {
-        "key": "baseline:BUILD-02-lockfile-committed:main",
-        "id": "BUILD-02-lockfile-committed",
-        "detail": "none of: pnpm-lock.yaml, package-lock.json, yarn.lock, poetry.lock, uv.lock"
-      },
-      {
         "key": "baseline:BUILD-03-ci-workflow-present:main",
         "id": "BUILD-03-ci-workflow-present",
         "detail": "none of: .github/workflows/*.yml, .github/workflows/*.yaml, .gitlab-ci.yml, .circleci/config.yml, azure-pipelines.yml"
@@ -1507,79 +496,9 @@
         "detail": "none of: .env.example, .env.sample, .env.template, env.example"
       },
       {
-        "key": "baseline:BUILD-07-single-bootstrap-entrypoint:main",
-        "id": "BUILD-07-single-bootstrap-entrypoint",
-        "detail": "none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml"
-      },
-      {
-        "key": "baseline:TEST-01-automated-tests-exist:main",
-        "id": "TEST-01-automated-tests-exist",
-        "detail": "none of: **/*.test.*, **/*.spec.*, **/*_test.py, **/*_test.go, **/*Test.java"
-      },
-      {
-        "key": "baseline:CTX-03-sources-of-truth-declared:main",
-        "id": "CTX-03-sources-of-truth-declared",
-        "detail": "config.sources_of_truth empty"
-      },
-      {
-        "key": "baseline:SEC-05-dependency-updates-automated:main",
-        "id": "SEC-05-dependency-updates-automated",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
-      },
-      {
-        "key": "baseline:SEC-06-security-policy-reporting-channel:main",
-        "id": "SEC-06-security-policy-reporting-channel",
-        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
-      },
-      {
-        "key": "baseline:GOV-01-merge-protection-active:main",
-        "id": "GOV-01-merge-protection-active",
-        "detail": "no active merge protection on main (rules: none; protected flag false) — anyone can force-push or merge red; create a ruleset requiring the baseline checks"
-      },
-      {
-        "key": "baseline:GOV-02-up-to-date-merges-enforced:main",
-        "id": "GOV-02-up-to-date-merges-enforced",
-        "detail": "no active protection on main — strict up-to-date and conversation resolution are unset"
-      },
-      {
         "key": "baseline:GOV-03-codeowners-names-owner:main",
         "id": "GOV-03-codeowners-names-owner",
         "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
-      },
-      {
-        "key": "baseline:COMM-01-license-present:main",
-        "id": "COMM-01-license-present",
-        "detail": "none of: LICENSE, LICENSE.*, LICENCE, LICENCE.*, COPYING"
-      },
-      {
-        "key": "baseline:COMM-02-readme-newcomer-sections:main",
-        "id": "COMM-02-readme-newcomer-sections",
-        "detail": "README.md too short (<400 chars)"
-      },
-      {
-        "key": "baseline:COMM-03-changelog-has-unreleased:main",
-        "id": "COMM-03-changelog-has-unreleased",
-        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
-      },
-      {
-        "key": "baseline:QUAL-01-linter-configured:main",
-        "id": "QUAL-01-linter-configured",
-        "detail": "none of: eslint.config.js, eslint.config.mjs, eslint.config.cjs, .eslintrc, .eslintrc.*"
-      },
-      {
-        "key": "baseline:QUAL-02-formatter-configured:main",
-        "id": "QUAL-02-formatter-configured",
-        "detail": "none of: .prettierrc, .prettierrc.*, prettier.config.*, rustfmt.toml, .rustfmt.toml"
-      },
-      {
-        "key": "baseline:REPRO-02-runtime-version-pinned:main",
-        "id": "REPRO-02-runtime-version-pinned",
-        "detail": "none of: .tool-versions, .nvmrc, .node-version, .python-version, mise.toml"
-      },
-      {
-        "key": "baseline:REC-05-push-time-gate-committed:main",
-        "id": "REC-05-push-time-gate-committed",
-        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
       },
       {
         "key": "baseline:JDG-0001:stale-accepted-thing",
@@ -1590,14 +509,6 @@
     "actions": [
       {
         "action": "file",
-        "key": "baseline:BUILD-01-dependency-manifest-present:main"
-      },
-      {
-        "action": "file",
-        "key": "baseline:BUILD-02-lockfile-committed:main"
-      },
-      {
-        "action": "file",
         "key": "baseline:BUILD-03-ci-workflow-present:main"
       },
       {
@@ -1606,31 +517,11 @@
       },
       {
         "action": "file",
-        "key": "baseline:BUILD-07-single-bootstrap-entrypoint:main"
+        "key": "baseline:GOV-03-codeowners-names-owner:main"
       },
       {
         "action": "file",
-        "key": "baseline:COMM-01-license-present:main"
-      },
-      {
-        "action": "file",
-        "key": "baseline:COMM-02-readme-newcomer-sections:main"
-      },
-      {
-        "action": "file",
-        "key": "baseline:COMM-03-changelog-has-unreleased:main"
-      },
-      {
-        "action": "file",
-        "key": "baseline:CTX-03-sources-of-truth-declared:main"
-      },
-      {
-        "action": "file",
-        "key": "baseline:GOV-01-merge-protection-active:main"
-      },
-      {
-        "action": "file",
-        "key": "baseline:rollup:main"
+        "key": "baseline:JDG-0001:stale-accepted-thing"
       }
     ],
     "mutations": [
@@ -1658,54 +549,19 @@
         "mode": "dry",
         "ok": true,
         "action": "file"
-      },
-      {
-        "mode": "dry",
-        "ok": true,
-        "action": "file"
-      },
-      {
-        "mode": "dry",
-        "ok": true,
-        "action": "file"
-      },
-      {
-        "mode": "dry",
-        "ok": true,
-        "action": "file"
-      },
-      {
-        "mode": "dry",
-        "ok": true,
-        "action": "file"
-      },
-      {
-        "mode": "dry",
-        "ok": true,
-        "action": "file"
-      },
-      {
-        "mode": "dry",
-        "ok": true,
-        "action": "file"
-      },
-      {
-        "mode": "dry",
-        "ok": true,
-        "action": "file"
       }
     ],
     "summary": {
       "mode": "dry-run",
-      "findings": 20,
-      "actions": 11,
-      "delivered": 11,
+      "findings": 4,
+      "actions": 4,
+      "delivered": 4,
       "failed": 0,
-      "pass": 6,
-      "warn": 15,
-      "fail": 4,
+      "pass": 2,
+      "warn": 0,
+      "fail": 3,
       "diverged": 0,
-      "rules": 25,
+      "rules": 5,
       "jdg": {
         "records": 1,
         "swept": 1,
@@ -1730,22 +586,14 @@
       "service"
     ],
     "summary": {
-      "blockers": 1,
-      "pass": 18,
-      "warn": 17,
-      "fail": 1,
+      "blockers": 2,
+      "pass": 3,
+      "warn": 0,
+      "fail": 2,
       "diverged": 0,
-      "total": 36
+      "total": 5
     },
     "rules": {
-      "BUILD-01-dependency-manifest-present": {
-        "tag": "PASS",
-        "detail": "package.json"
-      },
-      "BUILD-02-lockfile-committed": {
-        "tag": "PASS",
-        "detail": "package-lock.json"
-      },
       "BUILD-03-ci-workflow-present": {
         "tag": "FAIL",
         "detail": "none of: .github/workflows/*.yml, .github/workflows/*.yaml, .gitlab-ci.yml, .circleci/config.yml, azure-pipelines.yml"
@@ -1753,62 +601,6 @@
       "BUILD-04-env-template-present": {
         "tag": "PASS",
         "detail": ".env.example"
-      },
-      "BUILD-05-task-1-passes-clean": {
-        "tag": "PASS",
-        "detail": "exit 0: node -e \"process.exit(0)\""
-      },
-      "BUILD-06-baseline-gate-in-ci": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "BUILD-07-single-bootstrap-entrypoint": {
-        "tag": "WARN",
-        "detail": "none of: bin/setup, script/setup, scripts/setup*, Makefile, Taskfile.yml"
-      },
-      "BUILD-08-task-commands-declared": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "BUILD-10-ci-runs-tests": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "TEST-01-automated-tests-exist": {
-        "tag": "PASS",
-        "detail": "test/smoke.test.js"
-      },
-      "TEST-02-failure-paths-tested": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "CTX-03-sources-of-truth-declared": {
-        "tag": "WARN",
-        "detail": "config.sources_of_truth empty"
-      },
-      "CTX-05-no-broken-doc-links": {
-        "tag": "PASS",
-        "detail": "2 doc(s), links resolve"
-      },
-      "CTX-06-docs-carry-freshness-contract": {
-        "state": "n/a",
-        "reason": "config.freshness_globs empty (opt-in)"
-      },
-      "CTX-08-generated-files-marked": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "CTX-09-grounding-docs-exist": {
-        "state": "n/a",
-        "reason": "config.grounding_docs empty (opt-in)"
-      },
-      "CTX-11-docs-not-lagging-code": {
-        "state": "n/a",
-        "reason": "no docs declare a frontmatter sources: list (opt-in)"
-      },
-      "CTX-12-status-is-derived": {
-        "tag": "PASS",
-        "detail": "pattern not found (good)"
       },
       "SEC-01-no-committed-secrets": {
         "tag": "PASS",
@@ -1818,141 +610,21 @@
         "tag": "PASS",
         "detail": "none present (good)"
       },
-      "SEC-03-ci-actions-pinned-sha": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-04-no-dangerous-ci-patterns": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "SEC-05-dependency-updates-automated": {
-        "tag": "WARN",
-        "detail": "none of: .github/dependabot.yml, .github/dependabot.yaml, renovate.json, .github/renovate.json, .renovaterc"
-      },
-      "SEC-06-security-policy-reporting-channel": {
-        "tag": "WARN",
-        "detail": "file absent: SECURITY.md, docs/SECURITY.md, .github/SECURITY.md"
-      },
-      "SEC-07-no-committed-binaries": {
-        "tag": "PASS",
-        "detail": "none present (good)"
-      },
-      "SEC-11-least-privilege-ci-token": {
-        "state": "n/a",
-        "reason": "no workflow files"
-      },
-      "SEC-12-secret-scanning-gate": {
-        "state": "n/a",
-        "reason": "n/a (no applicable target)"
-      },
-      "SEC-14-pre-commit-hooks-pinned": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "GOV-01-merge-protection-active": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
-      "GOV-02-up-to-date-merges-enforced": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
       "GOV-03-codeowners-names-owner": {
-        "tag": "WARN",
+        "tag": "FAIL",
         "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
       },
-      "COMM-01-license-present": {
-        "tag": "PASS",
-        "detail": "LICENSE"
-      },
-      "COMM-02-readme-newcomer-sections": {
-        "tag": "WARN",
-        "detail": "README.md too short (<400 chars)"
-      },
-      "COMM-03-changelog-has-unreleased": {
-        "tag": "WARN",
-        "detail": "file absent: CHANGELOG.md, CHANGELOG, docs/CHANGELOG.md"
-      },
-      "QUAL-01-linter-configured": {
-        "tag": "WARN",
-        "detail": "none of: eslint.config.js, eslint.config.mjs, eslint.config.cjs, .eslintrc, .eslintrc.* | pattern not found"
-      },
-      "QUAL-02-formatter-configured": {
-        "tag": "WARN",
-        "detail": "none of: .prettierrc, .prettierrc.*, prettier.config.*, rustfmt.toml, .rustfmt.toml | pattern not found"
-      },
-      "QUAL-03-strict-type-checking": {
+      "PLUG-01-obsidian-tdd": {
         "state": "n/a",
-        "reason": "n/a (no applicable target)"
-      },
-      "QUAL-04-linter-enforced": {
-        "state": "n/a",
-        "reason": "n/a (a linter config not present)"
-      },
-      "REPRO-01-ci-installs-frozen": {
-        "state": "n/a",
-        "reason": "no files to scan"
-      },
-      "REPRO-02-runtime-version-pinned": {
-        "tag": "WARN",
-        "detail": "none of: .tool-versions, .nvmrc, .node-version, .python-version, mise.toml | pattern not found"
-      },
-      "REPRO-03-runtime-pin-consistent": {
-        "state": "n/a",
-        "reason": "runtime pinned in <2 homes (nothing to cross-check)"
-      },
-      "REPRO-04-docker-base-pinned-by-digest": {
-        "tag": "PASS",
-        "detail": "1 Dockerfile(s) digest-pinned"
-      },
-      "OPS-01-structured-logging-wired": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "OPS-02-health-endpoint-exists": {
-        "tag": "WARN",
-        "detail": "pattern not found"
-      },
-      "OPS-03-graceful-shutdown-on-sigterm": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "OPS-04-outbound-calls-guarded": {
-        "tag": "PASS",
-        "detail": "matched in 1 file(s)"
-      },
-      "OPS-05-runbook-exists": {
-        "tag": "WARN",
-        "detail": "file absent: runbooks/**/*.md, docs/runbooks/**/*.md, RUNBOOK.md"
-      },
-      "OPS-06-service-declares-owner-lifecycle": {
-        "tag": "PASS",
-        "detail": "catalog-info.yaml ok"
-      },
-      "OPS-07-reconcile-cron-alive": {
-        "state": "n/a",
-        "reason": "forge not consulted"
-      },
-      "REC-02-committed-tree-scrub-clean": {
-        "tag": "PASS",
-        "detail": "12 file(s) scrub-clean at HEAD"
-      },
-      "REC-05-push-time-gate-committed": {
-        "tag": "WARN",
-        "detail": "no push-time secret gate committed at rest — commit a gitleaks config or hooks/scrub-pre-push.sh (+ per-clone install); CI/pre-commit scanning is a separate rule"
-      },
-      "PLUG-01-tdd-pi": {
-        "tag": "WARN",
-        "detail": "tdd-pi not found at tdd.json — install: npm i -g tdd-pi"
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
       },
       "PLUG-02-graphify": {
-        "tag": "WARN",
-        "detail": "graphify not found at graphify-out — install: pip install graphify"
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
       },
       "PLUG-03-okf-rag": {
-        "tag": "WARN",
-        "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
       }
     }
   }

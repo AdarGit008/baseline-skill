@@ -2,7 +2,7 @@
 // §11 D7/D8/D12; red tests surface V29, decisions V37, seams V24/V25, plugins V39/V41/V42).
 //
 //   repo:      <name> @ <HEAD> (<branch>) · pulled | not pulled (<why>)
-//   work:      tdd.json present · tracked · 2h old            (tdd-pi's artifact)
+//   work:      tdd.json present · tracked · 2h old            (obsidian-tdd's artifact)
 //   graph:     graphify-out/ present · ignored · 3d old        (graphify's artifact)
 //   knowledge: okf bundle present                              (okf-rag's bundle)
 //   score:     0 blockers · 4 advisory                         (check, in-process)
@@ -10,9 +10,10 @@
 // Step 0 is `git pull --ff-only --quiet` — orient's ONLY network act (D5). A pull that
 // cannot happen (no git, no origin, unreachable, diverged, local changes) degrades to a
 // note and the survey still prints; nothing else touches git's state: no stash, no
-// commit, no other write. After the pull orient touches no forge and never spawns gh
-// (D12): the score is `check`'s own pipeline run in-process with the forge closed, so
-// GOV-01/02 and OPS-07 resolve n/a "forge not consulted" exactly as they do under check.
+// commit, no other write. After the pull orient touches no forge and never spawns gh —
+// and since the v4 rule-set cut that is STRUCTURAL, not a flag: GOV-01, GOV-02 and OPS-07
+// are deleted along with the forge seam itself, so the score is `check`'s own pipeline run
+// in-process over repo files, with no plane left to close.
 //
 // The three plugin lines are METADATA (D7): presence, file-or-dir, git's tracked/ignored
 // answer and the artifact's mtime — probePlugin never opens tdd.json or anything under
@@ -24,7 +25,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { makeOpt, sanitizeTTY, nowUTC } from './util.mjs'
 import { pluginSpec, probePlugin, LOG_DIR } from './plugins.mjs'
-import { scoreRepo, FORGE_CLOSED } from './check-run.mjs'
+import { scoreRepo } from './check-run.mjs'
 
 const LABELS = ['repo', 'work', 'graph', 'knowledge', 'score']
 const LABELW = Math.max(...LABELS.map(l => l.length)) + 2 // "knowledge: " sets the column
@@ -128,10 +129,10 @@ export async function runOrient(argv) {
   const pull = pullFirst(REPO)
   if (!pull.pulled) notes.push(`not pulled: ${pull.reason} (git pull --ff-only)`)
 
-  // the score: check's pipeline, in-process, forge closed, no exec — and no trace left
+  // the score: check's pipeline, in-process, no exec — and no trace left
   const restoreLogs = shieldPluginLogs(REPO)
   let scored = null, scoreErr = null
-  try { scored = scoreRepo(REPO, { noExec: true, forgeClosed: FORGE_CLOSED }) }
+  try { scored = scoreRepo(REPO, { noExec: true }) }
   catch (e) { scoreErr = String(e?.message || e) }
   finally { restoreLogs() }
   const cfg = scored?.cfgRes?.cfg ?? null
@@ -144,7 +145,7 @@ export async function runOrient(argv) {
   if (branch === 'HEAD') branch = '(detached)'
 
   // the plugin lines — metadata only
-  const work = artifactFacts(REPO, cfg, 'tdd-pi', nowMs)
+  const work = artifactFacts(REPO, cfg, 'obsidian-tdd', nowMs)
   const graph = artifactFacts(REPO, cfg, 'graphify', nowMs)
   if (graph.state === 'absent') suggestions.push(`no knowledge graph at ${graph.shown ?? 'graphify-out/'} — build one with graphify (orientation reads only its age)`)
   // the bundle is a path outside the repo more often than not: exists, and nothing else

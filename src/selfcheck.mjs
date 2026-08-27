@@ -14,10 +14,12 @@ export const SLUG_OF = id => String(id).replace(/^[A-Z]+-\d{2}-?/, '')
 // absence resolves the rule n/a (V17) and whose declaration in config `want` brings it back
 // (V20). ONE place: the engine's scope detector (WP3) and the `want` validator import it from
 // here. The set grows only with a rule that declares the new value (orphan-tool law below).
-export const TOOLS = Object.freeze(['docker'])
+export const TOOLS = Object.freeze([]) // the tool vocabulary is empty: REPRO-04 (the only docker rule) was deleted with the v4 rule-set cut
 // A check kind whose subject IS a tool's artifact must be declared on the rule, so `want`
 // can reach it and an absent tool mutes it — a kind added here binds every rule using it.
-export const TOOL_OF_KIND = Object.freeze({ 'dockerfile-digest': 'docker' })
+// Empty since the v4 cut: dockerfile-digest went with REPRO-04, and the tool vocabulary
+// (TOOLS, above) is empty with it. The map stays as the one home for the kind->tool join.
+export const TOOL_OF_KIND = Object.freeze({})
 
 export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, color }) {
   const problems = []
@@ -85,7 +87,6 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, color }) {
     // M4c review ruling, carried into v3 §5: the CLAIM family is uniformly opt-in — a claims
     // rule outside the claims pack would fire on repos that never opted into claims discipline
     // (the CLAIM-06 wallpaper class, fixed once, kept fixed here as a pack law).
-    if (r.category === 'claims' && r.pack !== 'claims') problems.push(`${curId}: claims-category rules must carry pack:claims (uniform family opt-in)`)
     checkKinds(r.check)
     // a kind that reads a tool's artifact binds the rule to that tool (V17/V20 reach it by the field)
     for (const k of kindsSeen) {

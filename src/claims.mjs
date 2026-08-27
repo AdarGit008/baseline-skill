@@ -26,11 +26,18 @@ export function loadClaimRecords(repo) {
   return { claims, errors }
 }
 
+// Where the V1 monolith lived. This was `config.claims_file` until the v4 rule-set cut
+// deleted the CLAIM family and retired the key: the ONE consumer left is
+// `gen migrate-claims`, a one-shot migration with no rule behind it, so the default lives
+// here rather than in every repo's resolved config. An explicit claims_file in a config is
+// still honoured (a repo mid-migration may have moved it).
+export const LEGACY_CLAIMS_FILE = 'docs/CLAIMS.json'
+
 // The V1 monolith reader — `gen migrate-claims`'s input, NOT a checker path.
 // -> { present, claims, error }. present=false when the monolith doesn't exist;
 // error set when it exists but can't be read as {claims:[...]}.
 export function loadLegacyClaims(repo, cfg) {
-  const f = cfg.claims_file
+  const f = cfg.claims_file === undefined ? LEGACY_CLAIMS_FILE : cfg.claims_file
   if (!f || typeof f !== 'string') return { present: false, claims: [], error: null } // claims_file:false is absence, not JSON.parse(false)
   const raw = repo.read(f)
   if (raw == null) return { present: false, claims: [], error: null }
@@ -46,6 +53,7 @@ export function loadLegacyClaims(repo, cfg) {
 // instead of reporting "no claims" while its register sits in the old home.
 export function loadClaims(repo, cfg) {
   const rec = loadClaimRecords(repo)
-  const legacyPresent = typeof cfg.claims_file === 'string' && (repo.FILES.includes(cfg.claims_file) || repo.match(cfg.claims_file).length > 0)
+  const lf = cfg.claims_file === undefined ? LEGACY_CLAIMS_FILE : cfg.claims_file
+  const legacyPresent = typeof lf === 'string' && (repo.FILES.includes(lf) || repo.match(lf).length > 0)
   return { claims: rec.claims, recordCount: rec.claims.length, legacyPresent, errors: rec.errors }
 }

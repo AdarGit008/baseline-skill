@@ -4,7 +4,7 @@
 standard packaged for Claude Code, Hermes and compatible agents. The canonical toolkit is
 `check.mjs` (runner) + `rules.json` manifest + `rules/` (the rule set, one module per
 category — `node check.mjs --self-check` prints its size and coverage). v3: always-on
-blockers fail CI, packs switch on explicitly, three plugins (tdd-pi · graphify · okf-rag)
+blockers fail CI, packs switch on explicitly, three plugins (obsidian-tdd · graphify · okf-rag)
 are suggested and never required.
 
 **Current state.** Stable. This repo ships the standard rather than being a buildable

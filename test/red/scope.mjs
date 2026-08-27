@@ -70,23 +70,25 @@ const DOCS_RULE_BUDGET = 35
   ok(!/\bSKIP\b/.test(human.stdout), 'V17 · the human render prints no SKIP line')
   ok(!/\bn\/a\b/.test(human.stdout), 'V17 · the human render prints no n/a tally')
 
-  // the concrete case: no Dockerfile in the tree -> the docker-subject rules are absent.
-  // D13: the subject is the rule's own field, and REPRO-04 is the exemplar (V36 keeps it
-  // as the n/a exemplar too), so it is asserted by name before the set is used.
+  // The concrete case USED to be docker: no Dockerfile -> REPRO-04 n/a. The v4 cut deleted
+  // REPRO-04, and with it the only member of the tool vocabulary, so the scope mechanism is
+  // now proven EMPTY rather than exercised — the stronger claim to pin while it has no
+  // members, and the one that catches a rule quietly re-growing a `tool` field.
   const repro04 = rules.find(x => base(x.id) === 'REPRO-04')
-  ok(repro04?.tool === 'docker',
-    `V17 · REPRO-04 declares "tool": "docker" as a rule field (D13) — got ${JSON.stringify(repro04?.tool)}`)
+  ok(!repro04, `V17 · REPRO-04 is deleted — the docker category went with it (${repro04?.id ?? 'gone'})`)
   const dockerRules = toolRules('docker', /dockerfile/i)
-  ok(dockerRules.length > 0, `V17 · the rule set has docker-subject rules to test with (${dockerRules.join(', ')})`)
+  ok(dockerRules.length === 0, `V17 · no rule is docker-subject any more (${dockerRules.join(', ') || '—'})`)
+  const scoped = rules.filter(x => x.tool != null).map(x => `${x.id}:${x.tool}`)
+  ok(scoped.length === 0, `V17 · no rule declares a "tool" at all — the vocabulary is empty (${scoped.join(', ') || '—'})`)
   const leaked = [...evalIds(r.j)].filter(id => dockerRules.includes(base(id)))
   ok(leaked.length === 0, `V17 · docker rules are not evaluated with no Dockerfile (${leaked.join(', ') || '—'})`)
 
-  // and a tool that IS present keeps its rules — n/a must not be a blanket mute
+  // and a Dockerfile in the tree brings nothing back, because nothing is keyed on it
   const withDocker = mkrepo('v17-docker', { ...DOCS_ONLY(), Dockerfile: 'FROM node:22\n' })
   const rd = checkJson(withDocker)
   const kept = [...evalIds(rd.j)].filter(id => dockerRules.includes(base(id)))
-  ok(kept.length === dockerRules.length,
-    `V17 · a present Dockerfile brings its rules back (${kept.length}/${dockerRules.length})`)
+  ok(kept.length === dockerRules.length && kept.length === 0,
+    `V17 · a present Dockerfile brings nothing back — there is no rule to bring (${kept.length}/${dockerRules.length})`)
 }
 
 // ---------- V18: a docs-only repo evaluates under 35 rules ----------
@@ -140,48 +142,54 @@ const DOCS_RULE_BUDGET = 35
   let j3 = null; try { j3 = JSON.parse(r3.stdout) } catch {}
   ok(strip(j3) === strip(r.j), 'V19 · the answer does not depend on the process cwd')
 
-  // D12 (§11, V42): the forge is closed under check, and the forge-sourced rules are not
-  // MISSING from the payload — they are the n/a rows. plugins.mjs owns the reason string
-  // and the orient half; this is the one check-side existence assertion, on a fixture
-  // where the service pack is active so OPS-07 has a row to resolve at all.
+  // D12 closed the forge under check; the v4 cut DELETED the seam. The forge-sourced rules
+  // are not n/a rows any more, they are not rows at all — and no rule declares the plane.
+  // plugins.mjs (V42) owns the orient half and the src/-level assertions.
   const forgeDir = mkrepo('v19-forge', { ...CLEAN_NODE(), 'baseline.config.json': JSON.stringify({ project_type: 'service' }, null, 2) + '\n' })
   const rf = checkJson(forgeDir, [], withStubs)
   const forgeRows = ['GOV-01', 'GOV-02', 'OPS-07'].map(id => [id, rowOf(rf.j, id)])
-  ok(forgeRows.every(([, row]) => !!row && isNA(row)),
-    `V19 · GOV-01/GOV-02/OPS-07 are the n/a rows, not missing (${forgeRows.map(([id, row]) => `${id}=${row ? (row.state ?? row.tag) : 'missing'}`).join(', ')})`)
+  ok(forgeRows.every(([, row]) => !row),
+    `V19 · GOV-01/GOV-02/OPS-07 are gone from the payload entirely (${forgeRows.map(([id, row]) => `${id}=${row ? (row.state ?? row.tag) : 'absent'}`).join(', ')})`)
+  ok(rules.every(x => !(Array.isArray(x.sources) && x.sources.includes('forge'))),
+    'V19 · and no rule declares sources:["forge"] to reopen it')
 }
 
-// ---------- V20: declaring a tool you do not have activates its rules ----------
+// ---------- V20: the `want` override survives, with an empty vocabulary ----------
 {
-  // D13: `want` overrides the rule's `tool` field — that field is what "want":["docker"]
-  // switches on, so every docker-subject rule must carry it or want cannot reach it
+  // D13 made a rule's tool requirement an explicit field that `want` overrides. The v4 cut
+  // deleted the only rule that carried one, so the mechanism is intact and unpopulated:
+  // there is nothing to want, and asking for something anyway is still REPORTED by name.
   const dockerRules = toolRules('docker', /dockerfile/i)
   const declared = rules.filter(x => x.tool === 'docker').map(x => base(x.id))
-  ok(declared.length === dockerRules.length,
-    `V20 · every docker-subject rule declares "tool": "docker" so want can reach it (${declared.length}/${dockerRules.length}: ${dockerRules.join(', ')})`)
+  ok(declared.length === 0 && dockerRules.length === 0,
+    `V20 · no docker-subject rule remains for want to reach (${[...new Set([...declared, ...dockerRules])].join(', ') || '—'})`)
 
-  // D13: the field is "validated by selfcheck" — a value naming no known tool is rejected,
-  // and rejected BY NAME. Proven on a throwaway copy of the tree (never the real rules/),
-  // with REPRO-04's `tool` corrupted; the copy's own baseline.mjs loads the copy's rules.
+  // the closed set itself is empty, stated once in src/selfcheck.mjs
+  let sc = ''; try { sc = fs.readFileSync(path.join(lib.ROOT, 'src', 'selfcheck.mjs'), 'utf8') } catch {}
+  ok(/export const TOOLS = Object\.freeze\(\[\s*\]\)/.test(sc),
+    'V20 · the tool vocabulary (src/selfcheck.mjs TOOLS) is empty')
+
+  // D13: the field is still "validated by selfcheck" — an unknown tool value is rejected
+  // BY NAME. Proven on a throwaway copy with a SURVIVING rule corrupted (rules/build.json,
+  // since rules/repro.json no longer exists); the copy's baseline.mjs loads the copy's rules.
   {
-    let sc = { status: null, stdout: '', stderr: '' }, err = null
+    let scr = { status: null, stdout: '', stderr: '' }, err = null
     try {
       const copy = mktmp('v20-selfcheck')
       for (const e of fs.readdirSync(lib.ROOT)) {
         if (/^(\.git|node_modules|test)$/.test(e)) continue
         fs.cpSync(path.join(lib.ROOT, e), path.join(copy, e), { recursive: true })
       }
-      const rp = path.join(copy, 'rules', 'repro.json')
+      const rp = path.join(copy, 'rules', 'build.json')
       const rj = JSON.parse(fs.readFileSync(rp, 'utf8'))
-      const r04 = (rj.rules || []).find(x => base(x.id) === 'REPRO-04')
-      if (r04) r04.tool = 'nosuchtool'
+      if (rj.rules?.[0]) rj.rules[0].tool = 'nosuchtool'
       fs.writeFileSync(rp, JSON.stringify(rj, null, 2) + '\n')
       const r = spawnSync(process.execPath, [path.join(copy, 'baseline.mjs'), 'check', '--self-check'],
         { cwd: copy, encoding: 'utf8', env: { ...lib.CLEAN_ENV, ...lib.GITENV } })
-      sc = { status: r.status, stdout: r.stdout || '', stderr: r.stderr || '' }
+      scr = { status: r.status, stdout: r.stdout || '', stderr: r.stderr || '' }
     } catch (e) { err = e }
-    ok(!err && sc.status !== 0 && /nosuchtool/.test(sc.stdout + sc.stderr),
-      `V20 · selfcheck rejects an unknown "tool" field value by name (§11 D13) (exit ${sc.status}${err ? `; ${err.message}` : ''})`)
+    ok(!err && scr.status !== 0 && /nosuchtool/.test(scr.stdout + scr.stderr),
+      `V20 · selfcheck rejects an unknown "tool" field value by name (§11 D13) (exit ${scr.status}${err ? `; ${err.message}` : ''})`)
   }
 
   const noWant = mkrepo('v20-off', { ...DOCS_ONLY() })
@@ -192,14 +200,12 @@ const DOCS_RULE_BUDGET = 35
   const want = mkrepo('v20-on', { ...DOCS_ONLY(), 'baseline.config.json': JSON.stringify({ want: ['docker'] }, null, 2) + '\n' })
   const rOn = checkJson(want)
   const rows = evalRows(rOn.j).filter(x => dockerRules.includes(base(x.id)))
-  ok(rows.length === dockerRules.length,
-    `V20 · "want":["docker"] evaluates the docker rules with no Dockerfile present (${rows.length}/${dockerRules.length})`)
-  ok(rows.length > 0 && rows.every(x => x.tag !== 'SKIP'),
-    `V20 · and they are really evaluated, not skipped (${rows.map(x => `${x.id}=${x.tag}`).join(', ') || '—'})`)
-
-  // intent counts as presence, not as a pass: a declared tool that is missing is a finding
-  ok(rows.some(x => x.tag === 'FAIL' || x.tag === 'WARN'),
-    'V20 · declaring docker without a Dockerfile produces a finding, not a free pass')
+  ok(rows.length === dockerRules.length && rows.length === 0,
+    `V20 · "want":["docker"] evaluates nothing — the vocabulary is empty (${rows.length}/${dockerRules.length})`)
+  // and 'docker' is now itself an unknown want, so it must be REPORTED, not swallowed
+  const hOn = cli(want, ['check', '--repo', want, '--no-exec'])
+  ok(/docker/.test(hOn.stdout + hOn.stderr),
+    'V20 · wanting a tool the vocabulary no longer knows is named in the output, never a free pass')
 
   // an unknown want must not silently do nothing
   const bogus = mkrepo('v20-bogus', { ...DOCS_ONLY(), 'baseline.config.json': JSON.stringify({ want: ['nosuchtool'] }, null, 2) + '\n' })

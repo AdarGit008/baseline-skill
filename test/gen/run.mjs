@@ -161,12 +161,16 @@ console.log('\n# hostile content + fs edges (panel regressions)\n')
   ok(out.includes('[A weird (title)]'), 'brackets stripped from link titles')
   ok(out.includes('pipe ∣ and newline'), 'table cells: pipes neutralized, newlines flattened')
   git(dir, 'add', '-A'); git(dir, 'commit', '-qm', 'view')
-  // the promise itself: the generated view must not redden the consumer's own check
+  // the promise itself: the generated view must not redden the consumer's own check.
+  // CTX-05 (md-links) is deleted by the v4 rule-set cut, so the promise is now measured
+  // against every rule that survives: generating the view must introduce no NEW finding
+  // that names the generated file.
   const CHECK = path.join(ROOT, 'check.mjs')
   const chk = spawnSync(process.execPath, [CHECK, '--repo', dir, '--json', '--no-exec'], { encoding: 'utf8', env: { ...process.env, ...GITENV } })
   const rows = JSON.parse(chk.stdout).results
-  const ctx05 = rows.find(r => isId(r.id, 'CTX-05'))
-  ok(ctx05 && ctx05.tag !== 'FAIL', `the view passes the consumer's own md-links blocker (CTX-05 ${ctx05?.tag}: ${String(ctx05?.detail).slice(0, 60)})`)
+  ok(!rows.some(r => isId(r.id, 'CTX-05')), 'CTX-05 (md-links) is deleted — no doc-link rule reads the view any more')
+  const blamesView = rows.filter(r => (r.tag === 'FAIL' || r.tag === 'WARN') && /INDEX\.md/.test(String(r.detail || '')))
+  ok(blamesView.length === 0, `the generated view reddens no surviving rule (${blamesView.map(r => r.id).join(', ') || '—'})`)
   // claims duplicate ids: row order pinned by _file tiebreak, not walk order
   const CLM = slug => JSON.stringify({ record: 'claim/1', id: 'CLM-0001', slug, statement: 's', type: 'technical', build_state: 'shipped-tested', blast_radius: 'recoverable' }) + '\n'
   fs.mkdirSync(path.join(dir, 'records/claims'), { recursive: true })

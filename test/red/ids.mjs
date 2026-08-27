@@ -22,7 +22,11 @@ const PLUG = Array.isArray(L.PLUG_IDS) && L.PLUG_IDS.length ? L.PLUG_IDS : ['PLU
 // The v2.5.0 tag lags the pre-v3 tree by two SURVIVING rules (#63/#64 landed untagged).
 // They are not "new in v3": the plan's own §5 pack table names them, and that is asserted
 // below so this literal cannot drift away from the plan.
-const UNRELEASED_AT_V25 = ['CTX-13', 'CTX-14']
+// CTX-13 and CTX-14 landed after v2.5.0 and were deleted by the v4 rule-set cut with the
+// rest of the CTX family, so the allowance is now EMPTY — and that emptiness is asserted
+// below rather than assumed, so a resurrected id cannot slip through an unused list.
+const UNRELEASED_AT_V25 = []
+const UNRELEASED_DELETED_BY_V4 = ['CTX-13', 'CTX-14']
 
 // ---------- V5: every rule id matches ^[A-Z]+-\d{2}-[a-z0-9]+(-[a-z0-9]+)*$ ----------
 {
@@ -81,10 +85,10 @@ const UNRELEASED_AT_V25 = ['CTX-13', 'CTX-14']
     // (ii) the only prefixes absent from v2.5.0 are the three PLUG-0N ids (§11 D8). A new
     // rule under an old category would be a v2 id that v2 never issued — a resolvability
     // hole — so v3 adds rules ONLY under the new PLUG family.
-    ok(UNRELEASED_AT_V25.every(id => PACK_OF.has(id)),
-      `V7 · the untagged pre-v3 rules this file allows are ones the plan's §5 table names (${UNRELEASED_AT_V25.join(', ')})`)
-    ok(UNRELEASED_AT_V25.every(id => nowPrefixes.has(id)),
-      `V7 · and each of them is still in the tree (else the allowance is stale)`)
+    ok(UNRELEASED_AT_V25.length === 0,
+      `V7 · the untagged pre-v3 allowance is empty — the v4 cut took CTX-13/CTX-14 with the family (${UNRELEASED_AT_V25.join(', ') || '—'})`)
+    ok(UNRELEASED_DELETED_BY_V4.every(id => !nowPrefixes.has(id)),
+      `V7 · and neither is in the tree (${UNRELEASED_DELETED_BY_V4.filter(id => nowPrefixes.has(id)).join(', ') || 'both gone'})`)
     const permitted = new Set([...PLUG, ...UNRELEASED_AT_V25])
     // (a deleted prefix still in the tree — FLOW-08/09 today — is V8/V9's finding, not V7's)
     const born = [...nowPrefixes].filter(p => p && !catAt.has(p) && !deleted(p))

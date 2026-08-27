@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 
-// area -> the PLAN.md invariants it owns. The union must be every LIVE invariant, V1..V42
+// area -> the PLAN.md invariants it owns. The union must be every LIVE invariant, V1..V43
 // minus the four §11 withdrew, and the runner checks that itself: a suite added without
 // registering its invariants is a silent gap.
 const AREAS = [
@@ -30,22 +30,34 @@ const AREAS = [
   ['seams', 'PLAN §1 + §7 — the four-part shape and the three seams', [1, 2, 3, 4, 24, 25, 26, 27, 28]],
   ['surface', 'PLAN §8 + §9 — orient v2, the SKILL.md diet, the drift', [29, 30, 31, 32, 33]],
   ['decisions', 'PLAN §10 — the five decisions of 2026-08-25', [34, 35, 36, 37]],
-  ['plugins', 'PLAN §11 — the plugin boundary', [38, 39, 40, 41, 42]],
+  ['plugins', 'PLAN §11 — the plugin boundary, and v4 trust-circle membership', [38, 39, 40, 41, 42, 43]],
+  ['layer', 'v4 — the baseline rules layer: every non-plugin rule, opt-out, default in', [44]],
 ]
 
+// V43 is the v4 addition: TRUST-CIRCLE MEMBERSHIP — a supported tool a repo never adopted
+// is a SUGGESTION (n/a, out of the exit gate), and a declared MEMBER whose artifact is
+// missing is a blocker. It lives with the plugin boundary because it is the same family's
+// gate, read one step earlier.
+//
+// V44 is its mirror, and the second v4 addition: THE BASELINE RULES LAYER. Every rule that
+// is NOT a plugin rule is one layer a repo opts in or out of at setup time, DEFAULT IN —
+// the opt-OUT half of the same story, in its own area because nothing in PLAN §11 covers
+// it. Out means n/a and out of the gate, exactly as an unadopted plugin is, and the layer's
+// state is printed on every run so the opt-out can never be a silent hole.
+//
 // PLAN §11 "Superseded": V14 (REC-06 freshness), V21, V22, V23 (tdd.json as evidence) are
 // withdrawn — D7 forbids the artifact reading they required. They are not expected to be
 // owned, never counted as a hole, and a file that still asserts them is not registering
 // them here. The live total is derived from the highest id and this list, never typed in.
 const WITHDRAWN = [14, 21, 22, 23]
-const MAX_INVARIANT = 42
+const MAX_INVARIANT = 44
 const TOTAL_INVARIANTS = MAX_INVARIANT - WITHDRAWN.length
 const argv = process.argv.slice(2)
 const GREEN = argv.includes('--green')
 const only = argv.filter(a => !a.startsWith('-'))
 const selected = only.length ? AREAS.filter(([n]) => only.includes(n)) : AREAS
 
-// coverage self-check: every live invariant in V1..V42, each owned exactly once
+// coverage self-check: every live invariant in V1..V43, each owned exactly once
 {
   const owned = AREAS.flatMap(([, , vs]) => vs).sort((a, b) => a - b)
   const missing = []

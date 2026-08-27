@@ -31,7 +31,8 @@ const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails
 // be revised in review without touching the test; both the two- and three-part forms match.
 const isId = (id, p) => id === p || String(id).startsWith(p + '-')
 // the full id a rule carries in rules/*.json, looked up by base prefix — a finding key embeds it
-const RID = (() => { const rules = loadRules().rules; return (p) => (rules.find(r => isId(r.id, p)) || { id: p }).id })()
+const RULES = loadRules()
+const RID = (() => { const rules = RULES.rules; return (p) => (rules.find(r => isId(r.id, p)) || { id: p }).id })()
 const tmps = []
 
 const GITENV = { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 'Rec Tester', GIT_AUTHOR_EMAIL: 'rec@test.invalid', GIT_COMMITTER_NAME: 'Rec Tester', GIT_COMMITTER_EMAIL: 'rec@test.invalid' }
@@ -306,33 +307,27 @@ console.log('\n# integration — sweep, lifecycle, exits (replay forge)\n')
   ok(!r3.j.findings.some(f => f.key === key) && !(r3.j.actions || []).some(a => a.key === key), 'green admit → no finding, no action for its key')
 }
 {
-  // GOV wiring: rules []+protected false → both GOV rules file; 403-class → SKIP, absent
+  // GOV wiring — REMOVED by the v4 rule-set cut. GOV-01 (merge-protection-active) and
+  // GOV-02 (up-to-date-merges-enforced) are deleted along with the `forge-protection`
+  // kind and the whole forge seam on the check side: baseline reads repo files, and the
+  // only network act left anywhere is `git pull`. What is pinned now is the ABSENCE —
+  // reconcile's lifecycle still runs, and it files nothing about branch protection,
+  // whatever the forge replay says.
   const w = mkworld('gov')
   pull(w)
   fix(w, 'issues-labeled-baseline', [])
   fix(w, 'branch-rules-main', [])
   fix(w, 'branch-meta-main', { protected: false })
   const r1 = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(r1.j.findings.some(f => f.key === findingKey(RID('GOV-01'), 'main')) && r1.j.findings.some(f => f.key === findingKey(RID('GOV-02'), 'main')), 'no protection (both surfaces read) → GOV-01+02 file')
-  fs.rmSync(path.join(w.replay, 'branch-rules-main.json'))
-  const r2 = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(!r2.j.findings.some(f => isId(f.id, 'GOV-01') || isId(f.id, 'GOV-02')), '403-class (rules denied, meta readable) → SKIP, nothing filed')
-  // …and a token downgrade must never bot-close a REAL protection issue (SKIP ≠ clear)
-  fix(w, 'issues-labeled-baseline', [issue(90, 'open', findingKey(RID('GOV-01'), 'main'), 'aaaaaaaaaaaa')])
-  const r2b = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(!(r2b.j.actions || []).some(a => a.action === 'close' && a.key === findingKey(RID('GOV-01'), 'main')), '403-class with an open GOV filing → never closed on token downgrade')
-  fix(w, 'issues-labeled-baseline', [])
-  fix(w, 'branch-rules-main', [{ type: 'pull_request', parameters: { required_review_thread_resolution: true } }, { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true } }])
-  const r3 = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(!r3.j.findings.some(f => isId(f.id, 'GOV-01') || isId(f.id, 'GOV-02')), 'enforcing ruleset → both PASS (cleared, nothing filed)')
-  // a signatures-only ruleset is NOT merge protection — GOV-01 must still file
+  ok(r1.status === 0, `an unprotected default branch is no longer reconcile's business (exit ${r1.status})`)
+  ok(!(r1.j.findings || []).some(f => /GOV-0[12]/.test(f.key + f.id)), `no GOV-01/GOV-02 finding is filed (${(r1.j.findings || []).map(f => f.id).join(', ') || 'none'})`)
+  // a signatures-only ruleset used to file GOV-01; now it files nothing either
   fix(w, 'branch-rules-main', [{ type: 'required_signatures', parameters: {} }])
   const r4 = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(r4.j.findings.some(f => isId(f.id, 'GOV-01') && f.detail.includes('none protects merges')), 'signatures-only ruleset → GOV-01 files (no merge-protective type)')
-  // layered rulesets: the bits live in DIFFERENT rules of the same type — union wins
-  fix(w, 'branch-rules-main', [{ type: 'pull_request', parameters: {} }, { type: 'pull_request', parameters: { required_review_thread_resolution: true } }, { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true } }])
-  const r5 = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(!r5.j.findings.some(f => isId(f.id, 'GOV-02')), 'layered rulesets: a later rule of the same type carries the bit — union enforced, no false FAIL')
+  ok(!(r4.j.findings || []).some(f => /GOV-0[12]/.test(f.key + f.id)), 'a signatures-only ruleset files nothing — protection is unreadable from repo files, so baseline does not claim it')
+  // and no rule anywhere declares the forge as a source
+  ok(RULES.rules.every(r => !(Array.isArray(r.sources) && r.sources.includes('forge'))),
+    'no surviving rule declares sources:["forge"]')
 }
 {
   // reverse clears: a retired judgment and a rewritten secret close their filings
@@ -412,35 +407,21 @@ console.log('\n# M7c — JDG_PARSE_CAP parity (sweep + re-scan bounded, labeled)
   ok(!(r2.j.actions || []).some(a => a.action === 'close' && a.key === scrubKey), 'caps: …and its OPEN issue is NOT bot-closed — a capped scan is a partial read, and a partial read clears nothing')
 }
 
-console.log('\n# M7c — OPS-07: the reconcile cron is alive at the forge\n')
+console.log('\n# M7c — OPS-07: REMOVED by the v4 rule-set cut\n')
 {
+  // OPS-07 (reconcile-cron-alive) read the workflow's live state at the forge through the
+  // `workflow-state` kind. The ops category was eliminated entirely and the kind with it:
+  // liveness is not answerable from repo files, and every surviving rule is.
   const w = mkworld('ops07')
-  // the workflow carries a leading # comment ON PURPOSE: comment stripping is
-  // per-LINE (stripLineComment's contract) — a whole-file strip would truncate
-  // everything after the first #, lose the run: line, and SKIP a wired cron
-  commitSeed(w, '.github/workflows/baseline-reconcile.yml', 'on:\n  schedule:\n    - cron: "17 5 * * *"   # GitHub may auto-disable after 60d\njobs:\n  reconcile:\n    steps:\n      - run: node tools/baseline/baseline.mjs reconcile --repo .\n', 'wire the cron')
-  // OPS-07 lives in the service pack, and a pack is armed by explicit config ONLY (v3 D13):
-  // the descriptor's type: 'node' and detectType() never arm it — the fixture says so itself
-  commitSeed(w, 'baseline.config.json', JSON.stringify({ project_type: 'service' }, null, 2) + '\n', 'arm the service pack explicitly')
+  commitSeed(w, '.github/workflows/baseline-reconcile.yml', 'on:\n  schedule:\n    - cron: "17 5 * * *"\njobs:\n  reconcile:\n    steps:\n      - run: node tools/baseline/baseline.mjs reconcile --repo .\n', 'wire the cron')
   pull(w)
-  // no workflow-state replay fixture → SKIP, labeled, never guessed
-  let r = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(r.status === 0 && !r.j.findings.some(f => f.key.includes('OPS-07')), 'OPS-07: unreadable state (no replay fixture) is a SKIP, never a finding')
-  // disabled_inactivity — the named death mode — is a WARN finding with the re-enable recipe
   fix(w, 'workflow-state-baseline-reconcile.yml', { name: 'baseline-reconcile', state: 'disabled_inactivity' })
-  r = recJson(w.clone, ['--dry-run'], ENV(w))
-  const f = r.j.findings.find(x => x.key.includes('OPS-07'))
-  ok(!!f && /disabled_inactivity/.test(f.detail) && /60-day/.test(f.detail) && /gh workflow enable/.test(f.detail), 'OPS-07: disabled_inactivity WARNs naming the death mode and the re-enable recipe')
-  // active → healthy, no finding
-  fix(w, 'workflow-state-baseline-reconcile.yml', { name: 'baseline-reconcile', state: 'active' })
-  r = recJson(w.clone, ['--dry-run'], ENV(w))
-  ok(r.status === 0 && !r.j.findings.some(x => x.key.includes('OPS-07')), 'OPS-07: an active cron is a clean PASS')
-  // a state string GitHub invents later is still deterministic: any non-active
-  // state fails the rule NAMING the state — never a guess, never a pass
-  fix(w, 'workflow-state-baseline-reconcile.yml', { name: 'baseline-reconcile', state: 'sabbatical' })
-  r = recJson(w.clone, ['--dry-run'], ENV(w))
-  const fu = r.j.findings.find(x => x.key.includes('OPS-07'))
-  ok(!!fu && /sabbatical/.test(fu.detail), 'OPS-07: an unknown future state fails deterministically, named')
+  const r = recJson(w.clone, ['--dry-run'], ENV(w))
+  ok(r.status === 0 && !(r.j.findings || []).some(x => /OPS-07/.test(x.key + x.id)),
+    `a dead cron files no OPS-07 finding — the rule is deleted (exit ${r.status}; ${(r.j.findings || []).map(f => f.id).join(', ') || 'no findings'})`)
+  ok(!RULES.rules.some(x => String(x.id).startsWith('OPS-')), 'no OPS rule survives the cut')
+  let ev = ''; try { ev = fs.readFileSync(path.join(ROOT, 'src', 'evaluators.mjs'), 'utf8') } catch {}
+  ok(!/workflow-state/.test(ev), "the `workflow-state` check kind is gone from src/evaluators.mjs")
 }
 
 console.log('')

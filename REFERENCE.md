@@ -17,7 +17,7 @@ baseline is one part of four. It owns **verdicts** — deterministic, offline, o
 | piece | owns | reaches baseline via |
 |---|---|---|
 | **baseline** | verdicts | — |
-| **tdd-pi** | what is open (red/green tests) | `tdd.json`, committed |
+| **obsidian-tdd** | what is open (red/green tests) | `tdd.json`, committed |
 | **graphify** | what is where (code structure) | `graphify-out/`, local, gitignored |
 | **okf-rag** | why things matter (prose, rationale) | a bundle at `$BASELINE_OKF_BUNDLE`; `get_knowledge()` for agents |
 
@@ -181,27 +181,58 @@ Make `baseline` a required status check. Now the standard can't rot — it's enf
 
 ## Plugins — suggested, never required
 
-baseline is workflow scaffolding, and the three plugins are the default **suggestions**. Install is per approval: baseline prints the install command and never runs it.
+baseline is workflow scaffolding, and the plugins ship as **suggestions**: offered to every repo, gating none of them until the repo adopts one. Install is per approval — baseline prints the install command and never runs it.
 
 **The boundary is metadata.** For a plugin artifact baseline may read: does the path exist, is it a file or a directory, its mtime, and its gitignore state. It never opens the artifact — no `covers[]` out of `tdd.json`, no `Built from commit:` out of `GRAPH_REPORT.md`, no concept body during `check`. `explain` may *display* a concept from the OKF bundle; display is not a verdict.
 
-**One WARN per plugin — the `PLUG` family.** Each plugin is exactly one always-on rule, category `plugins`, severity `warn`, kind `plugin-presence`, in `rules/plug.json`:
+**One rule per plugin — the `PLUG` family.** Each plugin is exactly one rule, category `plugins`, severity `blocker`, kind `plugin-presence`, in `rules/plug.json`:
 
 | rule | plugin | default artifact | default gitignore state |
 |---|---|---|---|
-| `PLUG-01` | tdd-pi | `tdd.json` (file) | tracked |
+| `PLUG-01` | obsidian-tdd | `tdd.json` (file) | tracked |
 | `PLUG-02` | graphify | `graphify-out/` (directory) | ignored |
 | `PLUG-03` | okf-rag | the bundle at `$BASELINE_OKF_BUNDLE` (directory) | ignored; the question is skipped when the path is outside the repo |
 
-Verdict: artifact absent → **WARN naming the install command**; present but gitignore state differs from config → **WARN naming the mismatch** (the config value and git's answer); otherwise **PASS**. A plugin never produces a second row, a FAIL, or an exit-code change. The WARN is a `check` row (CI sees it), not an `orient` line.
+**Membership decides whether the rule gates.** The table above is what baseline *supports*; the trust circle is what a repo *adopted*, and adoption is a fact about the config, never a guess about the tree:
 
-**The only git question baseline asks about a plugin is "tracked or ignored, per the user's setup".** Config key **`plugins`**, keyed by plugin name, one entry per plugin — `{ "path": <relative path>, "ignored": true|false }` — with the defaults above; `ignored: false` means *tracked*:
+| standing | how it is stated | verdict |
+|---|---|---|
+| **member** | the plugin's **name is a key** of `baseline.config.json` `plugins` | the rule gates: artifact absent → **FAIL naming the install command**; present but the gitignore state differs from config → **FAIL naming the mismatch** (the config value and git's answer); otherwise **PASS**. A FAIL exits 1 |
+| **suggested** | the key is absent — the shipped default, untouched | **`n/a`**, excluded from the exit gate, no log. baseline offers the tool in the report and in `baseline trust setup`; it can never fail a build |
+| **declined** | the key is present with `false` or `null` | `n/a`, exactly like suggested — the decision is simply on the record |
+
+So *absent and not a member* is `n/a`; *member and missing* is a blocker. That is the enabler property: a repo that adopted nothing scores green on the plugin family, and one that adopted a tool gets the gate it asked for. A plugin never produces a second row. The finding is a `check` row (CI sees it), not an `orient` line.
+
+Key presence is what makes membership a fact rather than a guess: `{"graphify": {}}` adopts at the shipped defaults and is indistinguishable *in value* from a repo that wrote nothing — but not *in key*. `$BASELINE_OKF_BUNDLE` sets a member's path and never creates membership, because CI clones tracked files and not a shell.
+
+**The only git question baseline asks about a member is "tracked or ignored, per the user's setup".** Config key **`plugins`**, keyed by plugin name, one entry per adopted plugin — `{ "path": <relative path>, "ignored": true|false }` — with the defaults above; `ignored: false` means *tracked*:
 
 ```json
-{ "plugins": { "graphify": { "path": "graphify-out", "ignored": true }, "tdd-pi": { "ignored": false } } }
+{ "plugins": { "graphify": { "path": "graphify-out", "ignored": true }, "obsidian-tdd": {} } }
 ```
 
-**Every WARN leaves a log.** A `PLUG` WARN row prints the path **`.baseline/log/<PREFIX-NN>.log`** (`.baseline/log/PLUG-02.log`); the file records the paths inspected, the config values used, and the gitignore answer, so the finding can be investigated without re-running. It is overwritten each run and removed when the row returns to PASS. `--json` carries the same path as `log`. `.baseline/log/` joins `.baseline/cache/` in the gitignore template.
+**Joining and leaving.** `baseline trust add <tool>` writes the key (`--path`, `--ignored` to override the defaults); `baseline trust remove <tool>` deletes it and the tool goes back to being a suggestion. `baseline trust setup [--repo DIR]` prints every supported tool, whether this repo adopted it, and — when nothing is adopted — the recommended `plugins` block to copy. `check` names the circle on a `Trust circle` line and in `--json` under `trust: { members, suggested }`.
+
+### The baseline rules layer — the other opt-in, and the only one that is IN by default
+
+Membership above is the opt-**in** half of the rule set. Every rule that is *not* a plugin rule — `BUILD-03`, `BUILD-04`, `GOV-03`, `SEC-01`, `SEC-02`: the tree reads any repo can answer — is one **layer**, opted in or out **at setup time**, and its default is **in**. The asymmetry is the product: adopting a tool is a choice a repo makes, whereas the baseline is what you get by standing still.
+
+Config key **`baseline_rules`**, and it follows membership's discipline — the fact is read off the config text, never guessed from the tree. What differs is which way the *absence* points:
+
+| value | layer | meaning |
+|---|---|---|
+| key absent | **in** | the default. Those rules gate, exactly as they did before the layer existed |
+| `true` | **in** | the same run, said out loud |
+| `false` | **out** | every baseline rule resolves **`n/a`** — no finding, no exit code — the same treatment an unadopted plugin gets |
+| anything else | **in** | only the literal `false` opts out: **in** is the safe direction, so no typo can quietly stop a rule from gating |
+
+**It is never silent.** `check` prints a `Baseline layer` line on every run — in *and* out, naming every muted rule when it is out — and `--json` carries `baseline: { layer, source, key, rules }` beside `trust`. An opt-out is a decision on the record, not a hiding place.
+
+**The layer does not reach the trust circle.** A member's `PLUG` rule keeps gating with the layer out; one key can never mute the whole rule set.
+
+**Choosing.** `baseline trust setup --baseline-rules in|out` is what writes it: `out` writes `"baseline_rules": false`, and `in` **deletes** the key, because an absent key *is* in. Plain `baseline trust setup` prints the layer's state, the rules it governs, and changes nothing.
+
+**Every finding leaves a log.** A `PLUG` finding row prints the path **`.baseline/log/<PREFIX-NN>.log`** (`.baseline/log/PLUG-02.log`); the file records the paths inspected, the config values used, and the gitignore answer, so the finding can be investigated without re-running. It is overwritten each run and removed when the row returns to PASS. `--json` carries the same path as `log`. `.baseline/log/` joins `.baseline/cache/` in the gitignore template.
 
 **The forge is closed under `check` and `orient`.** `GOV-01`, `GOV-02` and `OPS-07` are forge-sourced and survive; under `check` and `orient` they resolve `n/a` with the reason `forge not consulted`, before their evaluator runs, so neither verb ever spawns `gh`. `admit` and `reconcile` keep the live probe.
 
@@ -231,7 +262,8 @@ Everything auto-detects; override only what you need in `baseline.config.json` (
 | `project_type` | `node`\|`service`\|`python`\|`library`\|`docs`. Set **explicitly** to `service` it activates the `service` pack (the OPS rules); auto-detection and the descriptor's `type` never do. |
 | `profiles` (alias `packs`) | packs to activate by name, e.g. `["advanced"]`; `--profile <pack>` is the CLI form. With no config every pack is off. |
 | `want` | tools declared present-by-intent, e.g. `["docker"]` — puts the tool's rules in scope even on a repo where the artifact (or the type) is missing; an unknown name is reported on stderr. |
-| `plugins` | per-plugin `{ path, ignored }`, keyed `tdd-pi` \| `graphify` \| `okf-rag` — where the artifact lives and whether git is expected to ignore it (`ignored: false` = tracked). Defaults: `tdd.json` tracked, `graphify-out/` ignored, the okf bundle ignored. The PLUG rules read nothing else. |
+| `baseline_rules` | the **baseline rules layer**: `false` opts every non-plugin rule out (they resolve `n/a`, out of the exit gate); absent or `true` leaves the layer **in**, which is the default. Written by `baseline trust setup --baseline-rules in\|out`; the state is printed on every `check`. |
+| `plugins` | per-plugin `{ path, ignored }`, keyed `obsidian-tdd` \| `graphify` \| `okf-rag` — where the artifact lives and whether git is expected to ignore it (`ignored: false` = tracked). Defaults: `tdd.json` tracked, `graphify-out/` ignored, the okf bundle ignored. The PLUG rules read nothing else. |
 | `makes_external_claims` | `true`, set explicitly, activates the `claims` pack (all CLAIM-* rules); the default `false` leaves them out of the run. |
 | `bootstrap_command` | the clean-checkout Task-1 command (BUILD-05); must exit 0. Unset softens BUILD-05 to WARN (unconfigured ≠ failing). |
 | `freshness_globs` | **opt-in** for CTX-06 — docs that must carry a `last_review_date`. Empty = the rule resolves n/a. |
@@ -286,34 +318,8 @@ Ids carry three parts — `PREFIX-NN-semantic-slug` (`SEC-01-no-committed-secret
 
 | ID | Rule | Severity | Pack | Scope |
 |---|---|---|---|---|
-| BUILD-01-dependency-manifest-present | Dependency manifest present | 🔴 blocker | — | node, python, service, library |
-| BUILD-02-lockfile-committed | Lockfile committed | 🟡 warn | — | node, python, service, library |
 | BUILD-03-ci-workflow-present | CI workflow present | 🔴 blocker | — | node, python, service, library |
-| BUILD-04-env-template-present | Env/secret template present | 🟡 warn | — | node, python, service |
-| BUILD-05-task-1-passes-clean | Task 1 passes on a clean checkout | 🔴 blocker | — | node, python, service, library |
-| BUILD-06-baseline-gate-in-ci | Baseline gate wired into CI | 🟡 warn | — | node, python, service, library |
-| BUILD-07-single-bootstrap-entrypoint | A single documented bootstrap entrypoint exists | 🟡 warn | — | node, python, service, library |
-| BUILD-08-task-commands-declared | Standard task commands are declared machine-readably | 🟡 warn | — | node, python, service, library |
-| BUILD-09-bootstrap-is-idempotent | Bootstrap is idempotent (safe to re-run) | 🟡 warn | advanced | node, python, service, library |
-| BUILD-10-ci-runs-tests | CI actually invokes the test suite | 🟡 warn | — | node, python, service, library |
-
-### Code quality
-
-| ID | Rule | Severity | Pack | Scope |
-|---|---|---|---|---|
-| QUAL-01-linter-configured | A linter is configured | 🟡 warn | — | node, python, service, library |
-| QUAL-02-formatter-configured | A formatter is configured | 🟡 warn | — | node, python, service, library |
-| QUAL-03-strict-type-checking | Type-checking is strict where supported | 🟡 warn | — | node, python, service, library |
-| QUAL-04-linter-enforced | The linter is actually enforced (run in CI or pre-commit) | 🟡 warn | — | node, python, service, library |
-
-### Tests & invariants
-
-| ID | Rule | Severity | Pack | Scope |
-|---|---|---|---|---|
-| TEST-01-automated-tests-exist | Automated tests exist | 🔴 blocker | — | node, python, service, library |
-| TEST-02-failure-paths-tested | Failure paths are tested (negative tests) | 🟡 warn | — | node, python, service, library |
-| TEST-05-mutation-testing-gated | Mutation testing, if used, is gated | 🟡 warn | advanced | node, python, service, library |
-| TEST-07-coverage-floor-enforced | A coverage floor is declared and enforced | 🟡 warn | advanced | node, python, service, library |
+| BUILD-04-env-template-present | Env/secret template present | 🔴 blocker | — | node, python, service |
 
 ### Security & supply-chain
 
@@ -321,107 +327,20 @@ Ids carry three parts — `PREFIX-NN-semantic-slug` (`SEC-01-no-committed-secret
 |---|---|---|---|---|
 | SEC-01-no-committed-secrets | No high-signal secrets committed | 🔴 blocker | — | all |
 | SEC-02-env-files-ignored | Real .env files are git-ignored, not committed | 🔴 blocker | — | all |
-| SEC-03-ci-actions-pinned-sha | Third-party CI actions pinned to a commit SHA | 🟡 warn | — | all |
-| SEC-04-no-dangerous-ci-patterns | No dangerous CI workflow patterns | 🟡 warn | — | all |
-| SEC-05-dependency-updates-automated | Automated dependency-update tool configured | 🟡 warn | — | all |
-| SEC-06-security-policy-reporting-channel | Security policy names a reporting channel | 🟡 warn | — | all |
-| SEC-07-no-committed-binaries | No committed binary/executable artifacts | 🟡 warn | — | all |
-| SEC-08-sbom-committed | A committed SBOM exists in a recognized format | 🟡 warn | advanced | node, python, service, library |
-| SEC-09-code-scanning-configured | Static code-scanning is configured | 🟡 warn | advanced | node, python, service, library |
-| SEC-10-release-provenance-present | Release provenance/signing is present | 🟡 warn | advanced | node, python, service, library |
-| SEC-11-least-privilege-ci-token | CI grants a least-privilege GITHUB_TOKEN | 🟡 warn | — | all |
-| SEC-12-secret-scanning-gate | A secret-scanning gate is wired in | 🟡 warn | — | all |
-| SEC-13-dependency-vulnerability-scan | A dependency vulnerability scan runs in CI | 🟡 warn | advanced | node, python, service, library |
-| SEC-14-pre-commit-hooks-pinned | Pre-commit hooks pinned to an immutable rev | 🟡 warn | — | all |
-
-### Reproducibility
-
-| ID | Rule | Severity | Pack | Scope |
-|---|---|---|---|---|
-| REPRO-01-ci-installs-frozen | CI installs dependencies in frozen/locked mode | 🟡 warn | — | node, python, service, library |
-| REPRO-02-runtime-version-pinned | Runtime version is pinned | 🟡 warn | — | node, python, service, library |
-| REPRO-03-runtime-pin-consistent | Pinned runtime version is consistent everywhere | 🟡 warn | — | node, python, service, library |
-| REPRO-04-docker-base-pinned-by-digest | Dockerfile base images pinned by digest | 🟡 warn | — | node, python, service, library · tool: docker |
-
-### Operability (service)
-
-| ID | Rule | Severity | Pack | Scope |
-|---|---|---|---|---|
-| OPS-01-structured-logging-wired | Structured logging is wired in | 🟡 warn | service | service |
-| OPS-02-health-endpoint-exists | A health/readiness endpoint exists | 🟡 warn | service | service |
-| OPS-03-graceful-shutdown-on-sigterm | Graceful shutdown on SIGTERM | 🟡 warn | service | service |
-| OPS-04-outbound-calls-guarded | Outbound calls are time-bounded/guarded | 🟡 warn | service | service |
-| OPS-05-runbook-exists | An operational runbook exists | 🟡 warn | service | service |
-| OPS-06-service-declares-owner-lifecycle | A service descriptor declares owner + lifecycle | 🟡 warn | service | service |
-| OPS-07-reconcile-cron-alive | The reconcile cron is alive at the forge | 🟡 warn | service | all |
 
 ### Change governance
 
 | ID | Rule | Severity | Pack | Scope |
 |---|---|---|---|---|
-| GOV-01-merge-protection-active | Merge protection is active on the default branch | 🟡 warn | — | all |
-| GOV-02-up-to-date-merges-enforced | Strict/up-to-date merges and conversation resolution enforced | 🟡 warn | — | all |
-| GOV-03-codeowners-names-owner | CODEOWNERS exists and names an owner | 🟡 warn | — | all |
-
-### Community & onboarding
-
-| ID | Rule | Severity | Pack | Scope |
-|---|---|---|---|---|
-| COMM-01-license-present | LICENSE file present | 🔴 blocker | — | all |
-| COMM-02-readme-newcomer-sections | README exists with newcomer-critical sections | 🟡 warn | — | all |
-| COMM-03-changelog-has-unreleased | CHANGELOG present with an Unreleased section | 🟡 warn | — | all |
-
-### Context management
-
-| ID | Rule | Severity | Pack | Scope |
-|---|---|---|---|---|
-| CTX-02-decision-status-declared | Every decision record carries a Status; superseded ones link forward | 🔴 blocker | decisions | all |
-| CTX-03-sources-of-truth-declared | Sources of truth are declared | 🟡 warn | — | all |
-| CTX-05-no-broken-doc-links | No broken internal doc links | 🔴 blocker | — | all |
-| CTX-06-docs-carry-freshness-contract | Long-lived docs carry a freshness contract | 🟡 warn | — | all |
-| CTX-07-decision-edges-resolve | Every declared decision edge resolves to a file that exists | 🟡 warn | decisions | all |
-| CTX-08-generated-files-marked | Generated files carry a 'DO NOT EDIT' provenance marker | 🟡 warn | — | all |
-| CTX-09-grounding-docs-exist | Required grounding docs exist and are non-empty | 🟡 warn | — | all |
-| CTX-10-doc-symbols-resolve | Code symbols/paths named in docs still resolve | 🟡 warn | advanced | all |
-| CTX-11-docs-not-lagging-code | Docs don't lag the code they anchor | 🟡 warn | — | all |
-| CTX-12-status-is-derived | No hand-maintained status stamp (derive it instead) | 🔴 blocker | — | all |
-| CTX-13-amendment-declared-both-ends | An amendment is declared at both ends | 🟡 warn | decisions | all |
-| CTX-14-decision-numbers-unique | No two decision records claim the same number | 🔴 blocker | decisions | all |
-
-### Claims discipline
-
-| ID | Rule | Severity | Pack | Scope |
-|---|---|---|---|---|
-| CLAIM-00-claims-register-exists | A claims register exists | 🔴 blocker | claims | all |
-| CLAIM-01-claims-tagged-build-state | Every claim tagged with a build-state | 🔴 blocker | claims | all |
-| CLAIM-02-claims-graded-blast-radius | Every claim graded by blast radius | 🔴 blocker | claims | all |
-| CLAIM-03-novelty-claims-dated-prior-art | Novelty/competitive claims have a dated prior-art pass | 🔴 blocker | claims | all |
-| CLAIM-04-citations-resolve-support | Citations resolve and support the claim | 🟡 warn | claims | all |
-| CLAIM-06-specs-carry-acceptance-criteria | Specs of record carry explicit acceptance criteria | 🟡 warn | claims | all |
-| CLAIM-07-claims-in-per-claim-records | Claims live in per-claim records, not the legacy monolith | 🟡 warn | claims | all |
-
-### Records & ledger
-
-| ID | Rule | Severity | Pack | Scope |
-|---|---|---|---|---|
-| REC-02-committed-tree-scrub-clean | The committed tree is scrub-clean | 🟡 warn | — | all |
-| REC-05-push-time-gate-committed | A push-time secret gate is committed alongside the code | 🟡 warn | — | all |
-
-### Repo descriptor
-
-| ID | Rule | Severity | Pack | Scope |
-|---|---|---|---|---|
-| DESC-01-repo-descriptor-present | Repo descriptor present | 🟡 warn | descriptor | all |
-| DESC-02-descriptor-schema-valid | A present descriptor is schema-valid | 🔴 blocker | descriptor | all |
-| DESC-03-descriptor-change-carries-judgment | A descriptor change carries its judgment in the same range | 🔴 blocker | descriptor | all |
+| GOV-03-codeowners-names-owner | CODEOWNERS exists and names an owner | 🔴 blocker | — | all |
 
 ### Plugins
 
 | ID | Rule | Severity | Pack | Scope |
 |---|---|---|---|---|
-| PLUG-01-tdd-pi | tdd-pi artifact present and tracked | 🟡 warn | — | all |
-| PLUG-02-graphify | graphify graph present and gitignored | 🟡 warn | — | all |
-| PLUG-03-okf-rag | okf-rag bundle present | 🟡 warn | — | all |
+| PLUG-01-obsidian-tdd | obsidian-tdd artifact present and tracked | 🔴 blocker | — | all |
+| PLUG-02-graphify | graphify graph present and gitignored | 🔴 blocker | — | all |
+| PLUG-03-okf-rag | okf-rag bundle present | 🔴 blocker | — | all |
 
 <!-- baseline:rules-table end -->
 
@@ -440,34 +359,11 @@ Every check kind is one evaluator in `src/evaluators.mjs`, registered in `CHECK_
 
 <!-- baseline:check-kinds begin — generated by docs/assets/gen-reference-rules.mjs; edit rules/*.json (or the glosses in that script), then rerun it -->
 
-- `adr-backlink` — an amendment is declared at both ends
-- `adr-forward-link` — every declared decision edge resolves to a file that exists
-- `adr-number-unique` — no two decision records claim the same number
-- `adr-status` — every decision record carries a Status; superseded ones link forward
 - `any-file` — glob presence (`mode: absent`, `tracked_only`, `allow`)
-- `any-of` — pass if any alternative passes (recurses)
-- `claims-citations` — claim citations resolve and support the claim
-- `claims-field` — every claim record carries the field
-- `command` — run the configured bootstrap command (`repeat` for idempotence)
-- `config-nonempty` — a configured key is set and non-empty
-- `descriptor` — `baseline.repo.json` is present
-- `descriptor-change` — a descriptor change carries its judgment in the same range (admit)
-- `descriptor-valid` — a present descriptor schema-validates
 - `doc-code-age` — a doc does not lag the code it anchors by more than `doc_lag_days`
-- `doc-freshness` — a frontmatter review date inside the configured window
-- `dockerfile-digest` — `FROM` lines pinned by `@sha256` (declares `tool: docker`)
 - `file-contains` — the file exists AND matches
-- `forge-protection` — merge protection on the default branch, read from the forge — n/a under `check` (forge not consulted)
 - `grep` — regex present / absent / all over file contents (`tracked_only`)
-- `implies` — when the precondition holds, the consequent must (else n/a)
-- `md-links` — relative markdown links resolve against each doc's own directory
-- `path-integrity` — backticked paths named in docs still exist
 - `plugin-presence` — a plugin artifact exists and its gitignore state matches the `plugins` config — metadata only, never the content
-- `records-scrub` — landed records are scrub-clean at HEAD (blob content, never the worktree)
-- `required-files` — a configured list of files exists and is non-empty
-- `version-consistency` — the pinned runtime major agrees across `.nvmrc` / CI / Dockerfile / `engines`
-- `workflow-permissions` — CI workflows grant a least-privilege token
-- `workflow-state` — the reconcile workflow is alive at the forge — n/a under `check` (forge not consulted)
 
 <!-- baseline:check-kinds end -->
 

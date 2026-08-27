@@ -1,43 +1,27 @@
 {
-  "_comment": "Copy to baseline.config.json at your repo root. The runner auto-detects sensible defaults; override only what you need. With no config file every pack is off and only the always-on rules run; a pack activates from an explicit switch in this file (or --profile <pack>), never from what the tree looks like and never from the descriptor's type.",
+  "_comment": "Copy to baseline.config.json at your repo root. The runner auto-detects sensible defaults; override only what you need. Every rule in the set is a deterministic read of repo files, AND-gated to one exit code — there is no warn tier and no opt-in pack. Two opt-ins remain, with opposite defaults: the trust circle (the plugins below — opt IN, default out) and the baseline rules layer (every other rule — opt OUT, default in).",
   "project_type": "service",
-  "_project_type": "node | service | python | library | docs. Set to 'service' HERE (explicitly) to activate the service pack (OPS-*); the auto-detected type never does.",
-  "makes_external_claims": true,
-  "_makes_external_claims": "true activates the claims pack (CLAIM-*: per-claim records with build-state, blast-radius, prior-art). false or absent leaves it off — the right answer for an internal tool with no competitive/novelty claims.",
-  "packs": [],
-  "_packs": "packs to activate by name: claims | decisions | descriptor | service | advanced. 'descriptor' and 'advanced' (SBOM, code-scanning, mutation testing, symbol-integrity) have no other switch; 'profiles' is the legacy alias for this key, --profile <pack> the CLI form. e.g. [\"advanced\"]",
-  "want": [],
-  "_want": "tools declared present by intent (e.g. [\"docker\"]): a rule gated on a tool runs when the tool's artifact is in the tree OR the tool is named here, so its rules fire before the first artifact lands. A name that is not a known tool is reported, never silently ignored.",
+  "_project_type": "node | service | python | library | docs. Only narrows which rules apply to this repo; it activates nothing.",
+  "baseline_rules": true,
+  "_baseline_rules": "THE BASELINE RULES LAYER — the second opt-in, and the only one that is IN by default. Every rule that is not a plugin rule (BUILD, GOV, SEC — the tree reads any repo can answer) is one layer you opt in or out of at setup time. Absent key = IN, because the baseline is what you get by standing still; `true` says the same thing out loud. `false` opts the layer OUT: those rules resolve n/a, produce no finding and are excluded from the exit gate — the same treatment an unadopted plugin gets. It can never hide a failure silently: `baseline check` prints the layer state (and, when OUT, every muted rule id) on every run, and `--json` carries it as `baseline`. `baseline trust setup --baseline-rules in|out` writes it (opting IN deletes the key, since absent IS in).",
   "plugins": {
-    "tdd-pi": { "path": "tdd.json", "ignored": false },
-    "graphify": { "path": "graphify-out", "ignored": true },
-    "okf-rag": { "ignored": true }
+    "obsidian-tdd": {
+      "path": "tdd.json",
+      "ignored": false
+    },
+    "graphify": {
+      "path": "graphify-out",
+      "ignored": true
+    },
+    "okf-rag": {
+      "ignored": true
+    }
   },
-  "_plugins": "PLUG-01..03 (always on, one WARN each, never a FAIL): where each plugin's artifact lives and whether git is expected to ignore it — shown at their defaults. okf-rag's path comes from $BASELINE_OKF_BUNDLE unless set here, and the gitignore question is skipped when the path is outside the repo. baseline reads the artifact's metadata only (exists, file-or-dir, mtime, gitignore state), never its content; a WARN writes .baseline/log/PLUG-0N.log.",
-  "bootstrap_command": "pnpm install --frozen-lockfile && pnpm -w test",
-  "_bootstrap_command": "the clean-checkout Task-1 command for BUILD-05; must exit 0. Omit to skip.",
-  "command_timeout_ms": 600000,
-  "claims_file": "docs/CLAIMS.json",
-  "_claims_file": "claims pack: where a legacy monolith is detected (CLAIM-07 flags it; gen migrate-claims explodes it). Claims live in records/claims/.",
-  "decision_globs": ["docs/decisions/0*.md", "adr/*.md"],
-  "_decision_globs": "a non-empty list activates the decisions pack (CTX-02/07/13/14) and names the decision records it reads. Omit or leave empty to keep the pack off.",
-  "doc_globs": ["**/*.md"],
-  "_doc_globs": "which docs CTX-05 (broken links) and CTX-10 (path-integrity) scan.",
-  "freshness_globs": [],
-  "_freshness_globs": "OPT-IN for CTX-06: docs that must carry a 'last_review_date' in frontmatter. Empty = the rule has nothing to check. e.g. [\"docs/architecture.md\", \"docs/onboarding.md\"]",
-  "doc_freshness_days": 180,
-  "_doc_freshness_days": "CTX-06 goes red when a freshness_globs doc's last_review_date is older than this.",
-  "doc_lag_days": 30,
-  "_doc_lag_days": "CTX-11 goes red when a doc's anchored source code (frontmatter 'sources: [glob]') was committed more than this many days after the doc.",
-  "generated_globs": [],
-  "_generated_globs": "OPT-IN for CTX-08: generated files that must carry a 'DO NOT EDIT' marker. Empty = the rule has nothing to check. e.g. [\"**/*.gen.ts\", \"docs/api/**\"]",
-  "grounding_docs": [],
-  "_grounding_docs": "OPT-IN for CTX-09: required grounding docs that must exist and be non-empty. Empty = the rule has nothing to check. e.g. [\"docs/architecture.md\", \"docs/tech-stack.md\"]",
+  "_plugins": "PLUG-01..03 — the trust circle: the opt-IN half of the rule set (the baseline rules layer above is the opt-OUT half). MEMBERSHIP IS THE KEY: naming a plugin here adopts it, and its rule becomes a blocker in your CI — the artifact must be present and git must say what `ignored` expects. A plugin you do NOT name is a SUGGESTION: baseline offers it in the report, its rule resolves n/a, and it can never fail your build. So delete a line to drop a tool; `{}` adopts at the defaults; `false` records a decision not to. `baseline trust add <tool>` / `baseline trust remove <tool>` edit exactly this object, and `baseline trust setup` prints the recommended circle. okf-rag's path comes from $BASELINE_OKF_BUNDLE unless set here (the env var sets a member's path, it never creates membership — CI clones tracked files, not a shell), and the gitignore question is skipped when the path is outside the repo. baseline reads the artifact's metadata only (exists, file-or-dir, mtime, gitignore state), never its content; a finding writes .baseline/log/PLUG-0N.log.",
   "sources_of_truth": {
     "status": "derived — baseline orient",
     "decisions": "docs/decisions/"
   },
-  "_sources_of_truth": "CTX-03: one declared home per fact class (status, decisions, ...), so a reader knows where each kind of truth lives.",
-  "prior_art_recheck_days": 90,
-  "_prior_art_recheck_days": "claims pack, CLAIM-03: a novelty/competitive claim's prior-art pass goes stale after this many days."
+  "_sources_of_truth": "one declared home per fact class (status, decisions, ...), so a reader knows where each kind of truth lives. Documentary: no rule reads it since the v4 cut.",
+  "_retired_keys": "bootstrap_command, command_timeout_ms, claims_file, decision_globs, doc_globs, doc_lag_days, doc_freshness_days, freshness_globs, generated_globs, grounding_docs and prior_art_recheck_days went with the rules that read them. A config still naming one is inert, never an error."
 }

@@ -286,7 +286,6 @@ try {
       evalCheck: over.evalCheck ?? NOOP,
       DESCRIPTOR: over.DESCRIPTOR ?? null,
       TOOLS_PRESENT: 'TOOLS_PRESENT' in over ? over.TOOLS_PRESENT : null, // null = the runner detected nothing (the evaluator owns the subject question)
-      forgeClosed: over.forgeClosed ?? null,
     })[0]
     const isNA = row => !!row && row.state === 'n/a' && typeof row.reason === 'string' && row.reason.trim().length > 0 && !('tag' in row)
     const SL = { valid: true, data: { workflow: 'single-lane' } }
@@ -317,15 +316,16 @@ try {
     const thrown = gate({}, { evalCheck: () => { throw new Error('boom') } })
     ok(isNA(thrown) && /check errored/.test(thrown.reason) && /boom/.test(thrown.reason), 'engine: a THROWN check is an n/a row whose reason names the error')
     ok(![naRow, thrown].some(x => x?.tag === 'SKIP' || x?.state === 'SKIP'), 'engine: n/a is never spelled SKIP')
-    // D12 (V19/V42): a forge-sourced rule under a closed forge resolves n/a BEFORE its evaluator
+    // The v4 cut removed the forge seam and the D12 closure gate with it: `sources` is no
+    // longer a gate at all, so a rule declaring any plane simply runs. (The real set has no
+    // forge-sourced rule left to declare one — test/red/plugins.mjs V42 pins that.)
     let called = 0
-    const fRow = gate({ sources: ['forge', 'tree'] }, { forgeClosed: 'forge not consulted', evalCheck: () => { called++; return { ok: true, detail: 'ran' } } })
-    ok(isNA(fRow) && fRow.reason === 'forge not consulted' && called === 0, 'engine: a forge-sourced rule under a closed forge is n/a with the closure reason, evaluator NOT called')
-    ok(gate({ sources: ['tree'] }, { forgeClosed: 'forge not consulted' })?.tag === 'PASS', 'engine: a closed forge gates only forge-sourced rules')
-    ok(gate({ sources: ['forge'] })?.tag === 'PASS', 'engine: with the forge open (null) a forge-sourced rule evaluates')
+    const fRow = gate({ sources: ['forge', 'tree'] }, { evalCheck: () => { called++; return { ok: true, detail: 'ran' } } })
+    ok(fRow?.tag === 'PASS' && called === 1, 'engine: `sources` gates nothing — the forge closure left with the seam')
+    ok(gate({ sources: ['tree'] })?.tag === 'PASS', 'engine: a tree-sourced rule evaluates as before')
     // §6 tool gate (V17/V20/V36, D13): tool present OR want -> in scope (want overrides the
     // type gate too); on-type with the tool absent -> n/a; off-type with the tool absent -> no row
-    const tRow = gate({ tool: 'docker' }, { TOOLS_PRESENT: new Set() })
+    const tRow = gate({ tool: 'docker' }, { TOOLS_PRESENT: new Set() }) // 'docker' is no longer in TOOLS, but the engine's gate is generic
     ok(isNA(tRow) && /docker/.test(tRow.reason) && /want/.test(tRow.reason), 'engine: an on-type tool rule with the tool absent is n/a, and the reason names the tool and the want: route')
     ok(gate({ tool: 'docker' }, { TOOLS_PRESENT: new Set(['docker']) })?.tag === 'PASS', 'engine: a tool rule runs when the tool is detected')
     ok(gate({ tool: 'docker' }, { TOOLS_PRESENT: new Set(), cfg: { want: ['docker'] } })?.tag === 'PASS', 'engine: want:["docker"] puts the tool rule in scope with no Dockerfile (the evaluator, not the gate, answers)')
@@ -373,12 +373,13 @@ try {
     ok(res({ profileArgs: ['claims'] }).ACTIVE_PACKS.has('claims'), '--profile claims arms the pack from the CLI (the flag stays; it means pack)')
     // the other pack switches never spill over, and the DEFAULTS value never activates
     r = res()
-    ok(r.DEFAULTS.decision_globs.length > 0 && !r.ACTIVE_PACKS.has('decisions'), 'the non-empty DEFAULT decision_globs never activates the decisions pack')
+    // the v4 cut retired decision_globs with the decisions pack: the key is not a DEFAULT
+    // any more, and naming it in a config arms nothing
+    ok(r.DEFAULTS.decision_globs === undefined, `decision_globs is retired from the DEFAULTS (got ${JSON.stringify(r.DEFAULTS.decision_globs)})`)
     fs.writeFileSync(cfgFile, JSON.stringify({ decision_globs: ['docs/decisions/*.md'] }))
     r = res()
-    ok(r.ACTIVE_PACKS.has('decisions') && !r.ACTIVE_PACKS.has('claims') && !r.ACTIVE_PACKS.has('service'), `explicit decision_globs arms decisions and only decisions (got ${JSON.stringify([...r.ACTIVE_PACKS])})`)
-    fs.writeFileSync(cfgFile, JSON.stringify({ decision_globs: [] }))
-    ok(!res().ACTIVE_PACKS.has('decisions'), 'an explicit but EMPTY decision_globs arms nothing')
+    ok(!r.ACTIVE_PACKS.has('decisions'), `an explicit decision_globs arms nothing — the pack is gone (got ${JSON.stringify([...r.ACTIVE_PACKS])})`)
+    fs.rmSync(cfgFile)
     fs.writeFileSync(cfgFile, JSON.stringify({ project_type: 'service' }))
     r = res()
     ok(r.ACTIVE_PACKS.has('service') && r.ACTIVE_PACKS.size === 1, 'explicit project_type:"service" arms the service pack, and only it')
@@ -412,31 +413,11 @@ try {
 
   }
 
-  // ---- M4c: REC-02 against real history ----
-  {
-    const RS = { kind: 'records-scrub', globs: ['records/**'] }
-    let r
-    const t11 = mkrepo('main'); tmps.push(t11)
-    const rec2 = 'records/sessions/main/2026-07-01-110000-a.md'
-    fs.mkdirSync(path.join(t11, path.dirname(rec2)), { recursive: true })
-    fs.writeFileSync(path.join(t11, rec2), 'token: ' + 'ghp_' + 'abcdefghijklmnopqrstuvwxyz0123456789' + '\n')
-    sh(t11, 'git', ['add', '-A']); sh(t11, 'git', ['commit', '-qm', 'r1'])
-    const mk11 = () => makeEvalCheck({ repo: indexRepo(t11), cfg: {}, NO_EXEC: true, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
-    r = mk11()(RS, { id: 'REC-02' })
-    ok(r.ok === false && !r.soft && /deterministic/.test(r.detail) && !/ghp_a/.test(r.detail), 'REC-02: a landed deterministic secret fails — and the detail never reproduces it')
-    const fid = findingId('github-token', 'ghp_' + 'abcdefghijklmnopqrstuvwxyz0123456789')
-    fs.mkdirSync(path.join(t11, '.baseline'), { recursive: true })
-    fs.writeFileSync(path.join(t11, '.baseline/scrub-allowlist.json'), JSON.stringify({ entries: [{ id: fid, reason: 'doc example', date: '2026-07-12' }] }))
-    r = mk11()(RS, { id: 'REC-02' })
-    ok(r.ok === true && /allowlisted/.test(r.detail), 'REC-02: a dated allowlist judgment clears exactly that finding')
-    fs.writeFileSync(path.join(t11, rec2), 'password = "hunter2hunter2"\n'); sh(t11, 'git', ['add', '-A']); sh(t11, 'git', ['commit', '-qm', 'heur'])
-    r = mk11()(RS, { id: 'REC-02' })
-    ok(r.ok === false && r.soft === true, 'REC-02: heuristic-only findings are soft — WARN even after M7 promotes the severity')
-    fs.writeFileSync(path.join(t11, rec2), 'scrubbed clean in the worktree only\n') // NOT committed
-    r = mk11()(RS, { id: 'REC-02' })
-    ok(r.ok === false && r.soft === true, 'REC-02: scans what LANDED — an uncommitted worktree cleanup cannot flip the verdict')
-
-  }
+  // ---- M4c: REC-02 against real history — REMOVED by the v4 rule-set cut ----
+  // REC-02 and its `records-scrub` kind are deleted (the records category was eliminated
+  // entirely). What the block proved — a landed secret is a finding, an uncommitted
+  // worktree cleanup cannot flip it — is now SEC-01's, and test/red/retarget.mjs pins it.
+  // The scrub ENGINE itself survives as `baseline scrub` and is exercised further down.
 
   // ---- Issue #57: the decision graph's amendment edges — read, resolved, paired ----
   // Before this, `Amends:`/`Amended-by:` were read by no rule, no kind and no schema
@@ -455,131 +436,20 @@ try {
     ok(hdr.amends === 'ADR-0019 (D5 sizing), ADR-0017 (what it obliges the bench to do)' && hdr.amended_by === 'n/a', '#57: parseAdrHeader carries the amendment fields, folded across the wrap (one walk, shared with adrEdges)')
     ok(validateRecord('adr', hdr).length === 0, '#57: the amendment fields validate against record.adr.schema.json')
 
-    // the rules, against a real tree
-    const t57 = mkrepo('main'); tmps.push(t57)
-    const D = 'docs/decisions'
-    fs.mkdirSync(path.join(t57, D), { recursive: true })
-    const adr = (n, body) => { fs.writeFileSync(path.join(t57, D, n), body); sh(t57, 'git', ['add', '-A']); sh(t57, 'git', ['commit', '-qm', n]) }
-    const cfg57 = { decision_globs: [D + '/*.md'] }
-    const mk57 = jdgs => makeEvalCheck({ repo: indexRepo(t57), cfg: cfg57, NO_EXEC: true, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
-    const FWD = { kind: 'adr-forward-link', globs_from_config: 'decision_globs' }
-    const BACK = { kind: 'adr-backlink', globs_from_config: 'decision_globs' }
-    const STAT = { kind: 'adr-status', globs_from_config: 'decision_globs' }
-
-    adr('0017-floor.md', '# ADR-0017 — the floor is the product\n\nStatus: Accepted\nSupersedes: none\nSuperseded-by: none\nDate: 2026-08-09\n\n## Context\n\nx\n')
-    adr('0021-bench.md', '# ADR-0021 — the bench obligation\n\nStatus: Accepted\nAmends: ADR-0019 (D5 sizing), ADR-0017 (what it obliges)\nDate: 2026-08-11\n\n## Context\n\nx\n')
-    let r = mk57([])(FWD, { id: 'CTX-07' })
-    ok(r.ok === false && /0021-bench\.md amends ADR 0019/.test(r.detail) && /no such file/.test(r.detail), '#57 CTX-07: a dangling `Amends:` is a finding naming the verb and the target (it PASSED before — only "Supersed(ed) by" was resolved)')
-    ok(!/ADR 0017/.test(r.detail), '#57 CTX-07: the edge that DOES resolve is not reported')
-    r = mk57([])(BACK, { id: 'CTX-13' })
-    ok(r.ok === false && /1 one-way amendment/.test(r.detail) && /0021-bench\.md amends ADR 0017/.test(r.detail) && /0017-floor\.md carries no Amended-by/.test(r.detail), '#57 CTX-13: an amendment declared at one end only is a finding naming BOTH records')
-    ok(!/ADR 0019/.test(r.detail), "#57 CTX-13: a DANGLING amends is CTX-07's finding, not reported twice here")
-
-    // the sanction route — the judgment route of #47, so a corpus with history adopts
-    const JDG57 = over => ({ record: 'judgment/1', id: 'JDG-0001', kind: 'deviation', date: '2026-08-11', by: 'a', subject: D + '/0021-bench.md', reason: 'back-fill scheduled with the index rebuild', review_by: '2999-01-01', ...over })
-    r = mk57([JDG57()])(BACK, { id: 'CTX-13' })
-    ok(r.ok === true && /sanctioned by judgment/.test(r.detail) && /JDG-0001/.test(r.detail), '#57 CTX-13: an unexpired deviation naming the declaring record sanctions the one-way edge')
-    r = mk57([JDG57({ review_by: '2000-01-01' })])(BACK, { id: 'CTX-13' })
-    ok(r.ok === false && /1 one-way amendment/.test(r.detail), '#57 CTX-13: an EXPIRED judgment stops sanctioning — the review date is what a frozen allowlist never has')
-    r = mk57([JDG57({ subject: D + '/**' })])(BACK, { id: 'CTX-13' })
-    ok(r.ok === true && /sanctioned/.test(r.detail), '#57 CTX-13: a glob subject sanctions (the breadth the rule fix warns about — corpus-wide covers future edges too)')
-
-    // the repair: both ends declared, and the target exists
-    adr('0019-sizing.md', '# ADR-0019 — D5 sizing\n\nStatus: Amended\nAmended-by: ADR-0021\nDate: 2026-08-10\n\n## Context\n\nx\n')
-    fs.writeFileSync(path.join(t57, D, '0017-floor.md'), '# ADR-0017 — the floor is the product\n\nStatus: Amended\nSupersedes: none\nSuperseded-by: none\nAmended-by: ADR-0021\nDate: 2026-08-09\n\n## Context\n\nx\n')
-    sh(t57, 'git', ['add', '-A']); sh(t57, 'git', ['commit', '-qm', 'back-links'])
-    r = mk57([])(FWD, { id: 'CTX-07' })
-    ok(r.ok === true && /4 declared edge\(s\) resolve/.test(r.detail), `#57 CTX-07: with 0019 present every declared edge resolves, and the detail COUNTS them (got ${r.detail})`)
-    r = mk57([])(BACK, { id: 'CTX-13' })
-    ok(r.ok === true && /2 amendment edge\(s\) declared at both ends/.test(r.detail), `#57 CTX-13: both ends declared — PASS naming the paired count (got ${r.detail})`)
-
-    // CTX-02: the template's own spelling is a forward link (it was not, at blocker severity)
-    const t57b = mkrepo('main'); tmps.push(t57b)
-    fs.mkdirSync(path.join(t57b, D), { recursive: true })
-    const mk57b = () => makeEvalCheck({ repo: indexRepo(t57b), cfg: cfg57, NO_EXEC: true, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
-    fs.writeFileSync(path.join(t57b, D, '0003-new.md'), '# ADR-0003 — the replacement\n\nStatus: Accepted\nDate: 2026-08-12\n\n## Context\n\nx\n')
-    fs.writeFileSync(path.join(t57b, D, '0002-old.md'), '# ADR-0002 — old\n\nStatus: Superseded\nSuperseded-by: ADR-0003\nDate: 2026-08-01\n\n## Context\n\nx\n')
-    sh(t57b, 'git', ['add', '-A']); sh(t57b, 'git', ['commit', '-qm', 'adrs'])
-    ok(mk57b()(STAT, { id: 'CTX-02' }).ok === true, "#57 CTX-02: `Superseded-by: ADR-0003` IS a forward link — a record following templates/adr.md was reported as misdirecting a reader, at blocker severity")
-    fs.writeFileSync(path.join(t57b, D, '0002-old.md'), '# ADR-0002 — old\n\nStatus: Superseded\nDate: 2026-08-01\n\n## Context\n\nNo forward link here.\n')
-    sh(t57b, 'git', ['add', '-A']); sh(t57b, 'git', ['commit', '-qm', 'drop link'])
-    ok(mk57b()(STAT, { id: 'CTX-02' }).ok === false, '#57 CTX-02: a superseded record with NO link still fails — the widening added a spelling, it did not relax the rule')
+    // The rule-level half of this block (CTX-02 adr-status, CTX-07 adr-forward-link,
+    // CTX-13 adr-backlink) is REMOVED by the v4 rule-set cut: all three rules and all three
+    // evaluator kinds are deleted. The READER (adrEdges / parseAdrHeader / the adr schema)
+    // survives in src/records.mjs and is what is still asserted above — a decision-record
+    // parser with no rule on top of it, kept because the schema and templates still ship.
   }
 
-  // ---- Issue #49 (a): the decision NUMBER is an identity, and nothing owned it ----
-  // Two lanes each authored an 0027 under different filenames. Each tree was clean, both
-  // merges were conflict-free, and the default branch ended with two ADR-0027s that no
-  // rule had an opinion about. CTX-14 is the floor: it cannot see the other lane, but it
-  // makes the collision unable to SURVIVE where both lanes land.
-  {
-    const t49 = mkrepo('main'); tmps.push(t49)
-    const D = 'docs/decisions'
-    fs.mkdirSync(path.join(t49, D), { recursive: true })
-    const cfg49 = { decision_globs: [D + '/*.md'] }
-    const mk49 = jdgs => makeEvalCheck({ repo: indexRepo(t49), cfg: cfg49, NO_EXEC: true, JUDGMENTS: jdgs, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })
-    const UNIQ = { kind: 'adr-number-unique', globs_from_config: 'decision_globs' }
-    const adr49 = (n, title) => { fs.writeFileSync(path.join(t49, D, n), `# ADR-${n.slice(0, 4)} — ${title}\n\nStatus: Accepted\nDate: 2026-08-19\n\n## Context\n\nx\n`); sh(t49, 'git', ['add', '-A']); sh(t49, 'git', ['commit', '-qm', n]) }
+  // ---- Issue #49 (a): decision-number identity — REMOVED by the v4 rule-set cut ----
+  // CTX-14 and the `adr-number-unique` kind are deleted with the rest of the CTX family.
 
-    adr49('0026-a.md', 'twenty six')
-    adr49('0027-run-identity-is-one-block.md', 'run identity')
-    ok(mk49([])(UNIQ, { id: 'CTX-14' }).ok === true, '#49 CTX-14: distinct numbers pass')
-    // the incident, reproduced: two files, one number, different filenames
-    adr49('0027-a-routing-policy-is-adopted.md', 'routing policy')
-    let r = mk49([])(UNIQ, { id: 'CTX-14' })
-    ok(r.ok === false && /1 decision number\(s\) claimed twice/.test(r.detail), '#49 CTX-14: two records claiming 0027 is a finding (both trees passed every rule before)')
-    ok(/0027 claimed by/.test(r.detail) && /0027-run-identity-is-one-block\.md/.test(r.detail) && /0027-a-routing-policy-is-adopted\.md/.test(r.detail), '#49 CTX-14: the finding names the number AND both files claiming it')
-    // adoption: renumbering breaks the citations pointing at the record, so the existing
-    // judgment route sanctions the collision — naming EITHER end names it (#47's route)
-    const JDG49 = over => ({ record: 'judgment/1', id: 'JDG-0049', kind: 'deviation', date: '2026-08-19', by: 'a', subject: D + '/0027-a-routing-policy-is-adopted.md', reason: 'renumbering breaks 14 citations; scheduled with the index rebuild', review_by: '2999-01-01', ...over })
-    r = mk49([JDG49()])(UNIQ, { id: 'CTX-14' })
-    ok(r.ok === true && /sanctioned by judgment/.test(r.detail) && /JDG-0049/.test(r.detail), '#49 CTX-14: an unexpired judgment naming ONE colliding file sanctions the collision')
-    ok(mk49([JDG49({ subject: D + '/0027-run-identity-is-one-block.md' })])(UNIQ, { id: 'CTX-14' }).ok === true, '#49 CTX-14: naming the OTHER end sanctions the same collision — a collision has two paths and no privileged one')
-    ok(mk49([JDG49({ review_by: '2000-01-01' })])(UNIQ, { id: 'CTX-14' }).ok === false, '#49 CTX-14: an EXPIRED judgment stops sanctioning — the review date a frozen allowlist never has')
-    ok(mk49([JDG49({ kind: 'break-glass' })])(UNIQ, { id: 'CTX-14' }).ok === false, '#49 CTX-14: break-glass is outage relief, not a sanction (SANCTION_KINDS, one home)')
-    // the repair, and the gap the sequence is left with — reported, never a finding
-    fs.rmSync(path.join(t49, D, '0027-a-routing-policy-is-adopted.md'))
-    fs.writeFileSync(path.join(t49, D, '0029-a-routing-policy-is-adopted.md'), '# ADR-0029 — routing policy\n\nStatus: Accepted\nDate: 2026-08-19\n\n## Context\n\nx\n')
-    sh(t49, 'git', ['add', '-A']); sh(t49, 'git', ['commit', '-qm', 'renumber'])
-    r = mk49([])(UNIQ, { id: 'CTX-14' })
-    ok(r.ok === true && /3 decision number\(s\) unique/.test(r.detail), `#49 CTX-14: renumbering to a free number resolves it (got ${r.detail})`)
-    ok(/gap\(s\) in the sequence \(not an error\): 0028/.test(r.detail), '#49 CTX-14: a hole in the sequence rides the PASS detail — worth seeing, never a verdict')
-    // a corpus whose filenames carry no number is not this rule's subject
-    const t49b = mkrepo('main'); tmps.push(t49b)
-    fs.mkdirSync(path.join(t49b, D), { recursive: true })
-    fs.writeFileSync(path.join(t49b, D, 'README.md'), '# index\n')
-    sh(t49b, 'git', ['add', '-A']); sh(t49b, 'git', ['commit', '-qm', 'index only'])
-    ok(makeEvalCheck({ repo: indexRepo(t49b), cfg: cfg49, NO_EXEC: true, DESCRIPTOR: { valid: false }, BRANCH: 'main', DEFAULT_BRANCH: 'main' })(UNIQ, { id: 'CTX-14' }).ok === null,
-      '#49 CTX-14: an index-only decision dir is a SKIP, not a pass on nothing')
-  }
-
-  // ---- the stored-status signature end-to-end through check.mjs (CTX-12, de-config-keyed) ----
-  {
-    const t12 = mkrepo('main'); tmps.push(t12)
-    fs.writeFileSync(path.join(t12, 'README.md'), '# lane fixture\n')
-    fs.writeFileSync(path.join(t12, 'LICENSE'), 'MIT\n')
-    fs.writeFileSync(path.join(t12, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
-    fs.writeFileSync(path.join(t12, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false }))
-    sh(t12, 'git', ['add', '-A']); sh(t12, 'git', ['commit', '-qm', 'base'])
-    const CHECK12 = path.join(ROOT, 'check.mjs')
-    const byId = out => Object.fromEntries(JSON.parse(out).results.map(x => [baseId(x.id), x]))
-    let res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
-    // M7b: the stored-status surface is GONE — CTX-01 has no row at all, and
-    // CTX-12 (blocker) is de-config-keyed: no stamp in the tree = PASS, no
-    // status_file key to opt anything out.
-    ok(!('CTX-01' in res), 'e2e: CTX-01 retired — no row, not a SKIP')
-    ok(res['CTX-12'].tag === 'PASS' && res['CTX-12'].severity === 'blocker', 'e2e: CTX-12 is the de-config-keyed stored-status blocker — clean tree PASSes')
-    fs.writeFileSync(path.join(t12, 'docs-stamp.md'), 'notes\n\nlast-verified: deadbee 2026-01-01\n')
-    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
-    ok(res['CTX-12'].tag === 'FAIL' && /docs-stamp\.md/.test(res['CTX-12'].detail), 'e2e: a line-anchored stamp anywhere in the tree FAILs CTX-12 and names the file')
-    fs.writeFileSync(path.join(t12, 'docs-stamp.md'), 'notes mention `last-verified: x` mid-line only\n')
-    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
-    ok(res['CTX-12'].tag === 'PASS', 'e2e: a mid-line mention is not the signature — line-anchored means line-anchored')
-    fs.writeFileSync(path.join(t12, 'docs-stamp.md'), 'last-verified: aaa1111\n')
-    fs.writeFileSync(path.join(t12, 'docs-stamp2.md'), 'last-verified: bbb2222\n')
-    res = byId(sh(t12, process.execPath, [CHECK12, '--repo', t12, '--json', '--no-exec'], NOW).out)
-    ok(res['CTX-12'].tag === 'FAIL' && /matched in 2 file\(s\)/.test(res['CTX-12'].detail) && /docs-stamp\.md/.test(res['CTX-12'].detail) && /docs-stamp2\.md/.test(res['CTX-12'].detail), 'e2e: multiple stamps — the detail counts every match and names the files')
-    fs.rmSync(path.join(t12, 'docs-stamp.md')); fs.rmSync(path.join(t12, 'docs-stamp2.md'))
-  }
+  // ---- the stored-status signature (CTX-12) — REMOVED by the v4 rule-set cut ----
+  // CTX-12 is deleted. Its principle outlived it: the review's own instruction to delete
+  // EXPECTED_RULE_COUNT from test/red/_lib.mjs is exactly the hand-maintained stamp CTX-12
+  // used to forbid, and test/red/surface.mjs now derives that count instead.
 
   // ---- M4c: claims dual-read + gen migrate-claims ----
   {
@@ -726,35 +596,24 @@ try {
     ok(h4.code === 1, 'hook: multiple stdin ref lines all process (child scrub must not drain the ref list)')
   }
 
-  // ---- M7b: the de-config-keyed stored-status signature on a BARE repo ----
-  // (was: the status_file:false unhonored-opt-out test — that concept retired with
-  // the key; what remains checkable is that a bare repo with a stamp cannot
-  // config its way out, because there is no config surface at all)
+  // ---- M7b: the bare-repo stored-status / descriptor block — REMOVED by the v4 cut ----
+  // Everything it asserted is about deleted rules: CTX-12 (stored-status signature),
+  // CTX-01 (retired long before), and DESC-01/DESC-02 with the `descriptor` pack that no
+  // longer exists. The descriptor LOADER and schema survive (src/descriptor.mjs, used by
+  // config/admit/jdg) and are exercised through those callers; there is simply no rule
+  // reading them any more.
   {
     const t18 = mkrepo('main'); tmps.push(t18)
     fs.writeFileSync(path.join(t18, 'README.md'), '# bare\n\nlast-verified: abc1234 2026-01-01\n')
-    fs.writeFileSync(path.join(t18, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false }))
+    fs.writeFileSync(path.join(t18, 'baseline.config.json'), JSON.stringify({ project_type: 'docs' }))
+    fs.writeFileSync(path.join(t18, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 'legacy-team', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
     sh(t18, 'git', ['add', '-A']); sh(t18, 'git', ['commit', '-qm', 'base'])
     const res18 = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
-    const ctx12 = res18.results.find(x => isId(x.id, 'CTX-12'))
-    ok(ctx12.tag === 'FAIL' && ctx12.severity === 'blocker' && /README\.md/.test(ctx12.detail), 'e2e: the stamp signature on a bare repo FAILs CTX-12 at blocker, no config key to hide behind')
-    ok(!res18.results.some(x => isId(x.id, 'CTX-01')), 'e2e: CTX-01 is gone from the rule set entirely')
-    // M7b: the WORKTREE read stays strict — the descriptor asymmetry's other half.
-    // A retired field in the worktree descriptor is flagged (DESC-02 names it at
-    // blocker since the M7c split; presence itself is DESC-01's PASS) and the
-    // posture it declared is OFF until shed (the migration pressure). If the
-    // ref-read strip is ever hoisted to worktree reads, this fails.
-    fs.writeFileSync(path.join(t18, 'baseline.repo.json'), JSON.stringify({ schema_version: 1, type: 'docs', lifecycle: 'production', maturity: 'released', owner: 'legacy-team', workflow: 'multi-lane', anchoring: 'strict', lanes: { namespace: 'lane/*', lease_ttl: '7d' }, ground_truth_boundary: { forge: 'none', default_branch: 'main' } }))
-    // v3 §5: the DESC rules ride the opt-in `descriptor` pack — with it off they push no row
-    // at all, so the fixture arms it the way a repo would (packs: ["descriptor"])
-    const res19off = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
-    ok(!res19off.results.some(x => isId(x.id, 'DESC-01') || isId(x.id, 'DESC-02')), 'e2e: with the descriptor pack off, DESC-01/02 push no row — a present descriptor is not an opt-in (V15)')
-    fs.writeFileSync(path.join(t18, 'baseline.config.json'), JSON.stringify({ project_type: 'docs', makes_external_claims: false, packs: ['descriptor'] }))
-    const res19 = JSON.parse(sh(t18, process.execPath, [path.join(ROOT, 'check.mjs'), '--repo', t18, '--json', '--no-exec'], NOW).out)
-    const d1 = res19.results.find(x => isId(x.id, 'DESC-01'))
-    ok(d1.tag === 'PASS' && /present \(schema validity is DESC-02's/.test(d1.detail), 'e2e: presence narrowed — DESC-01 PASSes a present-but-invalid file, pointing at DESC-02')
-    const d2 = res19.results.find(x => isId(x.id, 'DESC-02'))
-    ok(d2.tag === 'FAIL' && d2.severity === 'blocker' && /'owner' is not a known field/.test(d2.detail), 'e2e: worktree read stays STRICT — a retired field makes DESC-02 name it at blocker')
+    for (const gone of ['CTX-01', 'CTX-12', 'DESC-01', 'DESC-02', 'DESC-03']) {
+      ok(!res18.results.some(x => isId(x.id, gone)), `e2e: ${gone} is gone from the rule set entirely`)
+    }
+    // and an INVALID-shaped descriptor no longer fails anything — nothing reads it as a rule
+    ok(res18.results.every(x => x.state === 'n/a' || typeof x.tag === 'string'), 'e2e: every row is either evaluated or n/a — no third state')
   }
 
 } finally {

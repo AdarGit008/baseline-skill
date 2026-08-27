@@ -10,9 +10,18 @@
 // The posture gate is data-driven (a rule declares `workflow`), so "no wallpaper warns"
 // is structural: a posture-gated rule is unrepresentable as a finding on a repo of
 // another posture — it never runs there.
+import { baselineLayerOf, LAYER_KEY } from './repo.mjs'
+
 export const NA = 'n/a'
 export const isNA = x => x?.state === NA
 export const isEvaluated = x => !!x && x.state !== NA
+
+// v4 — the two kinds of rule, told apart by the one structural fact that separates them:
+// a PLUGIN rule names the trust-circle member it stands for (check.plugin), and every other
+// rule is a BASELINE rule. Not a category list and not an id list, so a plugin rule added
+// tomorrow is classified by what it reads rather than by where it was filed.
+export const isPluginRule = r => typeof r?.check?.plugin === 'string' && !!r.check.plugin
+export const isBaselineRule = r => !isPluginRule(r)
 
 const na = (r, reason) => ({ r, state: NA, reason: String(reason || 'not evaluable here').trim() || 'not evaluable here' })
 
@@ -20,10 +29,13 @@ export function runRules({
   rules, cfg, evalCheck, DESCRIPTOR = null, context = 'check',
   ACTIVE_PACKS = null, ACTIVE = null,       // the active packs (v3 §5); ACTIVE is the pre-v3 name
   TOOLS_PRESENT = null,                      // tools detected in the tree (v3 §6); null = not gated here
-  forgeClosed = null,                        // D12: a reason string closes the forge for this run
 }) {
   const packs = ACTIVE_PACKS || ACTIVE || new Set()
   const want = new Set(Array.isArray(cfg?.want) ? cfg.want : [])
+  // v4 THE BASELINE RULES LAYER — the second opt-in, and the only one whose default is IN.
+  // Read once per run off the config (repo.mjs baselineLayerOf: an absent key is IN), so a
+  // cfg that never heard of the key behaves exactly as it did before the layer existed.
+  const LAYER = baselineLayerOf(cfg)
   const results = []
   for (const r of rules) {
     // M6a: context-gated execution — a rule outside the run's context is EXCLUDED (no row).
@@ -48,10 +60,19 @@ export function runRules({
       const wfs = Array.isArray(r.workflow) ? r.workflow : [r.workflow]
       if (!wfs.includes(DESCRIPTOR.data.workflow)) continue
     }
-    // v3 §11 D12 (V19/V42): the forge is closed under check (and orient) — a forge-sourced
-    // rule resolves n/a with the closure reason BEFORE its evaluator runs, so no path can
-    // spawn gh, and the reason is the closure's own, never the evaluator's first subject miss.
-    if (forgeClosed && Array.isArray(r.sources) && r.sources.includes('forge')) { results.push(na(r, forgeClosed)); continue }
+    // The D12 forge closure that used to sit here is gone with the seam: every rule in the
+    // v4 set declares sources:["tree"], so there is no plane left to close (v4 rule-set cut).
+
+    // v4 the BASELINE RULES LAYER, opted out. The row is n/a — the SAME treatment a plugin
+    // whose tool this repo never adopted gets, and for the same reason: not-chosen is not
+    // failed. n/a is out of summarize(), out of the AND-gate and out of the exit code, but
+    // it is still a ROW, so `--json` carries every muted rule by id with the reason, and the
+    // report prints the layer's state on every run. Opting out is a decision on the record,
+    // never a way for a failing rule to go quiet.
+    if (!LAYER.in && isBaselineRule(r)) {
+      results.push(na(r, `the baseline rules layer is opted OUT (baseline.config.json "${LAYER_KEY}": false) — this rule produces no finding and is excluded from the gate; \`baseline trust setup --baseline-rules in\` puts the layer back`))
+      continue
+    }
 
     let res; try { res = evalCheck(r.check, r) } catch (e) { res = { ok: null, detail: 'check errored: ' + String(e && e.message).slice(0, 60) } }
     if (!res || res.ok === null || res.ok === undefined) { results.push(na(r, res?.detail)); continue }

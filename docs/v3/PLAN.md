@@ -27,19 +27,19 @@ baseline stops being the whole system and becomes one part of four.
 | Piece | Owns | Reaches baseline via |
 |---|---|---|
 | **baseline** | verdicts — deterministic, offline, one exit code | — |
-| **tdd-pi** | what is open (red/green tests) | `tdd.json`, committed |
+| **obsidian-tdd** | what is open (red/green tests) | `tdd.json`, committed |
 | **okf-rag** | why things matter (prose, rationale) | `get_knowledge()`, HITL-curated |
 | **graphify** | what is where (code structure) | `graphify-out/`, local, gitignored |
 
 baseline also ships one always-on `PLUG` rule per plugin (§11 D8): `PLUG-01`
-tdd-pi, `PLUG-02` graphify, `PLUG-03` okf-rag. Each is one WARN — artifact
+obsidian-tdd, `PLUG-02` graphify, `PLUG-03` okf-rag. Each is one WARN — artifact
 absent → the install command; present but gitignore state differs from config →
 the mismatch; otherwise PASS. It reads metadata only (D7): path, file or
 directory, mtime, gitignore state. Plugins are suggested, never required (D6).
 
 **Invariants (each needs a red test):**
 
-- **V1** baseline imports no code from tdd-pi, okf-rag, or graphify. File
+- **V1** baseline imports no code from obsidian-tdd, okf-rag, or graphify. File
   contracts only. The runner stays zero-dependency Node.
 - **V2** baseline runs to a complete, correct verdict with all three vendors
   absent. Absence is never a failure, never a warning — it is `n/a`.
@@ -299,7 +299,7 @@ disagree with this section, this section wins; where a red test disagrees with
 this section, the test is rewritten.
 
 **D6 — baseline is workflow scaffolding, and plugins are suggested, not
-required.** tdd-pi, okf-rag and graphify are the default suggestions. Install
+required.** obsidian-tdd, okf-rag and graphify are the default suggestions. Install
 is per approval: baseline prints the install command, and never runs it.
 
 **D7 — the boundary is metadata.** For a plugin artifact baseline may read: does
@@ -310,7 +310,7 @@ display is not a verdict (V3 stands).
 
 **D8 — one WARN per plugin.** Each plugin is exactly one rule, in a new
 always-on family `PLUG` (`rules/plug.json`, category `plugins`, severity
-`warn`, kind `plugin-presence`): `PLUG-01` tdd-pi, `PLUG-02` graphify,
+`warn`, kind `plugin-presence`): `PLUG-01` obsidian-tdd, `PLUG-02` graphify,
 `PLUG-03` okf-rag. Verdict: artifact absent → WARN naming the install command;
 present but gitignore state differs from config → WARN naming the mismatch;
 otherwise PASS. A plugin never produces a second row, a FAIL, or an exit-code

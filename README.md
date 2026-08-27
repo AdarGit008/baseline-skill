@@ -12,7 +12,7 @@ discipline, records, the repo descriptor, and the three plugins —
 
 v3 is **scaffolding, not an enforcer**: only the always-on blockers can fail a build;
 [packs](GLOSSARY.md#pack) run only from an explicit switch in `baseline.config.json`; and the
-three [plugins](GLOSSARY.md#plugin) — **tdd-pi** (what is open), **graphify** (what is
+three [plugins](GLOSSARY.md#plugin) — **obsidian-tdd** (what is open), **graphify** (what is
 where), **okf-rag** (why it matters) — are *suggested*, never required: baseline reads their
 artifacts as metadata only and never opens them.
 

@@ -11,10 +11,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadRules } from '../../src/rules.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(HERE, '..', '..')
 const BASELINE = path.join(ROOT, 'baseline.mjs')
+const RULES_ALL = loadRules().rules
 
 let fails = 0
 const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails++ }
@@ -111,8 +113,11 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   commit(w2.clone, 'records/judgments/JDG-0101.json', JDG('JDG-0101', { subject: 'baseline.repo.json', kind: 'deviation', reason: 'shed the retired owner field (M7b schema)' }), 'jdg')
   r = admitJson(w2.clone)
   ok(r.status === 0 && r.j?.verdict === 'ADMITTED', `the owner-shedding PR admits with its same-PR judgment (got ${r.status} ${r.j?.verdict})`)
+  // DESC-03 (and the whole descriptor pack) is deleted by the v4 rule-set cut, so the
+  // ceremony is no longer a RULE: the judgment record still rides the PR, and admit still
+  // admits — it simply has no descriptor-change rule to satisfy.
   const d3 = (r.j?.results || []).find(x => isId(x.id, 'DESC-03'))
-  ok(d3 && d3.tag === 'PASS', `DESC-03 judged the descriptor change through the ceremony (got ${d3?.tag})`)
+  ok(!d3, `DESC-03 is deleted — no descriptor-change row is produced (${d3?.tag ?? 'absent'})`)
 }
 
 // ---------- staleness: the C35 command contract ----------
@@ -132,60 +137,27 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   ok(r.status === 0 && r.j?.staleness.ancestor === true, 're-derived (merged target) admits again')
 }
 
-// ---------- FS1 + DESC-03: the target's posture judges; changes carry their judgment ----------
+// ---------- FS1: the target's posture judges — DESC-03's half REMOVED by the v4 cut ----------
+// DESC-01/02/03 and the `descriptor`/`descriptor-valid`/`descriptor-change` kinds are all
+// deleted. The descriptor is still READ (it supplies project_type and the default branch),
+// but no rule judges a change to it, so an on-branch weakening no longer refuses. What is
+// pinned here is that loss, explicitly, and that admit's other legs are unaffected.
 {
   const w = mkworld('desc')
   git(w.clone, 'checkout', '-q', '-b', 'lane/7')
   const weak = { ...BASE_DESC, anchoring: 'off', workflow: 'single-lane' }
   commit(w.clone, 'baseline.repo.json', JSON.stringify(weak, null, 2) + '\n', 'weaken posture on-branch')
   let r = admitJson(w.clone)
-  ok(r.status === 1 && r.j?.verdict === 'REFUSED', `descriptor change without judgment refuses (got ${r.status})`)
-  const d3 = r.j?.results.find(x => isId(x.id, 'DESC-03'))
-  ok(d3?.tag === 'FAIL' && /no same-range judgment/.test(d3?.detail || ''), 'DESC-03 FAILs naming the missing judgment')
-  ok(/WEAKENING/.test(d3?.detail || '') && /anchoring: 'strict' → 'off'/.test(d3?.detail || '') && /workflow/.test(d3?.detail || ''), `the weakening ladder names both down-moves (got: ${d3?.detail?.slice(0, 140)})`)
+  ok(r.status === 0 && r.j?.verdict === 'ADMITTED', `an unjudged descriptor weakening now ADMITS — the rule that refused it is deleted (got ${r.status} ${r.j?.verdict})`)
+  ok(!(r.j?.results || []).some(x => isId(x.id, 'DESC-03')), 'and no DESC-03 row is produced')
 
-  // wrong subject: the tool's OWN pinned spelling is the matcher
-  commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { subject: 'descriptor change' }), 'judgment, wrong subject')
-  r = admitJson(w.clone)
-  const d3b = r.j?.results.find(x => isId(x.id, 'DESC-03'))
-  ok(r.status === 1 && /subject is 'descriptor change', not 'baseline\.repo\.json'/.test(d3b?.detail || ''), 'a near-miss subject refuses WITH the exact-spelling hint')
-
-  // exact subject: admitted, judgment named
-  commit(w.clone, 'records/judgments/JDG-0002.json', JDG('JDG-0002'), 'judgment, exact subject')
-  r = admitJson(w.clone)
-  const d3c = r.j?.results.find(x => isId(x.id, 'DESC-03'))
-  ok(r.status === 0 && d3c?.tag === 'PASS' && /carries JDG-0002/.test(d3c?.detail || ''), `exact-subject judgment admits (got ${r.status}: ${d3c?.detail?.slice(0, 80)})`)
-
-  // an EXPIRED judgment is honestly not a judgment
-  const w2 = mkworld('descexp')
-  git(w2.clone, 'checkout', '-q', '-b', 'lane/7')
-  commit(w2.clone, 'baseline.repo.json', JSON.stringify({ ...BASE_DESC, anchoring: 'relaxed' }, null, 2) + '\n', 'tune anchoring')
-  commit(w2.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { review_by: '2020-01-01' }), 'lapsed judgment')
-  r = admitJson(w2.clone)
-  ok(r.status === 1 && /no same-range judgment/.test(r.j?.results.find(x => isId(x.id, 'DESC-03'))?.detail || ''), 'a lapsed judgment does not satisfy DESC-03')
-
-  // an INVALIDATED head descriptor is the ultimate weakening
+  // an INVALID head descriptor is likewise no longer a refusal — it is simply an invalid
+  // descriptor, and the run falls back to auto-detection
   const w3 = mkworld('descinv')
   git(w3.clone, 'checkout', '-q', '-b', 'lane/7')
   commit(w3.clone, 'baseline.repo.json', '{ not json', 'break the descriptor on-branch')
   r = admitJson(w3.clone)
-  ok(r.status === 1 && /descriptor invalidated/.test(r.j?.results.find(x => isId(x.id, 'DESC-03'))?.detail || ''), 'invalidating the descriptor on-branch is classified as weakening and refused')
-}
-
-// ---------- M7a: DESC-03 kind pin — break-glass never approves a descriptor change ----------
-{
-  const w = mkworld('desckind')
-  git(w.clone, 'checkout', '-q', '-b', 'lane/7')
-  const weak = { ...BASE_DESC, anchoring: 'relaxed' }
-  commit(w.clone, 'baseline.repo.json', JSON.stringify(weak, null, 2) + '\n', 'descriptor change')
-  commit(w.clone, 'records/judgments/JDG-0001.json', JDG('JDG-0001', { kind: 'break-glass', gate: 'admit' }), 'break-glass, right subject')
-  const r = admitJson(w.clone)
-  const d3 = r.j?.results.find(x => isId(x.id, 'DESC-03'))
-  ok(r.status === 1 && d3?.tag === 'FAIL', `a right-subject BREAK-GLASS does not satisfy DESC-03 (kinds pinned at M7a) (got ${r.status}, ${d3?.tag})`)
-  ok(/never descriptor-change approval/.test(d3?.detail || '') && /sign-off\|deviation\|risk-acceptance/.test(d3?.detail || ''), 'the refusal names the kind pin and the satisfying kinds')
-  commit(w.clone, 'records/judgments/JDG-0002.json', JDG('JDG-0002', { kind: 'risk-acceptance' }), 'risk-acceptance, right subject')
-  const r2 = admitJson(w.clone)
-  ok(r2.status === 0 && r2.j?.results.find(x => isId(x.id, 'DESC-03'))?.tag === 'PASS', 'risk-acceptance (a pinned kind) satisfies')
+  ok(r.status === 0 && !(r.j?.results || []).some(x => isId(x.id, 'DESC-0')), `an invalidated descriptor produces no DESC row at all (got ${r.status})`)
 }
 
 // ---------- the JDG-only admission path (the reachable relief valve) ----------
@@ -260,8 +232,12 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   git(w.clone, 'mv', 'baseline.repo.json', 'renamed-away.json')
   git(w.clone, 'commit', '-qm', 'rename the descriptor away')
   const r = admitJson(w.clone)
+  // was: DESC-03 caught `git mv baseline.repo.json away` as a weakening. The rule is
+  // deleted, so the rename is no longer a refusal — but the no-renames diff that made it
+  // VISIBLE is still what admit reads, and the changed-set must still name both paths.
   const d3 = r.j?.results.find(x => isId(x.id, 'DESC-03'))
-  ok(r.status === 1 && d3?.tag === 'FAIL' && /descriptor invalidated/.test(d3?.detail || ''), `renaming the descriptor away is a caught weakening, not "untouched" (got ${r.status}, ${d3?.tag})`)
+  ok(!d3, 'no DESC-03 row — the descriptor-change rule is deleted')
+  ok(r.status === 0, `renaming the descriptor away now admits (got ${r.status})`)
 }
 {
   // the JDG-only path is strict: ONE invalid rider and the range falls to the normal contract
@@ -312,11 +288,15 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   const c = cli(w.clone, ['check', '--json', '--no-exec'])
   let cj = null; try { cj = JSON.parse(c.stdout) } catch {}
   const ids = new Set((cj?.results || []).map(x => x.id))
-  ok(cj && ![...ids].some(i => isId(i, 'DESC-03')), 'DESC-03 is EXCLUDED from check output (no wrong-context rows)')
-  ok([...ids].some(i => isId(i, 'REC-02')) && [...ids].some(i => isId(i, 'DESC-01')), 'the shared-context rules still run in check')
+  ok(cj && ![...ids].some(i => isId(i, 'DESC-03')), 'DESC-03 is EXCLUDED from check output (the rule is deleted)')
+  ok([...ids].some(i => isId(i, 'SEC-01')) && [...ids].some(i => isId(i, 'GOV-03')), 'the surviving rules run in check')
   const a = admitJson(w.clone)
   const aids = new Set((a.j?.results || []).map(x => x.id))
-  ok([...aids].some(i => isId(i, 'DESC-03')) && [...aids].some(i => isId(i, 'REC-02')) && ![...aids].some(i => isId(i, 'BUILD-05')), 'admit runs the admit-context set (and never the exec crown)')
+  // the v4 cut left NO rule declaring the admit context: DESC-03 was the last one. admit's
+  // rule leg is therefore empty, and its verdict rests on staleness and the judgment ledger
+  // alone. That is a real narrowing, pinned here rather than discovered later.
+  ok(aids.size === 0, `no rule declares the admit context any more — admit's rule leg is empty (${[...aids].join(', ') || 'empty'})`)
+  ok(RULES_ALL.every(r => !(r.contexts || []).includes('admit')), 'and the rule set agrees: no contexts:["admit"] anywhere')
 }
 
 // ---------- --target explicit + detached-HEAD CI shape (GITHUB_HEAD_REF) ----------
@@ -341,14 +321,18 @@ const advanceMainAtOrigin = (w) => { commit(w.seed, 'ADVANCE.md', 'main moved\n'
   const r = admitJson(w.clone)
   const p = r.j?.provenance
   ok(!!p && /^[0-9a-f]{12}$/.test(p.digest), 'provenance: JSON carries a 12-hex inputs_digest')
-  ok(p && p.checks === 'not-consulted' && /^[0-9a-f]{40}$/.test(p.descriptor_oid || ''), 'provenance: no-forge world digests checks as not-consulted; descriptor oid is the blob OID')
-  // the {check_runs} unwrap path end-to-end: a replay fixture at HEAD's sha
-  // flips checks from 'not-consulted' to a counted consult with a new digest
+  ok(p && p.checks === 'not-consulted' && /^[0-9a-f]{40}$/.test(p.descriptor_oid || ''), 'provenance: the check-run plane digests as not-consulted; descriptor oid is the blob OID')
+  // v4 rule-set cut: admit's one marginal forge read (checkRuns at HEAD) is REMOVED with
+  // the seam, so the plane is permanently 'not-consulted' — a replay fixture at HEAD's sha
+  // no longer changes the digest, because nothing reads it. The canonicalization that made
+  // ABSENT a VALUE is what keeps this honest rather than a hole (src/digest.mjs).
   const headSha = git(w.clone, 'rev-parse', 'HEAD')
   const replay = path.join(w.dir, 'replay'); fs.mkdirSync(replay)
   fs.writeFileSync(path.join(replay, `check-runs-${headSha}.json`), JSON.stringify({ check_runs: [{ name: 'ci', status: 'completed', conclusion: 'success', head_sha: headSha }, { name: 'admit', status: 'completed', conclusion: 'success', head_sha: headSha }] }))
   const rr = admitJson(w.clone, [], { BASELINE_FORGE_REPLAY: replay })
-  ok(rr.j?.provenance?.checks === 2 && rr.j.provenance.digest !== p.digest, 'a consulted forge digests differently: checks counted, hash moved')
+  ok(rr.j?.provenance?.checks === 'not-consulted' && rr.j.provenance.digest === p.digest,
+    `a check-run replay fixture changes nothing — admit consults no forge (checks ${JSON.stringify(rr.j?.provenance?.checks)}, digest ${rr.j?.provenance?.digest === p.digest ? 'stable' : 'moved'})`)
+  ok(rr.j?.verdict === r.j?.verdict, 'and the verdict is unchanged')
   // refusal-inert: the same world REFUSED (stale) must still carry provenance untouched
   advanceMainAtOrigin(w)
   const r2 = admitJson(w.clone)

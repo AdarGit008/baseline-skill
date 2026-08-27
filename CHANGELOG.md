@@ -10,7 +10,7 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 V3 keeps the premise — *don't trust a written promise, make something check it* —
 and drops the enforcement of a workflow that no longer exists. baseline stops being
-the whole system and becomes one part of four: it owns the verdicts; **tdd-pi** owns
+the whole system and becomes one part of four: it owns the verdicts; **obsidian-tdd** owns
 what is open, **okf-rag** owns why things matter, **graphify** owns what is where —
 and all three reach it through *file contracts only*, read as metadata, never opened.
 The plan is `docs/v3/PLAN.md`; its authority is `test/red/` — 38 executable
@@ -151,7 +151,7 @@ printed anywhere is now derived (`check --self-check` says how many).
 
 ### Added — V3: the plugin boundary and the knowledge seams
 - **The `PLUG` family** — one always-on WARN per plugin, `rules/plug.json`,
-  category `plugins`, kind `plugin-presence` (§11 D6–D8): **PLUG-01-tdd-pi**
+  category `plugins`, kind `plugin-presence` (§11 D6–D8): **PLUG-01-obsidian-tdd**
   (`tdd.json`, expected tracked), **PLUG-02-graphify** (`graphify-out/`, expected
   ignored), **PLUG-03-okf-rag** (`$BASELINE_OKF_BUNDLE`, expected ignored; the
   gitignore question is skipped when the path is outside the repo). Artifact absent
@@ -163,7 +163,7 @@ printed anywhere is now derived (`check --self-check` says how many).
   content reads under `check` and `orient`; garbage bytes in `tdd.json` give the
   same verdict as a well-formed file (V41).
 - **Config key `plugins`** (D9): per plugin, `{ "path": <relative path>,
-  "ignored": true|false }`, keyed `tdd-pi` / `graphify` / `okf-rag`; `ignored:
+  "ignored": true|false }`, keyed `obsidian-tdd` / `graphify` / `okf-rag`; `ignored:
   false` means *tracked*; config beats env beats default.
 - **Every WARN leaves a log** (D10): a `PLUG` WARN writes
   `.baseline/log/<PREFIX-NN>.log` — the path inspected, the config values and their

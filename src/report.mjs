@@ -9,6 +9,8 @@
 // summary.total counts the evaluated rows alone (scope.mjs V17).
 import path from 'node:path'
 import { sanitizeTTY } from './util.mjs'
+import { baselineLayerOf, LAYER_KEY } from './repo.mjs'
+import { isBaselineRule } from './engine.mjs'
 
 export const CATS = { build: 'Build & execution', quality: 'Code quality', test: 'Tests & invariants', security: 'Security & supply-chain', repro: 'Reproducibility', ops: 'Operability (service)', governance: 'Change governance', community: 'Community & onboarding', context: 'Context management', claims: 'Claims discipline', records: 'Records & ledger', desc: 'Repo descriptor', plugins: 'Plugins' }
 
@@ -47,6 +49,70 @@ export function summarize(results) {
   return { blockers: results.filter(isBlocking).length, pass: n('PASS'), warn: n('WARN'), fail: n('FAIL'), diverged: n('DIVERGED'), total: ev.length }
 }
 
+// ---------------------------------------------------------------- v4 the trust circle
+//
+// The enabler property, rendered. baseline SUPPORTS a table of tools; a repo ADOPTS the
+// ones its baseline.config.json `plugins` names (repo.mjs `member` — key presence, a fact
+// about the config, not a guess about the tree). A MEMBER's rule gates. A SUGGESTION
+// resolves n/a, stays out of summarize() and out of the exit code, and is offered HERE
+// instead — output, never a verdict.
+//
+// Both lists are derived, never typed: the names come from the rules that actually ran
+// (`check.plugin`), so a roster entry no rule stands for — my-onto, fail-silent until it
+// exists — is never offered as something this repo could adopt today.
+export function trustSummary(results, cfg) {
+  const named = [...new Set((results || []).map(x => x?.r?.check?.plugin).filter(n => typeof n === 'string' && n))]
+  const P = (cfg && cfg.plugins) || {}
+  return { members: named.filter(n => P[n]?.member), suggested: named.filter(n => !P[n]?.member) }
+}
+
+// ---------------------------------------------------------------- v4 the baseline rules layer
+//
+// The other half of the opt-in story, and the half whose default is IN. Every non-plugin
+// rule is a LAYER a repo opts in or out of at setup time; opting OUT makes those rules n/a
+// and takes them out of the AND-gate, which is exactly the treatment an unadopted plugin
+// gets — so it MUST be as visible as membership is, or it becomes a way to hide a failing
+// rule. Hence: rendered on every run (in and out), and machine-visible in --json beside
+// `trust`. The rule ids are DERIVED from the rows that ran, never a second hand-kept list.
+export function baselineSummary(results, cfg) {
+  const l = baselineLayerOf(cfg)
+  const rules = (results || []).filter(x => x?.r && isBaselineRule(x.r)).map(x => x.r.id)
+  return { layer: l.in ? 'in' : 'out', source: l.source, key: LAYER_KEY, rules }
+}
+
+/** The layer's state for the human render: one line, plus one line of consequence. Printed
+ *  whether the layer is in or out — an opted-out layer that said nothing would be a silent
+ *  hole in the gate, which is the one thing this must never be. */
+function baselineLines(results, cfg, color) {
+  const b = baselineSummary(results, cfg)
+  if (!b.rules.length) return []
+  const how = b.source === 'config' ? `${LAYER_KEY} in baseline.config.json` : 'the default — no ' + LAYER_KEY + ' key'
+  if (b.layer === 'in') {
+    return ['  ' + color(1, 'Baseline layer') + `  IN (${how})  ·  ${b.rules.length} rule(s) in scope — a finding among them fails this build`]
+  }
+  return [
+    '  ' + color(1, 'Baseline layer') + `  ${color(33, 'OUT')} (${how})  ·  ${b.rules.length} rule(s) muted: ${b.rules.map(sanitizeTTY).join(', ')}`,
+    color(90, `                  a muted rule produces no finding and is excluded from the exit code — nothing below was checked for them. \`baseline trust setup --baseline-rules in\` puts the layer back.`),
+  ]
+}
+
+/** The suggestion surface for the human render: at most two lines, and silent about
+ *  nothing — a repo with a full circle still gets told what it adopted. */
+function trustLines(results, cfg, color) {
+  const t = trustSummary(results, cfg)
+  if (!t.members.length && !t.suggested.length) return []
+  const S = sanitizeTTY
+  const lines = []
+  if (!t.members.length) {
+    lines.push('  ' + color(1, 'Trust circle') + `  no members — ${t.suggested.length} supported tool(s) suggested: ${t.suggested.map(S).join(', ')}`)
+    lines.push(color(90, `                a suggestion is not a finding and can never fail this build. \`baseline trust setup\` prints the recommended config; \`baseline trust add <tool>\` adopts one, and then it gates.`))
+  } else {
+    lines.push('  ' + color(1, 'Trust circle') + `  ${t.members.length} member(s): ${t.members.map(S).join(', ')}${t.suggested.length ? `  ·  also suggested (not gated): ${t.suggested.map(S).join(', ')}` : ''}`)
+    if (t.suggested.length) lines.push(color(90, `                \`baseline trust add <tool>\` adopts one; \`baseline trust remove <tool>\` drops a member.`))
+  }
+  return lines
+}
+
 // packs the run activated — the JSON's `packs` and the human header. 'core' is not a
 // pack (it is what is left when every pack is off), so it never prints as one.
 const packsOf = ACTIVE => [...(ACTIVE || [])].filter(p => p !== 'core')
@@ -64,6 +130,14 @@ export function reportJson({ results, REPO, cfg, ACTIVE, HEAD, lane = null }) {
     // provenance says so on every run, so a consumer can tell "not consulted" from
     // "consulted and silent"
     provenance: { knowledge: 'not-consulted' },
+    // v4: which plugins this repo ADOPTED (their PLUG rules gate) and which baseline merely
+    // SUGGESTS (n/a rows, never an exit code). Machine-visible so a CI reader can tell an
+    // unadopted tool from a passing one without re-parsing the config.
+    trust: trustSummary(results, cfg),
+    // v4: the baseline rules layer — 'in' (the default: the non-plugin rules gate) or 'out'
+    // (they are n/a rows and cannot reach the exit code). Machine-visible beside `trust` so
+    // a CI reader can tell a muted rule from a passing one without re-parsing the config.
+    baseline: baselineSummary(results, cfg),
     results: results.map(rowJson),
   }
   out.summary = summarize(results)
@@ -121,6 +195,8 @@ export function reportHuman({ results, REPO, cfg, ACTIVE, HEAD, version, color, 
   const s = summarize(results)
   console.log('  ' + color(1, 'Summary') + `  ${color(32, s.pass + ' pass')} · ${color(31, s.fail + ' fail')} · ${color(33, s.warn + ' warn')}${s.diverged ? ` · ${color(31, s.diverged + ' diverged')}` : ''}`)
   console.log(`  Readiness: ${Math.round(100 * s.pass / Math.max(1, s.total))}%  (${s.pass}/${s.total} evaluated)`)
+  for (const line of baselineLines(results, cfg, color)) console.log(line)
+  for (const line of trustLines(results, cfg, color)) console.log(line)
   console.log(s.blockers ? color(31, `\n  ✗ ${s.blockers} blocker(s) — not build-ready.\n`) : color(32, `\n  ✓ no blockers.\n`))
   return s.blockers ? 1 : 0
 }

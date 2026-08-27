@@ -9,7 +9,7 @@
 // Canonicalization is the whole contract:
 //   - fixed field order (object key order never leaks into the hash)
 //   - check tuples FULL-tuple sorted — API page order is not identity
-//   - ABSENT is a VALUE, not a hole: a closed/unreachable forge digests as
+//   - ABSENT is a VALUE, not a hole: an unconsulted check-run plane digests as
 //     'not-consulted', an anchorless branch as 'none' — two runs that consulted
 //     different planes MUST digest differently, and a hole would let them collide.
 // Pure and clock-free by construction; stability is unit-tested (tuple

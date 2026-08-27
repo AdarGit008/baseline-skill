@@ -1,5 +1,11 @@
 {
   "project_type": "node",
   "bootstrap_command": "node -e \"process.exit(1)\"",
-  "makes_external_claims": false
+  "makes_external_claims": false,
+  "_plugins": "v4 trust circle: naming a plugin here ADOPTS it, so its PLUG rule gates this repo. This fixture adopts all three and carries none of their artifacts, which is what pins the member-and-missing blocker. node-pass adopts nothing and pins the other half: a suggestion is n/a and never fails a build.",
+  "plugins": {
+    "obsidian-tdd": {},
+    "graphify": {},
+    "okf-rag": {}
+  }
 }

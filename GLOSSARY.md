@@ -186,7 +186,7 @@ the [descriptor](#descriptor)'s `type` — activates one. A rule in an inactive 
 is not part of the run: no row, not even n/a.
 
 ## Plugin
-One of the three tools baseline suggests and never requires: **tdd-pi** (what is
+One of the three tools baseline suggests and never requires: **obsidian-tdd** (what is
 open — `tdd.json`), **graphify** (what is where — `graphify-out/`) and
 **okf-rag** (why it matters — a knowledge bundle at `$BASELINE_OKF_BUNDLE`,
 `get_knowledge()` for agents). baseline imports no code from them and reads

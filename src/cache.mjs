@@ -1,6 +1,8 @@
 // The facts cache — .baseline/cache/facts.ndjson. Gitignored, rebuildable, and ADVISORY-ONLY:
-// gates never read it (FS8). Its only readers are stale-fallback display paths (orient serving
-// a bounded-stale view when the forge is unreachable). Each line is one observed value with its
+// gates never read it (FS8). Its only readers are stale-fallback display paths. It predates
+// the v4 rule-set cut, which removed the forge from check/orient entirely — the one caller
+// it was built for (a bounded-stale forge view) is gone; reconcile/admit keep their own
+// reads and do not use it. Each line is one observed value with its
 // observed_at, so age is always decidable. Deferred to a later slice: an integrity hash and the
 // per-machine shared XDG cache (F9). A cache write failure is never fatal.
 import fs from 'node:fs'

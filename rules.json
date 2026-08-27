@@ -8,27 +8,12 @@
     "library",
     "docs"
   ],
-  "description": "Testable readiness standard. The original build/test/context/claims rules were distilled from the author's own repo reviews, then pressure-tested and extended against the prior-art field (OpenSSF Scorecard, SLSA, 12-factor, Google SRE, Diataxis, repolinter, Backstage/Cortex/OpsLevel, and many more). Each rule maps to a lesson or a cited source; blockers fail CI, everything else warns. Rules with a 'pack' only run when that pack is active; everything else is always on. With no config file every pack is off: a pack activates only from an explicit switch — makes_external_claims:true (claims), a non-empty decision_globs (decisions), project_type:service (service) — or from the profiles/packs list (or --profile <pack>) for any pack (see packs).",
-  "packs": {
-    "claims": "Opt-in via makes_external_claims:true (or profiles/packs/--profile claims). The claims register and per-claim record discipline.",
-    "decisions": "Opt-in via a non-empty decision_globs (or profiles/packs/--profile decisions). Decision-record status, edges, amendments and numbering.",
-    "descriptor": "Opt-in via profiles/packs/--profile descriptor. The baseline.repo.json descriptor: present, schema-valid, and judgment-carrying when it changes.",
-    "service": "Opt-in via project_type=service (or profiles/packs/--profile service). Operability/observability rules that only make sense for a running service.",
-    "advanced": "Opt-in via profiles/packs/--profile advanced. Expert/niche rules (SBOM, code-scanning, mutation testing, symbol-integrity) that would be noise on most repos."
-  },
+  "description": "Testable readiness standard. One script over repo files: every rule is deterministic, reads the tree only, and is AND-gated to a single exit code — any failing rule fails the build. There is no warn tier and no opt-in pack. Two opt-ins remain, with opposite defaults: the TRUST CIRCLE (the plugins a repo has adopted — opt in, default out) and the BASELINE RULES LAYER (every other rule — opt out, default in, config key baseline_rules). Rules with no subject resolve n/a and are excluded from the gate.",
+  "packs": {},
   "modules": [
     "rules/build.json",
-    "rules/test.json",
-    "rules/ctx.json",
-    "rules/claim.json",
     "rules/sec.json",
     "rules/gov.json",
-    "rules/comm.json",
-    "rules/qual.json",
-    "rules/repro.json",
-    "rules/ops.json",
-    "rules/rec.json",
-    "rules/desc.json",
     "rules/plug.json"
   ]
 }

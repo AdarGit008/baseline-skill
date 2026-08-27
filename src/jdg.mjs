@@ -19,7 +19,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { makeOpt, makeOptText, makeOptAll, getPath, nowUTC, deepEq } from './util.mjs'
-import { run, capabilityProbe, currentLane } from './probe.mjs'
+import { run, currentLane } from './probe.mjs'
 import { liteRepo } from './repo.mjs'
 import { loadDescriptor } from './descriptor.mjs'
 import { validateRecord } from './records.mjs'
@@ -134,15 +134,24 @@ export function evaluateJudgment(j, facts) {
 // The facts view judgments reference (documented in CONTRACT.md): descriptor.* ·
 // planes.{tree,history,forge}.* · git.{branch,head,shallow} · today. Meta keys
 // (present/valid) win over descriptor fields by spread order — and the schema
-// forbids fields by those names anyway. The forge probe is skipped unless asked
-// for: it spawns gh (network); callers pass probeForge when a judgment (or no
-// overlay) actually needs planes.forge. An optional overlay deep-merges last —
+// forbids fields by those names anyway. An optional overlay deep-merges last —
 // fixtures now, M6's richer sweep facts later (src/facts/ is the eventual owner
 // of this namespace once lane/PR facts join it at M5/M6).
-export function gatherJdgFacts(REPO, { overlay = null, today, probeForge = true } = {}) {
+//
+// v4 rule-set cut: the live forge probe is GONE. `jdg check` used to spawn gh when some
+// judgment's tripwire named planes.forge; baseline's only network act now is `git pull`,
+// so the plane is always reported UNAVAILABLE with that reason. The KEY survives — a
+// judgment may still reference planes.forge and will read it as unavailable, and a
+// --facts overlay may still supply it — because deleting the key would silently flip
+// tripwires rather than answering them honestly.
+export function gatherJdgFacts(REPO, { overlay = null, today } = {}) {
   const repo = liteRepo(REPO)
   const d = loadDescriptor(repo)
-  const cap = probeForge ? capabilityProbe(repo) : { tree: { available: true }, history: repo.HEAD ? { available: true, shallow: repo.gitIsShallow(), branch: currentLane(repo) } : { available: false, reason: 'not a git repository (no HEAD)' }, forge: { available: false, reason: 'not probed (no judgment references planes.forge)' } }
+  const cap = {
+    tree: { available: true },
+    history: repo.HEAD ? { available: true, shallow: repo.gitIsShallow(), branch: currentLane(repo) } : { available: false, reason: 'not a git repository (no HEAD)' },
+    forge: { available: false, reason: 'the forge seam was removed — baseline reads repo files only (git pull is its one network act)' },
+  }
   const facts = {
     today,
     descriptor: { ...(d.valid ? d.data : {}), present: d.present, valid: d.valid },
@@ -179,9 +188,7 @@ export function runJdg(argv) {
       try { overlay = JSON.parse(fs.readFileSync(path.resolve(factsFile), 'utf8')) } catch (e) { return usage(`cannot read --facts file: ${e.message}`) }
     }
     const { records, findings } = loadJudgments(REPO)
-    // the forge probe spawns gh — pay for it only when some judgment looks at it
-    const needsForge = !overlay?.planes?.forge && records.some(j => JSON.stringify([j.tripwire ?? null, j.expected_state ?? null]).includes('planes.forge'))
-    const facts = gatherJdgFacts(REPO, { overlay, today, probeForge: needsForge })
+    const facts = gatherJdgFacts(REPO, { overlay, today })
     const results = records.map(j => evaluateJudgment(j, facts))
     const bad = results.filter(r => r.verdict === 'tripped' || r.verdict === 'expired')
     const exit = (bad.length || findings.length) ? 1 : 0

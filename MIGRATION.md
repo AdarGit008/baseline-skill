@@ -74,7 +74,7 @@ An unknown `want` name is printed on stderr and ignored.
 
 ## 4. Plugins — three WARNs and one config key
 
-`PLUG-01-tdd-pi`, `PLUG-02-graphify` and `PLUG-03-okf-rag` are always on. Each is
+`PLUG-01-obsidian-tdd`, `PLUG-02-graphify` and `PLUG-03-okf-rag` are always on. Each is
 one WARN — never a FAIL, never an exit-code change — when its artifact is absent
 (the finding names the install command; baseline never runs it) or when git's
 answer about the artifact differs from what config expects. Every WARN writes
@@ -88,9 +88,9 @@ or you keep it tracked on purpose, say so:
 ```json
 {
   "plugins": {
-    "tdd-pi":   { "path": "tdd.json",      "ignored": false },
-    "graphify": { "path": "graphify-out",  "ignored": true },
-    "okf-rag":  { "path": "vendor/okf",    "ignored": true }
+    "obsidian-tdd": { "path": "tdd.json",      "ignored": false },
+    "graphify":     { "path": "graphify-out",  "ignored": true },
+    "okf-rag":      { "path": "vendor/okf",    "ignored": true }
   }
 }
 ```

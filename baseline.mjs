@@ -7,6 +7,8 @@
 //   jdg     author/evaluate the judgment ledger (sign-offs, deviations, break-glass)
 //   explain what a rule checks and why — the okf-rag read seam (display only, never a verdict)
 //   gen     generators — index views, migrate-claims, okf-concepts (the one-shot OKF migration)
+//   trust   the trust circle — the tools THIS repo adopted (add/remove), and the committed
+//           stamps that let CI gate an artifact it never clones (verifiable vs recorded-only)
 //   scrub   scan record content for secret shapes (the pre-push hook's engine)
 //   help    usage
 // Zero-dependency. check.mjs / rules.json / src/ are co-located — invoke by absolute path.
@@ -52,6 +54,9 @@ if (cmd === 'check') {
 } else if (cmd === 'gen') {
   const { runGen } = await import('./src/gen.mjs')
   process.exit(runGen(rest))
+} else if (cmd === 'trust') {
+  const { runTrust } = await import('./src/trust.mjs')
+  process.exit(runTrust(rest))
 } else if (cmd === 'scrub') {
   const { runScrub } = await import('./src/scrubcli.mjs')
   process.exit(runScrub(rest))
@@ -87,6 +92,22 @@ if (cmd === 'check') {
   gen okf-concepts [--repo DIR]                           stage one proposed concept per rule under
                                                           .baseline/proposed/ — deterministic extraction
                                                           from the shipped docs; the bundle is never written
+  trust setup [--repo DIR] [--json]                       the trust circle — what this repo trusts and
+                                                          what a fresh repo must wire (the bootstrapper
+                                                          surface, derived from the plugin table)
+  trust add NAME [--repo DIR] [--path P] [--ignored B]    adopt a tool: writes plugins.<name> into
+                                                          baseline.config.json, and its rule starts
+                                                          gating this build
+  trust remove NAME [--repo DIR] [--json]                 drop a member: deletes the key, and the tool
+                                                          goes back to a suggestion (n/a, never a finding)
+  trust stamp [--repo DIR] [--member NAME] [--json]       write/refresh .baseline/trust/<member>.json so
+                                                          CI can gate an artifact it never sees; commit
+                                                          them. A RECORDED-ONLY stamp is re-asserted only
+                                                          when named with --member
+  trust verify [--repo DIR] [--json]                      recheck the committed stamps against the tracked
+                                                          tree — graphify's hashes are RECOMPUTED (exit 1
+                                                          on stale/broken); okf-rag's prints as the
+                                                          unverifiable claim it is (never a gate)
   scrub <file...> | --pushed SHA [--since SHA]            scan records for secret shapes (the pre-push
       [--allow ID --allow-reason "..."]                   hook's engine; one scan API with log/REC-02)
   help                                                    this message
@@ -94,6 +115,6 @@ if (cmd === 'check') {
   Run \`baseline\` with no command (or a leading --flag) to score, e.g. \`baseline --repo .\`.`)
   process.exit(0)
 } else {
-  console.error(`baseline: unknown command '${cmd}' (try: check, admit, reconcile, orient, explain, log, jdg, gen, scrub, help)`)
+  console.error(`baseline: unknown command '${cmd}' (try: check, admit, reconcile, orient, explain, log, jdg, gen, trust, scrub, help)`)
   process.exit(2)
 }

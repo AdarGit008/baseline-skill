@@ -1,6 +1,6 @@
 // The scorer — the one pipeline `check` and `orient` share (v3 §8, §11 D12).
 //
-//   indexRepo → resolveConfig → makeLaneWorld (forge closed) → makeEvalCheck → runRules
+//   indexRepo → resolveConfig → makeEvalCheck → runRules
 //
 // check.mjs used to hold this inline; orient v2 needs the same run in-process (its
 // `score:` line is the derived blocker/advisory count, never a narration), and two copies
@@ -9,23 +9,24 @@
 // here prints — the one stderr message this pipeline can emit ('bad --config') is
 // resolveConfig's own, so check.mjs's output stays byte-identical to its inline days.
 //
-// D12: the forge is CLOSED for every caller by default. The engine resolves every
-// forge-sourced rule (GOV-01/02, OPS-07) n/a with the closure reason before its evaluator
-// runs, and the same closure rides into the lane world so no path — replay or not — spawns
-// gh/curl/wget from a check or orient run. admit and reconcile keep the live probe and do
-// not come through here.
+// D12, now structural: there is no forge here to close. The v4 rule set deleted the three
+// forge-sourced rules (GOV-01, GOV-02, OPS-07) and the lane world they read through, so no
+// path from check or orient can reach gh/curl/wget — the closure is the absence of the
+// seam, not a flag guarding it. FORGE_CLOSED survives only as the reason string check.mjs
+// still passes; nothing consumes it. admit and reconcile keep their own forge machinery
+// and do not come through here.
 import path from 'node:path'
 import { loadRules } from './rules.mjs'
 import { indexRepo } from './repo.mjs'
 import { resolveLane } from './probe.mjs'
 import { resolveConfig } from './config.mjs'
 import { makeEvalCheck } from './evaluators.mjs'
-import { makeLaneWorld } from './facts/index.mjs'
 import { runRules } from './engine.mjs'
 import { summarize, evaluated, isBlocking } from './report.mjs'
 
-/** The closure reason every check/orient run carries (V19/V42): the spelling the red
- *  tests match, stated once. */
+/** The closure reason check/orient runs used to carry (V19/V42). Vestigial since the v4
+ *  rule-set cut removed every forge-sourced rule; kept as the one spelling of a string
+ *  callers still pass. */
 export const FORGE_CLOSED = 'forge not consulted'
 
 /** Evaluated rows that are findings but not blocking: a WARN anywhere, or a FAIL/DIVERGED on
@@ -45,7 +46,8 @@ export const advisoryOf = results => evaluated(results).filter(x => x.tag !== 'P
  * Options:
  *   noExec        skip `command`-kind checks that would spawn the repo's own scripts
  *                 (check's --no-exec; orient always). Default true — the safe direction.
- *   forgeClosed   the D12 closure reason; null would reopen the forge, which no caller does.
+ *   forgeClosed   vestigial: the D12 closure reason, accepted so check.mjs's call site keeps
+ *                 compiling. No rule is forge-sourced any more, so nothing reads it.
  *   profileArgs   the --profile packs to activate on top of the config.
  *   cliConfigPath a --config file layered over baseline.config.json.
  *   context       the engine's context gate ('check' — the surface check and orient share).
@@ -73,9 +75,8 @@ export function scoreRepo(repoDir, {
   const BRANCH = lane.lane
   const DEFAULT_BRANCH = (DESCRIPTOR.valid && DESCRIPTOR.data.ground_truth_boundary?.default_branch) || null
 
-  const LANEWORLD = makeLaneWorld(repo, DESCRIPTOR, { forgeClosed })
-  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: noExec, JUDGMENTS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH, LANEWORLD })
-  const results = runRules({ rules: RULES.rules, cfg, ACTIVE_PACKS, TOOLS_PRESENT, forgeClosed, evalCheck, DESCRIPTOR, context })
+  const evalCheck = makeEvalCheck({ repo, cfg, NO_EXEC: noExec, JUDGMENTS, DESCRIPTOR, BRANCH, DEFAULT_BRANCH })
+  const results = runRules({ rules: RULES.rules, cfg, ACTIVE_PACKS, TOOLS_PRESENT, evalCheck, DESCRIPTOR, context })
   const summary = { ...summarize(results), advisory: advisoryOf(results) }
   return { results, summary, HEAD: repo.HEAD, cfgRes, repo, lane, RULES }
 }

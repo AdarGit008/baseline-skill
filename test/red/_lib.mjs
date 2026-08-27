@@ -78,17 +78,53 @@ export function mkrepo(name, files = {}) {
   return dir
 }
 
-/** Fixture bodies that clear the nine always-on blockers, so an exit code reflects only
- *  what the test under way planted. Kept as a function so callers can spread + override. */
+/** Fixture bodies that clear as many always-on blockers as a tree can clear, so an exit
+ *  code reflects only what the test under way planted. Kept as a function so callers can
+ *  spread + override. Note the trust-circle rules (PLUG-01..03) are NOT cleared by files
+ *  alone — a fixture that needs exit 0 must plant the plugin artifacts too. */
 export const CLEAN_NODE = () => ({
   'package.json': JSON.stringify({ name: 'red-fixture', version: '0.0.0', private: true, scripts: { test: 'true' } }, null, 2) + '\n',
   '.github/workflows/ci.yml': 'name: ci\non: [push]\npermissions: read-all\njobs:\n  t:\n    runs-on: ubuntu-latest\n    steps:\n      - run: "true"\n',
+  '.env.example': 'API_TOKEN=\n',                       // BUILD-04
+  'CODEOWNERS': '* @red-tester\n',                      // GOV-03
   'test/basic.test.js': "// a test exists\n",
   'src/index.js': 'export const hi = () => 1\n',
   '.gitignore': '.env\nnode_modules/\n',
   LICENSE: 'MIT-ish red fixture (not a real grant).\n',
   'README.md': '# red fixture\n\nNo links, no counts, nothing to break.\n',
 })
+
+/** v4 MEMBERSHIP — the three plugins DECLARED, which is what puts them in a repo's trust
+ *  circle at all. A member is a KEY of baseline.config.json `plugins`; `{}` adopts at the
+ *  shipped defaults. A fixture that omits this has adopted nothing, and every PLUG rule
+ *  resolves n/a there — a suggestion, not a finding. */
+export const TRUST_ALL = Object.freeze({ 'obsidian-tdd': {}, graphify: {}, 'okf-rag': {} })
+/** A baseline.config.json body adopting all three, plus any other config keys. */
+export const trustedConfig = (extra = {}) => pluginsConfig({ ...TRUST_ALL }, extra)
+
+/** The trust circle, ADOPTED and planted. A PLUG rule is a blocker only for a MEMBER, so a
+ *  fixture that wants the plugin rules to bite has to do both halves: declare them in
+ *  baseline.config.json, and carry the artifacts (tdd.json tracked, graphify-out/ present
+ *  and gitignored). The okf bundle lives outside the repo — spread `okfEnv(dir)` into the
+ *  cli() env alongside this. Override 'baseline.config.json' with `trustedConfig({...})`,
+ *  never with a bare object, or the fixture silently un-adopts the circle. */
+export const TRUSTED_NODE = () => ({
+  ...CLEAN_NODE(),
+  '.gitignore': '.env\nnode_modules/\ngraphify-out/\n',
+  'tdd.json': '{"schema":"tdd/1","tests":[]}\n',
+  'baseline.config.json': trustedConfig(),
+})
+/** graphify-out/ must land AFTER the commit (it is gitignored), so it is a writeAll, not a
+ *  fixture key. Call with the repo dir returned by mkrepo(). */
+export const plantGraph = (dir) => writeAll(dir, { 'graphify-out/GRAPH_REPORT.md': '# GRAPH_REPORT\n' })
+/** A throwaway okf bundle outside the repo, as the env var PLUG-03 reads. */
+export const okfEnv = (name = 'okf') => { const b = mktmp(name); writeAll(b, { 'baseline/rules/.keep': '', 'index.json': '{}\n' }); return { BASELINE_OKF_BUNDLE: b } }
+/** Everything the eight blockers need, in one call: returns { dir, env }. */
+export function mktrusted(name, extra = {}) {
+  const dir = mkrepo(name, { ...TRUSTED_NODE(), ...extra })
+  plantGraph(dir)
+  return { dir, env: okfEnv(name + '-okf') }
+}
 
 /** A repo with no code at all — the docs-only shape V18 measures. */
 export const DOCS_ONLY = () => ({
@@ -139,56 +175,70 @@ export function loadRuleSetAt(ref, root = ROOT) {
 
 // ---------------------------------------------------------------- PLAN.md, encoded
 // These are the plan's own tables. They are literals HERE on purpose: the test is the
-// authority (PLAN.md §0), so the plan's list is the specification, and every count the
+// authority (PLAN §0), so the plan's list is the specification, and every count the
 // tests compare against is DERIVED from these lists (never a spelled-out number).
 
-/** PLAN §3 — the 15 rules v3 deletes, expressed the way the table expresses them — PLUS
- *  §11 D11's six: the five `signoff` rules (a human ledger entry was their only evidence,
- *  and D7 forbids the tdd.json reading §7.1 offered instead) and REC-06 (`vendored-lock`,
- *  replaced by the three PLUG rules). 94 − 15 − 6 + 3 = 76 (EXPECTED_RULE_COUNT). */
+/** The v4 rule-set cut (rule-review, 76 rules reviewed one by one). EIGHT rules survive;
+ *  every other shipped id was scratched. This list is the specification — the shipped set
+ *  is checked against it, and every count in the suite is derived from it, never typed. */
+export const SURVIVING_IDS = [
+  'BUILD-03', 'BUILD-04', 'GOV-03', 'PLUG-01', 'PLUG-02', 'PLUG-03', 'SEC-01', 'SEC-02',
+]
+
+/** The rule modules that survive the cut, in rules.json order. Nine other rules/*.json
+ *  files were deleted outright — nothing in them survived. */
+export const SURVIVING_MODULES = ['rules/build.json', 'rules/sec.json', 'rules/gov.json', 'rules/plug.json']
+
+/** PLAN §3's original 15 deletions, still expressed the way the table expressed them, PLUS
+ *  §11 D11's six. Kept because the v2.5.0 comparisons still read them; the v4 cut is a
+ *  superset (isDeleted below is authoritative for the shipped set). */
 export const DELETED_PREFIXES = ['FLOW', 'DIV', 'MERGE']
 export const DELETED_IDS = ['REC-01', 'REC-04', 'REC-06', 'TEST-03', 'TEST-04', 'TEST-06', 'CLAIM-05', 'CTX-04']
-export const isDeleted = (id) => DELETED_PREFIXES.some(p => id.startsWith(p + '-')) || DELETED_IDS.includes(id)
 
-/** PLAN §11 D11 — "the rule set is therefore 76 rules (79 − 6 + 3)". V11 reads 76. The
- *  literal lives HERE, once, as the plan's own arithmetic; tests compare against it. */
-export const EXPECTED_RULE_COUNT = 76
+/** Deleted = not one of the eight survivors. The v4 cut makes this a whitelist, so a rule
+ *  resurrected by accident is caught by the same predicate that catches an old id. */
+export const isDeleted = (id) => !SURVIVING_IDS.includes(PREFIX_OF(id) || id)
 
-/** PLAN §3 — "The 9 always-on blockers". */
-export const ALWAYS_ON_BLOCKERS = ['BUILD-01', 'BUILD-03', 'BUILD-05', 'TEST-01', 'SEC-01', 'SEC-02', 'COMM-01', 'CTX-05', 'CTX-12']
+/** The whole set is always-on and every rule is a blocker: there is no warn tier and no
+ *  pack, so "the always-on blockers" and "the rule set" are the same list now. */
+export const ALWAYS_ON_BLOCKERS = SURVIVING_IDS
 
-/** PLAN §5 — the five opt-in packs and the rules each owns. */
-export const PACKS = {
-  claims: ['CLAIM-00', 'CLAIM-01', 'CLAIM-02', 'CLAIM-03', 'CLAIM-04', 'CLAIM-06', 'CLAIM-07'], // CLAIM-05 deleted by §11 D11
-  decisions: ['CTX-02', 'CTX-07', 'CTX-13', 'CTX-14'],
-  descriptor: ['DESC-01', 'DESC-02', 'DESC-03'],
-  service: ['OPS-01', 'OPS-02', 'OPS-03', 'OPS-04', 'OPS-05', 'OPS-06', 'OPS-07'],
-  // 'advanced' is named by topic in §5; its members are v2.5.0's advanced profile minus §11 D11's deletions
-  advanced: ['BUILD-09', 'TEST-05', 'TEST-07', 'CTX-10', 'SEC-08', 'SEC-09', 'SEC-10', 'SEC-13'],
-}
-export const PACK_OF = (() => { const m = new Map(); for (const [p, ids] of Object.entries(PACKS)) for (const id of ids) m.set(id, p); return m })()
+/** Packs are gone (execution model: one script over repo files, AND-gated to exit 0; the
+ *  opt-ins left are the trust circle and the baseline rules layer, neither a pack). The
+ *  map stays exported and EMPTY so the pack tests
+ *  read "no pack exists" from data rather than from a deleted symbol. */
+export const PACKS = {}
+export const PACK_OF = new Map()
 
-/** PLAN §7.1 — the five sign-off rules that flip to evidence. Superseded by §11 D11 (they
- *  are deleted, and sit in DELETED_IDS); kept exported so the deletions test can name them. */
+/** PLAN §7.1 — the five sign-off rules that flipped to evidence, then were deleted by
+ *  §11 D11. Kept exported so the deletions test can name them. */
 export const SIGNOFF_FIVE = ['TEST-03', 'TEST-04', 'TEST-06', 'CLAIM-05', 'CTX-04']
+
+/** The three forge-sourced rules the v4 cut removed with the forge seam itself. No rule
+ *  declares sources:["forge"] any more, so no run can reach gh. */
+export const FORGE_SOURCED_DELETED = ['GOV-01', 'GOV-02', 'OPS-07']
+
+/** The check kinds that survive the cut. `doc-code-age` is a deliberate ORPHAN: its rule
+ *  (CTX-11) is deleted, but the incoming CTX-16 inherits its git-date arithmetic. */
+export const SURVIVING_KINDS = ['doc-code-age', 'any-file', 'grep', 'file-contains', 'plugin-presence']
 
 // ---------------------------------------------------------------- PLAN §11 — the plugin boundary
 /** D8 — one rule per plugin, in the always-on PLUG family (rules/plug.json). */
 export const PLUG_IDS = ['PLUG-01', 'PLUG-02', 'PLUG-03']
-export const PLUG_FAMILY = { module: 'rules/plug.json', category: 'plugins', severity: 'warn', kind: 'plugin-presence' }
+export const PLUG_FAMILY = { module: 'rules/plug.json', category: 'plugins', severity: 'blocker', kind: 'plugin-presence' }
 /** D9 — id → the plugin it stands for, its DEFAULT artifact path, and the DEFAULT gitignore
  *  expectation. The okf bundle is env-derived ($BASELINE_OKF_BUNDLE); when that path is
  *  outside the repo the gitignore question is skipped. `plugin` is also the key under the
  *  `plugins` config object (the test is the authority on that spelling — PLAN §0). */
 export const PLUGIN_ARTIFACTS = {
-  'PLUG-01': { plugin: 'tdd-pi', path: 'tdd.json', kind: 'file', ignored: false },
+  'PLUG-01': { plugin: 'obsidian-tdd', path: 'tdd.json', kind: 'file', ignored: false },
   'PLUG-02': { plugin: 'graphify', path: 'graphify-out', kind: 'dir', ignored: true },
   'PLUG-03': { plugin: 'okf-rag', path: '$BASELINE_OKF_BUNDLE', env: 'BASELINE_OKF_BUNDLE', kind: 'dir', ignored: true },
 }
 /** D10 — the log a WARN leaves, relative to the repo. Overwritten each run. */
 export const PLUG_LOG = (id) => path.posix.join('.baseline', 'log', `${id}.log`)
 /** D9 — a baseline.config.json body carrying a `plugins` key. `overrides` is keyed by
- *  plugin name ('tdd-pi' | 'graphify' | 'okf-rag') → { path?, ignored? }; anything not
+ *  plugin name ('obsidian-tdd' | 'graphify' | 'okf-rag') → { path?, ignored? }; anything not
  *  overridden is left to the defaults so the fixture states only the non-default value. */
 export function pluginsConfig(overrides = {}, extra = {}) {
   return JSON.stringify({ ...extra, plugins: overrides }, null, 2) + '\n'

@@ -43,13 +43,40 @@ def _baseline_cmd() -> list[str] | None:
     return None
 
 
+def _wired_entrypoint(repo: str, cmd: list[str]) -> list[str] | None:
+    """The repo's OWN orientation entrypoint, but only when it is byte-identical to the one
+    the installed baseline ships. `baseline trust wire` installs it and CTX-19 gates that
+    identity, so preferring it here is what makes the rule load-bearing: CI verifies the path
+    sessions actually take. The identity is rechecked HERE, at the moment of use — the file
+    is committed, a hostile clone could carry anything under that name, and CTX-19 only runs
+    when `check` does. Not identical, or not there: None, and the caller uses the CLI."""
+    if len(cmd) != 2 or not cmd[0].endswith("node"):
+        return None  # a `baseline` on PATH tells us nothing about where templates/ lives
+    shipped = os.path.join(os.path.dirname(cmd[1]), "templates", "orient.sh")
+    wired = os.path.join(repo, ".baseline", "orient.sh")
+    try:
+        if not (os.path.isfile(wired) and os.path.isfile(shipped)):
+            return None
+        with open(wired, "rb") as a, open(shipped, "rb") as b:
+            if a.read() != b.read():
+                return None
+    except OSError:
+        return None
+    return ["sh", wired]
+
+
 def _run_orient(repo: str | None = None) -> str:
     cmd = _baseline_cmd()
     if not cmd:
         return "_baseline CLI not found — set BASELINE_CLI, or install the baseline skill._"
-    args = cmd + ["orient", "--repo", repo or os.getcwd()]
+    repo = repo or os.getcwd()
+    wired = _wired_entrypoint(repo, cmd)
+    args = wired if wired else cmd + ["orient", "--repo", repo]
+    # the entrypoint locates the CLI through BASELINE_DIR and defaults to the Claude Code
+    # path; Hermes installs elsewhere, so the runner names the baseline it actually resolved
+    env = {**os.environ, "BASELINE_DIR": os.path.dirname(cmd[1])} if wired else None
     try:
-        proc = subprocess.run(args, capture_output=True, text=True, timeout=30)
+        proc = subprocess.run(args, capture_output=True, text=True, timeout=30, env=env)
         return (proc.stdout or "").strip() or "_baseline orient produced no output._"
     except Exception as exc:  # a wrapper failure must never break a session (orient is advisory)
         logger.debug("baseline orient failed: %s", exc)

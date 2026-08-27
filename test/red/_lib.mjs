@@ -178,16 +178,44 @@ export function loadRuleSetAt(ref, root = ROOT) {
 // authority (PLAN §0), so the plan's list is the specification, and every count the
 // tests compare against is DERIVED from these lists (never a spelled-out number).
 
-/** The v4 rule-set cut (rule-review, 76 rules reviewed one by one). EIGHT rules survive;
- *  every other shipped id was scratched. This list is the specification — the shipped set
- *  is checked against it, and every count in the suite is derived from it, never typed. */
+/** The v4 rule-set cut (rule-review, 76 rules reviewed one by one). EIGHT rules survived
+ *  the cut and every other shipped id was scratched; the review then commissioned FIVE NEW
+ *  rules, CTX-15..19, which are the whole of the rebuilt context category (CTX-01..14 are
+ *  retired and their numbers are not reusable). This list is the specification — the
+ *  shipped set is checked against it, and every count in the suite is derived from it. */
 export const SURVIVING_IDS = [
   'BUILD-03', 'BUILD-04', 'GOV-03', 'PLUG-01', 'PLUG-02', 'PLUG-03', 'SEC-01', 'SEC-02',
+  ...CTX_IDS_SRC(),
 ]
+function CTX_IDS_SRC() { return ['CTX-15', 'CTX-16', 'CTX-17', 'CTX-18', 'CTX-19'] }
+
+/** v4/ctx — the five new rules, and the two facts about each that the rest of the suite
+ *  derives from rather than retyping: which HALF of the rule set it belongs to (trust
+ *  circle vs baseline layer, told apart by check.plugin exactly as the runner tells them
+ *  apart), and whether it is FROZEN. */
+export const CTX_IDS = CTX_IDS_SRC()
+/** The four trust-circle CTX rules → the roster member each stands for. */
+export const CTX_MEMBER_OF = {
+  'CTX-15': 'graphify', 'CTX-16': 'obsidian-tdd', 'CTX-17': 'okf-rag', 'CTX-18': 'my-onto',
+}
+/** FROZEN: declared, permanently n/a, and carrying NO severity claim. 'blocker' would be an
+ *  empty claim about a check that cannot fire and there is no warn tier to demote into, so
+ *  the severity vocabulary carries a third value that is the ABSENCE of a claim. */
+export const FROZEN_IDS = ['CTX-18']
+export const FROZEN_KIND = 'frozen'
+export const FROZEN_SEVERITY = 'none'
+/** CTX-19's subject: baseline's own wiring, installed by `baseline trust wire`, checked for
+ *  BYTE-IDENTITY against the copy the installed baseline ships. */
+export const ORIENT_ENTRYPOINT_REL = '.baseline/orient.sh'
+export const ORIENT_ENTRYPOINT_SHIPPED = 'templates/orient.sh'
+/** The config keys the two ordering rules read (opt-in by emptiness). There is no
+ *  `*_stale_days` twin for either — the v4 review retired day thresholds outright. */
+export const CTX_SOURCE_KEYS = { 'CTX-16': 'test_state_sources', 'CTX-17': 'knowledge_sources' }
 
 /** The rule modules that survive the cut, in rules.json order. Nine other rules/*.json
- *  files were deleted outright — nothing in them survived. */
-export const SURVIVING_MODULES = ['rules/build.json', 'rules/sec.json', 'rules/gov.json', 'rules/plug.json']
+ *  files were deleted outright — nothing in them survived; rules/ctx.json is NEW (the
+ *  deleted CTX module's name, holding none of its rules). */
+export const SURVIVING_MODULES = ['rules/build.json', 'rules/sec.json', 'rules/gov.json', 'rules/plug.json', 'rules/ctx.json']
 
 /** PLAN §3's original 15 deletions, still expressed the way the table expressed them, PLUS
  *  §11 D11's six. Kept because the v2.5.0 comparisons still read them; the v4 cut is a
@@ -199,9 +227,11 @@ export const DELETED_IDS = ['REC-01', 'REC-04', 'REC-06', 'TEST-03', 'TEST-04', 
  *  resurrected by accident is caught by the same predicate that catches an old id. */
 export const isDeleted = (id) => !SURVIVING_IDS.includes(PREFIX_OF(id) || id)
 
-/** The whole set is always-on and every rule is a blocker: there is no warn tier and no
- *  pack, so "the always-on blockers" and "the rule set" are the same list now. */
-export const ALWAYS_ON_BLOCKERS = SURVIVING_IDS
+/** The whole set is always-on and every rule that CLAIMS a severity is a blocker: there is
+ *  no warn tier and no pack. The one exception is the FROZEN rule, which claims no severity
+ *  at all — so "the always-on blockers" is the rule set minus the frozen ones, derived here
+ *  rather than typed, and V11 pins the exception BY NAME so it can never widen quietly. */
+export const ALWAYS_ON_BLOCKERS = SURVIVING_IDS.filter(id => !FROZEN_IDS.includes(id))
 
 /** Packs are gone (execution model: one script over repo files, AND-gated to exit 0; the
  *  opt-ins left are the trust circle and the baseline rules layer, neither a pack). The
@@ -218,9 +248,17 @@ export const SIGNOFF_FIVE = ['TEST-03', 'TEST-04', 'TEST-06', 'CLAIM-05', 'CTX-0
  *  declares sources:["forge"] any more, so no run can reach gh. */
 export const FORGE_SOURCED_DELETED = ['GOV-01', 'GOV-02', 'OPS-07']
 
-/** The check kinds that survive the cut. `doc-code-age` is a deliberate ORPHAN: its rule
- *  (CTX-11) is deleted, but the incoming CTX-16 inherits its git-date arithmetic. */
-export const SURVIVING_KINDS = ['doc-code-age', 'any-file', 'grep', 'file-contains', 'plugin-presence']
+/** The check kinds that survive the cut, plus the five v4/ctx kinds. `doc-code-age` stays a
+ *  deliberate ORPHAN: its rule (CTX-11) is deleted and CTX-16 did NOT adopt the kind (its
+ *  subject is a plugin artifact, not a frontmatter-anchored doc) — it SHARES the arithmetic
+ *  instead, through the one newestCommitAmong() in src/evaluators.mjs. */
+export const SURVIVING_KINDS = ['doc-code-age', 'any-file', 'grep', 'file-contains', 'plugin-presence',
+  'graph-stamp-fresh', 'artifact-not-lagging', 'stamp-not-lagging', 'frozen', 'orient-entrypoint']
+/** id → the kind that rule's check declares, for the v4/ctx five. */
+export const CTX_KIND_OF = {
+  'CTX-15': 'graph-stamp-fresh', 'CTX-16': 'artifact-not-lagging',
+  'CTX-17': 'stamp-not-lagging', 'CTX-18': 'frozen', 'CTX-19': 'orient-entrypoint',
+}
 
 // ---------------------------------------------------------------- PLAN §11 — the plugin boundary
 /** D8 — one rule per plugin, in the always-on PLUG family (rules/plug.json). */
@@ -248,7 +286,16 @@ export function pluginsConfig(overrides = {}, extra = {}) {
  *  artifact into `sentinel`: fs open/read (sync, callback, promise, stream) and any child
  *  process whose argv reaches for the content (git cat-file blob / show / grep / diff …).
  *  Metadata is allowed by D7 — stat/exists/readdir/check-ignore/ls-files are NOT recorded.
- *  Returns the env to spread into cli(); read the sentinel back with readSentinel(). */
+ *  Returns the env to spread into cli(); read the sentinel back with readSentinel().
+ *
+ *  v4: anything under `.baseline/` is stripped from the string BEFORE the pattern is
+ *  tested. That directory is not a plugin artifact and never was — it is baseline's own
+ *  (the cache, the per-rule logs, and since v4 the committed TRUST STAMPS the CTX rules
+ *  read). D7 forbids opening the PLUGIN's file; reading baseline's own committed evidence
+ *  is the whole reason the stamps exist, and the default pattern's `okf` happened to match
+ *  `.baseline/trust/okf-rag.json`. The strip is on the PATH, not on the pattern, so a real
+ *  artifact read is caught exactly as before — including one whose path merely sits near
+ *  a .baseline/ token in the same argv. */
 export function mkPreload(box, sentinel, pattern = 'tdd\\.json|GRAPH_REPORT|okf|bundle') {
   fs.mkdirSync(box, { recursive: true })
   const p = path.join(box, 'red-preload.cjs')
@@ -259,7 +306,9 @@ try {
   const RE = new RegExp(process.env.BASELINE_RED_PATTERN || ${JSON.stringify(pattern)}, 'i')
   const hit = (how, what) => { try { require('fs').appendFileSync(SENT, how + ' ' + what + '\\n') } catch {} }
   const str = (x) => { try { return typeof x === 'string' ? x : Buffer.isBuffer(x) ? x.toString() : (x && x.href) ? x.href : String(x) } catch { return '' } }
-  const seen = (how, x) => { const s = str(x); if (RE.test(s)) hit(how, s) }
+  // baseline's OWN directory is not a plugin artifact: drop those tokens before matching
+  const strip = (s) => String(s).replace(/\\S*\\.baseline\\/\\S*/g, ' ')
+  const seen = (how, x) => { const s = str(x); if (RE.test(strip(s))) hit(how, s) }
   const wrap = (obj, name, how) => { const o = obj[name]; if (typeof o !== 'function') return; obj[name] = function (...a) { seen(how, a[0]); return o.apply(this, a) } }
   for (const n of ['readFileSync', 'openSync', 'readFile', 'open', 'createReadStream', 'readSync']) wrap(fs, n, 'fs.' + n)
   if (fs.promises) for (const n of ['readFile', 'open']) wrap(fs.promises, n, 'fs.promises.' + n)
@@ -268,7 +317,7 @@ try {
   const argvHit = (file, args) => {
     const argv = [str(file), ...(Array.isArray(args) ? args.map(str) : [])]
     const joined = argv.join(' ')
-    if (!RE.test(joined)) return
+    if (!RE.test(strip(joined))) return
     if (/(^|\\/)git$/.test(argv[0])) {
       const sub = argv.slice(1).find(a => !a.startsWith('-') && a !== 'git') || ''
       if (META.test(sub)) return

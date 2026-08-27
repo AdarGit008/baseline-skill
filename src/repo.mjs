@@ -213,6 +213,14 @@ export function indexRepo(REPO, { plugins = null } = {}) {
   // filenames/sha are passed as literal argv (execFileSync, no shell) — never interpolate attacker-controlled paths into a shell string
   function gitCommitISO(rel) { try { const iso = execFileSync('git', ['log', '-1', '--format=%cI', '--', rel], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); return parseDate(iso) } catch { return null } }
   function gitAgeDays(rel) { const d = gitCommitISO(rel); return d ? (Date.now() - d.getTime()) / 86400000 : null }
+  // The committer date of a COMMIT rather than of a path — the left-hand clock of CTX-17,
+  // whose subject is a recorded stamp naming the commit an off-repo bundle was indexed at.
+  // null when the sha is not in this history (a shallow clone, a claim about another repo),
+  // which callers surface as "not orderable", never as fresh. The sha is literal argv.
+  function gitCommitDateOf(sha) {
+    if (typeof sha !== 'string' || !/^[0-9a-fA-F]{4,40}$/.test(sha)) return null
+    try { return parseDate(execFileSync('git', ['log', '-1', '--format=%cI', `${sha}^{commit}`], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()) } catch { return null }
+  }
   function gitObjExists(ref) { try { execFileSync('git', ['cat-file', '-e', ref], { cwd: REPO, stdio: 'ignore' }); return true } catch { return false } }
   function gitIsAncestor(sha, of = 'HEAD') { try { execFileSync('git', ['merge-base', '--is-ancestor', sha, of], { cwd: REPO, stdio: 'ignore' }); return 0 } catch (e) { return e.status ?? 1 } }
   function gitIsShallow() { try { return execFileSync('git', ['rev-parse', '--is-shallow-repository'], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() === 'true' } catch { return false } }
@@ -283,5 +291,5 @@ export function indexRepo(REPO, { plugins = null } = {}) {
     try { return execFileSync('git', ['ls-tree', '-r', '--name-only', ref], { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).toString('utf8').split('\n').filter(Boolean) } catch { return null }
   }
 
-  return { REPO, FILES, TRACKED, HEAD, PLUGINS, excludePaths, match, read, readText, readRaw, gitCommitISO, gitAgeDays, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile, gitLsTree }
+  return { REPO, FILES, TRACKED, HEAD, PLUGINS, excludePaths, match, read, readText, readRaw, gitCommitISO, gitCommitDateOf, gitAgeDays, gitObjExists, gitIsAncestor, gitIsShallow, gitNameStatus, gitDiffNames, gitAddedOrdered, gitBlobAt, gitCatFile, gitLsTree }
 }

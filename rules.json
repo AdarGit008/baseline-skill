@@ -14,6 +14,7 @@
     "rules/build.json",
     "rules/sec.json",
     "rules/gov.json",
-    "rules/plug.json"
+    "rules/plug.json",
+    "rules/ctx.json"
   ]
 }

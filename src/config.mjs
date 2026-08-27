@@ -55,6 +55,17 @@ export function buildDefaults(repo) {
     profiles: [],          // packs to activate (v3 §5); `packs` is the alias, --profile <pack> the CLI form
     packs: [],
     want: [],              // tools declared present-by-intent (v3 §6 V20): overrides the tool gate and the type gate
+    // v4/ctx — the SOURCE SCOPES the two ordering rules read: the globs a trust-circle
+    // member's artifact is meant to track. Opt-in-by-empty, deliberately: baseline cannot
+    // guess what a derived store covers, and an empty scope leaves CTX-16/CTX-17 n/a rather
+    // than gating CI on a guess. Named after the rules' own slugs, so the key and the
+    // finding read as one sentence. There is no `*_stale_days` twin for either — "behind"
+    // is an ordering, and a day count would be a policy baseline has no standing to pick.
+    test_state_sources: [],  // CTX-16 (obsidian-tdd): the code whose tests tdd.json records
+    knowledge_sources: [],   // CTX-17 (okf-rag): the code the knowledge bundle indexes
+    // No graph_sources twin: CTX-15 does not order timestamps at all — the graphify stamp
+    // carries the per-file hashes and the extension scope it covered, so its scope is
+    // DERIVED from the evidence and a config key would only be a second, driftable copy.
     // v3 §11 D9: the three plugin artifacts — where each lives and whether git is expected
     // to ignore it. baseline.config.json `plugins` (keyed by plugin name) overrides per key.
     plugins: resolvePlugins(),

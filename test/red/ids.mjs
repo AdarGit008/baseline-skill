@@ -6,9 +6,11 @@
 // V7 is the compatibility half and is asserted against the real v2.5.0 tag, not a
 // hand-copied list. §11 (D8, D11) changes V7's census in two ways: six more v2 ids are
 // deleted (REC-06 and the five sign-off rules), and the three PLUG-0N ids are the ONLY
-// prefixes allowed to be new since the tag.
+// prefixes allowed to be new since the tag. v4/ctx adds five more (CTX-15..19) and states
+// the underlying law with them: a newborn prefix must carry a number the tag never spent,
+// so a retired id can never be recycled into a new rule.
 import * as L from './_lib.mjs'
-import { harness, loadRuleSet, loadRuleSetAt, isDeleted, ID_RE, PREFIX_OF, SLUG_OF, SIGNOFF_FIVE, PACK_OF, cleanup } from './_lib.mjs'
+import { harness, loadRuleSet, loadRuleSetAt, isDeleted, ID_RE, PREFIX_OF, SLUG_OF, SIGNOFF_FIVE, PACK_OF, CTX_IDS, cleanup } from './_lib.mjs'
 
 const { ok, done } = harness('ids')
 const { rules } = loadRuleSet()
@@ -82,19 +84,39 @@ const UNRELEASED_DELETED_BY_V4 = ['CTX-13', 'CTX-14']
     ok(drifted.length === 0,
       `V7 · a v2 id resolves to the same rule it always named (${drifted.slice(0, 3).join('; ') || '—'})`)
 
-    // (ii) the only prefixes absent from v2.5.0 are the three PLUG-0N ids (§11 D8). A new
-    // rule under an old category would be a v2 id that v2 never issued — a resolvability
-    // hole — so v3 adds rules ONLY under the new PLUG family.
+    // (ii) the prefixes absent from v2.5.0 are the three PLUG-0N ids (§11 D8) and the five
+    // v4/ctx ids the rule review commissioned. The law behind the original "PLUG only" form
+    // is about RESOLVABILITY, not about the family: a v2 id must never come to mean
+    // something v2 never meant. A number v2.5.0 never issued cannot break that, and a
+    // RETIRED number would — CTX-01 (the stored-status stamp) and CTX-04 (a sign-off rule)
+    // are gone, and recycling either would make an old id resolve to a new rule. So the
+    // permission is stated as the law rather than as a family list: a newborn prefix must
+    // carry a number STRICTLY ABOVE every number v2.5.0 issued in that category, which
+    // admits CTX-15..19 and forbids reuse of any number the tag ever spent.
     ok(UNRELEASED_AT_V25.length === 0,
       `V7 · the untagged pre-v3 allowance is empty — the v4 cut took CTX-13/CTX-14 with the family (${UNRELEASED_AT_V25.join(', ') || '—'})`)
     ok(UNRELEASED_DELETED_BY_V4.every(id => !nowPrefixes.has(id)),
       `V7 · and neither is in the tree (${UNRELEASED_DELETED_BY_V4.filter(id => nowPrefixes.has(id)).join(', ') || 'both gone'})`)
-    const permitted = new Set([...PLUG, ...UNRELEASED_AT_V25])
+    const permitted = new Set([...PLUG, ...CTX_IDS, ...UNRELEASED_AT_V25])
     // (a deleted prefix still in the tree — FLOW-08/09 today — is V8/V9's finding, not V7's)
     const born = [...nowPrefixes].filter(p => p && !catAt.has(p) && !deleted(p))
     const rogue = born.filter(p => !permitted.has(p))
     ok(rogue.length === 0,
-      `V7 · PLUG-01..03 are the only prefixes absent from v2.5.0 (rogue: ${rogue.join(', ') || '—'})`)
+      `V7 · PLUG-01..03 and CTX-15..19 are the only prefixes absent from v2.5.0 (rogue: ${rogue.join(', ') || '—'})`)
+    // and the law itself, applied to every newborn prefix — the reason the list above is
+    // allowed to have grown at all. A newborn number must be higher than every number
+    // v2.5.0 issued in its family, so no retired id can ever be recycled into a new rule.
+    const highestAtV25 = new Map()
+    for (const id of oldIds) {
+      const [fam, nn] = [String(id).replace(/-\d{2}.*$/, ''), Number((String(id).match(/-(\d{2})/) || [, -1])[1])]
+      if (!highestAtV25.has(fam) || highestAtV25.get(fam) < nn) highestAtV25.set(fam, nn)
+    }
+    const recycled = born.filter(p => {
+      const fam = p.replace(/-\d{2}$/, ''), nn = Number(p.slice(-2))
+      return highestAtV25.has(fam) && nn <= highestAtV25.get(fam)
+    })
+    ok(recycled.length === 0,
+      `V7 · a newborn prefix never reuses a number v2.5.0 spent — a retired id must not resolve to a new rule (${recycled.join(', ') || '—'})`)
     ok(PLUG.every(p => !catAt.has(p)),
       `V7 · and the PLUG prefixes are genuinely new — v2.5.0 never issued them (${PLUG.join(' ')})`)
 

@@ -32,6 +32,7 @@ const AREAS = [
   ['decisions', 'PLAN §10 — the five decisions of 2026-08-25', [34, 35, 36, 37]],
   ['plugins', 'PLAN §11 — the plugin boundary, and v4 trust-circle membership', [38, 39, 40, 41, 42, 43]],
   ['layer', 'v4 — the baseline rules layer: every non-plugin rule, opt-out, default in', [44]],
+  ['ctx', 'v4/ctx — the context system, gated: four trust-circle rules + baseline\'s own wiring', [45]],
 ]
 
 // V43 is the v4 addition: TRUST-CIRCLE MEMBERSHIP — a supported tool a repo never adopted
@@ -45,12 +46,21 @@ const AREAS = [
 // it. Out means n/a and out of the gate, exactly as an unadopted plugin is, and the layer's
 // state is printed on every run so the opt-out can never be a silent hole.
 //
+// V45 is the third v4 addition: THE CONTEXT SYSTEM, GATED. The review scratched all twelve
+// original CTX rules and commissioned five new ones — graphify's graph, obsidian-tdd's test
+// state, okf-rag's knowledge bundle and my-onto's ontology on the trust-circle side, and
+// baseline's own orientation entrypoint on the baseline-layer side. It is its own area
+// because it spans both halves of the rule set and neither V43 nor V44 covers it, and
+// because it carries one law of its own that nothing else states: determinism WITHOUT a
+// clock — no mtime (it does not survive a clone) and no day threshold (a policy baseline
+// has no standing to pick), leaving git committer dates and baseline's committed stamps.
+//
 // PLAN §11 "Superseded": V14 (REC-06 freshness), V21, V22, V23 (tdd.json as evidence) are
 // withdrawn — D7 forbids the artifact reading they required. They are not expected to be
 // owned, never counted as a hole, and a file that still asserts them is not registering
 // them here. The live total is derived from the highest id and this list, never typed in.
 const WITHDRAWN = [14, 21, 22, 23]
-const MAX_INVARIANT = 44
+const MAX_INVARIANT = 45
 const TOTAL_INVARIANTS = MAX_INVARIANT - WITHDRAWN.length
 const argv = process.argv.slice(2)
 const GREEN = argv.includes('--green')

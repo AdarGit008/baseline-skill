@@ -21,7 +21,7 @@
       "",
       "  Summary  5 pass · 0 fail · 0 warn",
       "  Readiness: 100%  (5/5 evaluated)",
-      "  Baseline layer  IN (the default — no baseline_rules key)  ·  5 rule(s) in scope — a finding among them fails this build",
+      "  Baseline layer  IN (the default — no baseline_rules key)  ·  6 rule(s) in scope — a finding among them fails this build",
       "  Trust circle  no members — 3 supported tool(s) suggested: obsidian-tdd, graphify, okf-rag",
       "                a suggestion is not a finding and can never fail this build. `baseline trust setup` prints the recommended config; `baseline trust add <tool>` adopts one, and then it gates.",
       "",
@@ -212,6 +212,26 @@
       "PLUG-03-okf-rag": {
         "state": "n/a",
         "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-15-graph-not-lagging-code": {
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
+      },
+      "CTX-16-test-state-not-lagging-code": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
+      },
+      "CTX-17-knowledge-not-lagging-code": {
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-18-ontology-not-lagging-code": {
+        "state": "n/a",
+        "reason": "my-onto does not exist yet — this rule is FROZEN: it is declared so the trust circle is honest about the tool, carries no severity, and can produce no verdict until there is something to check (fail-silent by decision: no stamp, no rule severity, no verify row — a tool that does not exist cannot be a gate)"
+      },
+      "CTX-19-orientation-entrypoint-present": {
+        "state": "n/a",
+        "reason": "no orientation entrypoint at .baseline/orient.sh — this repo was never wired, so there is no claim to check; `baseline trust wire` installs the one this baseline ships (entrypoint v1) and then this rule gates"
       }
     }
   },
@@ -259,6 +279,26 @@
       "PLUG-03-okf-rag": {
         "state": "n/a",
         "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-15-graph-not-lagging-code": {
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
+      },
+      "CTX-16-test-state-not-lagging-code": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
+      },
+      "CTX-17-knowledge-not-lagging-code": {
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-18-ontology-not-lagging-code": {
+        "state": "n/a",
+        "reason": "my-onto does not exist yet — this rule is FROZEN: it is declared so the trust circle is honest about the tool, carries no severity, and can produce no verdict until there is something to check (fail-silent by decision: no stamp, no rule severity, no verify row — a tool that does not exist cannot be a gate)"
+      },
+      "CTX-19-orientation-entrypoint-present": {
+        "state": "n/a",
+        "reason": "no orientation entrypoint at .baseline/orient.sh — this repo was never wired, so there is no claim to check; `baseline trust wire` installs the one this baseline ships (entrypoint v1) and then this rule gates"
       }
     }
   },
@@ -298,6 +338,26 @@
       "PLUG-03-okf-rag": {
         "state": "n/a",
         "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-15-graph-not-lagging-code": {
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
+      },
+      "CTX-16-test-state-not-lagging-code": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
+      },
+      "CTX-17-knowledge-not-lagging-code": {
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-18-ontology-not-lagging-code": {
+        "state": "n/a",
+        "reason": "my-onto does not exist yet — this rule is FROZEN: it is declared so the trust circle is honest about the tool, carries no severity, and can produce no verdict until there is something to check (fail-silent by decision: no stamp, no rule severity, no verify row — a tool that does not exist cannot be a gate)"
+      },
+      "CTX-19-orientation-entrypoint-present": {
+        "state": "n/a",
+        "reason": "no orientation entrypoint at .baseline/orient.sh — this repo was never wired, so there is no claim to check; `baseline trust wire` installs the one this baseline ships (entrypoint v1) and then this rule gates"
       }
     }
   },
@@ -339,6 +399,26 @@
       "PLUG-03-okf-rag": {
         "state": "n/a",
         "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-15-graph-not-lagging-code": {
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
+      },
+      "CTX-16-test-state-not-lagging-code": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
+      },
+      "CTX-17-knowledge-not-lagging-code": {
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-18-ontology-not-lagging-code": {
+        "state": "n/a",
+        "reason": "my-onto does not exist yet — this rule is FROZEN: it is declared so the trust circle is honest about the tool, carries no severity, and can produce no verdict until there is something to check (fail-silent by decision: no stamp, no rule severity, no verify row — a tool that does not exist cannot be a gate)"
+      },
+      "CTX-19-orientation-entrypoint-present": {
+        "state": "n/a",
+        "reason": "no orientation entrypoint at .baseline/orient.sh — this repo was never wired, so there is no claim to check; `baseline trust wire` installs the one this baseline ships (entrypoint v1) and then this rule gates"
       }
     }
   },
@@ -378,6 +458,26 @@
       "PLUG-03-okf-rag": {
         "state": "n/a",
         "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-15-graph-not-lagging-code": {
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
+      },
+      "CTX-16-test-state-not-lagging-code": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
+      },
+      "CTX-17-knowledge-not-lagging-code": {
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-18-ontology-not-lagging-code": {
+        "state": "n/a",
+        "reason": "my-onto does not exist yet — this rule is FROZEN: it is declared so the trust circle is honest about the tool, carries no severity, and can produce no verdict until there is something to check (fail-silent by decision: no stamp, no rule severity, no verify row — a tool that does not exist cannot be a gate)"
+      },
+      "CTX-19-orientation-entrypoint-present": {
+        "state": "n/a",
+        "reason": "no orientation entrypoint at .baseline/orient.sh — this repo was never wired, so there is no claim to check; `baseline trust wire` installs the one this baseline ships (entrypoint v1) and then this rule gates"
       }
     }
   },
@@ -425,6 +525,26 @@
       "PLUG-03-okf-rag": {
         "tag": "FAIL",
         "detail": "okf-rag not found at $BASELINE_OKF_BUNDLE (unset) — install: npm i -g okf-rag"
+      },
+      "CTX-15-graph-not-lagging-code": {
+        "state": "n/a",
+        "reason": "graphify is adopted but not stamped yet — build the graph, then `baseline trust stamp` and commit .baseline/trust/graphify.json; CI reads that file and never graphify-out/"
+      },
+      "CTX-16-test-state-not-lagging-code": {
+        "state": "n/a",
+        "reason": "tdd.json is absent — its own rule owns that finding; freshness cannot be judged from a file that is not there"
+      },
+      "CTX-17-knowledge-not-lagging-code": {
+        "state": "n/a",
+        "reason": "okf-rag is adopted but not stamped yet — index the bundle, then `baseline trust stamp --member okf-rag` and commit .baseline/trust/okf-rag.json; CI clones tracked files and never sees the bundle itself"
+      },
+      "CTX-18-ontology-not-lagging-code": {
+        "state": "n/a",
+        "reason": "my-onto does not exist yet — this rule is FROZEN: it is declared so the trust circle is honest about the tool, carries no severity, and can produce no verdict until there is something to check (fail-silent by decision: no stamp, no rule severity, no verify row — a tool that does not exist cannot be a gate)"
+      },
+      "CTX-19-orientation-entrypoint-present": {
+        "state": "n/a",
+        "reason": "no orientation entrypoint at .baseline/orient.sh — this repo was never wired, so there is no claim to check; `baseline trust wire` installs the one this baseline ships (entrypoint v1) and then this rule gates"
       }
     }
   },
@@ -474,6 +594,26 @@
       "PLUG-03-okf-rag": {
         "state": "n/a",
         "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-15-graph-not-lagging-code": {
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
+      },
+      "CTX-16-test-state-not-lagging-code": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
+      },
+      "CTX-17-knowledge-not-lagging-code": {
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-18-ontology-not-lagging-code": {
+        "state": "n/a",
+        "reason": "my-onto does not exist yet — this rule is FROZEN: it is declared so the trust circle is honest about the tool, carries no severity, and can produce no verdict until there is something to check (fail-silent by decision: no stamp, no rule severity, no verify row — a tool that does not exist cannot be a gate)"
+      },
+      "CTX-19-orientation-entrypoint-present": {
+        "state": "n/a",
+        "reason": "no orientation entrypoint at .baseline/orient.sh — this repo was never wired, so there is no claim to check; `baseline trust wire` installs the one this baseline ships (entrypoint v1) and then this rule gates"
       }
     }
   },
@@ -625,6 +765,26 @@
       "PLUG-03-okf-rag": {
         "state": "n/a",
         "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-15-graph-not-lagging-code": {
+        "state": "n/a",
+        "reason": "graphify is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add graphify`)"
+      },
+      "CTX-16-test-state-not-lagging-code": {
+        "state": "n/a",
+        "reason": "obsidian-tdd is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add obsidian-tdd`)"
+      },
+      "CTX-17-knowledge-not-lagging-code": {
+        "state": "n/a",
+        "reason": "okf-rag is suggested, not adopted — it is not in this repo's trust circle, so nothing is gated (adopt it with `baseline trust add okf-rag`)"
+      },
+      "CTX-18-ontology-not-lagging-code": {
+        "state": "n/a",
+        "reason": "my-onto does not exist yet — this rule is FROZEN: it is declared so the trust circle is honest about the tool, carries no severity, and can produce no verdict until there is something to check (fail-silent by decision: no stamp, no rule severity, no verify row — a tool that does not exist cannot be a gate)"
+      },
+      "CTX-19-orientation-entrypoint-present": {
+        "state": "n/a",
+        "reason": "no orientation entrypoint at .baseline/orient.sh — this repo was never wired, so there is no claim to check; `baseline trust wire` installs the one this baseline ships (entrypoint v1) and then this rule gates"
       }
     }
   }

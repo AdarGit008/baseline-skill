@@ -361,13 +361,19 @@ function runGenCheck(REPO) {
 
 // ---- gen okf-concepts (v3 D2 / V35) — the one-shot OKF migration ----
 // Inputs are the runner's OWN shipped files, co-located like rules.json: the rule set
-// (title, lesson, rationale, fix, prior-art url), REFERENCE.md's rule table (the row
-// is the source span the frontmatter cites) and GLOSSARY.md (the terms a rule's prose
+// (title, lesson, rationale, fix, prior-art url), docs/REFERENCE.md's rule table (the row
+// is the source span the frontmatter cites) and docs/GLOSSARY.md (the terms a rule's prose
 // uses, each cited by line). Nothing from the target repo, nothing from the bundle.
+// The prose lives under docs/ and ships there (install.sh), so these are the same relative
+// paths in this repo and in a vendored copy.
 const SHIPPED = (rel) => { try { return fs.readFileSync(fileURLToPath(new URL('../' + rel, import.meta.url)), 'utf8') } catch { return null } }
 const OKF_STAGING = 'baseline/rules' // under <repo>/.baseline/proposed/ — the bundle's own layout
+// The two prose views this extraction cites, named once so the citation strings and the
+// reads can never drift apart. Both are shipped by install.sh at exactly these paths.
+const REFERENCE_MD = 'docs/REFERENCE.md'
+const GLOSSARY_MD = 'docs/GLOSSARY.md'
 
-/** REFERENCE.md rule table: base id → 1-based line of its row. Matched on the two-part
+/** docs/REFERENCE.md rule table: base id → 1-based line of its row. Matched on the two-part
  *  base so the row is found before and after the slugs land (PLAN §2). */
 function referenceRows(md) {
   const rows = new Map()
@@ -378,7 +384,7 @@ function referenceRows(md) {
   })
   return rows
 }
-/** GLOSSARY.md: every `## Term` heading with its line and first paragraph, one line each. */
+/** docs/GLOSSARY.md: every `## Term` heading with its line and first paragraph, one line each. */
 function glossaryTerms(md) {
   const terms = []
   if (md === null) return terms
@@ -404,15 +410,15 @@ const md1 = (s) => String(s ?? '').replace(/\s+/g, ' ').trim()
  *  cwd: the same rule set and docs produce the same bytes anywhere. */
 export function generateConcepts() {
   const { modules, rules } = loadRules()
-  // which module a rule came from — the fallback source span when REFERENCE.md has no row
+  // which module a rule came from — the fallback source span when docs/REFERENCE.md has no row
   const moduleOf = new Map()
   for (const m of modules) for (const r of JSON.parse(SHIPPED(m) || '{"rules":[]}').rules || []) if (!moduleOf.has(r.id)) moduleOf.set(r.id, m)
-  const rows = referenceRows(SHIPPED('REFERENCE.md'))
-  const terms = glossaryTerms(SHIPPED('GLOSSARY.md'))
+  const rows = referenceRows(SHIPPED(REFERENCE_MD))
+  const terms = glossaryTerms(SHIPPED(GLOSSARY_MD))
   const out = []
   for (const r of rules) {
     const refLine = rows.get(baseOf(r.id))
-    const source = refLine ? `REFERENCE.md:${refLine}` : `${moduleOf.get(r.id) || 'rules.json'}#${r.id}`
+    const source = refLine ? `${REFERENCE_MD}:${refLine}` : `${moduleOf.get(r.id) || 'rules.json'}#${r.id}`
     const hay = [r.title, r.lesson, r.rationale, r.fix].map(md1).join(' ')
     const used = terms.filter(t => mentions(hay, t.name))
     const applies = Array.isArray(r.applies_to) ? r.applies_to.join(', ') : String(r.applies_to ?? 'all')
@@ -438,7 +444,7 @@ export function generateConcepts() {
       P.push('')
       P.push('## Terms')
       P.push('')
-      for (const t of used) P.push(`- **${t.name}** (GLOSSARY.md:${t.line}) — ${t.def}`)
+      for (const t of used) P.push(`- **${t.name}** (${GLOSSARY_MD}:${t.line}) — ${t.def}`)
     }
     P.push('')
     out.push({ rel: `${OKF_STAGING}/${String(r.id).toLowerCase()}.md`, content: P.join('\n'), fromReference: !!refLine })
@@ -466,7 +472,7 @@ function runGenOkfConcepts(REPO) {
     catch (e) { console.error(`gen okf-concepts: cannot write ${c.rel} — ${e.message}`); return 2 }
     if (c.fromReference) fromRef++
   }
-  console.log(`gen okf-concepts: ${concepts.length} concept(s) staged under ${stagingRel}/${OKF_STAGING}/ (${fromRef} cite a REFERENCE.md row, ${concepts.length - fromRef} their rules/ module)`)
+  console.log(`gen okf-concepts: ${concepts.length} concept(s) staged under ${stagingRel}/${OKF_STAGING}/ (${fromRef} cite a ${REFERENCE_MD} row, ${concepts.length - fromRef} their rules/ module)`)
   console.log('  review the batch, then copy it into the okf bundle by hand — baseline never writes there')
   return 0
 }

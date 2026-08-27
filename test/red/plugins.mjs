@@ -96,10 +96,23 @@ section('V38', () => {
   let evals = ''; try { evals = fs.readFileSync(path.join(ROOT, 'src', 'evaluators.mjs'), 'utf8') } catch {}
   ok(new RegExp(`CHECK_KINDS[\\s\\S]{0,4000}'${PLUG_FAMILY.kind}'`).test(evals), `V38 · '${PLUG_FAMILY.kind}' is a registered check kind`)
 
-  // "No other rule reads a plugin artifact path."
-  const ART_RE = /tdd\.json|graphify-out|GRAPH_REPORT|BASELINE_OKF_BUNDLE|okf/i
-  const readers = rules.filter(r => !base(r.id).startsWith('PLUG-') && ART_RE.test(JSON.stringify(r.check || {}))).map(r => r.id)
+  // "No other rule reads a plugin artifact path." The v4/ctx rules sharpened what that
+  // sentence has to mean: four of them DO stand for a roster member, and they say so the
+  // only legal way — the closed `plugin` name key the runner resolves through the plugin
+  // table. That is a membership declaration, not a path. So the check is split rather than
+  // relaxed: no rule outside PLUG may name an artifact PATH anywhere in its check, and any
+  // rule that names a member at all must do it through `plugin`, with a name the roster
+  // knows. (A path smuggled into `plugin` would still be caught: it is matched too.)
+  const ART_RE = /tdd\.json|graphify-out|GRAPH_REPORT|BASELINE_OKF_BUNDLE/i
+  const NAME_RE = /okf|graphify|obsidian|onto/i
+  const withoutPluginKey = (c) => { const { plugin, ...rest } = c || {}; return JSON.stringify(rest) }
+  const nonPlug = rules.filter(r => !base(r.id).startsWith('PLUG-'))
+  const readers = nonPlug.filter(r => ART_RE.test(JSON.stringify(r.check || {})) || NAME_RE.test(withoutPluginKey(r.check))).map(r => r.id)
   ok(readers.length === 0, `V38 · no other rule's check names a plugin artifact path (${readers.join(', ') || '—'})`)
+  const ROSTER = Object.values(PLUGIN_ARTIFACTS).map(a => a.plugin).concat('my-onto')
+  const namers = nonPlug.filter(r => typeof r.check?.plugin === 'string')
+  const offRoster = namers.filter(r => !ROSTER.includes(r.check.plugin)).map(r => `${r.id}:${r.check.plugin}`)
+  ok(offRoster.length === 0, `V38 · a rule outside PLUG names a member only by a roster name (${offRoster.join(', ') || '—'})`)
 })
 
 // ======================================================== D8 + D10 / V39: all absent → three FAILs, three logs, exit 1
@@ -361,8 +374,22 @@ section('V42', () => {
   }
   const forgeSourced = rules.filter(r => Array.isArray(r.sources) && r.sources.includes('forge')).map(r => r.id)
   ok(forgeSourced.length === 0, `V42 · no rule declares sources:["forge"] (${forgeSourced.join(', ') || '—'})`)
-  const treeOnly = rules.filter(r => JSON.stringify(r.sources) !== JSON.stringify(['tree'])).map(r => r.id)
-  ok(treeOnly.length === 0, `V42 · every surviving rule reads the tree and nothing else (${treeOnly.join(', ') || '—'})`)
+  // v4/ctx: two rules ORDER git committer dates (CTX-16, CTX-17), which is the `history`
+  // plane, declared exactly as CTX-11 declared it at v2.5.0 — and history is LOCAL: it is
+  // the clone CI already has, reachable by no network call, so V42's closure (the FORGE) is
+  // untouched. The assertion is SPLIT rather than relaxed: nothing anywhere declares a
+  // plane outside {tree, history}, and `history` is confined BY KIND to the two ordering
+  // rules in both directions, so it cannot spread to a rule that never reads a git date.
+  const HISTORY_KINDS = ['artifact-not-lagging', 'stamp-not-lagging']
+  const offPlane = rules.filter(r => !Array.isArray(r.sources) || r.sources.some(s => s !== 'tree' && s !== 'history')).map(r => `${r.id}:${JSON.stringify(r.sources)}`)
+  ok(offPlane.length === 0, `V42 · every surviving rule reads the local planes and nothing else (${offPlane.join(', ') || '—'})`)
+  const historyRules = rules.filter(r => (r.sources || []).includes('history'))
+  const strayHistory = historyRules.filter(r => !HISTORY_KINDS.includes(r.check?.kind)).map(r => `${r.id}:${r.check?.kind}`)
+  ok(strayHistory.length === 0, `V42 · only the git-date ordering kinds declare 'history' (${strayHistory.join(', ') || '—'})`)
+  const undeclared = rules.filter(r => HISTORY_KINDS.includes(r.check?.kind) && !(r.sources || []).includes('history')).map(r => r.id)
+  ok(undeclared.length === 0, `V42 · and every ordering rule declares it — a git date is history, not the tree at rest (${undeclared.join(', ') || '—'})`)
+  const treeOnly = rules.filter(r => !HISTORY_KINDS.includes(r.check?.kind) && JSON.stringify(r.sources) !== JSON.stringify(['tree'])).map(r => r.id)
+  ok(treeOnly.length === 0, `V42 · every other rule reads the tree and nothing else (${treeOnly.join(', ') || '—'})`)
 
   // (2) check: a payload, no forge rows, no gh
   {

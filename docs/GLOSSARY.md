@@ -1,5 +1,8 @@
 # Glossary
 
+> **This page is not an authority — the code is.** The rule set (`rules/*.json`) and the runner (`src/`) decide; this page only
+> describes them. Where the two disagree, the code is right and this page is a bug.
+
 Plain-language definitions for the DevOps, supply-chain, and software-readiness
 terms used across the baseline docs. Unfamiliar with a term in the README? Jump
 here. Ordered alphabetically.

@@ -3,7 +3,7 @@
 // contraction: the CLAIM rules evaluate records only, and an unmigrated monolith
 // surfaces exactly twice — CLAIM-07 (the migration tripwire: monolith present at
 // all = debt) and the empty-register detail below. `loadLegacyClaims` SURVIVES
-// with one consumer, `gen migrate-claims` — MIGRATION.md's own executor; deleting
+// with one consumer, `gen migrate-claims` — docs/MIGRATION.md's own executor; deleting
 // it wholesale would kill the migration path the retirement depends on.
 import { validateRecord } from './records.mjs'
 

@@ -131,7 +131,7 @@ export function evaluateJudgment(j, facts) {
   return { id: j.id, kind: j.kind, subject: j.subject, verdict, findings }
 }
 
-// The facts view judgments reference (documented in CONTRACT.md): descriptor.* ·
+// The facts view judgments reference (documented in docs/CONTRACT.md): descriptor.* ·
 // planes.{tree,history,forge}.* · git.{branch,head,shallow} · today. Meta keys
 // (present/valid) win over descriptor fields by spread order — and the schema
 // forbids fields by those names anyway. An optional overlay deep-merges last —

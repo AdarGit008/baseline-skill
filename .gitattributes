@@ -4,6 +4,6 @@
 # reported in the same language as tamper. -text disables conversion: bytes in
 # the repository are bytes on disk, on every platform. VENDOR THIS FILE with
 # the tree (it is directory-scoped in the consumer: tools/baseline/.gitattributes
-# governs exactly the hashed subtree). CONTRACT.md's manual-copy procedure
+# governs exactly the hashed subtree). docs/CONTRACT.md's manual-copy procedure
 # names it.
 * -text

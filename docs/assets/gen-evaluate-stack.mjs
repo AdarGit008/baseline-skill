@@ -201,7 +201,7 @@ function board(p) {
   o.push(card(470, SY, 400, 150, { fill: p.v2sticky.fill, stroke: p.v2sticky.stroke }))
   o.push(text(494, SY + 34, 'v3 — enabler, not enforcer', { size: 15.5, weight: 'bold', fill: p.v2sticky.text }))
   o.push(lines(494, SY + 62, ['always-on blockers fail CI; packs switch on', 'explicitly; plugins (obsidian-tdd · graphify · okf-rag)', 'are suggested — baseline reads their metadata only', '→ docs/v3/PLAN.md'], { size: 13, lh: 22, fill: p.v2sticky.text }))
-  o.push(lines(1404, SY + 96, ['drawn from the code on main — regenerate:', 'node docs/assets/gen-evaluate-stack.mjs', 'more: REFERENCE.md · GLOSSARY.md'], { size: 12.5, lh: 20, fill: p.faint, anchor: 'end', family: MONO }))
+  o.push(lines(1404, SY + 96, ['drawn from the code on main — regenerate:', 'node docs/assets/gen-evaluate-stack.mjs', 'more: docs/REFERENCE.md · docs/GLOSSARY.md'], { size: 12.5, lh: 20, fill: p.faint, anchor: 'end', family: MONO }))
 
   o.push('</svg>')
   return o.join('\n') + '\n'

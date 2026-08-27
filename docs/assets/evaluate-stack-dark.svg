@@ -42,7 +42,7 @@
 <circle cx="78" cy="508" r="21" fill="none" stroke="#F0A32F" stroke-width="2.8"/>
 <text x="78" y="515" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#FFD98A" text-anchor="middle">L3</text>
 <text x="114" y="494" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#FFD98A" text-anchor="start">THE LAB</text>
-<text x="114" y="518" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.85">evaluators.mjs · 156 lines</text>
+<text x="114" y="518" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.85">evaluators.mjs · 331 lines</text>
 <text x="114" y="540" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.8">facts only, one function per kind</text>
 <text x="388" y="478" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#F0A32F" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="500" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">how to verify each claim: grep,</text>
@@ -59,7 +59,7 @@
 <circle cx="78" cy="666" r="21" fill="none" stroke="#2FB5A5" stroke-width="2.8"/>
 <text x="78" y="673" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#9FE8DD" text-anchor="middle">L4</text>
 <text x="114" y="652" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="21" font-weight="bold" fill="#9FE8DD" text-anchor="start">THE SENSES</text>
-<text x="114" y="676" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#9FE8DD" text-anchor="start" opacity="0.85">repo.mjs · 287 lines</text>
+<text x="114" y="676" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#9FE8DD" text-anchor="start" opacity="0.85">repo.mjs · 295 lines</text>
 <text x="114" y="698" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#9FE8DD" text-anchor="start" opacity="0.8">the repo index, built once</text>
 <text x="388" y="636" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#2FB5A5" text-anchor="start" letter-spacing="2">KNOWS</text>
 <text x="388" y="658" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#9FE8DD" text-anchor="start">find: match(globs) · read: 3</text>
@@ -170,5 +170,5 @@
 <text x="494" y="1203" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">→ docs/v3/PLAN.md</text>
 <text x="1404" y="1171" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7B818C" text-anchor="end">drawn from the code on main — regenerate:</text>
 <text x="1404" y="1191" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7B818C" text-anchor="end">node docs/assets/gen-evaluate-stack.mjs</text>
-<text x="1404" y="1211" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7B818C" text-anchor="end">more: REFERENCE.md · GLOSSARY.md</text>
+<text x="1404" y="1211" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7B818C" text-anchor="end">more: docs/REFERENCE.md · docs/GLOSSARY.md</text>
 </svg>

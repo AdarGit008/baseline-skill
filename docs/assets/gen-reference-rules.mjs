@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Regenerates the two derived regions of REFERENCE.md — the rule table and the check-kind
+// Regenerates the two derived regions of docs/REFERENCE.md — the rule table and the check-kind
 // list — from the rule set itself (loadRules()) and the evaluator registry (CHECK_KINDS).
 // Nothing in the regions is typed by hand: ids, titles, severities, packs, scopes and the
 // per-category grouping all come from rules/*.json, in rules.json module order and the
@@ -8,7 +8,7 @@
 //
 // Usage:
 //   node docs/assets/gen-reference-rules.mjs          # rewrite the regions in place
-//   node docs/assets/gen-reference-rules.mjs --check  # exit 1 if REFERENCE.md is behind the rule set
+//   node docs/assets/gen-reference-rules.mjs --check  # exit 1 if docs/REFERENCE.md is behind the rule set
 //
 // Rerun after any change to rules/, rules.json, CATS in src/report.mjs, or CHECK_KINDS in
 // src/evaluators.mjs (a new family — e.g. PLUG — lands in the table by running this once).
@@ -20,7 +20,7 @@ import { CATS } from '../../src/report.mjs'
 import { CHECK_KINDS } from '../../src/evaluators.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-const TARGET = path.join(ROOT, 'REFERENCE.md')
+const TARGET = path.join(ROOT, 'docs', 'REFERENCE.md')
 const CHECK = process.argv.includes('--check')
 const SELF = 'docs/assets/gen-reference-rules.mjs'
 
@@ -99,7 +99,7 @@ function kindsList() {
 function splice(md, name, body) {
   const b = begin(name), e = end(name)
   const i = md.indexOf(b), j = md.indexOf(e)
-  if (i < 0 || j < 0 || j < i) throw new Error(`REFERENCE.md has no '${name}' region (expected the begin and end markers)`)
+  if (i < 0 || j < 0 || j < i) throw new Error(`docs/REFERENCE.md has no '${name}' region (expected the begin and end markers)`)
   return md.slice(0, i) + b + '\n\n' + body + '\n\n' + e + md.slice(j + e.length)
 }
 
@@ -109,8 +109,8 @@ let next = splice(current, 'rules-table', rulesTable(rules))
 next = splice(next, 'check-kinds', kindsList())
 
 if (CHECK) {
-  if (next !== current) { console.error(`REFERENCE.md is behind the rule set — regenerate: node ${SELF}`); process.exit(1) }
-  console.log('REFERENCE.md rule table and check-kind list are current'); process.exit(0)
+  if (next !== current) { console.error(`docs/REFERENCE.md is behind the rule set — regenerate: node ${SELF}`); process.exit(1) }
+  console.log('docs/REFERENCE.md rule table and check-kind list are current'); process.exit(0)
 }
 fs.writeFileSync(TARGET, next)
-console.log(`wrote REFERENCE.md: rule table (${rules.length} rows, ${new Set(rules.map(r => r.category)).size} categories) + check-kind list (${CHECK_KINDS.size} kinds)`)
+console.log(`wrote docs/REFERENCE.md: rule table (${rules.length} rows, ${new Set(rules.map(r => r.category)).size} categories) + check-kind list (${CHECK_KINDS.size} kinds)`)

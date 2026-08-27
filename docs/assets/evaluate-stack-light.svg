@@ -170,5 +170,5 @@
 <text x="494" y="1203" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#14506E" text-anchor="start">→ docs/v3/PLAN.md</text>
 <text x="1404" y="1171" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7A7A85" text-anchor="end">drawn from the code on main — regenerate:</text>
 <text x="1404" y="1191" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7A7A85" text-anchor="end">node docs/assets/gen-evaluate-stack.mjs</text>
-<text x="1404" y="1211" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7A7A85" text-anchor="end">more: REFERENCE.md · GLOSSARY.md</text>
+<text x="1404" y="1211" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7A7A85" text-anchor="end">more: docs/REFERENCE.md · docs/GLOSSARY.md</text>
 </svg>

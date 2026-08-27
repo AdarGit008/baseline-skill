@@ -1,5 +1,8 @@
 # Security policy
 
+> **A policy, not a description of the runner.** The scope below is what we commit to;
+> what the code actually does is in `check.mjs` and `src/`, and a mismatch is a report worth filing.
+
 The `/baseline` runner is a zero-dependency Node script that runs **locally** and
 **read-only** over a repository — it installs nothing. `check` makes no network call and
 never spawns `gh` (the forge is closed under `check` and `orient`); the plugin artifacts it

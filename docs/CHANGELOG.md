@@ -1,5 +1,9 @@
 # Changelog
 
+> **History, not a specification.** Every entry describes what a past release did.
+> Nothing here is binding on the current code: `check.mjs --self-check` and `test/red/`
+> are what the runner does *now*, and an old entry that reads otherwise is not a defect.
+
 All notable changes to the `/baseline` skill are documented here. The format loosely
 follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned in
 `rules.json` and `SKILL.md`.

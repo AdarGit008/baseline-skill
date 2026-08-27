@@ -137,9 +137,12 @@ const EXPECTED_RULE_COUNT = lib.SURVIVING_IDS.length
 // ---------- V32 / V33: counts in shipped files ----------
 {
   // the scan set: everything git tracks, minus the places where a count is legitimately
-  // historical (CHANGELOG/MIGRATION), a plan (docs/v2, docs/v3), or a fixture (test/).
+  // historical (the changelog, the migration notes), a versioned plan or its decision log
+  // (docs/vN/), or a fixture (test/). The prose moved under docs/ in the v4 consolidation,
+  // so the two historical files are named at their new paths and the plan exclusion is the
+  // docs/vN/ convention itself rather than a hand-kept list of version numbers.
   const tracked = execFileSync('git', ['-C', ROOT, 'ls-files'], { encoding: 'utf8', env: { ...CLEAN_ENV, ...GITENV } }).split('\n').filter(Boolean)
-  const EXCLUDE = /^(test\/|docs\/v2\/|docs\/v3\/|tasks\/|records\/|CHANGELOG\.md$|MIGRATION\.md$)/
+  const EXCLUDE = /^(test\/|docs\/v\d+\/|docs\/tasks\/|records\/|docs\/CHANGELOG\.md$|docs\/MIGRATION\.md$)/
   const scan = tracked.filter(f => !EXCLUDE.test(f) && fs.existsSync(path.join(ROOT, f)))
   ok(scan.length > 0, `V32/V33 · the scan set is non-empty (${scan.length} tracked files)`)
 

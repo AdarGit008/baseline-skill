@@ -1,5 +1,9 @@
 # MIGRATION — a v2.5 repo onto the v3 contract
 
+> **This page is not an authority — the code is.** `node check.mjs --repo .` and its findings decide; this page only
+> describes them. Where the two disagree, the code is right and this page is a bug.
+> This page is a walkthrough, not a specification: run the score first, and let it name the work.
+
 v3 deletes the lane workflow, the sign-off rules and the auto-armed packs, renames
 every rule id, and changes the shape of `--json` and `orient`. Nothing here needs a
 migrate command: each change is one config key, one deleted file, or one consumer

@@ -224,7 +224,7 @@ export function runAdmit(argv) {
     if (relief) {
       if (breakGlass) breakGlass.covered += `; ${why}`
       else breakGlass = { id: relief.id, review_by: relief.review_by, covered: why }
-    } else refusals.push(`${why}; relief: an unexpired break-glass JDG (gate: admit) on ${targetRef} — see CONTRACT.md${ledgerNote}`)
+    } else refusals.push(`${why}; relief: an unexpired break-glass JDG (gate: admit) on ${targetRef} — see docs/CONTRACT.md${ledgerNote}`)
   }
   if (indeterminate) sourceLoss(shallow ? `history truncated (shallow clone) — ancestry not provable; fetch full history (actions/checkout: fetch-depth: 0)` : `ancestry check failed (git exit ${anc}) — target/HEAD relation unreadable`)
   // DESC-03's range diff is a gating fact (ruling leg c): a blocker that cannot see its

@@ -1,5 +1,8 @@
 # CONTRACT — the plain-git twin
 
+> **This page is not an authority — the code is.** `schema/*.json`, `templates/` and the runner in `src/` decide; this page only
+> describes them. Where the two disagree, the code is right and this page is a bug.
+
 What baseline expects of a repo, written so a human (or any agent) can comply with
 **git alone**. The `baseline` CLI automates this contract; it never replaces it.
 Everything here is checkable — that's the point. What is *not* here any more is as

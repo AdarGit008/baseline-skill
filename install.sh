@@ -35,10 +35,15 @@ if [ "$NODE_MAJOR" -lt 18 ]; then
 fi
 
 mkdir -p "$DEST"
-for f in SKILL.md CONTRACT.md baseline.mjs check.mjs rules.json config.example.json README.md REFERENCE.md GLOSSARY.md; do
+for f in SKILL.md baseline.mjs check.mjs rules.json config.example.json README.md; do
   cp "$SRC/$f" "$DEST/"
 done
-for d in src rules schema templates config-presets; do
+# docs/ ships as a DIRECTORY, not as a hand-kept list of which pages are worth vendoring.
+# Two reasons: src/gen.mjs reads docs/REFERENCE.md and docs/GLOSSARY.md relative to its own
+# directory, so the vendored layout has to match the source layout or the read comes back
+# empty; and every relative link in the vendored README then resolves exactly as it does
+# here. A list of "the docs that ship" would be one more hand-maintained fact to drift.
+for d in src rules schema templates config-presets docs; do
   rm -rf "$DEST/$d"; cp -r "$SRC/$d" "$DEST/$d"
 done
 # hooks/: the pre-push scrub hook and its README always ship; the session-start hook is opt-in

@@ -27,7 +27,7 @@ Everything. No warn tier: every rule reads repo files, is deterministic, AND-gat
 ## The two opt-ins, opposite defaults
 
 - **Trust circle** — opt **in**, default out: a plugin is a **member** when its name is a key of `baseline.config.json` `plugins` (`baseline trust add|remove <tool>`). A member's rule gates — a missing artifact, a git state the config denies (logged to `.baseline/log/`), a derived store behind the code (gated on the stamp `trust stamp` commits, never an mtime). Unadopted is a **suggestion**: `n/a`, never a failure. Metadata only.
-- **Baseline rules layer** — every non-plugin rule, opt **out**, default in. `"baseline_rules": false` mutes them to `n/a`, out of the gate; only that literal does. `trust setup --baseline-rules in|out` writes it. Never silent: `check` prints the state and every muted id, `--json` carries it as `baseline`.
+- **Baseline rules layer** — every non-plugin rule, opt **out**, default in. `"baseline_rules": false` mutes them to `n/a`, out of the gate; `false` or `null` does, nothing else. `trust setup --baseline-rules in|out` writes it. Never silent: `check` prints the state and every muted id, `--json` carries it as `baseline`.
 
 ## Plugins
 
@@ -40,6 +40,6 @@ Everything. No warn tier: every rule reads repo files, is deterministic, AND-gat
 
 ## Pitfalls
 
-- Never quote rule, blocker or kind counts — `check.mjs --self-check` derives them. Details: `REFERENCE.md`; terms: `GLOSSARY.md`.
-- Quoting a rule that no longer exists: the shipped `rules/*.json` is the authority.
+- Never quote rule, blocker or kind counts — `check.mjs --self-check` derives them.
+- Never quote a doc: `rules/*.json` and `check.mjs` decide, `docs/` only describes.
 - Chasing 100%: zero blockers is the bar; an honest `n/a` is not a gap to fill.

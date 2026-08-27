@@ -1,5 +1,9 @@
 # project-baseline v3 — reference
 
+> **This page is not an authority — the code is.** `rules/*.json`, `src/evaluators.mjs` and `check.mjs` decide; this page only
+> describes them. Where the two disagree, the code is right and this page is a bug.
+> The rule table and the check-kind list below are **generated** from them — never hand-edited.
+
 A **testable readiness standard**. Every lesson is a rule; a zero-dependency runner scores a repo at rest and **fails CI on the always-on blockers**. Everything else warns, and what a machine cannot check is not a rule — v3 deleted the manual, sign-off-backed rules rather than keep a written promise in the rule set.
 
 > The throughline: *don't trust a written promise — make something check it.* A checklist doc would just become another thing that drifts. This is the checklist as an exit code.
@@ -387,4 +391,4 @@ A rule with a check the runner can't evaluate (bad regex, missing target, a thro
 ## What changed, by major version
 
 - **v1 → v2.** The original build/test/context/claims rules kept verbatim; the security/supply-chain block (secrets, `.env` hygiene, action-pinning, dep-updates, binaries, security policy), code-quality gates (linter/formatter/strict-types), reproducibility (frozen installs, runtime pinning + a cross-file drift check), onboarding basics (LICENSE, README, CHANGELOG, bootstrap entrypoint), change governance, deeper context checks (broken links, doc freshness, generated-provenance, grounding docs, resolvable ADR links), acceptance-criteria presence, and the records ledger.
-- **v2 → v3.** Three-part ids. The lane-workflow, divergence and merge-admission families, the records' append-only/one-home history checks, the vendored-lock check and every manual (sign-off) rule deleted — with their machinery. Packs activate from explicit switches only. `tool` / `want` scope the run to what the repo uses; `n/a` is a state, not a row a human sees. The forge closed under `check` and `orient`. The three `PLUG` rules and the `plugins` config key. `explain` and `gen okf-concepts` as the one read seam and the one (staged, human-approved) write toward the knowledge bundle. `orient` shrunk to five lines; `SKILL.md` to a page; every count derived. Historical detail: `CHANGELOG.md`, `docs/v3/PLAN.md`.
+- **v2 → v3.** Three-part ids. The lane-workflow, divergence and merge-admission families, the records' append-only/one-home history checks, the vendored-lock check and every manual (sign-off) rule deleted — with their machinery. Packs activate from explicit switches only. `tool` / `want` scope the run to what the repo uses; `n/a` is a state, not a row a human sees. The forge closed under `check` and `orient`. The three `PLUG` rules and the `plugins` config key. `explain` and `gen okf-concepts` as the one read seam and the one (staged, human-approved) write toward the knowledge bundle. `orient` shrunk to five lines; `SKILL.md` to a page; every count derived. Historical detail: `docs/CHANGELOG.md`, `docs/v3/PLAN.md`.

@@ -72,8 +72,9 @@ if (cmd === 'check') {
                                                           (exit 1 = delivery failed: tracker unreachable
                                                           or a write failed — even with zero findings)
   orient [--repo DIR] [--json]                            five-line survey for session start: repo ·
-                                                          work · graph · knowledge · score (pulls
-                                                          --ff-only first, never spawns gh; exit 0)
+                                                          work · graph · knowledge · score (fetches
+                                                          first and warns how far behind you are —
+                                                          never pulls, never spawns gh; exit 0)
   explain <rule-id> [--json]                              what a rule checks and why: its title and
                                                           rationale, plus the concept from the okf bundle
                                                           when BASELINE_OKF_BUNDLE names one (display

@@ -33,6 +33,10 @@ five-line derived survey (repo · work · graph · knowledge · score) instead o
 doc. It is non-fatal: orient exits 0 whatever it finds, and the wrapper swallows any
 remaining error, so a hook can never block a session.
 
+It also never surprises you with a moved branch. baseline's git boundary is that it
+changes no file, no branch and no history: orient `git fetch`es, reports how far behind
+origin you are as a warning, and leaves the pull to you.
+
 **The default install does not ship it.** `install.sh` copies this script (and the
 Hermes twin under `integrations/hermes/baseline-orient/`) only when asked:
 

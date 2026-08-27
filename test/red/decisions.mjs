@@ -10,7 +10,7 @@
 //   V34  `explain` grows no `--propose`; nothing writes into the OKF bundle
 //   V35  `gen okf-concepts` is a deterministic extraction into .baseline/proposed/
 //   V36  n/a is silent to humans, explicit (with a reason) to machines
-//   V37  orient pulls as step 0 and then touches no forge
+//   V37  orient FETCHES as step 0, never pulls, and then touches no forge
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
@@ -151,9 +151,11 @@ const hashTree = (dir) => {
     `V36 · summary.total counts evaluated rows only, excluding the n/a ones (${j.j?.summary?.total} of ${j.j?.results?.length} rows, ${naRows.length} n/a)`)
 }
 
-// ======================================================== D5 / V37: orient pulls, then reads
+// ======================================================== D5 / V37: orient fetches, never pulls
 {
-  // origin carries a commit the clone does not have yet: if orient pulls, it arrives
+  // origin carries a commit the clone does not have yet. THE BOUNDARY: baseline never
+  // changes your files, your branch or your history — so that commit must NOT arrive, and
+  // orient must say how far behind you are instead of closing the gap for you.
   const origin = mktmp('v37-origin')
   git(origin, 'init', '-q', '-b', 'main')
   writeAll(origin, CLEAN_NODE())
@@ -174,8 +176,11 @@ const hashTree = (dir) => {
   const o = orientJson(dir, [], env)
   const afterHead = git(dir, 'rev-parse', 'HEAD').trim()
 
-  ok(afterHead !== beforeHead, `V37 · orient pulled as step 0 (HEAD ${beforeHead.slice(0, 7)} → ${afterHead.slice(0, 7)})`)
-  ok(fs.existsSync(path.join(dir, 'AHEAD.md')), 'V37 · and the upstream commit is in the tree afterwards')
+  ok(afterHead === beforeHead, `V37 · orient never moved HEAD (${beforeHead.slice(0, 7)} → ${afterHead.slice(0, 7)})`)
+  ok(!fs.existsSync(path.join(dir, 'AHEAD.md')), 'V37 · and the upstream commit is NOT in the tree — orient does not pull')
+  // it did fetch, though: the behind-count is only knowable from refs a fetch brought in
+  ok(o.j?.repo?.behind === 1, `V37 · the fetch happened and the gap is reported (behind=${JSON.stringify(o.j?.repo?.behind)})`)
+  ok(/behind/i.test(JSON.stringify(o.j?.notes ?? [])), `V37 · being behind is a warning note (${JSON.stringify(o.j?.notes ?? []).slice(0, 90)})`)
   ok(!fs.existsSync(sentinel),
     `V37 · orient never spawned gh (${fs.existsSync(sentinel) ? fs.readFileSync(sentinel, 'utf8').trim().replace(/\n/g, ' | ') : 'none'})`)
   ok(o.status === 0, `V37 · orient exits 0 (got ${o.status})`)
@@ -193,7 +198,7 @@ const hashTree = (dir) => {
   ok(o2.status === 0, `V37 · an unreachable origin still exits 0 (got ${o2.status})`)
   const notes = JSON.stringify(o2.j?.notes ?? o2.j?.suggestions ?? [])
   ok(/pull|fetch|origin|offline/i.test(notes + o2.stdout),
-    `V37 · and says the pull did not happen (${notes.slice(0, 90)})`)
+    `V37 · and says the fetch did not happen (${notes.slice(0, 90)})`)
 }
 
 cleanup()

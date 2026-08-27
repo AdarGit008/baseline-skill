@@ -433,11 +433,30 @@ export function readStamp(REPO, name) {
   return out
 }
 
+/** The plugin-authored one-liner off a committed stamp, or null. The ONE thing baseline
+ *  says about a plugin's content, and it is quoted, never derived: baseline does not open
+ *  the artifact (src/plugins.mjs), so if the tool wrote no summary there is nothing to say.
+ *  Trimmed, single-lined and length-capped here because it is repo-authored text headed for
+ *  a survey line; sanitizeTTY strips control bytes at the render boundary. */
+export function stampSummary(REPO, name) {
+  const st = readStamp(REPO, name)
+  const v = st.data?.summary
+  if (typeof v !== 'string') return null
+  const one = v.replace(/\s+/g, ' ').trim()
+  return one ? one.slice(0, 120) : null
+}
+
 /** Serialize a stamp: fixed key order, `files` sorted code-unit, trailing newline. The
  *  byte-identity of a rerun on unchanged inputs is the contract — a committed stamp must
  *  not churn, or every rebuild would look like a change. */
 function serializeStamp(s) {
   const o = { stamp: STAMP_VERSION, member: s.member, integrity: s.integrity, artifact: s.artifact ?? null, evidence: s.evidence ?? null }
+  // The plugin's OWN one-line description of what it produced ("412 nodes, 38 clusters").
+  // baseline never authors this and never parses the artifact to derive it — the tool that
+  // built the artifact writes the line, and baseline only carries it forward on a refresh
+  // (v4: the orientation line comes from the stamp, so the plugin boundary stays shut).
+  // Absent on every stamp that has none, so the byte-identity contract is unchanged.
+  if (typeof s.summary === 'string' && s.summary.trim()) o.summary = s.summary.trim()
   if (s.integrity === 'recorded') { o.recorded_at = s.recorded_at ?? null; o.claim = s.claim }
   if (s.integrity === 'verifiable') {
     o.algo = s.algo
@@ -619,6 +638,7 @@ export function stampTrust(REPO, { only = null, cfg = null } = {}) {
       if (!head) { act.state = 'refused'; act.reason = 'no git HEAD to record the claim against'; acts.push(act); continue }
       const content = serializeStamp({
         member: e.name, integrity: 'recorded', artifact: artifactName(REPO, spec, e.artifact), evidence: null,
+        summary: stampSummary(REPO, e.name),
         recorded_at: head,
         claim: `${e.name} was indexed as of commit ${head}; baseline records this and cannot verify it`,
       })
@@ -635,6 +655,7 @@ export function stampTrust(REPO, { only = null, cfg = null } = {}) {
     if (!m.ok) { act.reason = m.reason; acts.push(act); continue } // n/a, never a finding
     const content = serializeStamp({
       member: e.name, integrity: 'verifiable', artifact: artifactName(REPO, spec, e.artifact), evidence: m.rel,
+      summary: stampSummary(REPO, e.name),
       algo: 'md5', scope: m.scope, files: Object.fromEntries(m.rows),
     })
     const w = writeStamp(REPO, e.name, content)
@@ -824,6 +845,18 @@ function runTrustSetup(REPO, JSON_OUT, layerWanted = null) {
   return 0
 }
 
+/** The warning a fresh adoption earns when the tool has produced nothing yet: its presence
+ *  rule now gates, and it will fail until the artifact exists. null when there is nothing to
+ *  warn about (artifact present, or a member with no artifact to probe). */
+function absentArtifactWarning(REPO, name) {
+  const e = requiredSetup().find(x => x.name === name)
+  if (!e) return null
+  const spec = pluginSpec(resolveConfig(indexRepo(REPO)).cfg, name)
+  if (!spec) return null
+  if (probePlugin(REPO, name, spec).present) return null
+  return `${e.artifact} does not exist yet, so ${name}'s presence rule fails from now on — build it first (${e.setup}), or \`baseline trust remove ${name}\` until you have`
+}
+
 /** add / remove — the roster changes over a project's life, and this is the only thing
  *  that changes it: one key in baseline.config.json. */
 function runTrustMembership(REPO, sub, name, overrides, JSON_OUT) {
@@ -831,12 +864,20 @@ function runTrustMembership(REPO, sub, name, overrides, JSON_OUT) {
   try { res = sub === 'add' ? addMember(REPO, name, overrides) : removeMember(REPO, name) }
   catch (e) { console.error(`baseline trust ${sub}: ${e.message}`); return 2 }
   const circle = circleOf(REPO)
+  // ORDER MATTERS, and adopting is the step that makes it bite: a member's presence rule
+  // gates from this moment on, so adopting a tool whose artifact does not exist yet turns
+  // the build red immediately — and not on the freshness rule, on PLUG-0N presence. Build
+  // the artifact first, adopt second. Said here because this is where the cost is incurred,
+  // and it is a WARNING, never a refusal: adopting ahead of the artifact is a legitimate
+  // way to make a build red on purpose.
+  const pending = sub === 'add' && res.ok ? absentArtifactWarning(REPO, name) : null
   if (JSON_OUT) {
-    console.log(JSON.stringify({ action: sub, member: name, ...res, members: circle.members, suggested: circle.suggested }, null, 2))
+    console.log(JSON.stringify({ action: sub, member: name, ...res, warning: pending, members: circle.members, suggested: circle.suggested }, null, 2))
     return res.ok ? 0 : 2
   }
   if (!res.ok) { console.error(`baseline trust ${sub}: ${S(res.reason)}`); return 2 }
   console.log(`  ${res.changed ? '+' : '·'} ${S(name)}: ${S(res.reason)}`)
+  if (pending) console.log(`  ! ${S(pending)}`)
   console.log(`\ntrust circle: ${circle.members.length ? circle.members.map(S).join(', ') : 'empty'}${circle.suggested.length ? `  ·  suggested: ${circle.suggested.map(S).join(', ')}` : ''}`)
   if (res.changed && sub === 'add') console.log(`commit ${S(res.rel)} — CI reads membership out of the tracked config, nothing else.`)
   return 0

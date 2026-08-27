@@ -5,6 +5,9 @@
 // CI. So this is not a repo-health scorecard — it is the list of tools this repo has
 // chosen to trust, and baseline owns the WIRING for every one of them: the stamps under
 // .baseline/trust/ are BASELINE's files, written and maintained here, never the tools'.
+// Since v4 that ownership extends past the circle to baseline's OWN wiring in the repo —
+// the orientation entrypoint at .baseline/orient.sh, installed by `trust wire` and checked
+// for byte-identity by CTX-19 (see "the orientation entrypoint" below).
 //
 // == Two opt-ins, opposite defaults ==
 // The trust circle below is the opt-IN half: default OUT, adopted a tool at a time. The
@@ -66,6 +69,7 @@
 // platform. Same repo state -> byte-identical stamp, here and in CI.
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { makeOpt, sanitizeTTY } from './util.mjs'
@@ -275,6 +279,110 @@ export function setLayer(REPO, on) {
   data[LAYER_KEY] = false
   writeRepoConfig(REPO, data)
   return { ok: true, changed: true, rel: c.rel, reason: `the baseline rules layer is OUT — ${LAYER_KEY}:false, so those rules resolve n/a and cannot fail this build${c.present ? '' : ` (${c.rel} created)`}` }
+}
+
+// ---------------------------------------------------------------- the orientation entrypoint (v4)
+//
+// The third thing baseline OWNS in a repo, beside the config key set and the stamps — and
+// the only one that is not about a plugin at all. `baseline trust wire` installs it, the
+// repo commits it, and CTX-19 checks it. It belongs on this surface because it is wiring,
+// and wiring is what `trust` is for.
+//
+// It is an IDENTITY check, never an existence check. "Some script called orient.sh is
+// here" proves nothing: the useful fact is that THIS repo opens the way every other
+// baseline-activated repo opens, and only byte-identity says that. So the committed copy
+// is compared byte-for-byte against the copy the INSTALLED baseline ships, and a local
+// edit — the actual failure mode — is named as drift.
+//
+// VERSION SKEW, handled rather than hoped away. The comparison target is always the
+// version THIS baseline ships, and the finding says so, because a repo wired by an older
+// baseline is a different situation from a repo whose copy someone edited. The script
+// therefore carries its OWN contract version (the marker line), bumped only when the
+// script changes — so an ordinary baseline release does not make every wired repo look
+// drifted, and when the script really does change, the finding can say "your copy is
+// entrypoint v1, this baseline ships v2" instead of "your copy differs".
+//
+// ABSENCE IS NOT DRIFT. A repo with no entrypoint at all has made no claim to check, so
+// the state is n/a — the same answer this file already gives for a member that is not
+// stamped yet, and the same answer the engine gives any rule with no subject in the tree.
+// The n/a is not silence: it carries `baseline trust wire` as its reason and rides in
+// --json like every other n/a row.
+export const ORIENT_REL = '.baseline/orient.sh'
+const ORIENT_TEMPLATE = 'templates/orient.sh'
+const ORIENT_MARKER = /^#[ \t]*baseline-orient-entrypoint:[ \t]*(\S+)[ \t]*$/m
+const orientVersionOf = body => (String(body ?? '').match(ORIENT_MARKER) || [, null])[1]
+
+/** The entrypoint THIS baseline ships, read out of the installed distribution (never a
+ *  string literal here — the file is the artifact, and one copy of it is the point).
+ *  -> { ok, body, version, rel } */
+export function shippedOrient() {
+  const rel = ORIENT_TEMPLATE
+  let body = null
+  try { body = fs.readFileSync(fileURLToPath(new URL('../' + rel, import.meta.url)), 'utf8') } catch {}
+  return { ok: typeof body === 'string' && !!body, body, version: orientVersionOf(body), rel }
+}
+
+/** The repo's committed entrypoint, judged against the shipped one.
+ *  -> { state, rel, reason, shipped_version, found_version }
+ *  state: 'n/a' (never wired, or nothing to compare against) | 'ok' | 'drift' | 'skew'
+ *         | 'untracked' (present, but CI would never see it) */
+export function orientEntrypointState(REPO) {
+  const shipped = shippedOrient()
+  const rel = ORIENT_REL
+  const out = { state: 'n/a', rel, reason: null, shipped_version: shipped.version, found_version: null }
+  if (!shipped.ok) {
+    out.reason = `this baseline ships no ${shipped.rel}, so there is no version to compare against — nothing can be verified here`
+    return out
+  }
+  let found
+  try { found = fs.readFileSync(path.join(REPO, rel), 'utf8') }
+  catch (e) {
+    out.reason = e.code === 'ENOENT'
+      ? `no orientation entrypoint at ${rel} — this repo was never wired, so there is no claim to check; \`baseline trust wire\` installs the one this baseline ships (entrypoint v${shipped.version}) and then this rule gates`
+      : `${rel} is unreadable (${e.code || e.message}) — nothing can be compared`
+    return out
+  }
+  out.found_version = orientVersionOf(found)
+  if (!gitTracked(REPO, rel)) {
+    out.state = 'untracked'
+    out.reason = `${rel} is present but git does not track it — CI clones tracked files, so no other machine has the entrypoint at all; \`git add ${rel}\``
+    return out
+  }
+  if (found === shipped.body) {
+    out.state = 'ok'
+    out.reason = `${rel} is byte-identical to the entrypoint this baseline ships (entrypoint v${shipped.version}) — this repo opens the way every baseline-activated repo opens`
+    return out
+  }
+  if (out.found_version && out.found_version !== shipped.version) {
+    out.state = 'skew'
+    out.reason = `${rel} is entrypoint v${out.found_version}; THIS baseline ships v${shipped.version} — the committed copy was wired by an older baseline, not edited. Rerun \`baseline trust wire\` and commit ${rel}`
+    return out
+  }
+  out.state = 'drift'
+  out.reason = `${rel} differs from the entrypoint this baseline ships (both entrypoint v${shipped.version}${out.found_version ? '' : '; the committed copy carries no version marker'}) — the copy in this repo was edited, so it no longer does what every other baseline-activated repo does. \`baseline trust wire\` restores it; commit ${rel}`
+  return out
+}
+
+/** Install (or restore) the entrypoint. Idempotent and byte-exact: a rerun on an already
+ *  correct copy writes nothing, so a wired repo never shows a churn diff. */
+export function wireOrientEntrypoint(REPO) {
+  const shipped = shippedOrient()
+  const rel = ORIENT_REL
+  if (!shipped.ok) return { ok: false, changed: false, rel, reason: `this baseline ships no ${shipped.rel} — nothing to install` }
+  const abs = path.join(REPO, rel)
+  let before = null
+  try { before = fs.readFileSync(abs, 'utf8') } catch {}
+  if (before === shipped.body) {
+    try { fs.chmodSync(abs, 0o755) } catch {}
+    return { ok: true, changed: false, rel, version: shipped.version, reason: `already the entrypoint this baseline ships (v${shipped.version}) — byte-identical, nothing written` }
+  }
+  try {
+    fs.mkdirSync(path.dirname(abs), { recursive: true })
+    fs.writeFileSync(abs, shipped.body)
+    fs.chmodSync(abs, 0o755)
+  } catch (e) { return { ok: false, changed: false, rel, reason: `cannot write ${rel} — ${e.message}` } }
+  const was = before === null ? 'installed' : orientVersionOf(before) === shipped.version ? 'restored over an edited copy' : `upgraded from entrypoint v${orientVersionOf(before) ?? '?'}`
+  return { ok: true, changed: true, rel, version: shipped.version, reason: `${was}: entrypoint v${shipped.version} — \`git add ${rel}\` and commit it, because CI reads the tracked copy and nothing else` }
 }
 
 // ---------------------------------------------------------------- hashing
@@ -543,7 +651,8 @@ const TRUST_USAGE = `usage: baseline trust setup [--repo DIR] [--baseline-rules 
          baseline trust add NAME [--repo DIR] [--path P] [--ignored true|false] [--json]
          baseline trust remove NAME [--repo DIR] [--json]
          baseline trust stamp [--repo DIR] [--member NAME] [--json]
-         baseline trust verify [--repo DIR] [--json]`
+         baseline trust verify [--repo DIR] [--json]
+         baseline trust wire [--repo DIR] [--json]`
 
 const S = sanitizeTTY
 const pad = (s, n) => String(s) + ' '.repeat(Math.max(0, n - String(s).length))
@@ -563,10 +672,13 @@ export function runTrust(argv) {
   stamp:  write/refresh .baseline/trust/<member>.json (commit them). Verifiable stamps refresh on their own;
           a RECORDED-ONLY stamp is re-asserted only when you name it with --member, because baseline cannot check it
   verify: recheck the committed stamps against the tracked tree — graphify's is RECOMPUTED (exit 1 on a stale
-          or broken stamp), okf-rag's is printed as the unverifiable claim it is (never a gate)`)
+          or broken stamp), okf-rag's is printed as the unverifiable claim it is (never a gate)
+  wire:   install ${ORIENT_REL}, the orientation entrypoint (commit it). baseline OWNS this file: CTX-19 checks the
+          committed copy is BYTE-IDENTICAL to the one this baseline ships, so every activated repo opens the same
+          way. Idempotent — a correct copy is left untouched; an edited one is restored`)
     return 0
   }
-  const SUBS = ['setup', 'add', 'remove', 'stamp', 'verify']
+  const SUBS = ['setup', 'add', 'remove', 'stamp', 'verify', 'wire']
   const sub = argv[0] && !argv[0].startsWith('-') ? argv[0] : null
   let rest = sub ? argv.slice(1) : argv
   const usage = msg => { console.error(`baseline trust: ${msg}\n  ${TRUST_USAGE}`); return 2 }
@@ -620,7 +732,25 @@ export function runTrust(argv) {
     if (only !== null && !PLUGIN_NAMES.includes(String(only))) return usage(`--member '${only}' is not in the trust circle (${PLUGIN_NAMES.join(', ')})`)
     return runTrustStamp(REPO, only === null ? null : String(only), JSON_OUT)
   }
+  if (sub === 'wire') return runTrustWire(REPO, JSON_OUT)
   return runTrustVerify(REPO, JSON_OUT)
+}
+
+/** wire — the install side of CTX-19. One file, written only when its bytes would change. */
+function runTrustWire(REPO, JSON_OUT) {
+  let res
+  try { res = wireOrientEntrypoint(REPO) }
+  catch (e) { console.error(`baseline trust wire: ${e.message}`); return 2 }
+  const state = orientEntrypointState(REPO)
+  if (JSON_OUT) {
+    console.log(JSON.stringify({ action: 'wire', ...res, entrypoint: state }, null, 2))
+    return res.ok ? 0 : 2
+  }
+  if (!res.ok) { console.error(`baseline trust wire: ${S(res.reason)}`); return 2 }
+  console.log(`  ${res.changed ? '+' : '·'} ${S(res.rel)}: ${S(res.reason)}`)
+  // the state AFTER the write, so the line a reader sees is the one CTX-19 will read next
+  console.log(`\ntrust wire: ${state.state === 'ok' ? 'CTX-19 is satisfied once this is committed' : `CTX-19 still says ${S(state.state)} — ${S(state.reason)}`}`)
+  return 0
 }
 
 function runTrustSetup(REPO, JSON_OUT, layerWanted = null) {
@@ -647,6 +777,9 @@ function runTrustSetup(REPO, JSON_OUT, layerWanted = null) {
       // the other opt-in: the non-plugin rules, in by default, named so a machine reader
       // sees exactly which rules an opted-out layer muted
       baseline: { key: LAYER_KEY, layer: layer.in ? 'in' : 'out', source: layer.source, rules: layerRules, ...(layerAct ? { action: layerAct } : {}) },
+      // baseline's own wiring in this repo, beside the two opt-ins: the orientation
+      // entrypoint CTX-19 reads (`baseline trust wire` installs it)
+      entrypoint: orientEntrypointState(REPO),
     }, null, 2))
     return layerAct && !layerAct.ok ? 2 : 0
   }
@@ -670,6 +803,12 @@ function runTrustSetup(REPO, JSON_OUT, layerWanted = null) {
   console.log(layer.in
     ? `  they gate this build. opt the layer out with \`baseline trust setup --baseline-rules out\` — they then resolve n/a, exactly as an unadopted plugin does, and the state stays printed on every run`
     : `  they produce NO finding and are excluded from the exit gate — nothing is checking them. \`baseline trust setup --baseline-rules in\` deletes the key and puts them back`)
+
+  // baseline's own wiring in this repo — neither opt-in, and the one thing on this surface
+  // that is not about a plugin: the orientation entrypoint CTX-19 reads.
+  const ep = orientEntrypointState(REPO)
+  console.log(`\norientation entrypoint — ${S(ep.rel)}: ${ep.state === 'ok' ? 'WIRED' : ep.state === 'n/a' ? 'not wired' : ep.state.toUpperCase()}`)
+  console.log(`  ${S(ep.reason ?? '')}`)
 
   if (!circle.members.length) {
     // The suggestion surface: a repo that adopted nothing is OFFERED everything, and told

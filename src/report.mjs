@@ -61,7 +61,12 @@ export function summarize(results) {
 // (`check.plugin`), so a roster entry no rule stands for — my-onto, fail-silent until it
 // exists — is never offered as something this repo could adopt today.
 export function trustSummary(results, cfg) {
-  const named = [...new Set((results || []).map(x => x?.r?.check?.plugin).filter(n => typeof n === 'string' && n))]
+  // A FROZEN rule (kind 'frozen' — a tool that does not exist yet, CTX-18) names its member
+  // but stands for nothing adoptable, so it is excluded here for the same reason my-onto was
+  // never offered before it had a rule: baseline must not suggest adopting a tool that
+  // cannot be installed. The exclusion is on the KIND, not on a name, so it holds for the
+  // next frozen entry too.
+  const named = [...new Set((results || []).map(x => (x?.r?.check?.kind === 'frozen' ? null : x?.r?.check?.plugin)).filter(n => typeof n === 'string' && n))]
   const P = (cfg && cfg.plugins) || {}
   return { members: named.filter(n => P[n]?.member), suggested: named.filter(n => !P[n]?.member) }
 }

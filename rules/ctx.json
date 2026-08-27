@@ -1,0 +1,123 @@
+{
+  "rules": [
+    {
+      "id": "CTX-15-graph-not-lagging-code",
+      "title": "graphify's graph is not behind the code",
+      "category": "context",
+      "severity": "blocker",
+      "applies_to": "all",
+      "source": "v4 rule review — the trust circle; the check-pipeline face of `baseline trust verify`",
+      "lesson": "Freshness is not a timestamp question. `git clone` stamps every file's mtime with the checkout time, so an mtime comparison reads as maximally fresh on the one machine that matters most — CI. Content hashes do survive a clone, and graphify already records them.",
+      "rationale": "graphify is the deterministic half of the context system: an AST pass over the tree with no LLM in the loop, so the same commit always produces the same graph — which is exactly why 'the tree moved and the graph did not' is a checkable defect rather than a taste judgment. The graph itself is gitignored and CI never sees it, so what CI reads is the committed VERIFIABLE stamp: baseline copies the per-file content hashes graphify recorded in its manifest and RECOMPUTES them here over the tracked code files in the tree. A stamp is not unforgeable — a person can hand-write today's hashes — but it can never assert a freshness the tree contradicts, which is the property a CI gate actually needs. Scope is CODE FILES ONLY, and the scope the stamp covered travels in the stamp: a semantic row moves when an LLM extraction changes, so gating on one would fire 'your graph is stale' at a tool upgrade. Membership is the gate: a repo that never adopted graphify resolves n/a and can never fail here. Every unreadable, missing or unrecognized manifest or stamp is n/a too — the manifest's format is graphify's business, not a defect of the repo under check.",
+      "fix": "Rebuild the graph, then `baseline trust stamp` and commit .baseline/trust/graphify.json — that file is what CI reads, and it is baseline's file, not graphify's. If this repo has not adopted graphify, `baseline trust remove graphify` and the rule goes back to n/a.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "graph-stamp-fresh",
+        "plugin": "graphify"
+      }
+    },
+    {
+      "id": "CTX-16-test-state-not-lagging-code",
+      "title": "obsidian-tdd's test state is not behind the code",
+      "category": "context",
+      "severity": "blocker",
+      "applies_to": "all",
+      "source": "v4 rule review — the trust circle; the git-date arithmetic CTX-11's `doc-code-age` left behind",
+      "lesson": "An ordering is checkable; a deadline is a policy. 'The tests were updated no earlier than the code' needs no threshold and no clock — 'the tests are less than N days behind' needs both, and baseline has no standing to pick N for someone else's repo.",
+      "rationale": "obsidian-tdd is the only trust-circle member whose artifact is TRACKED, so it needs no stamp at all: git's committer date is the fact, and it is the same fact on every machine and in CI. The rule is a pure ordering — tdd.json's commit must not PREDATE the newest commit under the configured source scope — with no day threshold anywhere. Changing the code and the test state in the SAME commit gives them the same date, which is not earlier, so it passes: the discipline this rule protects is 'update the tests with the code', and doing exactly that must never read as a finding. The source scope is opt-in by emptiness (test_state_sources): baseline cannot guess which code a repo's test state is meant to track, and an unset scope resolves n/a rather than gating CI on a guess. The artifact's content is never read — no covers[], no RED/GREEN count — because the file's schema is the plugin's business (the plugin boundary); only its commit date is. Absence and an untracked artifact are PLUG-01's findings, not this rule's: one defect, one row.",
+      "fix": "Rerun obsidian-tdd and commit tdd.json in the same change as the code it covers. Set \"test_state_sources\" in baseline.config.json to the globs the test state is meant to track (an empty scope leaves this rule n/a). If this repo has not adopted obsidian-tdd, `baseline trust remove obsidian-tdd` and the rule goes back to n/a.",
+      "sources": [
+        "tree",
+        "history"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "artifact-not-lagging",
+        "plugin": "obsidian-tdd",
+        "sources_from_config": "test_state_sources"
+      }
+    },
+    {
+      "id": "CTX-17-knowledge-not-lagging-code",
+      "title": "okf-rag's recorded indexing claim is not behind the code",
+      "category": "context",
+      "severity": "blocker",
+      "applies_to": "all",
+      "source": "v4 rule review — the trust circle, RECORDED-ONLY integrity tier",
+      "lesson": "Some evidence cannot be verified, and the honest move is to say so on every surface rather than to quietly grade it as if it could. A recorded stamp is a claim someone made; this rule can order that claim against the code, and it can never confirm it.",
+      "rationale": "The okf-rag bundle lives OUTSIDE the repo and is human-curated, so CI — which clones tracked files, not a filesystem and not a shell — can never read it. What CI can read is the committed RECORDED stamp naming the commit the bundle was indexed at, and this rule orders that recorded commit against the newest commit under the configured knowledge scope. The integrity tier stays visible in the verdict text itself, pass and fail alike: RECORDED ONLY — baseline records this and cannot verify it. So a passing row means 'the claim is not self-evidently stale', never 'the knowledge store is fresh', and the difference is stated rather than left for a reader to infer. No retrieval, no embedding and no read of the bundle happens here: no verdict in this rule set depends on a retrieval. Membership is the gate; an absent stamp is n/a with the command that writes it, and a recorded commit that is not in this history (a shallow clone, or a claim about another repo) is n/a rather than a finding, because a claim that cannot be ordered has not been shown to be stale.",
+      "fix": "Re-index the bundle, then `baseline trust stamp --member okf-rag` and commit .baseline/trust/okf-rag.json — re-asserting an unverifiable claim takes naming it, because baseline cannot check what it would be re-asserting. Set \"knowledge_sources\" in baseline.config.json to the globs the bundle indexes (an empty scope leaves this rule n/a). If this repo has not adopted okf-rag, `baseline trust remove okf-rag` and the rule goes back to n/a.",
+      "sources": [
+        "tree",
+        "history"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "stamp-not-lagging",
+        "plugin": "okf-rag",
+        "sources_from_config": "knowledge_sources"
+      }
+    },
+    {
+      "id": "CTX-18-ontology-not-lagging-code",
+      "title": "my-onto's ontology is not behind the code (frozen — my-onto does not exist yet)",
+      "category": "context",
+      "severity": "none",
+      "applies_to": "all",
+      "source": "v4 rule review — the fourth trust-circle member, fail-silent by decision",
+      "lesson": "A tool that does not exist cannot be a gate, and pretending otherwise is an empty claim. Declaring the rule and claiming no severity for it is more honest than either hiding it or dressing it as a blocker that can never fire.",
+      "rationale": "my-onto is declared in the plugin table with no path, so it probes as absent without touching the filesystem, and it is FROZEN here: this rule carries NO SEVERITY, emits nothing to a human, and resolves n/a with its reason in --json on every run. That is not a warn and not a silent drop — 'blocker' would be a claim about a check that cannot fire, and this rule set has no warn tier to demote it into, so the severity vocabulary carries a third value that is the ABSENCE of a claim rather than a weaker one. The runner binds it both ways (src/selfcheck.mjs): severity 'none' is legal only on a check that is structurally incapable of a verdict, and such a check may claim no severity — so 'none' can never become a way to ship a rule that gates nothing while looking like a rule. The rule exists so the trust circle is honest about the fourth member rather than quietly two-thirds of a roster. When my-onto ships, this rule takes the shape CTX-16 and CTX-17 already have and the severity claim is made then, on evidence.",
+      "fix": "Nothing. my-onto does not exist yet; this rule is declared so the roster is honest about it and emits nothing until there is something to check.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "frozen",
+        "plugin": "my-onto",
+        "why": "fail-silent by decision: no stamp, no rule severity, no verify row — a tool that does not exist cannot be a gate"
+      }
+    },
+    {
+      "id": "CTX-19-orientation-entrypoint-present",
+      "title": "The orientation entrypoint is the one this baseline ships",
+      "category": "context",
+      "severity": "blocker",
+      "applies_to": "all",
+      "source": "v4 rule review — baseline owns its own wiring; `baseline trust wire` is the install side",
+      "lesson": "Existence proves nothing. A file called orient.sh could do anything at all; what is worth knowing is that this repo opens the way every other baseline-activated repo opens, and only byte-identity says that.",
+      "rationale": "This is the one rule in the context category that is not about a plugin, so it belongs to the BASELINE RULES LAYER (opt-out, default in) rather than to the trust circle: it is a fact about baseline's own wiring, which every repo running baseline can answer. baseline installs the entrypoint (`baseline trust wire`) and checks that the committed copy is BYTE-IDENTICAL to the copy the installed baseline ships. Drift — someone edited their local copy — is the real failure mode and is named as drift. Version skew is handled explicitly rather than hoped away: the comparison target is always the version THIS baseline ships, the finding says so, and the entrypoint carries its own contract version, bumped only when the script itself changes, so an ordinary baseline release never makes a wired repo look edited. Absence is n/a, not a finding, and the reasoning is the same one the stamps already use: a repo with no entrypoint has made no claim to check, and n/a is what this runner says when a rule has no subject in the tree. The n/a is never silent — it carries the wiring command and rides in --json like every other n/a row — and a repo that does not want the check at all opts the whole baseline layer out on the record. A present-but-untracked entrypoint IS a finding: CI clones tracked files, so an uncommitted copy is an entrypoint no other machine has.",
+      "fix": "`baseline trust wire` installs (or restores) .baseline/orient.sh, then `git add .baseline/orient.sh` and commit it — CI reads the tracked copy and nothing else. Do not hand-edit the file: to change what it does, take a newer baseline and rerun the same command. A repo that wants none of the baseline rules opts the layer out with `baseline trust setup --baseline-rules out`.",
+      "sources": [
+        "tree"
+      ],
+      "on_unreachable": "skip",
+      "contexts": [
+        "check"
+      ],
+      "certainty": "deterministic",
+      "check": {
+        "kind": "orient-entrypoint"
+      }
+    }
+  ]
+}

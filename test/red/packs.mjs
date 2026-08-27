@@ -36,9 +36,26 @@ const isNA = (x) => x?.state === 'n/a' || x?.tag === 'n/a' || x?.tag === 'N/A'
   ok(manifest && manifest.packs && Object.keys(manifest.packs).length === 0,
     `§5 · rules.json's packs map is empty (${JSON.stringify(Object.keys(manifest?.packs ?? {}))})`)
   // the pack-only categories went with their packs
-  for (const dead of ['claim', 'ctx', 'desc', 'ops', 'qual', 'rec', 'repro', 'test', 'comm']) {
+  for (const dead of ['claim', 'desc', 'ops', 'qual', 'rec', 'repro', 'test', 'comm']) {
     ok(!fs.existsSync(path.join(ROOT, 'rules', `${dead}.json`)), `§5 · rules/${dead}.json is deleted`)
     ok(!(manifest?.modules || []).includes(`rules/${dead}.json`), `§5 · rules.json no longer registers rules/${dead}.json`)
+  }
+  // rules/ctx.json is the one deleted module whose FILENAME came back — the v4 review
+  // scratched all twelve CTX rules and then commissioned five new ones under the same
+  // category. So the assertion moves from "the file is gone" to the thing the file being
+  // gone was standing in for: not one of the deleted CTX rules is back, and the module
+  // holds the five new ids and nothing else. That is strictly harder to satisfy than an
+  // absent file, which any typo could have produced.
+  {
+    const ctxRel = 'rules/ctx.json'
+    const onDisk = fs.existsSync(path.join(ROOT, ctxRel))
+    ok(onDisk && (manifest?.modules || []).includes(ctxRel), `§5 · ${ctxRel} is back — as the v4/ctx module, registered in rules.json (disk ${onDisk}, manifest ${(manifest?.modules || []).includes(ctxRel)})`)
+    let mod = null; try { mod = JSON.parse(fs.readFileSync(path.join(ROOT, ctxRel), 'utf8')) } catch {}
+    const got = (mod?.rules || []).map(r => base(r.id)).sort()
+    ok(JSON.stringify(got) === JSON.stringify([...lib.CTX_IDS].sort()), `§5 · and it holds exactly ${lib.CTX_IDS.join(', ')} (got ${got.join(', ') || '—'})`)
+    const resurrected = got.filter(id => Number(id.slice(-2)) <= 14)
+    ok(resurrected.length === 0, `§5 · not one of the twelve scratched CTX rules is back (${resurrected.join(', ') || '—'})`)
+    ok((mod?.rules || []).every(r => r.category === 'context'), `§5 · every rule in the module is category 'context'`)
   }
 }
 

@@ -17,6 +17,7 @@ import {
   harness, loadRuleSet, loadRuleSetAt, ROOT, cli, mkrepo, checkJson, idsOf,
   DELETED_PREFIXES, isDeleted, ALWAYS_ON_BLOCKERS, PACK_OF, SIGNOFF_FIVE, cleanup, FAKE_SECRET,
   SURVIVING_IDS, SURVIVING_KINDS, TRUSTED_NODE, plantGraph, okfEnv,
+  FROZEN_IDS, FROZEN_KIND, FROZEN_SEVERITY,
 } from './_lib.mjs'
 
 const { ok, done } = harness('deletions')
@@ -181,8 +182,21 @@ const PRE_IDS = [...new Set(PRE.map(r => r.id))]
   const alwaysOnBlockers = rules.filter(r => r.severity === 'blocker' && !r.pack).map(r => r.id)
   ok(alwaysOnBlockers.length === ALWAYS_ON_BLOCKERS.length,
     `V11 · always-on blockers = ${ALWAYS_ON_BLOCKERS.length} (got ${alwaysOnBlockers.length}: ${alwaysOnBlockers.slice(0, 12).join(' ')})`)
+  // There is no warn tier, so every rule that CLAIMS a severity claims 'blocker'. The one
+  // rule that claims none is the FROZEN one (v4/ctx CTX-18): permanently n/a, structurally
+  // incapable of a verdict, so 'blocker' would be an empty claim and 'warn' a claim about a
+  // tier that does not exist. The exception is pinned three ways rather than relaxed — the
+  // non-blockers must be EXACTLY the frozen list, each must really be severity 'none', and
+  // each must really carry the frozen kind — so 'none' can never spread to a rule that
+  // could otherwise have gated.
   const notBlocking = rules.filter(r => r.severity !== 'blocker').map(r => `${r.id}:${r.severity}`)
-  ok(notBlocking.length === 0, `V11 · there is no warn tier — every rule is a blocker (${notBlocking.join(', ') || '—'})`)
+  const frozen = rules.filter(r => FROZEN_IDS.includes(base(r.id)))
+  ok(notBlocking.length === frozen.length && frozen.every(r => notBlocking.includes(`${r.id}:${r.severity}`)),
+    `V11 · there is no warn tier — every rule is a blocker except the frozen ${FROZEN_IDS.join(', ')} (${notBlocking.join(', ') || '—'})`)
+  ok(frozen.length === FROZEN_IDS.length && frozen.every(r => r.severity === FROZEN_SEVERITY),
+    `V11 · and the frozen rule claims NO severity — '${FROZEN_SEVERITY}', not a weaker tier (${frozen.map(r => `${r.id}:${r.severity}`).join(', ') || '—'})`)
+  ok(frozen.every(r => r.check?.kind === FROZEN_KIND),
+    `V11 · a rule may claim no severity only when its check cannot produce a verdict (kind '${FROZEN_KIND}': ${frozen.map(r => `${r.id}:${r.check?.kind}`).join(', ') || '—'})`)
 
   // "every count printed anywhere is derived from the rule set, never literal"
   const sc = cli(ROOT, ['check', '--self-check'])

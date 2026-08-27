@@ -32,7 +32,19 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, color }) {
   const toolSet = new Set(TOOLS)
   // the two severities the engine routes: blocker → FAIL (exit code), anything else → WARN.
   // 'manual' (the sign-off ledger) left with its five rules (v3 §11 D11).
-  const sevOk = new Set(['blocker', 'warn'])
+  //
+  // v4/ctx adds a THIRD value that is not a tier: 'none' — NO SEVERITY CLAIM AT ALL. It was
+  // added rather than reusing 'warn' because reusing 'warn' would have been a lie twice
+  // over: this rule set has no warn tier, and a rule that is structurally incapable of a
+  // finding has no severity to state. A permanently-n/a rule calling itself a blocker is an
+  // empty claim; calling itself a warn is a claim about a tier that does not exist. So the
+  // vocabulary grew honestly, and 'none' is bound tightly by FROZEN_KIND below: it is legal
+  // only on a rule whose check CANNOT produce a verdict, and such a rule may carry nothing
+  // else. That binding is what stops 'none' becoming a way to smuggle a rule past the gate.
+  const sevOk = new Set(['blocker', 'warn', 'none'])
+  // The one check kind that always answers ok:null (src/evaluators.mjs) — the frozen rule's
+  // whole implementation. The two-way law below keys on it.
+  const FROZEN_KIND = 'frozen'
   const catKeys = new Set(Object.keys(CATS))
   const ids = new Set()
   const prefixes = new Map()   // PREFIX-NN → the rule id that owns it (exactly one, V7)
@@ -131,6 +143,12 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, color }) {
     if (!Array.isArray(r.contexts) || !r.contexts.length || !r.contexts.every(c => CTXV.has(c))) problems.push(`${id}: contexts must be a non-empty subset of {${[...CTXV].join('|')}}`)
     if (!CERT.has(r.certainty)) problems.push(`${id}: certainty must be one of {${[...CERT].join('|')}}`)
     if (r.severity === 'blocker' && r.certainty !== 'deterministic') problems.push(`${id}: blocker must be deterministic (got '${r.certainty}') — a blocker can't rest on a heuristic/judgment`)
+    // v4/ctx — the frozen law, in BOTH directions, so 'none' can never drift into a way of
+    // shipping a rule that gates nothing while claiming to be a rule:
+    //   severity 'none' ⇒ the check must be the frozen kind (structurally no verdict)
+    //   the frozen kind ⇒ severity must be 'none' (no severity may be claimed over it)
+    if (r.severity === 'none' && r.check?.kind !== FROZEN_KIND) problems.push(`${id}: severity 'none' is only for a rule that cannot produce a verdict — its check must be kind '${FROZEN_KIND}' (got '${r.check?.kind}')`)
+    if (r.check?.kind === FROZEN_KIND && r.severity !== 'none') problems.push(`${id}: a '${FROZEN_KIND}' check can never fail, so the rule must claim no severity (severity 'none', got '${r.severity}')`)
   }
   // coverage matrix: applicable rules per type, split by pack ('core' = no pack; the pack
   // columns are the rules.json packs map, in its order — never a hand-kept column list)
@@ -150,7 +168,9 @@ export function runSelfCheck({ RULES, TYPES, CHECK_KINDS, color }) {
   const activeN = descProps.filter(f => /^M\d/.test(FIELD_CONSUMERS[f] || '')).length
   console.log(`  Descriptor — ${descProps.length} schema field(s): ${activeN} active, ${descProps.length - activeN} reserved for later modules; every field has a declared consumer (S7).\n`)
   const cBy = c => RULES.rules.filter(r => r.certainty === c).length
-  console.log(`  Metadata — every rule declares sources/on_unreachable/contexts/certainty; certainty: ${[...CERT].map(c => `${cBy(c)} ${c}`).join(', ')}. Law: blocker⇒deterministic.`)
+  const sBy = s => RULES.rules.filter(r => r.severity === s).length
+  console.log(`  Metadata — every rule declares sources/on_unreachable/contexts/certainty; certainty: ${[...CERT].map(c => `${cBy(c)} ${c}`).join(', ')}. Laws: blocker⇒deterministic; severity 'none'⇔kind '${FROZEN_KIND}'.`)
+  console.log(`  Severity — ${[...sevOk].map(s => `${sBy(s)} ${s}`).join(', ')}; 'none' is not a tier, it is the absence of a claim (a frozen rule cannot produce a verdict).`)
   const toolN = t => RULES.rules.filter(r => r.tool === t).length
   console.log(`  Scope — tool vocabulary {${TOOLS.join('|')}}: ${TOOLS.map(t => `${toolN(t)} ${t}`).join(', ')}; ${RULES.rules.filter(r => r.pack).length} rules in ${packKeys.size} packs, ${RULES.rules.filter(r => !r.pack).length} always-on.\n`)
   if (problems.length) {

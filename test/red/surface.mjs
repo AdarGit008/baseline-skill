@@ -242,5 +242,42 @@ const EXPECTED_RULE_COUNT = lib.SURVIVING_IDS.length
   ok(altDrift.length === 0, `V33 · the shipped diagrams carry no stale count (${altDrift.slice(0, 3).join(' | ') || '—'})`)
 }
 
+// ---------- V34: the entrypoint CI verifies is the entrypoint sessions run ----------
+// CTX-19 gates .baseline/orient.sh on byte-identity with the shipped copy. That rule is only
+// worth having if the wired entrypoint is on the path a session actually takes — a script
+// verified by CI and called by nobody guards nothing. Both shipped session-start callers
+// must therefore PREFER it, and both must recheck the identity themselves before running a
+// file the repo committed, because CTX-19 runs when `check` runs and not when a session opens.
+{
+  const HOOK = fs.readFileSync(path.join(ROOT, 'hooks/orient-session-start.sh'), 'utf8')
+  const HERMES = fs.readFileSync(path.join(ROOT, 'integrations/hermes/baseline-orient/__init__.py'), 'utf8')
+  const ENTRY = '.baseline/orient.sh'
+
+  for (const [name, src, wired] of [['the Claude Code hook', HOOK, ENTRY], ['the Hermes plugin', HERMES, '".baseline", "orient.sh"']]) {
+    ok(src.includes(wired), `V34 · ${name} reaches for the wired entrypoint (${wired})`)
+    ok(/templates.orient\.sh|"templates", "orient\.sh"/.test(src), `V34 · ${name} names the shipped copy to compare against`)
+    ok(/baseline\.mjs|cmd \+ \["orient"/.test(src), `V34 · ${name} still falls back to the CLI when there is no wired entrypoint`)
+  }
+
+  // and the identity check is REAL: a drifted entrypoint must not execute
+  const dir = mkrepo('v34-wired', CLEAN_NODE())
+  const wire = cli(dir, ['trust', 'wire', '--repo', dir])
+  ok(wire.status === 0, `V34 · trust wire installs the entrypoint (exit ${wire.status})`)
+  const abs = path.join(dir, ENTRY)
+  ok(fs.existsSync(abs), 'V34 · the entrypoint is on disk after wiring')
+
+  const runHook = (repo) => execFileSync('bash', [path.join(ROOT, 'hooks/orient-session-start.sh')], {
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 60000,
+    env: { ...CLEAN_ENV, ...GITENV, BASELINE_DIR: ROOT, CLAUDE_PROJECT_DIR: repo },
+  })
+  const good = runHook(dir)
+  ok(/^repo:/m.test(good), `V34 · a wired repo still gets the survey through the hook (${good.split('\n')[0]?.slice(0, 60) || '—'})`)
+
+  fs.appendFileSync(abs, '\necho DRIFTED-ENTRYPOINT-RAN\n')
+  const drifted = runHook(dir)
+  ok(!/DRIFTED-ENTRYPOINT-RAN/.test(drifted), 'V34 · a DRIFTED entrypoint is never executed — the hook checks identity before it runs a committed file')
+  ok(/^repo:/m.test(drifted), `V34 · and the session still gets its survey, from the installed CLI (${drifted.split('\n')[0]?.slice(0, 60) || '—'})`)
+}
+
 cleanup()
 process.exit(done() ? 1 : 0)

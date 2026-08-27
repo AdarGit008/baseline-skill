@@ -37,6 +37,16 @@ It also never surprises you with a moved branch. baseline's git boundary is that
 changes no file, no branch and no history: orient `git fetch`es, reports how far behind
 origin you are as a warning, and leaves the pull to you.
 
+**Which orient it runs.** A repo wired by `baseline trust wire` carries its own entrypoint
+at `.baseline/orient.sh`, and CTX-19 gates that file on byte-identity with the copy the
+installed baseline ships. The hook **prefers** it — otherwise CI would be verifying a script
+no session ever runs. It compares the bytes itself first, though, at the moment of use: the
+file is committed, so a hostile clone could carry anything under that name, and CTX-19 runs
+when `check` runs, which is not when a session opens. Identical bytes run the repo's
+entrypoint (the path CI verified is now the path sessions take); anything else — a drifted
+copy, an older wiring, no entrypoint at all — runs the installed CLI directly. Both do the
+same thing when the repo is honest. The Hermes twin applies the same rule.
+
 **The default install does not ship it.** `install.sh` copies this script (and the
 Hermes twin under `integrations/hermes/baseline-orient/`) only when asked:
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // baseline orient — the five-line contract (v3 PLAN §8 V29; §10 D5 V37; §11 D7/D8/D12,
 // V24/V25/V39/V42). orient is an agent helper, never a gate: five labelled lines on stdout,
-// exit 0 always, one network act (`git pull --ff-only`) and never `gh`. Nothing about its
+// exit 0 always, one network act (`git fetch` — never a pull) and never `gh`. Nothing about its
 // wording is pinned — only the shape (labels, line count, --json keys), the exit code, what
 // it must not do (spawn gh, read a plugin artifact, dirty the tree), and that every count on
 // the score line is the derived one: check's own summary over the same repo, never a literal.
@@ -25,7 +25,7 @@ const short = (s, n = 90) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0
 // ---------------------------------------------------------------- env hygiene
 // Same law as test/golden and test/admit: the ambient env must never steer the tool under
 // test. A dev's BASELINE_OKF_BUNDLE would flip the knowledge line; a CI job's GITHUB_* would
-// relabel the lane; GIT_TERMINAL_PROMPT=0 so no pull can ever wait on a credential prompt.
+// relabel the lane; GIT_TERMINAL_PROMPT=0 so no fetch can ever wait on a credential prompt.
 const GITENV = {
   GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_TERMINAL_PROMPT: '0',
   GIT_AUTHOR_NAME: 'Orient Tester', GIT_AUTHOR_EMAIL: 'orient@test.invalid',
@@ -195,9 +195,11 @@ function expectedScore(dir, env = {}) {
   ok(absent.status === o.status && absent.status === 0, `graph present and absent exit identically (${o.status}/${absent.status})`)
 }
 
-// ======================================================== 4 · step 0 is the pull (D5)
+// ======================================================== 4 · step 0 is the FETCH (D5, v4)
 {
-  // origin carries a commit the clone does not have yet: if orient pulls, it arrives
+  // THE BOUNDARY: baseline never changes your files, your branch or your history. origin
+  // carries a commit the clone does not have yet — orient must REPORT the gap and leave it
+  // open, because closing it is a pull and pulling is the human's act.
   const origin = mktmp('origin'); git(origin, 'init', '-q', '-b', 'main'); writeAll(origin, CLEAN_NODE())
   git(origin, 'add', '-A'); git(origin, 'commit', '-qm', 'first')
   const bare = path.join(mktmp('bare'), 'o.git'); git(path.dirname(bare), 'clone', '-q', '--bare', origin, bare)
@@ -209,17 +211,23 @@ function expectedScore(dir, env = {}) {
   const o = orientJson(work)
   const after = git(work, 'rev-parse', 'HEAD')
   assertJsonShape(o, 'origin ahead')
-  ok(after !== before, `origin ahead: orient pulled as step 0 (HEAD ${before.slice(0, 7)} → ${after.slice(0, 7)})`)
-  ok(fs.existsSync(path.join(work, 'AHEAD.md')), 'origin ahead: the upstream commit is in the tree afterwards')
-  ok(!!o.j && after.startsWith(String(o.j.repo?.head || '\u0000')), `origin ahead: the repo line reports the PULLED head (${o.j?.repo?.head} vs ${after.slice(0, 7)})`)
+  ok(after === before, `origin ahead: orient never moved HEAD (${before.slice(0, 7)} → ${after.slice(0, 7)})`)
+  ok(!fs.existsSync(path.join(work, 'AHEAD.md')), 'origin ahead: the upstream commit is NOT in the tree — orient does not pull')
+  ok(!!o.j && after.startsWith(String(o.j.repo?.head || '\u0000')), `origin ahead: the repo line reports the UNMOVED head (${o.j?.repo?.head} vs ${after.slice(0, 7)})`)
+  // the fetch did happen: a behind-count is only knowable from refs it brought in
+  ok(o.j?.repo?.behind === 1, `origin ahead: the gap is counted, not closed (behind=${JSON.stringify(o.j?.repo?.behind)})`)
+  ok(o.j?.repo?.upstream === 'origin/main', `origin ahead: the upstream is named (${JSON.stringify(o.j?.repo?.upstream)})`)
+  ok(/behind/i.test(JSON.stringify(o.j?.notes ?? [])), `origin ahead: being behind is a warning note (${short(JSON.stringify(o.j?.notes))})`)
+  ok(/behind/i.test(orient(work).stdout), 'origin ahead: and the human repo line says so')
   ok(git(work, 'status', '--porcelain') === '', 'origin ahead: worktree clean')
   ok(git(work, 'stash', 'list') === '', 'origin ahead: no stash')
   ok(ghCalls() === '', 'origin ahead: no gh')
   const h = orient(work)
   assertFiveLines(h, 'origin ahead (human)')
 
-  // diverged: a local commit AND a newer upstream one — ff-only refuses, orient notes it,
-  // and the tree is exactly as it was (no merge in progress, no rebase, no stash)
+  // diverged: a local commit AND a newer upstream one. There is nothing special left to
+  // refuse — orient never merges anything — so this is now just a both-ways count, with the
+  // tree exactly as it was (no merge in progress, no rebase, no stash)
   writeAll(origin, { 'MORE.md': '# third\n' }); git(origin, 'add', '-A'); git(origin, 'commit', '-qm', 'third'); git(origin, 'push', '-q', bare, 'main')
   writeAll(work, { 'LOCAL.md': '# mine\n' }); git(work, 'add', '-A'); git(work, 'commit', '-qm', 'local')
   const localHead = git(work, 'rev-parse', 'HEAD')
@@ -228,8 +236,10 @@ function expectedScore(dir, env = {}) {
   ok(git(work, 'rev-parse', 'HEAD') === localHead, 'diverged: HEAD untouched (no merge, no reset)')
   ok(!fs.existsSync(path.join(work, '.git', 'MERGE_HEAD')) && !fs.existsSync(path.join(work, '.git', 'rebase-merge')), 'diverged: no merge or rebase left in progress')
   ok(git(work, 'status', '--porcelain') === '' && git(work, 'stash', 'list') === '', 'diverged: worktree clean, no stash')
+  ok(d.j?.repo?.ahead >= 1 && d.j?.repo?.behind >= 1,
+    `diverged: counted both ways, never reconciled (ahead=${JSON.stringify(d.j?.repo?.ahead)} behind=${JSON.stringify(d.j?.repo?.behind)})`)
   const dnotes = JSON.stringify(d.j?.notes ?? [])
-  ok(/pull|fetch|origin|offline/i.test(dnotes), `diverged: a note says the pull did not happen (${short(dnotes)})`)
+  ok(/behind/i.test(dnotes), `diverged: a note warns about the gap (${short(dnotes)})`)
 }
 
 // ======================================================== 5 · no origin, an unreachable one, and no git at all
@@ -237,7 +247,7 @@ function expectedScore(dir, env = {}) {
   const lone = mkrepo('no-origin', CLEAN_NODE())
   const a = orientJson(lone)
   assertJsonShape(a, 'no origin')
-  ok(/pull|fetch|origin|offline/i.test(JSON.stringify(a.j?.notes ?? [])), `no origin: the pull's absence is a note (${short(JSON.stringify(a.j?.notes))})`)
+  ok(/pull|fetch|origin|offline/i.test(JSON.stringify(a.j?.notes ?? [])), `no origin: the fetch's absence is a note (${short(JSON.stringify(a.j?.notes))})`)
 
   const gone = mkrepo('gone-origin', CLEAN_NODE())
   git(gone, 'remote', 'add', 'origin', path.join(mktmp('nowhere'), 'nope.git'))

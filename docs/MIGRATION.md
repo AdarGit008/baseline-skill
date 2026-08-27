@@ -22,7 +22,7 @@ node /path/to/baseline-skill/check.mjs --repo .
 | 4 | Three `PLUG` WARNs, a `plugins` key | `PLUG-01/02/03` WARN, a `.baseline/log/` path | install the plugin, or set its path and gitignore expectation |
 | 5 | 21 rules and the `lane` verb deleted | `baseline lane` → `unknown command`; `gen lock` gone | remove the calls; delete the lock; retire sign-off records |
 | 6 | `--json`: no `SKIP`, no `SIGN-OFF` | rows with `state`/`reason`; a smaller `summary` | read `state`, count `summary.total` |
-| 7 | `orient` is five lines and pulls first | `repo:` `work:` `graph:` `knowledge:` `score:` | parse the labels or `--json`; `--strict` is a no-op |
+| 7 | `orient` is five lines and fetches first (v4: never pulls) | `repo:` `work:` `graph:` `knowledge:` `score:` | parse the labels or `--json`; `--strict` is a no-op |
 
 ## 1. Rule ids — three parts, the prefix unchanged
 
@@ -152,7 +152,8 @@ still run; their removal with the `records/` tree is the next PR (`CHANGELOG.md`
 
 `orient` prints exactly five labelled lines — `repo:`, `work:`, `graph:`,
 `knowledge:`, `score:` — and nothing else on stdout. Its first act is
-`git pull --ff-only` (its only network act; a failed pull is a note on the `repo:`
+`git fetch` (its only network act — v4 replaced the `git pull --ff-only` of v3, which
+moved your branch; a failed fetch is a note on the `repo:`
 line, no stash, no other write, still exit 0); `gh` is never spawned; `--strict`
 is retired (accepted, a one-line stderr note, no effect). `--json` is `{ repo, work, graph, knowledge, score,
 notes, suggestions }` — `score` is the same object `check` computes. A hook that

@@ -7,10 +7,14 @@
 //   knowledge: okf bundle present                              (okf-rag's bundle)
 //   score:     0 blockers · 4 advisory                         (check, in-process)
 //
-// Step 0 is `git pull --ff-only --quiet` — orient's ONLY network act (D5). A pull that
-// cannot happen (no git, no origin, unreachable, diverged, local changes) degrades to a
-// note and the survey still prints; nothing else touches git's state: no stash, no
-// commit, no other write. After the pull orient touches no forge and never spawns gh —
+// THE BOUNDARY (v4): baseline never changes your files, your branch, or your history.
+// Step 0 is `git fetch --quiet` — orient's ONLY network act, and the only git write it
+// makes: a fetch updates git's record of the remote and touches nothing else. No pull, no
+// merge, no commit, no stash, no checkout. Being behind origin is therefore a WARNING on
+// the repo line, never a finding and never something orient fixes for you — pulling is the
+// human's act. A fetch that cannot happen (no git, no origin, unreachable, no credentials)
+// degrades to a note, and the behind-count still prints from the refs git already had.
+// After the fetch orient touches no forge and never spawns gh —
 // and since the v4 rule-set cut that is STRUCTURAL, not a flag: GOV-01, GOV-02 and OPS-07
 // are deleted along with the forge seam itself, so the score is `check`'s own pipeline run
 // in-process over repo files, with no plane left to close.
@@ -25,6 +29,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { makeOpt, sanitizeTTY, nowUTC } from './util.mjs'
 import { pluginSpec, probePlugin, LOG_DIR } from './plugins.mjs'
+import { stampSummary } from './trust.mjs'
 import { scoreRepo } from './check-run.mjs'
 
 const LABELS = ['repo', 'work', 'graph', 'knowledge', 'score']
@@ -36,33 +41,48 @@ const fmtAge = (ms) => {
   return `${Math.floor(ms / 86400000)}d old`
 }
 
-// ---------------------------------------------------------------- step 0: the pull (D5)
+// ---------------------------------------------------------------- step 0: the fetch (D5, v4)
 // The reason is CLASSIFIED, not echoed: git's stderr names paths and refs a survey line
 // has no business repeating, and the note only has to say that the pull did not happen
 // and roughly why. Anchored first so a remote's "does not appear to be a git repository"
 // is never mistaken for the working tree not being one.
-function pullReason(err, e) {
+function fetchReason(err, e) {
   if (e?.killed || /ETIMEDOUT/i.test(String(e?.code || ''))) return 'origin timed out'
   if (/^fatal: not a git repository/im.test(err)) return 'not a git repository'
   if (/not currently on a branch/i.test(err)) return 'detached HEAD, nothing to pull onto'
   if (/no such remote|No remote repository specified|no tracking information|no upstream|does not have any commits|couldn't find remote ref/i.test(err)) return 'no origin branch to pull from'
-  if (/Not possible to fast-forward|non-fast-forward|diverg|refusing to merge unrelated/i.test(err)) return 'branches diverged (not a fast-forward)'
-  if (/would be overwritten|local changes|uncommitted|unmerged files|You have not concluded/i.test(err)) return 'local changes in the way'
   if (/Could not read from remote|does not appear to be a git repository|Could not resolve|unable to access|Connection|Network is unreachable|timed out|Permission denied|authentication|could not connect/i.test(err)) return 'origin unreachable'
-  return 'git pull failed'
+  return 'git fetch failed'
 }
-function pullFirst(REPO) {
+function fetchFirst(REPO) {
   try {
-    execFileSync('git', ['-C', REPO, 'pull', '--ff-only', '--quiet'], {
+    execFileSync('git', ['-C', REPO, 'fetch', '--quiet'], {
       encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'], timeout: 30000,
-      // a session hook must never hang on a credential prompt; a pull that needs one is a
-      // pull that did not happen, and the note says so
+      // a session hook must never hang on a credential prompt; a fetch that needs one is a
+      // fetch that did not happen, and the note says so
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
     })
-    return { pulled: true, reason: null }
+    return { fetched: true, reason: null }
   } catch (e) {
-    return { pulled: false, reason: pullReason(String(e?.stderr || e?.message || ''), e) }
+    return { fetched: false, reason: fetchReason(String(e?.stderr || e?.message || ''), e) }
   }
+}
+
+/** How far HEAD sits from the upstream branch git already knows about: a pure read of local
+ *  refs, no network of its own. Run AFTER the fetch so the answer is current, and run even
+ *  when the fetch failed — a count from the last-known refs beats silence, and the repo line
+ *  says the fetch did not happen right beside it.
+ *  -> { upstream, ahead, behind }, nulls when there is no upstream to compare against. */
+function trackingFacts(REPO) {
+  const git1 = (...a) => {
+    try { return execFileSync('git', ['-C', REPO, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null }
+    catch { return null }
+  }
+  const upstream = git1('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}')
+  if (!upstream) return { upstream: null, ahead: null, behind: null }
+  const counts = git1('rev-list', '--left-right', '--count', `HEAD...${upstream}`)
+  const [a, b] = String(counts || '').split(/\s+/).map(n => Number.parseInt(n, 10))
+  return { upstream, ahead: Number.isFinite(a) ? a : null, behind: Number.isFinite(b) ? b : null }
 }
 
 // ---------------------------------------------------------------- the score leaves no trace
@@ -98,16 +118,22 @@ const gitWord = g => g === 'tracked' ? 'tracked' : g === 'ignored' ? 'ignored' :
 function artifactFacts(REPO, cfg, name, nowMs) {
   const spec = pluginSpec(cfg, name)
   const p = probePlugin(REPO, name, spec)
+  // the ONE content fact on a plugin line, and the plugin wrote it: baseline reads the
+  // `summary` field of the committed stamp, never the artifact (D7 stands). No stamp, or a
+  // stamp with no summary, means there is nothing to quote — the metadata line stays.
+  const summary = stampSummary(REPO, name)
   const shown = spec?.path ? (p.kind === 'dir' || (!p.present && name === 'graphify') ? spec.path.replace(/\/+$/, '') + '/' : spec.path) : null
   const age = p.present && p.mtime ? nowMs - Date.parse(p.mtime) : null
   return {
-    plugin: name, path: spec?.path ?? null, shown,
+    plugin: name, path: spec?.path ?? null, shown, summary,
     state: p.present ? 'present' : 'absent', kind: p.kind, git: p.present ? p.git : null,
     mtime: p.mtime, age_ms: age,
   }
 }
 const artifactLine = (a, absentWord) => a.state === 'present'
-  ? [`${a.shown} present`, gitWord(a.git), fmtAge(a.age_ms)].filter(Boolean).join(' · ')
+  ? (a.summary
+    ? `${a.shown} · ${a.summary}`
+    : [`${a.shown} present`, gitWord(a.git), fmtAge(a.age_ms)].filter(Boolean).join(' · '))
   : `${a.shown ?? a.plugin} ${absentWord}`
 
 export async function runOrient(argv) {
@@ -125,9 +151,13 @@ export async function runOrient(argv) {
   const now = nowUTC() ?? new Date()
   const nowMs = now.getTime()
 
-  // step 0 — the one network act
-  const pull = pullFirst(REPO)
-  if (!pull.pulled) notes.push(`not pulled: ${pull.reason} (git pull --ff-only)`)
+  // step 0 — the one network act, and the one git write: a fetch, never a pull
+  const fetched = fetchFirst(REPO)
+  if (!fetched.fetched) notes.push(`not fetched: ${fetched.reason} (git fetch)`)
+  const track = trackingFacts(REPO)
+  // behind origin is a WARNING and stays one: orient reports the gap, the human closes it
+  if (!track.upstream) notes.push('no upstream branch to compare against — a fetch cannot tell you whether this branch is behind anything')
+  if (track.behind > 0) notes.push(`warning: ${track.behind} commit${track.behind === 1 ? '' : 's'} behind ${track.upstream} — baseline does not pull; run \`git pull --ff-only\` when you want them`)
 
   // the score: check's pipeline, in-process, no exec — and no trace left
   const restoreLogs = shieldPluginLogs(REPO)
@@ -154,6 +184,7 @@ export async function runOrient(argv) {
   const knowledge = {
     plugin: 'okf-rag', path: bundlePath,
     state: !bundlePath ? 'unconfigured' : fs.existsSync(bundlePath) ? 'present' : 'absent',
+    summary: stampSummary(REPO, 'okf-rag'),
     source: okf?.source?.path ?? null, env: okf?.env ?? 'BASELINE_OKF_BUNDLE',
   }
   if (knowledge.state !== 'present') suggestions.push(knowledge.state === 'unconfigured'
@@ -168,9 +199,13 @@ export async function runOrient(argv) {
 
   if (JSON_OUT) {
     const out = {
-      repo: { path: REPO, name: path.basename(REPO), head: HEAD, branch, pulled: pull.pulled, pull: pull.pulled ? 'ff-only' : pull.reason },
-      work: { plugin: work.plugin, path: work.path, state: work.state, kind: work.kind, git: work.git, mtime: work.mtime, age_ms: work.age_ms },
-      graph: { plugin: graph.plugin, path: graph.path, state: graph.state, kind: graph.kind, git: graph.git, mtime: graph.mtime, age_ms: graph.age_ms },
+      repo: {
+        path: REPO, name: path.basename(REPO), head: HEAD, branch,
+        fetched: fetched.fetched, fetch: fetched.fetched ? 'ok' : fetched.reason,
+        upstream: track.upstream, ahead: track.ahead, behind: track.behind,
+      },
+      work: { plugin: work.plugin, path: work.path, state: work.state, kind: work.kind, git: work.git, mtime: work.mtime, age_ms: work.age_ms, summary: work.summary },
+      graph: { plugin: graph.plugin, path: graph.path, state: graph.state, kind: graph.kind, git: graph.git, mtime: graph.mtime, age_ms: graph.age_ms, summary: graph.summary },
       knowledge,
       score,
       notes, suggestions,
@@ -181,9 +216,14 @@ export async function runOrient(argv) {
 
   // ---- human: five lines, nothing else on stdout ----
   const L = (label, body) => `${(label + ':').padEnd(LABELW)}${body}`
-  const repoBits = [`${path.basename(REPO)}${HEAD ? ` @ ${HEAD}` : ' (no git HEAD)'}${branch ? ` (${branch})` : ''}`, pull.pulled ? 'pulled' : `not pulled: ${pull.reason}`]
+  const syncWord = track.behind > 0
+    ? `${track.behind} behind ${track.upstream} · warning: baseline does not pull`
+    : !fetched.fetched ? `not fetched: ${fetched.reason}`
+      : track.upstream ? `up to date with ${track.upstream}${track.ahead > 0 ? ` (${track.ahead} ahead)` : ''}`
+        : 'fetched · no upstream to compare against'
+  const repoBits = [`${path.basename(REPO)}${HEAD ? ` @ ${HEAD}` : ' (no git HEAD)'}${branch ? ` (${branch})` : ''}`, syncWord]
   const graphBody = graph.state === 'present' ? artifactLine(graph) : `${graph.shown ?? 'graphify-out/'} absent · suggestion: build the knowledge graph with graphify`
-  const knowledgeBody = knowledge.state === 'present' ? 'okf bundle present'
+  const knowledgeBody = knowledge.state === 'present' ? (knowledge.summary ? `okf bundle · ${knowledge.summary}` : 'okf bundle present')
     : knowledge.state === 'absent' ? `okf bundle absent at ${bundlePath}` : `okf bundle not configured (${knowledge.env} unset)`
   const scoreBody = score ? `${score.blockers} blocker${score.blockers === 1 ? '' : 's'} · ${score.advisory} advisory` : `unavailable (${scoreErr || 'no score'})`
   const lines = [

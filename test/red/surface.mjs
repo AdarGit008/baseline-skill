@@ -251,12 +251,13 @@ const EXPECTED_RULE_COUNT = lib.SURVIVING_IDS.length
 {
   const HOOK = fs.readFileSync(path.join(ROOT, 'hooks/orient-session-start.sh'), 'utf8')
   const HERMES = fs.readFileSync(path.join(ROOT, 'integrations/hermes/baseline-orient/__init__.py'), 'utf8')
+  const PI = fs.readFileSync(path.join(ROOT, 'integrations/pi/baseline-orient/index.ts'), 'utf8')
   const ENTRY = '.baseline/orient.sh'
 
-  for (const [name, src, wired] of [['the Claude Code hook', HOOK, ENTRY], ['the Hermes plugin', HERMES, '".baseline", "orient.sh"']]) {
+  for (const [name, src, wired] of [['the Claude Code hook', HOOK, ENTRY], ['the Hermes plugin', HERMES, '".baseline", "orient.sh"'], ['the Pi extension', PI, '".baseline", "orient.sh"']]) {
     ok(src.includes(wired), `V34 · ${name} reaches for the wired entrypoint (${wired})`)
     ok(/templates.orient\.sh|"templates", "orient\.sh"/.test(src), `V34 · ${name} names the shipped copy to compare against`)
-    ok(/baseline\.mjs|cmd \+ \["orient"/.test(src), `V34 · ${name} still falls back to the CLI when there is no wired entrypoint`)
+    ok(/baseline\.mjs|cmd \+ \["orient"|\.\.\.cmd, "orient"/.test(src), `V34 · ${name} still falls back to the CLI when there is no wired entrypoint`)
   }
 
   // and the identity check is REAL: a drifted entrypoint must not execute

@@ -8,7 +8,7 @@
 > written promise — make something check it.*
 
 **What this is.** The installable `/baseline` skill — the *project-baseline* readiness
-standard packaged for Claude Code, Hermes and compatible agents. The canonical toolkit is
+standard packaged for Claude Code, Hermes, Pi and compatible agents. The canonical toolkit is
 `check.mjs` (runner) + `rules.json` (manifest) + `rules/` (the rule set, one module per
 category). One script over repo files, exit 0 or 1. There is no warn tier: every rule that
 claims a severity is a blocker, and a rule with no subject in the tree resolves `n/a` and
@@ -58,7 +58,7 @@ hand-maintained freshness line anywhere in this repo, and there should never be 
 - `schema/`, `templates/`, `config-presets/` — the machine-readable shapes and scaffolds.
 - `hooks/` — the pre-push records scrub; the session-start orient hook ships only with
   `install.sh --with-session-hook`. Its `README.md` stays beside the scripts it documents.
-- `install.sh` — installs the skill (Claude Code default, `--hermes`, or a path).
+- `install.sh` — installs the skill (Claude Code default, `--hermes`, `--pi`, or a path).
 
 **Next.** [`CHANGELOG.md`](CHANGELOG.md) (Unreleased), [`v4/PLAN.md`](v4/PLAN.md), and the
 repo's open issues.

@@ -1,6 +1,6 @@
 # baseline-skill
 
-The **`baseline`** skill for **Claude Code** and **Hermes** (and any agent that loads
+The **`baseline`** skill for **Claude Code**, **Hermes** and **Pi** (and any agent that loads
 `SKILL.md`): a zero-dependency project-readiness checker packaged as an installable skill.
 One script over repo files, every rule deterministic and AND-gated into one exit code.
 
@@ -19,12 +19,14 @@ cd baseline-skill
 
 ./install.sh                        # Claude Code -> ~/.claude/skills/baseline
 ./install.sh --hermes               # Hermes      -> ~/.hermes/skills/software-development/baseline
+./install.sh --pi                   # Pi          -> ~/.pi/agent/skills/baseline
 ./install.sh /custom/path           # any custom skills dir
 ./install.sh --with-session-hook    # also ship hooks/orient-session-start.sh (opt-in; wiring stays by hand)
 ```
 
-Then in any repo say **"run baseline"** / **"score this repo"** (Claude Code: `/baseline`).
-Restart Claude Code, or start a **new Hermes session**, for the skill to appear.
+Then in any repo say **"run baseline"** / **"score this repo"** (Claude Code: `/baseline`;
+Pi: `/skill:baseline`). Restart Claude Code or Pi, or start a **new Hermes session**, for
+the skill to appear.
 
 ## Run it directly (no agent)
 

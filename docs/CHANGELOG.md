@@ -10,6 +10,23 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
 
 ## [Unreleased]
 
+### Added — Pi as a third host
+- **`install.sh --pi`** installs the skill to `~/.pi/agent/skills/baseline`, the global
+  skills directory Pi scans at startup (`/skill:baseline`). SKILL.md already satisfies the
+  Agent Skills frontmatter Pi validates (`name`, `description`), so the skill itself needed
+  no change — only a target.
+- **`integrations/pi/baseline-orient/`** — the Pi twin of the Claude Code SessionStart hook
+  and the Hermes plugin: a `session_start` handler that runs `baseline orient`, injected by
+  the first `before_agent_start` (Pi's only documented context-injection point), plus an
+  `/orient` command. TypeScript, run by Pi through jiti; its single import is `import type`,
+  so the extension stays zero-dependency. Ships under `--with-session-hook`.
+- **V34 now pins three callers.** `test/red/surface.mjs` asserts the Pi extension, like the
+  hook and the plugin, prefers the wired `.baseline/orient.sh`, re-checks its byte-identity
+  against `templates/orient.sh` itself, and falls back to the CLI otherwise.
+- Authored to Pi's documented extension API but **not runtime-tested on a live pi** — the
+  open item is the shape `before_agent_start` accepts for injection; see the integration
+  README, same posture as the Hermes twin.
+
 ## [3.0.0] — 2026-08-25
 
 V3 keeps the premise — *don't trust a written promise, make something check it* —

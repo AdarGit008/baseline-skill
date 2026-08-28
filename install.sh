@@ -3,11 +3,12 @@
 # Usage:
 #   ./install.sh                              # Claude Code  -> ~/.claude/skills/baseline
 #   ./install.sh --hermes                     # Hermes       -> ~/.hermes/skills/software-development/baseline
+#   ./install.sh --pi                         # Pi           -> ~/.pi/agent/skills/baseline
 #   ./install.sh <dest-dir>                   # a custom directory
 #   ./install.sh --with-session-hook [<dest>] # also ship the SessionStart orient hook (opt-in)
 #
 # The default install ships NO session-start wiring: hooks/orient-session-start.sh and the
-# Hermes twin under integrations/ are copied only with --with-session-hook, and even then
+# Hermes and Pi twins under integrations/ are copied only with --with-session-hook, and even then
 # nothing is wired — wiring is a by-hand edit of the agent's own config (hooks/README.md).
 set -euo pipefail
 
@@ -19,8 +20,9 @@ for arg in "$@"; do
   case "$arg" in
     --with-session-hook) WITH_SESSION_HOOK=1 ;;
     --hermes)            DEST="$HOME/.hermes/skills/software-development/baseline"; AGENT="hermes" ;;
+    --pi)                DEST="$HOME/.pi/agent/skills/baseline"; AGENT="pi" ;;
     --claude)            DEST="$HOME/.claude/skills/baseline" ;;
-    -*)                  echo "error: unknown flag '$arg' (use --hermes, --claude, --with-session-hook, or a directory path)." >&2; exit 2 ;;
+    -*)                  echo "error: unknown flag '$arg' (use --hermes, --pi, --claude, --with-session-hook, or a directory path)." >&2; exit 2 ;;
     *)                   DEST="$arg" ;;
   esac
 done
@@ -63,6 +65,8 @@ if node --check "$DEST/baseline.mjs" \
   echo "OK Installed the baseline skill to $DEST ($RULES rules)."
   if [ "$AGENT" = "hermes" ]; then
     echo "   Start a NEW Hermes session (the skill loader is cached per session), then say 'run baseline' / 'score this repo'."
+  elif [ "$AGENT" = "pi" ]; then
+    echo "   Restart pi (skills are scanned at startup), then run /skill:baseline (or say 'run baseline')."
   else
     echo "   Restart Claude Code, then run /baseline (or 'run baseline') in any repo."
   fi

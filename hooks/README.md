@@ -45,15 +45,16 @@ file is committed, so a hostile clone could carry anything under that name, and 
 when `check` runs, which is not when a session opens. Identical bytes run the repo's
 entrypoint (the path CI verified is now the path sessions take); anything else — a drifted
 copy, an older wiring, no entrypoint at all — runs the installed CLI directly. Both do the
-same thing when the repo is honest. The Hermes twin applies the same rule.
+same thing when the repo is honest. The Hermes and Pi twins apply the same rule.
 
 **The default install does not ship it.** `install.sh` copies this script (and the
-Hermes twin under `integrations/hermes/baseline-orient/`) only when asked:
+Hermes and Pi twins under `integrations/`) only when asked:
 
 ```sh
 ./install.sh --with-session-hook                 # Claude Code default location
 ./install.sh --with-session-hook /custom/path    # any skills dir
 ./install.sh --hermes --with-session-hook        # Hermes, plus the plugin twin
+./install.sh --pi --with-session-hook            # Pi, plus the extension twin
 ```
 
 Even then nothing is wired for you — `install.sh` never edits an agent's own config.
@@ -81,5 +82,14 @@ skill elsewhere, set `BASELINE_DIR` in the environment or edit the path in the s
 
 The Hermes twin, [`../integrations/hermes/baseline-orient/`](../integrations/hermes/baseline-orient),
 is a plugin whose `on_session_start` hook + `/orient` command run the same `baseline orient`.
-It ships under the same `--with-session-hook` flag. Without either hook, `SKILL.md`'s
-**orient** mode is the tool-agnostic fallback: the agent runs the survey itself.
+It ships under the same `--with-session-hook` flag.
+
+### Pi
+
+The Pi twin, [`../integrations/pi/baseline-orient/`](../integrations/pi/baseline-orient), is
+an extension whose `session_start` handler (injected by the first `before_agent_start`) and
+`/orient` command run the same `baseline orient`. Copy it to `~/.pi/agent/extensions/` —
+Pi discovers `*/index.ts` there at startup and runs it through jiti, no build step.
+
+Without any of these hooks, `SKILL.md`'s **orient** mode is the tool-agnostic fallback:
+the agent runs the survey itself.

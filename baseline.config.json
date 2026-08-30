@@ -12,5 +12,8 @@
     "src/evaluators.mjs": "The closed set of check kinds — what a rule is allowed to ask about a repo.",
     "src/trust.mjs": "The trust circle: the roster, each member's integrity tier, and the stamp format CI reads.",
     "test/red/": "The invariants. Where this repo's prose and a red test disagree, the test wins and the prose is wrong."
+  },
+  "plugins": {
+    "graphify": {}
   }
 }

@@ -94,7 +94,7 @@ const SETUP = Object.freeze({
   }),
   graphify: Object.freeze({
     stamp: 'verifiable', artifact: 'graphify-out/', lives: 'in the repo, gitignored',
-    install: 'pip install graphify',
+    install: 'pip install graphifyy',
     setup: 'install graphify, build the graph, keep graphify-out/ gitignored, then run `baseline trust stamp` and commit .baseline/trust/graphify.json',
     why: 'the graph is gitignored, so CI never sees it — the stamp carries the per-file hashes graphify recorded, and baseline recomputes them',
   }),

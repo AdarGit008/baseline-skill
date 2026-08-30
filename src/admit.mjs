@@ -43,7 +43,7 @@ import { loadJudgmentsAt, selectBreakGlass, JUDGMENTS_DIR, JDG_PARSE_CAP } from 
 import { inputsDigest, provenanceLine, provenanceJson } from './digest.mjs'
 import { validateRecord } from './records.mjs'
 
-const USAGE = `usage: baseline admit [--repo DIR] [--target REF] [--json] [--profile P] [--config FILE]`
+const USAGE = `usage: baseline admit [--repo DIR] [--target REF] [--json] [--config FILE]`
 
 export function runAdmit(argv) {
   if (argv[0] === '--help' || argv[0] === '-h') {

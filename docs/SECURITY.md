@@ -24,5 +24,5 @@ In scope: the runner (`check.mjs`, `baseline.mjs`, `src/`) and the installer (`i
 target repo, a read of a plugin artifact's content during `check` or `orient`, a write
 anywhere but `.baseline/` under the target repo, or a crash that isn't degraded to an `n/a`
 row. Out of scope: findings that require the user to run the tool against a repository
-they already fully trust with `--no-exec` omitted (running an untrusted repo's bootstrap
-command is the documented risk BUILD-05 covers).
+they already fully trust — the runner evaluates the tree at rest and never executes a
+repo-supplied command, so there is no bootstrap-execution surface to protect.

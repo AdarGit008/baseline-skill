@@ -226,6 +226,15 @@ attempt('V45d', () => {
     `V45 · adopted but unstamped is n/a and names the command (${short(rowUnstamped?.reason ?? rowUnstamped?.tag)})`)
 
   ok(cli(dir, ['trust', 'stamp', '--repo', dir]).status === 0, 'V45 · `trust stamp` writes the verifiable stamp')
+  // the intermediate state an e2e adoption surfaced: written but uncommitted is a finding,
+  // not a pass — CI clones tracked files, so the stamp CI would verify does not exist there.
+  // The same law V45c (CTX-17) and V45f (CTX-19) pin for their own stamps, stated here for
+  // the VERIFIABLE stamp too, so all three stamp-holding rules agree on the one fact.
+  const rowUncommitted = rowOf(checkJson(dir).j, 'CTX-15')
+  ok(rowUncommitted?.tag === 'FAIL' && /not tracked|git add/.test(String(rowUncommitted?.detail)),
+    `V45 · a stamp written but never committed is a finding, not a pass (${short(rowUncommitted?.detail ?? rowUncommitted?.reason)})`)
+  const uncommittedStatus = checkJson(dir).status
+  ok(uncommittedStatus === 1, `V45 · and the uncommitted stamp reaches the exit code (got ${uncommittedStatus})`)
   commitAt(dir, '2026-01-03T00:00:00Z', 'commit the stamp')
   const rowOk = rowOf(checkJson(dir).j, 'CTX-15')
   ok(rowOk?.tag === 'PASS', `V45 · a stamp that matches the tree PASSes (${short(rowOk?.detail ?? rowOk?.reason)})`)

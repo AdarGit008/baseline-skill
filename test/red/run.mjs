@@ -28,11 +28,12 @@ const AREAS = [
   ['packs', 'PLAN §5 — five opt-in packs', [15, 16]],
   ['scope', 'PLAN §6 — derive the scope from the repo', [17, 18, 19, 20]],
   ['seams', 'PLAN §1 + §7 — the four-part shape and the three seams', [1, 2, 3, 4, 24, 25, 26, 27, 28]],
-  ['surface', 'PLAN §8 + §9 — orient v2, the SKILL.md diet, the drift', [29, 30, 31, 32, 33]],
+  ['surface', 'PLAN §8 + §9 — orient v2, the SKILL.md diet, the drift', [29, 30, 31, 32, 33, 46]],
   ['decisions', 'PLAN §10 — the five decisions of 2026-08-25', [34, 35, 36, 37]],
   ['plugins', 'PLAN §11 — the plugin boundary, and v4 trust-circle membership', [38, 39, 40, 41, 42, 43]],
   ['layer', 'v4 — the baseline rules layer: every non-plugin rule, opt-out, default in', [44]],
   ['ctx', 'v4/ctx — the context system, gated: four trust-circle rules + baseline\'s own wiring', [45]],
+  ['docs', 'e2e — the live reference docs describe the shipped v4 architecture', [47]],
 ]
 
 // V43 is the v4 addition: TRUST-CIRCLE MEMBERSHIP — a supported tool a repo never adopted
@@ -55,12 +56,32 @@ const AREAS = [
 // clock — no mtime (it does not survive a clone) and no day threshold (a policy baseline
 // has no standing to pick), leaving git committer dates and baseline's committed stamps.
 //
+// V46 is the e2e finding pinned as an invariant: EVERY MODE SKILL.md NAMES IS A VERB
+// THE DISPATCHER ROUTES. The Modes section once promised `baseline fix`, but baseline.mjs
+// has no `fix` branch and never did (no runFix in git history) — the per-rule `fix` FIELD
+// is advisory prose that rides --json rows, `explain`, and the REFERENCE table, never an
+// auto-applied command. It lives in `surface` beside V30 (which only asserts the word
+// "fix" still appears) because it is the same SKILL.md promise, read against the
+// dispatcher instead of the prose. RED today on `fix`; green once the Modes section stops
+// promising an unimplemented verb.
+//
+// V47 is e2e finding #2, pinned as an invariant: THE LIVE REFERENCE DOCS DESCRIBE THE
+// SHIPPED ARCHITECTURE. REFERENCE.md / CONTRACT.md / GLOSSARY.md still narrate v3 — a
+// warn tier, opt-in packs, the descriptor family, the docker/REPRO tool, BUILD-05,
+// CTX-11's doc_lag_days, the CLAIM/REC/OPS families — while the shipped rule set is
+// v4: 13 rules, {blocker, none} severities, no packs, no retired prefixes. It lives in
+// its own 'docs' area because it is the same drift V32/V33 guard (the prose around the
+// rule table), read against the rule set's own data instead of a count. Every list the
+// test uses is DERIVED from _lib.mjs (SURVIVING_IDS, PACKS, the loaded rule set), never
+// typed. RED today on REFERENCE/CONTRACT/GLOSSARY (and SECURITY's one BUILD-05); green
+// once the live docs stop advertising the retired machinery.
+//
 // PLAN §11 "Superseded": V14 (REC-06 freshness), V21, V22, V23 (tdd.json as evidence) are
 // withdrawn — D7 forbids the artifact reading they required. They are not expected to be
 // owned, never counted as a hole, and a file that still asserts them is not registering
 // them here. The live total is derived from the highest id and this list, never typed in.
 const WITHDRAWN = [14, 21, 22, 23]
-const MAX_INVARIANT = 45
+const MAX_INVARIANT = 47
 const TOTAL_INVARIANTS = MAX_INVARIANT - WITHDRAWN.length
 const argv = process.argv.slice(2)
 const GREEN = argv.includes('--green')

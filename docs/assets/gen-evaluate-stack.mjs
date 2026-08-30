@@ -76,14 +76,16 @@ const ROOT = path.join(here, '..', '..')
 const wc = f => fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').length - 1 // wc -l
 const FIXTURES = fs.readdirSync(path.join(ROOT, 'test/fixtures'), { withFileTypes: true }).filter(d => d.isDirectory()).length
 const pinsFile = JSON.parse(fs.readFileSync(path.join(ROOT, 'test/golden/pins.json'), 'utf8'))
-const pinCounts = [...new Set(Object.values(pinsFile).filter(v => v && v.rules).map(v => Object.keys(v.rules).length))]
+// the admit fixtures pin verdicts under a different shape (`rules: {}`), so an empty rules
+// map is not a check-rule pin — filter it out before deriving the per-repo pinned count.
+const pinCounts = [...new Set(Object.values(pinsFile).filter(v => v && v.rules).map(v => Object.keys(v.rules).length).filter(n => n > 0))]
 const PINNED = pinCounts.length === 1 ? pinCounts[0] : Math.min(...pinCounts) // uniform by construction; understate if ever not
 
 // ---------- content ----------
 const LAYERS = [
-  { nick: 'THE CLI', file: `check.mjs · ${wc('check.mjs')} lines`, role: 'the only entry point', knows: ['flags: --repo · --json · --no-exec ·', '--profile <pack> · loads rules.json —', 'the rule set, as pure data'], never: ['what any rule means'] },
-  { nick: 'THE JUDGE', file: `engine.mjs · ${wc('src/engine.mjs')} lines`, role: 'gate → evaluate → tag', knows: ['gates: context · pack · type/tool ·', 'posture · forge — a miss is no row,', 'never a penalty · tag ladder + severity'], never: ['how anything is checked'] },
-  { nick: 'THE LAB', file: `evaluators.mjs · ${wc('src/evaluators.mjs')} lines`, role: 'facts only, one function per kind', knows: ['how to verify each claim: grep,', 'any-file, md-links, command,', 'dockerfile-digest… (any-of & implies recurse)'], never: ['severity, or what happens', 'to its result'] },
+  { nick: 'THE CLI', file: `check.mjs · ${wc('check.mjs')} lines`, role: 'the only entry point', knows: ['flags: --repo · --config · --json ·', '--self-check · loads rules.json —', 'the rule set, as pure data'], never: ['what any rule means'] },
+  { nick: 'THE JUDGE', file: `engine.mjs · ${wc('src/engine.mjs')} lines`, role: 'gate → evaluate → tag', knows: ['gates: context · applies_to ·', 'membership · layer — a miss is', 'no row · verdicts: PASS / FAIL'], never: ['how anything is checked'] },
+  { nick: 'THE LAB', file: `evaluators.mjs · ${wc('src/evaluators.mjs')} lines`, role: 'facts only, one function per kind', knows: ['how to verify each claim: any-file,', 'grep, file-contains, plugin-presence,', 'graph-stamp-fresh · not-lagging · frozen…'], never: ['severity, or what happens', 'to its result'] },
   { nick: 'THE SENSES', file: `repo.mjs · ${wc('src/repo.mjs')} lines`, role: 'the repo index, built once', knows: ['find: match(globs) · read: 3', 'paranoia levels · ask git: age,', 'ancestry, lag behind HEAD'], never: ['what a “rule” even is'] },
   { nick: 'THE WORLD', file: 'node:fs + git', role: 'the only true things', knows: ['bytes on disk', 'the git object database'], never: ['everything above'] },
 ]
@@ -104,7 +106,6 @@ const CHIPS = [
   { tag: 'no row', sub: ['gate miss — not part', 'of this run at all'], ck: 'gray' },
   { tag: 'n/a', sub: ['in scope, not evaluable —', '--json only, never counted'], ck: 'blue' },
   { tag: 'PASS', sub: ['checked,', 'it’s fine'], ck: 'green' },
-  { tag: 'WARN', sub: ['real shortfall,', 'doesn’t block'], ck: 'amber' },
   { tag: 'FAIL', sub: ['blockers only', '→ exit 1'], ck: 'red' },
 ]
 
@@ -176,7 +177,7 @@ function board(p) {
   o.push(text(748, VY + 96, 'the lab states facts + evidence', { size: 12.5, fill: p.soft }))
   o.push(arrow(982, VY + 64, 1018, VY + 64, { stroke: p.red, sw: 2.8 }))
   o.push(box(1020, VY + 26, 208, 78, { fill: p.chipFill, stroke: p.layers[1].stroke, sw: 2.5 }))
-  o.push(lines(1038, VY + 56, ['ladder: not null · not true ·', 'severity blocker ⇒ FAIL'], { size: 12.5, lh: 18, fill: p.ink }))
+  o.push(lines(1038, VY + 56, ['ok: false · severity', 'blocker ⇒ FAIL'], { size: 12.5, lh: 18, fill: p.ink }))
   o.push(text(1038, VY + 96, 'the judge applies meaning', { size: 12.5, fill: p.soft }))
   o.push(arrow(1230, VY + 64, 1266, VY + 64, { stroke: p.red, sw: 2.8 }))
   o.push(box(1268, VY + 26, 136, 78, { fill: p.chipFill, stroke: p.red, sw: 3 }))
@@ -184,13 +185,13 @@ function board(p) {
   o.push(text(1336, VY + 84, 'CI goes red', { size: 12.5, fill: p.red, anchor: 'middle' }))
 
   // tag ladder chips
-  o.push(text(36, VY + 12, 'the tag ladder — meaning first, severity is consulted LAST', { size: 15.5, weight: 'bold', fill: p.ink }))
+  o.push(text(36, VY + 12, 'the outcomes — no row · n/a · PASS · FAIL (no warn tier)', { size: 15.5, weight: 'bold', fill: p.ink }))
   CHIPS.forEach((c, i) => {
-    const x = 36 + i * 133, col = p[c.ck]
+    const x = 36 + i * 150, col = p[c.ck]
     o.push(box(x, VY + 26, 121, 78, { fill: p.chipFill, stroke: col, sw: 2.5 }))
     o.push(text(x + 60, VY + 52, c.tag, { size: 15.5, weight: 'bold', fill: col, anchor: 'middle' }))
     o.push(lines(x + 60, VY + 72, c.sub, { size: 10.5, lh: 14, fill: p.soft, anchor: 'middle' }))
-    if (i < 4) o.push(arrow(x + 122, VY + 65, x + 132, VY + 65, { stroke: p.faint, sw: 2, len: 7 }))
+    if (i < CHIPS.length - 1) o.push(arrow(x + 122, VY + 65, x + 132, VY + 65, { stroke: p.faint, sw: 2, len: 7 }))
   })
 
   // stickies + footer
@@ -199,8 +200,8 @@ function board(p) {
   o.push(text(60, SY + 34, 'kept honest — this repo’s own CI', { size: 15.5, weight: 'bold', fill: p.sticky.text }))
   o.push(lines(60, SY + 62, ['--self-check → rules.json is internally valid', `golden corpus → ${FIXTURES} fixture repos × ${PINNED} pinned`, '     verdicts — ANY drift fails the build', 'self-score → baseline scores its own repo'], { size: 13, lh: 22, fill: p.sticky.text }))
   o.push(card(470, SY, 400, 150, { fill: p.v2sticky.fill, stroke: p.v2sticky.stroke }))
-  o.push(text(494, SY + 34, 'v3 — enabler, not enforcer', { size: 15.5, weight: 'bold', fill: p.v2sticky.text }))
-  o.push(lines(494, SY + 62, ['always-on blockers fail CI; packs switch on', 'explicitly; plugins (obsidian-tdd · graphify · okf-rag)', 'are suggested — baseline reads their metadata only', '→ docs/v3/PLAN.md'], { size: 13, lh: 22, fill: p.v2sticky.text }))
+  o.push(text(494, SY + 34, 'v4 — two opt-ins, opposite defaults', { size: 15.5, weight: 'bold', fill: p.v2sticky.text }))
+  o.push(lines(494, SY + 62, ['trust circle (plugins) is opt-IN: a member gates;', 'a suggestion is n/a — metadata only, never a verdict', 'baseline rules layer is opt-OUT (default in): the', 'tree reads any repo can answer · → docs/v4/PLAN.md'], { size: 13, lh: 22, fill: p.v2sticky.text }))
   o.push(lines(1404, SY + 96, ['drawn from the code on main — regenerate:', 'node docs/assets/gen-evaluate-stack.mjs', 'more: docs/REFERENCE.md · docs/GLOSSARY.md'], { size: 12.5, lh: 20, fill: p.faint, anchor: 'end', family: MONO }))
 
   o.push('</svg>')

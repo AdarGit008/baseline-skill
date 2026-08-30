@@ -63,7 +63,7 @@ if (cmd === 'check') {
 } else if (cmd === 'help' || cmd === '--help' || cmd === '-h') {
   console.log(`baseline <command> [options]
 
-  check [--repo DIR] [--json] [--no-exec] [--profile P]   score a repo (default)
+  check [--repo DIR] [--json]   score a repo (default)
   admit [--repo DIR] [--target REF] [--json]              merge-point revalidation — a verdict is
                                                           valid only for the state it evaluated
                                                           (exit 1 = refused: stale/blocker/source-loss)
@@ -110,7 +110,7 @@ if (cmd === 'check') {
                                                           on stale/broken); okf-rag's prints as the
                                                           unverifiable claim it is (never a gate)
   scrub <file...> | --pushed SHA [--since SHA]            scan records for secret shapes (the pre-push
-      [--allow ID --allow-reason "..."]                   hook's engine; one scan API with log/REC-02)
+      [--allow ID --allow-reason "..."]                   hook's engine; one scan API with log)
   help                                                    this message
 
   Run \`baseline\` with no command (or a leading --flag) to score, e.g. \`baseline --repo .\`.`)

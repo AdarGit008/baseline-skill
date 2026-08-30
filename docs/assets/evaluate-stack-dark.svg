@@ -13,8 +13,8 @@
 <text x="114" y="202" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#C9CCFF" text-anchor="start" opacity="0.85">check.mjs · 55 lines</text>
 <text x="114" y="224" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#C9CCFF" text-anchor="start" opacity="0.8">the only entry point</text>
 <text x="388" y="162" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#8F94F2" text-anchor="start" letter-spacing="2">KNOWS</text>
-<text x="388" y="184" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">flags: --repo · --json · --no-exec ·</text>
-<text x="388" y="203.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">--profile &lt;pack&gt; · loads rules.json —</text>
+<text x="388" y="184" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">flags: --repo · --config · --json ·</text>
+<text x="388" y="203.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">--self-check · loads rules.json —</text>
 <text x="388" y="223" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#C9CCFF" text-anchor="start">the rule set, as pure data</text>
 <rect x="674" y="150" width="196" height="84" rx="6" fill="#3B3417" stroke="#C7AA3A" stroke-width="2"/>
 <text x="688" y="174" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11.5" font-weight="bold" fill="#EFDF9C" text-anchor="start">never knows:</text>
@@ -29,9 +29,9 @@
 <text x="114" y="360" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#E4CBFF" text-anchor="start" opacity="0.85">engine.mjs · 103 lines</text>
 <text x="114" y="382" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#E4CBFF" text-anchor="start" opacity="0.8">gate → evaluate → tag</text>
 <text x="388" y="320" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#C77DFF" text-anchor="start" letter-spacing="2">KNOWS</text>
-<text x="388" y="342" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">gates: context · pack · type/tool ·</text>
-<text x="388" y="361.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">posture · forge — a miss is no row,</text>
-<text x="388" y="381" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">never a penalty · tag ladder + severity</text>
+<text x="388" y="342" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">gates: context · applies_to ·</text>
+<text x="388" y="361.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">membership · layer — a miss is</text>
+<text x="388" y="381" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#E4CBFF" text-anchor="start">no row · verdicts: PASS / FAIL</text>
 <rect x="674" y="308" width="196" height="84" rx="6" fill="#3B3417" stroke="#C7AA3A" stroke-width="2"/>
 <text x="688" y="332" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11.5" font-weight="bold" fill="#EFDF9C" text-anchor="start">never knows:</text>
 <text x="688" y="352" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">how anything is checked</text>
@@ -45,9 +45,9 @@
 <text x="114" y="518" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.85">evaluators.mjs · 331 lines</text>
 <text x="114" y="540" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#FFD98A" text-anchor="start" opacity="0.8">facts only, one function per kind</text>
 <text x="388" y="478" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11" font-weight="bold" fill="#F0A32F" text-anchor="start" letter-spacing="2">KNOWS</text>
-<text x="388" y="500" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">how to verify each claim: grep,</text>
-<text x="388" y="519.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">any-file, md-links, command,</text>
-<text x="388" y="539" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">dockerfile-digest… (any-of &amp; implies recurse)</text>
+<text x="388" y="500" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">how to verify each claim: any-file,</text>
+<text x="388" y="519.5" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">grep, file-contains, plugin-presence,</text>
+<text x="388" y="539" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="14" font-weight="normal" fill="#FFD98A" text-anchor="start">graph-stamp-fresh · not-lagging · frozen…</text>
 <rect x="674" y="466" width="196" height="84" rx="6" fill="#3B3417" stroke="#C7AA3A" stroke-width="2"/>
 <text x="688" y="490" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="11.5" font-weight="bold" fill="#EFDF9C" text-anchor="start">never knows:</text>
 <text x="688" y="510" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">severity, or what happens</text>
@@ -124,50 +124,45 @@
 <text x="748" y="1011" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#A6ACB8" text-anchor="start">the lab states facts + evidence</text>
 <line x1="982" y1="979" x2="1018" y2="979" stroke="#F26D6D" stroke-width="2.8" stroke-linecap="round"/><path d="M1018,979 L1008,974.5 L1008,983.5 Z" fill="#F26D6D"/>
 <rect x="1020" y="941" width="208" height="78" rx="8" fill="#161B22" stroke="#C77DFF" stroke-width="2.5"/>
-<text x="1038" y="971" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#E7E9EE" text-anchor="start">ladder: not null · not true ·</text>
-<text x="1038" y="989" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#E7E9EE" text-anchor="start">severity blocker ⇒ FAIL</text>
+<text x="1038" y="971" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#E7E9EE" text-anchor="start">ok: false · severity</text>
+<text x="1038" y="989" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#E7E9EE" text-anchor="start">blocker ⇒ FAIL</text>
 <text x="1038" y="1011" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#A6ACB8" text-anchor="start">the judge applies meaning</text>
 <line x1="1230" y1="979" x2="1266" y2="979" stroke="#F26D6D" stroke-width="2.8" stroke-linecap="round"/><path d="M1266,979 L1256,974.5 L1256,983.5 Z" fill="#F26D6D"/>
 <rect x="1268" y="941" width="136" height="78" rx="8" fill="#161B22" stroke="#F26D6D" stroke-width="3"/>
 <text x="1336" y="975" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="19" font-weight="bold" fill="#F26D6D" text-anchor="middle">exit 1</text>
 <text x="1336" y="999" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="12.5" font-weight="normal" fill="#F26D6D" text-anchor="middle">CI goes red</text>
-<text x="36" y="927" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#E7E9EE" text-anchor="start">the tag ladder — meaning first, severity is consulted LAST</text>
+<text x="36" y="927" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#E7E9EE" text-anchor="start">the outcomes — no row · n/a · PASS · FAIL (no warn tier)</text>
 <rect x="36" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#9AA0AB" stroke-width="2.5"/>
 <text x="96" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#9AA0AB" text-anchor="middle">no row</text>
 <text x="96" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">gate miss — not part</text>
 <text x="96" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">of this run at all</text>
 <line x1="158" y1="980" x2="168" y2="980" stroke="#7B818C" stroke-width="2" stroke-linecap="round"/><path d="M168,980 L161.6,977.1 L161.6,982.9 Z" fill="#7B818C"/>
-<rect x="169" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#6EA8FE" stroke-width="2.5"/>
-<text x="229" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#6EA8FE" text-anchor="middle">n/a</text>
-<text x="229" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">in scope, not evaluable —</text>
-<text x="229" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">--json only, never counted</text>
-<line x1="291" y1="980" x2="301" y2="980" stroke="#7B818C" stroke-width="2" stroke-linecap="round"/><path d="M301,980 L294.6,977.1 L294.6,982.9 Z" fill="#7B818C"/>
-<rect x="302" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#4CC272" stroke-width="2.5"/>
-<text x="362" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#4CC272" text-anchor="middle">PASS</text>
-<text x="362" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">checked,</text>
-<text x="362" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">it’s fine</text>
-<line x1="424" y1="980" x2="434" y2="980" stroke="#7B818C" stroke-width="2" stroke-linecap="round"/><path d="M434,980 L427.6,977.1 L427.6,982.9 Z" fill="#7B818C"/>
-<rect x="435" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#F0A32F" stroke-width="2.5"/>
-<text x="495" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#F0A32F" text-anchor="middle">WARN</text>
-<text x="495" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">real shortfall,</text>
-<text x="495" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">doesn’t block</text>
-<line x1="557" y1="980" x2="567" y2="980" stroke="#7B818C" stroke-width="2" stroke-linecap="round"/><path d="M567,980 L560.6,977.1 L560.6,982.9 Z" fill="#7B818C"/>
-<rect x="568" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#F26D6D" stroke-width="2.5"/>
-<text x="628" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#F26D6D" text-anchor="middle">FAIL</text>
-<text x="628" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">blockers only</text>
-<text x="628" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">→ exit 1</text>
+<rect x="186" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#6EA8FE" stroke-width="2.5"/>
+<text x="246" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#6EA8FE" text-anchor="middle">n/a</text>
+<text x="246" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">in scope, not evaluable —</text>
+<text x="246" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">--json only, never counted</text>
+<line x1="308" y1="980" x2="318" y2="980" stroke="#7B818C" stroke-width="2" stroke-linecap="round"/><path d="M318,980 L311.6,977.1 L311.6,982.9 Z" fill="#7B818C"/>
+<rect x="336" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#4CC272" stroke-width="2.5"/>
+<text x="396" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#4CC272" text-anchor="middle">PASS</text>
+<text x="396" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">checked,</text>
+<text x="396" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">it’s fine</text>
+<line x1="458" y1="980" x2="468" y2="980" stroke="#7B818C" stroke-width="2" stroke-linecap="round"/><path d="M468,980 L461.6,977.1 L461.6,982.9 Z" fill="#7B818C"/>
+<rect x="486" y="941" width="121" height="78" rx="8" fill="#161B22" stroke="#F26D6D" stroke-width="2.5"/>
+<text x="546" y="967" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#F26D6D" text-anchor="middle">FAIL</text>
+<text x="546" y="987" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">blockers only</text>
+<text x="546" y="1001" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="10.5" font-weight="normal" fill="#A6ACB8" text-anchor="middle">→ exit 1</text>
 <rect x="36" y="1075" width="400" height="150" rx="6" fill="#3B3417" stroke="#C7AA3A" stroke-width="2"/>
 <text x="60" y="1109" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#EFDF9C" text-anchor="start">kept honest — this repo’s own CI</text>
 <text x="60" y="1137" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">--self-check → rules.json is internally valid</text>
-<text x="60" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">golden corpus → 14 fixture repos × 0 pinned</text>
+<text x="60" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">golden corpus → 14 fixture repos × 11 pinned</text>
 <text x="60" y="1181" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">     verdicts — ANY drift fails the build</text>
 <text x="60" y="1203" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#EFDF9C" text-anchor="start">self-score → baseline scores its own repo</text>
 <rect x="470" y="1075" width="400" height="150" rx="6" fill="#122B3D" stroke="#4C9BD8" stroke-width="2"/>
-<text x="494" y="1109" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#A8D5F5" text-anchor="start">v3 — enabler, not enforcer</text>
-<text x="494" y="1137" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">always-on blockers fail CI; packs switch on</text>
-<text x="494" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">explicitly; plugins (obsidian-tdd · graphify · okf-rag)</text>
-<text x="494" y="1181" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">are suggested — baseline reads their metadata only</text>
-<text x="494" y="1203" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">→ docs/v3/PLAN.md</text>
+<text x="494" y="1109" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="15.5" font-weight="bold" fill="#A8D5F5" text-anchor="start">v4 — two opt-ins, opposite defaults</text>
+<text x="494" y="1137" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">trust circle (plugins) is opt-IN: a member gates;</text>
+<text x="494" y="1159" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">a suggestion is n/a — metadata only, never a verdict</text>
+<text x="494" y="1181" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">baseline rules layer is opt-OUT (default in): the</text>
+<text x="494" y="1203" font-family="Segoe UI, Roboto, Helvetica Neue, Arial, DejaVu Sans, sans-serif" font-size="13" font-weight="normal" fill="#A8D5F5" text-anchor="start">tree reads any repo can answer · → docs/v4/PLAN.md</text>
 <text x="1404" y="1171" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7B818C" text-anchor="end">drawn from the code on main — regenerate:</text>
 <text x="1404" y="1191" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7B818C" text-anchor="end">node docs/assets/gen-evaluate-stack.mjs</text>
 <text x="1404" y="1211" font-family="ui-monospace, Menlo, Consolas, DejaVu Sans Mono, monospace" font-size="12.5" font-weight="normal" fill="#7B818C" text-anchor="end">more: docs/REFERENCE.md · docs/GLOSSARY.md</text>

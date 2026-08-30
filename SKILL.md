@@ -16,8 +16,7 @@ Workflow scaffolding, not an enforcer. Every rule is a check a script runs on a 
 ## Modes
 
 - **orient** — session start: `node "$SKILL_DIR/baseline.mjs" orient --repo <r>`. Five lines (repo · work · graph · knowledge · score), exit 0 always. **Git boundary: no file, branch or history changes.** One network act, `git fetch`: behind origin is a *warning* (`--json`: `upstream`/`ahead`/`behind`), never a pull. Plugin lines quote the stamp's `summary`, never the artifact.
-- **score** (default): `node "$SKILL_DIR/check.mjs" --repo <r>` — `--json` for CI, `--no-exec` a no-op.
-- **fix** — apply each failing rule's own `fix` field, re-score, confirm no new blockers.
+- **score** (default): `node "$SKILL_DIR/check.mjs" --repo <r>` — `--json` for CI, `--no-exec` a no-op. Each row's `fix` field is advisory — it rides `--json` and `explain`, never auto-applied.
 - **explain** — `baseline explain <rule-id>`: title + rationale, plus the okf concept when `BASELINE_OKF_BUNDLE` is set. Display only, never a verdict.
 
 ## What fails CI

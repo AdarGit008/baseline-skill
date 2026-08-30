@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // project-baseline checker — zero-dependency. Scores a repo against rules.json.
-// Usage: node check.mjs [--repo <dir>] [--config <file>] [--no-exec] [--json] [--profile <pack>]
+// Usage: node check.mjs [--repo <dir>] [--config <file>] [--json]
 // Exit code 1 if any blocker fails. See README.md.
 //
 // This file is the thin CLI; the scorer lives in src/check-run.mjs (index -> config ->

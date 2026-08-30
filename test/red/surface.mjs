@@ -280,5 +280,41 @@ const EXPECTED_RULE_COUNT = lib.SURVIVING_IDS.length
   ok(/^repo:/m.test(drifted), `V34 · and the session still gets its survey, from the installed CLI (${drifted.split('\n')[0]?.slice(0, 60) || '—'})`)
 }
 
+// ---------- V46: every mode SKILL.md names is a verb baseline actually routes ----------
+// e2e finding #1, pinned: SKILL.md's Modes section promised `baseline fix`, but baseline.mjs
+// has no `fix` branch and never did (no runFix in git history). The per-rule `fix` FIELD is
+// real but advisory — it rides --json rows, `explain <id>`, and the REFERENCE table, and is
+// never auto-applied. This invariant makes the promise and the dispatcher provably agree:
+// parse the modes, map `score` to the default `check`, and require each to route; then hold
+// the help text to the same standard. RED today on `fix`, green once the Modes section
+// stops promising an unimplemented verb.
+{
+  const skill = fs.readFileSync(path.join(ROOT, 'SKILL.md'), 'utf8')
+  const block = skill.match(/## Modes\s*\n([\s\S]*?)(?=\n##\s|$)/)
+  const modes = [...(block?.[1] || '').matchAll(/^\s*-\s*\*\*([a-z-]+)\*\*/gm)].map(m => m[1])
+  ok(modes.length > 0, `V46 · the Modes section parses to ${modes.length} mode(s): ${modes.join(', ') || '—'}`)
+
+  // `score` is the documented default — the dispatcher's `check` branch — not its own verb.
+  const verbOf = (mode) => (mode === 'score' ? 'check' : mode)
+  // The dispatcher's unknown branch is the ONLY path that prints "unknown command"; a verb
+  // it recognizes reaches its handler (help, a run, or a usage error), never that line.
+  // --help reaches each verb's usage without running it — except check, whose --help falls
+  // through to a full score, so it gets an isolated throwaway repo rather than ROOT.
+  const probe = mkrepo('v46-probe', CLEAN_NODE())
+  const routes = (verb) => !/unknown command/.test(cli(probe, [verb, '--help']).stderr)
+
+  for (const mode of modes) {
+    const verb = verbOf(mode)
+    ok(routes(verb), `V46 · SKILL.md names the '${mode}' mode, and baseline routes '${verb}'`)
+  }
+
+  // the inverse guard: every verb `baseline help` advertises must actually route, or the
+  // help text has drifted into a promise the dispatcher cannot keep.
+  const help = cli(probe, ['help']).stdout
+  const verbs = [...new Set([...help.matchAll(/^\s{2}([a-z][a-z-]*)\s/gm)].map(m => m[1]))]
+  ok(verbs.length > 0, `V46 · help advertises ${verbs.length} verb(s): ${verbs.join(', ')}`)
+  for (const verb of verbs) ok(routes(verb), `V46 · help lists '${verb}', and baseline routes it`)
+}
+
 cleanup()
 process.exit(done() ? 1 : 0)

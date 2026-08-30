@@ -62,7 +62,7 @@ import { makeColor, evaluated } from './report.mjs'
 import { loadJudgmentsAt, selectBreakGlass, evaluateJudgment, gatherJdgFacts, JDG_PARSE_CAP } from './jdg.mjs'
 import { scan, ALLOWLIST_FILE } from './scrub.mjs'
 
-const USAGE = `usage: baseline reconcile [--repo DIR] [--json] [--dry-run] [--target REF] [--profile P] [--config FILE]`
+const USAGE = `usage: baseline reconcile [--repo DIR] [--json] [--dry-run] [--target REF] [--config FILE]`
 const CAP = 10 // ruled: per-run cap on creations+reopens; overflow → one rollup
 const LABEL = 'baseline' // the filter/mute affordance + the dedup scan's bound
 const MERGED_WINDOW = 20 // newest merged PRs swept for red admits (labeled in output)

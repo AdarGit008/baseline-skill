@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Regenerates the two derived regions of docs/REFERENCE.md — the rule table and the check-kind
 // list — from the rule set itself (loadRules()) and the evaluator registry (CHECK_KINDS).
-// Nothing in the regions is typed by hand: ids, titles, severities, packs, scopes and the
+// Nothing in the regions is typed by hand: ids, titles, severities, scopes and the
 // per-category grouping all come from rules/*.json, in rules.json module order and the
 // report's category order, so the table cannot drift from the runner (v3 V32/V33: no
 // count is a literal anywhere — this file prints none, and derives the grouping instead).
@@ -31,7 +31,7 @@ const end = (name) => `<!-- baseline:${name} end -->`
 // 'none' is not a weaker tier — it is the ABSENCE of a severity claim, carried by a rule
 // whose check cannot produce a verdict (kind 'frozen'). It gets its own glyph so the table
 // never reads it as a quieter blocker.
-const SEV = { blocker: '🔴 blocker', warn: '🟡 warn', none: '⚪ frozen · no severity' }
+const SEV = { blocker: '🔴 blocker', none: '⚪ frozen · no severity' }
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\s+/g, ' ').trim()
 const scopeOf = (r) => {
   const t = r.applies_to === 'all' || r.applies_to == null ? 'all' : (Array.isArray(r.applies_to) ? r.applies_to.join(', ') : String(r.applies_to))
@@ -44,8 +44,8 @@ function rulesTable(rules) {
     const group = rules.filter(r => r.category === cat)
     if (!group.length) continue
     out.push(`### ${CATS[cat] ?? cat}`, '')
-    out.push('| ID | Rule | Severity | Pack | Scope |', '|---|---|---|---|---|')
-    for (const r of group) out.push(`| ${cell(r.id)} | ${cell(r.title)} | ${SEV[r.severity] ?? cell(r.severity)} | ${r.pack ? cell(r.pack) : '—'} | ${cell(scopeOf(r))} |`)
+    out.push('| ID | Rule | Severity | Scope |', '|---|---|---|---|')
+    for (const r of group) out.push(`| ${cell(r.id)} | ${cell(r.title)} | ${SEV[r.severity] ?? cell(r.severity)} | ${cell(scopeOf(r))} |`)
     out.push('')
   }
   return out.join('\n').trimEnd()
@@ -65,7 +65,7 @@ const GLOSS = {
   'md-links': 'relative markdown links resolve against each doc\'s own directory',
   'path-integrity': 'backticked paths named in docs still exist',
   'doc-freshness': 'a frontmatter review date inside the configured window',
-  'doc-code-age': 'a doc does not lag the code it anchors by more than `doc_lag_days`',
+  'doc-code-age': 'a git-date ordering with no standalone rule — kept because the artifact-not-lagging check inherits its arithmetic',
   'graph-stamp-fresh': "the committed graphify stamp's content hashes still match the tracked code files — the check-pipeline face of `baseline trust verify`; the graph itself is never opened",
   'artifact-not-lagging': "a trust-circle member's TRACKED artifact was not committed before the newest commit under its configured source scope — an ordering, with no day threshold; same commit passes",
   'stamp-not-lagging': 'the commit a RECORDED-ONLY stamp names is not behind the newest commit under its source scope — the claim is ordered, never verified, and every verdict says so',

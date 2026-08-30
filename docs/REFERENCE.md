@@ -111,7 +111,7 @@ flowchart TD
 
 ```json
 { "id": "SEC-01-no-committed-secrets", "tag": "PASS", "detail": "pattern not found (good)" }
-{ "id": "PLUG-02-graphify", "tag": "FAIL", "detail": "graphify not found at graphify-out — install: pip install graphify", "log": ".baseline/log/PLUG-02.log" }
+{ "id": "PLUG-02-graphify", "tag": "FAIL", "detail": "graphify not found at graphify-out — install: pip install graphifyy", "log": ".baseline/log/PLUG-02.log" }
 ```
 
 ## Quickstart

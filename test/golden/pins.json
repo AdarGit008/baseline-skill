@@ -520,7 +520,7 @@
       },
       "PLUG-02-graphify": {
         "tag": "FAIL",
-        "detail": "graphify not found at graphify-out — install: pip install graphify"
+        "detail": "graphify not found at graphify-out — install: pip install graphifyy"
       },
       "PLUG-03-okf-rag": {
         "tag": "FAIL",

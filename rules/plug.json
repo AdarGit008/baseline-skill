@@ -45,7 +45,7 @@
       "check": {
         "kind": "plugin-presence",
         "plugin": "graphify",
-        "install": "pip install graphify"
+        "install": "pip install graphifyy"
       }
     },
     {

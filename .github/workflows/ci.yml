@@ -31,6 +31,8 @@ jobs:
         run: node test/reconcile/run.mjs
       - name: gen — generated-view contract + inputs_digest stability (no gen --check step — this repo has zero views; green-by-construction is theater)
         run: node test/gen/run.mjs
+      - name: graphify — derive the gitignored graph the trust circle gates on (PLUG-02 presence, CTX-15 freshness)
+        run: pip install graphifyy && graphify update .
       - name: self-score (the standard checks itself)
         run: node check.mjs --repo . --no-exec
       - name: v3 invariants (test/red, all green by construction)

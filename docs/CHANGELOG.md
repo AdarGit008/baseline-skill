@@ -27,6 +27,12 @@ follows [Keep a Changelog](https://keepachangelog.com); the runner is versioned 
   open item is the shape `before_agent_start` accepts for injection; see the integration
   README, same posture as the Hermes twin.
 
+### Changed — CODEOWNERS is a code-repo concern
+- **`GOV-03-codeowners-names-owner`** narrows `applies_to` from `"all"` to
+  `["node","python","service","library"]`. A `docs` repo (or one declared `type: docs`)
+  no longer fails for lacking a CODEOWNERS file — code review ownership is a code-repo
+  concern. The rule stays in the baseline layer and still gates every code type.
+
 ## [3.0.0] — 2026-08-25
 
 V3 keeps the premise — *don't trust a written promise, make something check it* —

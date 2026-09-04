@@ -34,8 +34,8 @@ Every rule declares an **`applies_to`** — the kind of repo it fits — checked
 
 `node` · `python` · `service` · `library` · `docs`
 
-- `applies_to: "all"` — universal (secrets, `.env` hygiene, CODEOWNERS, the plugins, the context rules).
-- `applies_to: ["node","python","service","library"]` — **code repos only** (BUILD-03's CI workflow); on a `docs` repo it produces no row.
+- `applies_to: "all"` — universal (secrets, `.env` hygiene, the plugins, the context rules).
+- `applies_to: ["node","python","service","library"]` — **code repos only** (BUILD-03's CI workflow, GOV-03's CODEOWNERS); on a `docs` repo it produces no row.
 - `applies_to: ["node","python","service"]` — BUILD-04's env template; `library` and `docs` repos produce no row.
 
 `project_type` auto-detects (`package.json` ⇒ `node`/`service`, `pyproject.toml` ⇒ `python`, `go.mod` ⇒ `service`, else `docs`) and can be pinned in `baseline.config.json` — or **declared in `baseline.repo.json`**, whose `type` supersedes auto-detection. A rule whose `applies_to` doesn't include your type is not part of the run — no row.
@@ -304,7 +304,7 @@ Ids carry three parts — `PREFIX-NN-semantic-slug` (`SEC-01-no-committed-secret
 
 | ID | Rule | Severity | Scope |
 |---|---|---|---|
-| GOV-03-codeowners-names-owner | CODEOWNERS exists and names an owner | 🔴 blocker | all |
+| GOV-03-codeowners-names-owner | CODEOWNERS exists and names an owner | 🔴 blocker | node, python, service, library |
 
 ### Context management
 

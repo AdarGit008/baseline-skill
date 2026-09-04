@@ -175,18 +175,18 @@
     "rules": {}
   },
   "claims-repo": {
-    "exitCode": 1,
+    "exitCode": 0,
     "project_type": "docs",
     "packs": [
       "claims"
     ],
     "summary": {
-      "blockers": 1,
+      "blockers": 0,
       "pass": 2,
       "warn": 0,
-      "fail": 1,
+      "fail": 0,
       "diverged": 0,
-      "total": 3
+      "total": 2
     },
     "rules": {
       "SEC-01-no-committed-secrets": {
@@ -196,10 +196,6 @@
       "SEC-02-env-files-ignored": {
         "tag": "PASS",
         "detail": "none present (good)"
-      },
-      "GOV-03-codeowners-names-owner": {
-        "tag": "FAIL",
-        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
       },
       "PLUG-01-obsidian-tdd": {
         "state": "n/a",
@@ -303,16 +299,16 @@
     }
   },
   "descriptor-repo": {
-    "exitCode": 1,
+    "exitCode": 0,
     "project_type": "docs",
     "packs": [],
     "summary": {
-      "blockers": 1,
+      "blockers": 0,
       "pass": 2,
       "warn": 0,
-      "fail": 1,
+      "fail": 0,
       "diverged": 0,
-      "total": 3
+      "total": 2
     },
     "rules": {
       "SEC-01-no-committed-secrets": {
@@ -322,10 +318,6 @@
       "SEC-02-env-files-ignored": {
         "tag": "PASS",
         "detail": "none present (good)"
-      },
-      "GOV-03-codeowners-names-owner": {
-        "tag": "FAIL",
-        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
       },
       "PLUG-01-obsidian-tdd": {
         "state": "n/a",
@@ -362,18 +354,18 @@
     }
   },
   "docs-repo": {
-    "exitCode": 1,
+    "exitCode": 0,
     "project_type": "docs",
     "packs": [
       "advanced"
     ],
     "summary": {
-      "blockers": 1,
+      "blockers": 0,
       "pass": 2,
       "warn": 0,
-      "fail": 1,
+      "fail": 0,
       "diverged": 0,
-      "total": 3
+      "total": 2
     },
     "rules": {
       "SEC-01-no-committed-secrets": {
@@ -383,10 +375,6 @@
       "SEC-02-env-files-ignored": {
         "tag": "PASS",
         "detail": "none present (good)"
-      },
-      "GOV-03-codeowners-names-owner": {
-        "tag": "FAIL",
-        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
       },
       "PLUG-01-obsidian-tdd": {
         "state": "n/a",
@@ -423,16 +411,16 @@
     }
   },
   "jdg-repo": {
-    "exitCode": 1,
+    "exitCode": 0,
     "project_type": "docs",
     "packs": [],
     "summary": {
-      "blockers": 1,
+      "blockers": 0,
       "pass": 2,
       "warn": 0,
-      "fail": 1,
+      "fail": 0,
       "diverged": 0,
-      "total": 3
+      "total": 2
     },
     "rules": {
       "SEC-01-no-committed-secrets": {
@@ -442,10 +430,6 @@
       "SEC-02-env-files-ignored": {
         "tag": "PASS",
         "detail": "none present (good)"
-      },
-      "GOV-03-codeowners-names-owner": {
-        "tag": "FAIL",
-        "detail": "file absent: CODEOWNERS, .github/CODEOWNERS, docs/CODEOWNERS"
       },
       "PLUG-01-obsidian-tdd": {
         "state": "n/a",

@@ -5,7 +5,12 @@
       "title": "CODEOWNERS exists and names an owner",
       "category": "governance",
       "severity": "blocker",
-      "applies_to": "all",
+      "applies_to": [
+        "node",
+        "python",
+        "service",
+        "library"
+      ],
       "source": "https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
       "lesson": "every path has an accountable reviewer",
       "rationale": "A CODEOWNERS file routes reviews to the people accountable for each path, in one canonical location.",

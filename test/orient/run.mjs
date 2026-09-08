@@ -149,7 +149,10 @@ function expectedScore(dir, env = {}) {
 
 // ======================================================== 2 · a broken repo blocks nothing
 {
-  const dir = mkrepo('broken', { 'README.md': '# broken\n\n[dead](./nope.md)\n' })
+  // A docs repo broken by an always-on rule: a committed, un-ignored .env trips SEC-02
+  // (still applies_to "all"). GOV-03 (CODEOWNERS) is code-only now, so it can't be the
+  // blocker here any more.
+  const dir = mkrepo('broken', { 'README.md': '# broken\n\n[dead](./nope.md)\n', '.env': 'DATABASE_URL=postgres://user:pass@localhost/db\n' })
   const h = orient(dir)
   assertFiveLines(h, 'broken repo')
   const o = orientJson(dir)
